@@ -107,7 +107,11 @@ ships with its tests before its pull request is opened.
 ## Roadmap
 
 Seven milestones, in dependency order. Every milestone after `M-01` depends on it.
-Closed counts are as of creation — the [milestones page](https://github.com/artur-rios/fortuna-api/milestones) is the live view.
+Closed counts are as of creation — the [milestones page](https://github.com/artur-rios/fortuna-api/milestones)
+and the [project board](https://github.com/users/artur-rios/projects/12) are the live view. The board's
+`Status` field carries the lifecycle the
+[Development Workflow Document](docs/requirements/Development%20Workflow%20Document.md) defines:
+**Todo → In Progress → Testing → Done**.
 
 | Milestone | Delivers | Depends on | Issues | Status |
 |---|---|---|---|---|
