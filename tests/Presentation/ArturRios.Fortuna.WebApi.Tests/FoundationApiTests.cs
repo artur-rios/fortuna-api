@@ -146,6 +146,10 @@ public sealed class FoundationApiTests
         ["FORTUNA_STORAGE_PROVIDER"] = "Filesystem",
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
-        ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32"
+        ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
+        ["FORTUNA_AUTH_TOKEN_SECRET"] = "fortuna-tests-signing-key-with-enough-entropy",
+        ["FORTUNA_AUTH_TOKEN_ISSUER"] = "heimdall-tests",
+        ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = "fortuna-tests",
+        ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600"
     };
 }

@@ -13,6 +13,11 @@ public sealed record FortunaOptions
     public required string LogDirectory { get; init; }
     public int JobQueueCapacity { get; init; }
     public bool RunMigrations { get; init; }
+    public required string AuthTokenSecret { get; init; }
+    public string? AuthPreviousTokenSecret { get; init; }
+    public required string AuthTokenIssuer { get; init; }
+    public required string AuthTokenAudience { get; init; }
+    public double AuthTokenExpirationInSeconds { get; init; }
 
     public static FortunaOptions From(Func<string, string?> read)
     {
@@ -29,7 +34,15 @@ public sealed record FortunaOptions
             StorageS3SecretKey = read("FORTUNA_STORAGE_S3_SECRET_KEY"),
             LogDirectory = Required(read, "FORTUNA_LOG_DIRECTORY"),
             JobQueueCapacity = PositiveInteger(read("FORTUNA_JOB_QUEUE_CAPACITY"), "FORTUNA_JOB_QUEUE_CAPACITY", 256),
-            RunMigrations = Boolean(read("FORTUNA_RUN_MIGRATIONS"), "FORTUNA_RUN_MIGRATIONS", false)
+            RunMigrations = Boolean(read("FORTUNA_RUN_MIGRATIONS"), "FORTUNA_RUN_MIGRATIONS", false),
+            AuthTokenSecret = Required(read, "FORTUNA_AUTH_TOKEN_SECRET"),
+            AuthPreviousTokenSecret = read("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),
+            AuthTokenIssuer = Required(read, "FORTUNA_AUTH_TOKEN_ISSUER"),
+            AuthTokenAudience = Required(read, "FORTUNA_AUTH_TOKEN_AUDIENCE"),
+            AuthTokenExpirationInSeconds = PositiveDouble(
+                read("FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"),
+                "FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS",
+                3600)
         };
 
         if (!string.Equals(options.DataDatabaseType, "PostgreSql", StringComparison.OrdinalIgnoreCase))
@@ -83,5 +96,17 @@ public sealed record FortunaOptions
         return bool.TryParse(value, out var parsed)
             ? parsed
             : throw new InvalidOperationException($"Environment variable '{key}' must be true or false.");
+    }
+
+    private static double PositiveDouble(string? value, string key, double fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        return double.TryParse(value, out var parsed) && parsed > 0
+            ? parsed
+            : throw new InvalidOperationException($"Environment variable '{key}' must be a positive number.");
     }
 }
