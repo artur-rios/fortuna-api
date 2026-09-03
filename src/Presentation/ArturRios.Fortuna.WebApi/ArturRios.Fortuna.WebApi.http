@@ -1,0 +1,6 @@
+@ArturRios.Fortuna.WebApi_HostAddress = http://localhost:0
+
+GET {{ArturRios.Fortuna.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

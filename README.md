@@ -6,7 +6,7 @@ views, drillable charts and forward projections. **This repository is the back e
 API that owns the domain, the data and the integrations. The Flutter application that runs on
 Windows, Linux, the browser and mobile is a separate repository and a separate consumer of this API.
 
-> **Status:** specification complete, implementation not started.
+> **Status:** foundation complete; use-case implementation is in progress.
 
 ## What it does
 
@@ -71,6 +71,10 @@ dotnet restore src/ArturRios.Fortuna.sln
 Configuration is resolved entirely from environment variables prefixed `FORTUNA_`. Copy the example
 file for your environment from `docker/` and fill it in; no secret is ever committed.
 
+```bash
+cp docker/local.env.example docker/local.env
+```
+
 ## Running
 
 One compose file serves all three target environments — Docker Desktop on Windows, Docker in WSL
@@ -80,16 +84,15 @@ Ubuntu, and a Linux VPS — differing only in the environment file supplied:
 docker compose --env-file docker/local.env up -d --build
 ```
 
-The API's health is observable at `GET /healthcheck` (public) and `GET /healthcheck/detailed`
-(instance administrator only).
+The API's liveness is observable at the public `GET /healthcheck` endpoint.
 
 ## Testing
 
-`dotnet test` runs the suite described in the
+The following command runs the complete suite described in the
 [Testing Specification Document](docs/requirements/Testing%20Specification%20Document.md):
 
 ```bash
-dotnet test
+dotnet test src/ArturRios.Fortuna.sln -m:1
 ```
 
 The suite covers **unit** tests over handlers, validators and domain behavior, and **functional**
@@ -97,12 +100,17 @@ tests over every endpoint end to end against a real PostgreSQL instance provisio
 Testcontainers. Run one category at a time:
 
 ```bash
-dotnet test --filter "Category=Unit"
+dotnet test src/ArturRios.Fortuna.sln -m:1 --filter "Category=Unit"
 ```
 
 Merged line coverage is gated at 90%, enforced in CI and reproducibly on a developer machine. That
 is a floor, not a target — the standard is to test everything that can be tested. Every use case
 ships with its tests before its pull request is opened.
+
+```bash
+dotnet tool install --global dotnet-reportgenerator-globaltool
+python3 scripts/coverage.py
+```
 
 ## Roadmap
 
@@ -115,7 +123,7 @@ and the [project board](https://github.com/users/artur-rios/projects/12) are the
 
 | Milestone | Delivers | Depends on | Issues | Status |
 |---|---|---|---|---|
-| [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 1 | 0 / 1 closed |
+| [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 1 | 1 / 1 closed |
 | [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, the two-stage deletion lifecycle and the audit trail | M-01 | 12 | 0 / 12 closed |
 | [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 19 | 0 / 19 closed |
 | [M-04 — Money movement](https://github.com/artur-rios/fortuna-api/milestone/4) | Transactions, transfers, installment plans, recurring commitments and reconciliation | M-03 | 11 | 0 / 11 closed |
@@ -132,7 +140,7 @@ pull request.
 
 | Issue | Work | Spec |
 |---|---|---|
-| [#1](https://github.com/artur-rios/fortuna-api/issues/1) | Project scaffold and initial infrastructure | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
+| [#1](https://github.com/artur-rios/fortuna-api/issues/1) | ✅ Project scaffold and initial infrastructure | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
 
 ### M-02 — Access and cross-cutting mechanisms
 
