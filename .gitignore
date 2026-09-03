@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+**/TestResults/
+docs/coverage-report/
+**/__pycache__/
+*.py[cod]
+docker/*.env
+!docker/*.env.example
+src/Presentation/ArturRios.Fortuna.WebApi/Environments/.env.*
+!src/Presentation/ArturRios.Fortuna.WebApi/Environments/.env
+.idea/
+.vscode/
+attachments/
+logs/

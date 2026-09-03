@@ -1,0 +1,9 @@
+.git
+.github
+**/bin
+**/obj
+**/TestResults
+docs/coverage-report
+docker/*.env
+src/Presentation/ArturRios.Fortuna.WebApi/Environments/.env*
+tests

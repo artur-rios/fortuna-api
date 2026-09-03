@@ -1,0 +1,63 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test Python helpers
+        run: python3 -m unittest discover -s scripts -p "test_*.py" --verbose
+      - name: Restore dependencies
+        run: dotnet restore src/ArturRios.Fortuna.sln
+      - name: Scan dependencies
+        run: python3 scripts/vulnerabilities.py
+      - name: Build
+        run: dotnet build src/ArturRios.Fortuna.sln --configuration Release --no-restore -m:1
+      - name: Unit tests
+        run: dotnet test src/ArturRios.Fortuna.sln --configuration Release --no-build -m:1 --filter "Category=Unit" --collect:"XPlat Code Coverage"
+      - name: Functional tests
+        run: dotnet test src/ArturRios.Fortuna.sln --configuration Release --no-build -m:1 --filter "Category=Functional" --collect:"XPlat Code Coverage"
+      - name: Install ReportGenerator
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+      - name: Enforce coverage
+        env:
+          REPORTGENERATOR_LICENSE: ${{ secrets.REPORTGENERATOR_LICENSE }}
+        run: python3 scripts/coverage.py --report-only
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: docs/coverage-report
+          if-no-files-found: error
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: '**/TestResults/*.trx'
+          if-no-files-found: warn
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false

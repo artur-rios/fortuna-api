@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ArturRios.Util.WebApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Map" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Application\ArturRios.Fortuna.Command\ArturRios.Fortuna.Command.csproj" />
+    <ProjectReference Include="..\..\Application\ArturRios.Fortuna.Query\ArturRios.Fortuna.Query.csproj" />
+    <ProjectReference Include="..\..\Application\ArturRios.Fortuna.Shared\ArturRios.Fortuna.Shared.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\ArturRios.Fortuna.Data\ArturRios.Fortuna.Data.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\ArturRios.Fortuna.Integration\ArturRios.Fortuna.Integration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Environments\.env*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

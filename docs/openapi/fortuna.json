@@ -1,0 +1,27 @@
+{
+  "components": {},
+  "info": {
+    "title": "Fortuna API",
+    "version": "v1"
+  },
+  "openapi": "3.0.4",
+  "paths": {
+    "/healthcheck": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "HealthCheck"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "HealthCheck"
+    }
+  ]
+}

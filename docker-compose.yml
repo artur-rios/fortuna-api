@@ -1,0 +1,37 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${API_IMAGE:-fortuna-api}:${API_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      FORTUNA_DATA_CONNECTIONSTRING: "Host=${DB_HOST:-host.docker.internal};Port=${DB_PORT:-5432};Database=${DB_NAME:-fortuna};Username=${DB_USER:?set DB_USER in the env file};Password=${DB_PASSWORD:?set DB_PASSWORD in the env file};Search Path=${DB_SEARCH_PATH:-fortuna};${DB_CONNECTION_EXTRA:-}"
+      FORTUNA_DATA_DATABASETYPE: PostgreSql
+      FORTUNA_RUN_MIGRATIONS: ${FORTUNA_RUN_MIGRATIONS:-true}
+      FORTUNA_STORAGE_PROVIDER: ${FORTUNA_STORAGE_PROVIDER:-Filesystem}
+      FORTUNA_STORAGE_PATH: ${FORTUNA_STORAGE_PATH:-/app/attachments}
+      FORTUNA_STORAGE_S3_ENDPOINT: ${FORTUNA_STORAGE_S3_ENDPOINT:-}
+      FORTUNA_STORAGE_S3_BUCKET: ${FORTUNA_STORAGE_S3_BUCKET:-}
+      FORTUNA_STORAGE_S3_ACCESS_KEY: ${FORTUNA_STORAGE_S3_ACCESS_KEY:-}
+      FORTUNA_STORAGE_S3_SECRET_KEY: ${FORTUNA_STORAGE_S3_SECRET_KEY:-}
+      FORTUNA_LOG_DIRECTORY: ${FORTUNA_LOG_DIRECTORY:-/app/logs}
+      FORTUNA_JOB_QUEUE_CAPACITY: ${FORTUNA_JOB_QUEUE_CAPACITY:-256}
+    volumes:
+      - logs:/app/logs
+      - attachments:/app/attachments
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  logs:
+  attachments:
