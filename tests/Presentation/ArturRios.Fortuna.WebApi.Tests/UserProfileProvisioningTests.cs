@@ -191,7 +191,9 @@ public sealed class UserProfileProvisioningTests : IAsyncLifetime
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
         ["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = defaultCurrency,
-        ["FORTUNA_LOCALE"] = "pt-BR"
+        ["FORTUNA_LOCALE"] = "pt-BR",
+        ["FORTUNA_LOCAL_AUTH_ENABLED"] = "false",
+        ["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = "10"
     };
 
     private sealed record ProfileEnvelope(ProfileData? Data);

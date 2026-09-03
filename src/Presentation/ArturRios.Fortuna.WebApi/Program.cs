@@ -4,6 +4,10 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
+using ArturRios.Fortuna.Command.Handlers;
+using ArturRios.Fortuna.Command.Input;
+using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
@@ -16,8 +20,11 @@ using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Jwt;
+using ArturRios.Mediator.Command;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Mediator.Query;
 using ArturRios.Mediator.Query.Interfaces;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -37,7 +44,7 @@ try
     builder.Host.UseSerilog();
     builder.Services.AddSingleton(options);
     builder.Services.AddSingleton(new DatabaseDiagnosticsOptions(
-        SensitiveDataLogging: !builder.Environment.IsProduction(),
+        SensitiveDataLogging: false,
         DetailedErrors: !builder.Environment.IsProduction()));
     builder.Services.AddDbContext<AppDbContext>((services, database) => database.UseNpgsql(
         options.DataConnectionString,
@@ -59,6 +66,17 @@ try
         provider.GetRequiredService<EfUserProfileStore>());
     builder.Services.AddScoped<IUserProfileProvisioner>(provider =>
         provider.GetRequiredService<EfUserProfileStore>());
+    builder.Services.AddSingleton(new LocalAccountOptions(
+        options.LocalAuthEnabled,
+        options.LocalAuthRecoveryCodeCount,
+        options.DefaultDisplayCurrency,
+        options.Locale));
+    builder.Services.AddScoped<ILocalAccountStore, EfLocalAccountStore>();
+    builder.Services.AddSingleton<ILocalCredentialStoreAvailability, LocalCredentialStoreAvailability>();
+    builder.Services.AddScoped<CommandMediator>();
+    builder.Services.AddScoped<IValidator<CreateLocalAccountCommand>, CreateLocalAccountCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<CreateLocalAccountCommand, CreateLocalAccountCommandOutput>,
+        CreateLocalAccountCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

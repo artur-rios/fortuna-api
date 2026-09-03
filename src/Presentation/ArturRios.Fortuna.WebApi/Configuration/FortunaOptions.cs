@@ -22,6 +22,8 @@ public sealed record FortunaOptions
     public double AuthTokenExpirationInSeconds { get; init; }
     public string? DefaultDisplayCurrency { get; init; }
     public required string Locale { get; init; }
+    public bool LocalAuthEnabled { get; init; }
+    public int LocalAuthRecoveryCodeCount { get; init; }
 
     public static FortunaOptions From(Func<string, string?> read)
     {
@@ -48,7 +50,12 @@ public sealed record FortunaOptions
                 "FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS",
                 3600),
             DefaultDisplayCurrency = CurrencyCode(read("FORTUNA_DEFAULT_DISPLAY_CURRENCY")),
-            Locale = SpecificLocale(read("FORTUNA_LOCALE"))
+            Locale = SpecificLocale(read("FORTUNA_LOCALE")),
+            LocalAuthEnabled = Boolean(read("FORTUNA_LOCAL_AUTH_ENABLED"), "FORTUNA_LOCAL_AUTH_ENABLED", false),
+            LocalAuthRecoveryCodeCount = PositiveInteger(
+                read("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"),
+                "FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT",
+                10)
         };
 
         if (!string.Equals(options.DataDatabaseType, "PostgreSql", StringComparison.OrdinalIgnoreCase))

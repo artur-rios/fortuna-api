@@ -1,6 +1,98 @@
 {
   "components": {
     "schemas": {
+      "CreateLocalAccountCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "displayName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "secret": {
+            "nullable": true,
+            "type": "string"
+          },
+          "storageMode": {
+            "$ref": "#/components/schemas/LocalAccountStorageMode"
+          }
+        },
+        "type": "object"
+      },
+      "CreateLocalAccountCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "displayName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "recoveryCodes": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "recoveryWarning": {
+            "nullable": true,
+            "type": "string"
+          },
+          "storageMode": {
+            "$ref": "#/components/schemas/LocalAccountStorageMode"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateLocalAccountCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CreateLocalAccountCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "LocalAccountStorageMode": {
+        "enum": [
+          0,
+          1
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
       "UserProfileOutput": {
         "additionalProperties": false,
         "properties": {
@@ -77,6 +169,54 @@
   },
   "openapi": "3.0.4",
   "paths": {
+    "/api/local-accounts": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLocalAccountCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLocalAccountCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLocalAccountCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateLocalAccountCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateLocalAccountCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateLocalAccountCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "LocalAccounts"
+        ]
+      }
+    },
     "/api/me": {
       "get": {
         "responses": {
@@ -125,6 +265,9 @@
   "tags": [
     {
       "name": "HealthCheck"
+    },
+    {
+      "name": "LocalAccounts"
     },
     {
       "name": "Me"

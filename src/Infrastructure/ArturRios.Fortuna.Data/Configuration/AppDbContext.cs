@@ -17,6 +17,8 @@ public sealed class AppDbContext(
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
     public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+    public DbSet<LocalAccount> LocalAccounts => Set<LocalAccount>();
+    public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
