@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
@@ -75,11 +76,30 @@ try
     builder.Services.AddSingleton<JwtHandler>();
     builder.Services.AddSingleton<FortunaIdentityMapper>();
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen(document => document.SwaggerDoc("v1", new()
+    builder.Services.AddSwaggerGen(document =>
     {
-        Title = "Fortuna API",
-        Version = "v1"
-    }));
+        document.SwaggerDoc("v1", new()
+        {
+            Title = "Fortuna API",
+            Version = "v1"
+        });
+        var jwtSecurityScheme = new OpenApiSecurityScheme
+        {
+            BearerFormat = "JWT",
+            Name = "JWT Authentication",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.Http,
+            Scheme = JwtBearerDefaults.AuthenticationScheme,
+            Description = "Enter the Heimdall JWT bearer token."
+        };
+        var jwtRequirement = new OpenApiSecurityRequirement
+        {
+            { new OpenApiSecuritySchemeReference(JwtBearerDefaults.AuthenticationScheme), [] }
+        };
+
+        document.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, jwtSecurityScheme);
+        document.AddSecurityRequirement(_ => jwtRequirement);
+    });
 
     var app = builder.Build();
     if (!app.Environment.IsProduction())

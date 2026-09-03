@@ -1,5 +1,3 @@
-using ArturRios.Util.WebApi.Security.Constants;
-
 namespace ArturRios.Fortuna.WebApi.Security;
 
 /// <summary>
@@ -10,6 +8,8 @@ public sealed class AuthenticatedActorMiddleware(
     RequestDelegate next,
     FortunaIdentityMapper mapper)
 {
+    private const string AuthenticatedUserItemKey = "User";
+
     public async Task InvokeAsync(HttpContext context)
     {
         if (context.User.Identity?.IsAuthenticated == true)
@@ -25,7 +25,7 @@ public sealed class AuthenticatedActorMiddleware(
                 return;
             }
 
-            context.Items[AuthenticationItemKeys.User] = identity;
+            context.Items[AuthenticatedUserItemKey] = identity;
         }
 
         await next(context);

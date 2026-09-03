@@ -29,6 +29,9 @@ def generate(output):
         "FORTUNA_STORAGE_PATH": str(Path(tempfile.gettempdir()) / "fortuna-openapi-storage"),
         "FORTUNA_LOG_DIRECTORY": str(Path(tempfile.gettempdir()) / "fortuna-openapi-logs"),
         "FORTUNA_RUN_MIGRATIONS": "false",
+        "FORTUNA_AUTH_TOKEN_SECRET": "fortuna-openapi-signing-key-with-enough-entropy",
+        "FORTUNA_AUTH_TOKEN_ISSUER": "heimdall-openapi",
+        "FORTUNA_AUTH_TOKEN_AUDIENCE": "fortuna-openapi",
     }
     build = subprocess.run(
         [

@@ -119,9 +119,12 @@ public sealed class FoundationApiTests
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/swagger/v1/swagger.json", CancellationToken.None);
+        var document = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("/healthcheck", await response.Content.ReadAsStringAsync(CancellationToken.None));
+        Assert.Contains("/healthcheck", document);
+        Assert.Contains("\"securitySchemes\"", document);
+        Assert.Contains("\"Bearer\"", document);
     }
 
     private static WebApplicationFactory<Program> CreateFactory()
