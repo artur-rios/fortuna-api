@@ -60,4 +60,21 @@ public sealed class LocalAccount
 
     public void AddRecoveryCode(byte[] codeHash, DateTimeOffset createdAt) =>
         RecoveryCodes.Add(new RecoveryCode(this, codeHash, createdAt));
+
+    public void ReplaceSecret(byte[] secretHash, byte[] salt, DateTimeOffset updatedAt)
+    {
+        if (secretHash.Length == 0)
+        {
+            throw new ArgumentException("A secret hash is required.", nameof(secretHash));
+        }
+
+        if (salt.Length == 0)
+        {
+            throw new ArgumentException("A salt is required.", nameof(salt));
+        }
+
+        SecretHash = secretHash;
+        Salt = salt;
+        UpdatedAt = updatedAt;
+    }
 }

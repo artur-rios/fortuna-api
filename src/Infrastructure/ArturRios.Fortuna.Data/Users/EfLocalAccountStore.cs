@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Users;
@@ -11,7 +12,7 @@ public sealed class EfLocalAccountStore(
     AppDbContext context,
     LocalAccountOptions options) : ILocalAccountStore
 {
-    private const long CreationLockId = 0x464F5254554E4103;
+    private const long AccountLockId = 0x464F5254554E4103;
 
     public Task<bool> ExistsAsync(CancellationToken cancellationToken) =>
         context.LocalAccounts.AsNoTracking().AnyAsync(cancellationToken);
@@ -40,7 +41,7 @@ public sealed class EfLocalAccountStore(
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         await context.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock({CreationLockId})",
+            $"SELECT pg_advisory_xact_lock({AccountLockId})",
             cancellationToken);
 
         if (await context.LocalAccounts.AnyAsync(cancellationToken))
@@ -91,6 +92,52 @@ public sealed class EfLocalAccountStore(
         {
             return new LocalAccountCreationResult(null, true);
         }
+    }
+
+    public async Task<LocalAccountRecoveryResult> RecoverAsync(
+        LocalAccountRecovery recovery,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({AccountLockId})",
+            cancellationToken);
+        var account = await context.LocalAccounts
+            .Include(x => x.User)
+            .Include(x => x.RecoveryCodes)
+            .SingleOrDefaultAsync(x => x.Name == recovery.Name, cancellationToken);
+
+        if (account is null)
+        {
+            return new LocalAccountRecoveryResult(LocalAccountRecoveryStatus.InvalidCode, null);
+        }
+
+        var unusedCodes = account.RecoveryCodes
+            .Where(code => code.UsedAt is null)
+            .ToArray();
+        if (unusedCodes.Length == 0)
+        {
+            return new LocalAccountRecoveryResult(LocalAccountRecoveryStatus.Exhausted, null);
+        }
+
+        var matchingCode = unusedCodes.FirstOrDefault(code =>
+            CryptographicOperations.FixedTimeEquals(code.CodeHash, recovery.RecoveryCodeHash));
+        if (matchingCode is null)
+        {
+            return new LocalAccountRecoveryResult(LocalAccountRecoveryStatus.InvalidCode, null);
+        }
+
+        matchingCode.MarkUsed(recovery.RecoveredAt);
+        account.ReplaceSecret(recovery.NewSecretHash, recovery.NewSalt, recovery.RecoveredAt);
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return new LocalAccountRecoveryResult(
+            LocalAccountRecoveryStatus.Recovered,
+            new LocalAccountRecoverySnapshot(
+                account.User.PublicId,
+                account.User.DisplayName,
+                unusedCodes.Length - 1));
     }
 
     private static string CurrencyForLocale(string locale) =>

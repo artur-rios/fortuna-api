@@ -26,4 +26,14 @@ public sealed class RecoveryCode
     public byte[] CodeHash { get; private set; } = [];
     public DateTimeOffset? UsedAt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
+
+    public void MarkUsed(DateTimeOffset usedAt)
+    {
+        if (UsedAt is not null)
+        {
+            throw new InvalidOperationException("The recovery code has already been used.");
+        }
+
+        UsedAt = usedAt;
+    }
 }

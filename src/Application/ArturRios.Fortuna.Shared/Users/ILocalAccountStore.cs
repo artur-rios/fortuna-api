@@ -13,6 +13,10 @@ public interface ILocalAccountStore
     Task<LocalAccountCreationResult> CreateAsync(
         LocalAccountCreation creation,
         CancellationToken cancellationToken);
+
+    Task<LocalAccountRecoveryResult> RecoverAsync(
+        LocalAccountRecovery recovery,
+        CancellationToken cancellationToken);
 }
 
 public sealed record LocalAccountCreation(
@@ -39,3 +43,26 @@ public sealed record LocalAccountCredentialSnapshot(
 public sealed record LocalAccountCreationResult(
     LocalAccountSnapshot? Account,
     bool AlreadyExists);
+
+public sealed record LocalAccountRecovery(
+    string Name,
+    byte[] RecoveryCodeHash,
+    byte[] NewSecretHash,
+    byte[] NewSalt,
+    DateTimeOffset RecoveredAt);
+
+public enum LocalAccountRecoveryStatus
+{
+    Recovered,
+    InvalidCode,
+    Exhausted
+}
+
+public sealed record LocalAccountRecoverySnapshot(
+    Guid UserId,
+    string DisplayName,
+    int RemainingRecoveryCodes);
+
+public sealed record LocalAccountRecoveryResult(
+    LocalAccountRecoveryStatus Status,
+    LocalAccountRecoverySnapshot? Account);

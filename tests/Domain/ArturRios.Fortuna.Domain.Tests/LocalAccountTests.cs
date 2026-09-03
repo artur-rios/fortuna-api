@@ -50,4 +50,42 @@ public sealed class LocalAccountTests
             LocalAccountStorageMode.InMemory,
             DateTimeOffset.UtcNow));
     }
+
+    [UnitFact]
+    public void GivenNewSecretHash_WhenSecretIsReplaced_ThenCredentialsAndTimestampChange()
+    {
+        var createdAt = DateTimeOffset.Parse("2026-09-03T00:00:00Z");
+        var updatedAt = createdAt.AddHours(1);
+        var account = Account(createdAt);
+
+        account.ReplaceSecret([9, 8, 7], [6, 5, 4], updatedAt);
+
+        Assert.Equal([9, 8, 7], account.SecretHash);
+        Assert.Equal([6, 5, 4], account.Salt);
+        Assert.Equal(updatedAt, account.UpdatedAt);
+    }
+
+    [UnitFact]
+    public void GivenUnusedRecoveryCode_WhenMarkedUsed_ThenConsumptionIsPermanent()
+    {
+        var createdAt = DateTimeOffset.Parse("2026-09-03T00:00:00Z");
+        var usedAt = createdAt.AddHours(1);
+        var account = Account(createdAt);
+        account.AddRecoveryCode([7, 8, 9], createdAt);
+        var code = account.RecoveryCodes.Single();
+
+        code.MarkUsed(usedAt);
+
+        Assert.Equal(usedAt, code.UsedAt);
+        Assert.Throws<InvalidOperationException>(() => code.MarkUsed(usedAt.AddMinutes(1)));
+        Assert.Equal(usedAt, code.UsedAt);
+    }
+
+    private static LocalAccount Account(DateTimeOffset createdAt) => new(
+        new UserProfile("Local User", Currency, createdAt),
+        "Local User",
+        [1, 2, 3],
+        [4, 5, 6],
+        LocalAccountStorageMode.InMemory,
+        createdAt);
 }
