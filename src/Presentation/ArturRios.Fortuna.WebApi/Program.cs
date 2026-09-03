@@ -79,6 +79,9 @@ try
         CreateLocalAccountCommandHandler>();
     builder.Services.AddScoped<ICommandHandlerAsync<AuthenticateLocalAccountCommand,
         AuthenticateLocalAccountCommandOutput>, AuthenticateLocalAccountCommandHandler>();
+    builder.Services.AddScoped<IValidator<RecoverLocalAccountCommand>, RecoverLocalAccountCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<RecoverLocalAccountCommand,
+        RecoverLocalAccountCommandOutput>, RecoverLocalAccountCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

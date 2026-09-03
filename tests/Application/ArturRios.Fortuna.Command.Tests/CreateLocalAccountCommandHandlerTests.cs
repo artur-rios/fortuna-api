@@ -174,6 +174,10 @@ public sealed class CreateLocalAccountCommandHandlerTests
                     creation.CreatedAt),
                 false));
         }
+
+        public Task<LocalAccountRecoveryResult> RecoverAsync(
+            LocalAccountRecovery recovery,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class FakeCredentialStoreAvailability(bool available)

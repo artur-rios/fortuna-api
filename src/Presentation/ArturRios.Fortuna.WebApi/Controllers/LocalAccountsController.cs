@@ -24,7 +24,9 @@ public sealed class LocalAccountsController(
             [LocalAccountMessages.AlreadyExists] = StatusCodes.Status409Conflict,
             [LocalAccountMessages.CredentialStoreUnavailable] = StatusCodes.Status400BadRequest,
             [LocalAuthenticationMessages.InvalidCredentials] = StatusCodes.Status401Unauthorized,
-            [LocalAuthenticationMessages.PasswordResetUnavailable] = StatusCodes.Status404NotFound
+            [LocalAuthenticationMessages.PasswordResetUnavailable] = StatusCodes.Status404NotFound,
+            [LocalAccountRecoveryMessages.InvalidRecoveryCode] = StatusCodes.Status401Unauthorized,
+            [LocalAccountRecoveryMessages.RecoveryCodesExhausted] = StatusCodes.Status401Unauthorized
         };
 
     [HttpPost]
@@ -45,6 +47,17 @@ public sealed class LocalAccountsController(
     {
         var result = await commandMediator
             .ExecuteCommandAsync<AuthenticateLocalAccountCommand, AuthenticateLocalAccountCommandOutput>(command);
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("recover")]
+    [AllowAnonymous]
+    public async Task<ActionResult<DataOutput<RecoverLocalAccountCommandOutput?>>> Recover(
+        [FromBody] RecoverLocalAccountCommand command)
+    {
+        var result = await commandMediator
+            .ExecuteCommandAsync<RecoverLocalAccountCommand, RecoverLocalAccountCommandOutput>(command);
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

@@ -183,6 +183,73 @@
         },
         "type": "object"
       },
+      "RecoverLocalAccountCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "newSecret": {
+            "nullable": true,
+            "type": "string"
+          },
+          "recoveryCode": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecoverLocalAccountCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "remainingRecoveryCodes": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "token": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecoverLocalAccountCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecoverLocalAccountCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UserProfileOutput": {
         "additionalProperties": false,
         "properties": {
@@ -373,6 +440,54 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ObjectDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "LocalAccounts"
+        ]
+      }
+    },
+    "/api/local-accounts/recover": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverLocalAccountCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverLocalAccountCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverLocalAccountCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoverLocalAccountCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoverLocalAccountCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoverLocalAccountCommandOutputDataOutput"
                 }
               }
             },

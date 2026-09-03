@@ -98,6 +98,10 @@ public sealed class AuthenticateLocalAccountCommandHandlerTests
         public Task<LocalAccountCreationResult> CreateAsync(
             LocalAccountCreation creation,
             CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<LocalAccountRecoveryResult> RecoverAsync(
+            LocalAccountRecovery recovery,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class StubTokenIssuer : ILocalAuthTokenIssuer
