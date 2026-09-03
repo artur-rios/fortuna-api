@@ -34,6 +34,8 @@ def generate(output):
         "FORTUNA_AUTH_TOKEN_AUDIENCE": "fortuna-openapi",
         "FORTUNA_DEFAULT_DISPLAY_CURRENCY": "BRL",
         "FORTUNA_LOCALE": "pt-BR",
+        "FORTUNA_LOCAL_AUTH_ENABLED": "false",
+        "FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT": "10",
     }
     build = subprocess.run(
         [

@@ -14,19 +14,27 @@ public sealed class UserProfile
         string displayName,
         Currency displayCurrency,
         DateTimeOffset createdAt)
+        : this(displayName, displayCurrency, createdAt)
     {
         if (externalSubject == Guid.Empty)
         {
             throw new ArgumentException("An external subject is required.", nameof(externalSubject));
         }
 
+        ExternalSubject = externalSubject.ToString("D");
+    }
+
+    public UserProfile(
+        string displayName,
+        Currency displayCurrency,
+        DateTimeOffset createdAt)
+    {
         if (string.IsNullOrWhiteSpace(displayName) || displayName.Length > 200)
         {
             throw new ArgumentException("A display name between 1 and 200 characters is required.", nameof(displayName));
         }
 
         PublicId = Guid.NewGuid();
-        ExternalSubject = externalSubject.ToString("D");
         DisplayName = displayName;
         DisplayCurrency = displayCurrency ?? throw new ArgumentNullException(nameof(displayCurrency));
         DisplayCurrencyId = displayCurrency.Id;

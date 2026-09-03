@@ -37,6 +37,8 @@ public sealed class FoundationApiTests
         Assert.False(options.RunMigrations);
         Assert.Equal("BRL", options.DefaultDisplayCurrency);
         Assert.Equal("pt-BR", options.Locale);
+        Assert.False(options.LocalAuthEnabled);
+        Assert.Equal(10, options.LocalAuthRecoveryCodeCount);
     }
 
     [UnitFact]
@@ -154,6 +156,32 @@ public sealed class FoundationApiTests
         Assert.Contains("true or false", exception.Message, StringComparison.Ordinal);
     }
 
+    [UnitFact]
+    public void GivenInvalidLocalAuthenticationFlag_WhenConfigurationLoads_ThenStartupIsRejected()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_LOCAL_AUTH_ENABLED"] = "sometimes";
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_LOCAL_AUTH_ENABLED", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("0")]
+    [InlineData("not-a-number")]
+    public void GivenInvalidRecoveryCodeCount_WhenConfigurationLoads_ThenStartupIsRejected(string value)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT", exception.Message, StringComparison.Ordinal);
+    }
+
     [FunctionalFact]
     public async Task GivenRunningApi_WhenLivenessIsRequested_ThenSuccessDoesNotRequireAuthentication()
     {
@@ -178,6 +206,17 @@ public sealed class FoundationApiTests
         Assert.Contains("/healthcheck", document);
         Assert.Contains("\"securitySchemes\"", document);
         Assert.Contains("\"Bearer\"", document);
+    }
+
+    [FunctionalFact]
+    public void GivenAnyEnvironment_WhenDatabaseDiagnosticsAreConfigured_ThenSensitiveValuesAreNeverLogged()
+    {
+        using var factory = CreateFactory();
+
+        var diagnostics = factory.Services.GetRequiredService<
+            ArturRios.Fortuna.Data.Configuration.DatabaseDiagnosticsOptions>();
+
+        Assert.False(diagnostics.SensitiveDataLogging);
     }
 
     private static WebApplicationFactory<Program> CreateFactory()
@@ -208,6 +247,8 @@ public sealed class FoundationApiTests
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = "fortuna-tests",
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
         ["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = "BRL",
-        ["FORTUNA_LOCALE"] = "pt-BR"
+        ["FORTUNA_LOCALE"] = "pt-BR",
+        ["FORTUNA_LOCAL_AUTH_ENABLED"] = "false",
+        ["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = "10"
     };
 }
