@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
     <ProjectReference Include="..\..\..\src\Presentation\ArturRios.Fortuna.WebApi\ArturRios.Fortuna.WebApi.csproj" />
   </ItemGroup>
 

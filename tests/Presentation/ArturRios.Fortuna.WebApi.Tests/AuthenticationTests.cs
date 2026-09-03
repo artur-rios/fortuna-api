@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Text;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Security;
+using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Jwt;
@@ -45,7 +46,10 @@ public sealed class AuthenticationTests
             Guid.NewGuid(),
             (int)HeimdallRoles.User,
             Guid.NewGuid(),
-            ["fortuna.read", "fortuna.write"]);
+            ["fortuna.read", "fortuna.write"])
+        {
+            DisplayName = "Ada Lovelace"
+        };
         var mapper = new FortunaIdentityMapper();
 
         var restored = mapper.FromClaims(mapper.ToClaims(identity));
@@ -55,6 +59,7 @@ public sealed class AuthenticationTests
         Assert.Equal(identity.RoleId, restoredIdentity.RoleId);
         Assert.Equal(identity.ScopeId, restoredIdentity.ScopeId);
         Assert.Equal(identity.Permissions, restoredIdentity.Permissions);
+        Assert.Equal(identity.DisplayName, restoredIdentity.DisplayName);
     }
 
     [UnitTheory]
@@ -206,6 +211,8 @@ public sealed class AuthenticationTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IHostedService>();
+                services.RemoveAll<IUserProfileProvisioner>();
+                services.AddSingleton<IUserProfileProvisioner, StubUserProfileProvisioner>();
                 services.AddControllers().AddApplicationPart(typeof(AuthenticationProbeController).Assembly);
             });
         });
@@ -224,7 +231,10 @@ public sealed class AuthenticationTests
         Guid? scopeId = null,
         IReadOnlyCollection<string>? permissions = null)
     {
-        var identity = new FortunaIdentity(subject, (int)role, scopeId, permissions ?? []);
+        var identity = new FortunaIdentity(subject, (int)role, scopeId, permissions ?? [])
+        {
+            DisplayName = "Test User"
+        };
 
         if (lifetimeSeconds < 0)
         {
@@ -269,8 +279,30 @@ public sealed class AuthenticationTests
         ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
-        ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600"
+        ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
+        ["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = "BRL",
+        ["FORTUNA_LOCALE"] = "pt-BR"
     };
+
+    private sealed class StubUserProfileProvisioner : IUserProfileProvisioner
+    {
+        public Task<UserProfileSnapshot> GetOrCreateAsync(
+            Guid externalSubject,
+            string displayName,
+            CancellationToken cancellationToken)
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            return Task.FromResult(new UserProfileSnapshot(
+                Guid.NewGuid(),
+                externalSubject,
+                displayName,
+                "BRL",
+                false,
+                now,
+                now));
+        }
+    }
 
     public sealed record ActorProbe(
         Guid SubjectId,

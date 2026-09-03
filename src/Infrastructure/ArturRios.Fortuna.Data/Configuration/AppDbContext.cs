@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Jobs;
+using ArturRios.Fortuna.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -15,6 +16,7 @@ public sealed class AppDbContext(
     public DbSet<Currency> Currencies => Set<Currency>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
     public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
+    public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

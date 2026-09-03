@@ -32,6 +32,8 @@ def generate(output):
         "FORTUNA_AUTH_TOKEN_SECRET": "fortuna-openapi-signing-key-with-enough-entropy",
         "FORTUNA_AUTH_TOKEN_ISSUER": "heimdall-openapi",
         "FORTUNA_AUTH_TOKEN_AUDIENCE": "fortuna-openapi",
+        "FORTUNA_DEFAULT_DISPLAY_CURRENCY": "BRL",
+        "FORTUNA_LOCALE": "pt-BR",
     }
     build = subprocess.run(
         [

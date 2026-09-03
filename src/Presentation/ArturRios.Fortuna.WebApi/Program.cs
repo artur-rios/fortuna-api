@@ -2,15 +2,22 @@ using Amazon.Runtime;
 using Amazon.S3;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Jobs;
+using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Services;
+using ArturRios.Fortuna.Query.Handlers;
+using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Jwt;
+using ArturRios.Mediator.Query;
+using ArturRios.Mediator.Query.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -44,6 +51,17 @@ try
     builder.Services.AddHostedService<BackgroundJobHostedService>();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<IRequestActorAccessor, HttpContextRequestActorAccessor>();
+    builder.Services.AddSingleton(new UserProfileProvisioningOptions(
+        options.DefaultDisplayCurrency,
+        options.Locale));
+    builder.Services.AddScoped<EfUserProfileStore>();
+    builder.Services.AddScoped<IUserProfileReader>(provider =>
+        provider.GetRequiredService<EfUserProfileStore>());
+    builder.Services.AddScoped<IUserProfileProvisioner>(provider =>
+        provider.GetRequiredService<EfUserProfileStore>());
+    builder.Services.AddScoped<QueryMediator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
+        GetMyProfileQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();
@@ -112,6 +130,7 @@ try
         logging.GetLevel = (_, _, _) => LogEventLevel.Information);
     app.UseAuthentication();
     app.UseMiddleware<AuthenticatedActorMiddleware>();
+    app.UseMiddleware<UserProfileProvisioningMiddleware>();
     app.UseAuthorization();
     app.MapControllers();
     app.Run();
