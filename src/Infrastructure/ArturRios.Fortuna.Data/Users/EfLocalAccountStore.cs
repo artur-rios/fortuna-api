@@ -16,6 +16,24 @@ public sealed class EfLocalAccountStore(
     public Task<bool> ExistsAsync(CancellationToken cancellationToken) =>
         context.LocalAccounts.AsNoTracking().AnyAsync(cancellationToken);
 
+    public async Task<LocalAccountCredentialSnapshot?> FindForAuthenticationAsync(
+        string name,
+        CancellationToken cancellationToken)
+    {
+        var account = await context.LocalAccounts
+            .AsNoTracking()
+            .Include(x => x.User)
+            .SingleOrDefaultAsync(x => x.Name == name, cancellationToken);
+
+        return account is null
+            ? null
+            : new LocalAccountCredentialSnapshot(
+                account.User.PublicId,
+                account.User.DisplayName,
+                account.SecretHash,
+                account.Salt);
+    }
+
     public async Task<LocalAccountCreationResult> CreateAsync(
         LocalAccountCreation creation,
         CancellationToken cancellationToken)

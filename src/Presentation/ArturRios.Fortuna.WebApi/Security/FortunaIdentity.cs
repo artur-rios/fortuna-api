@@ -14,4 +14,5 @@ public sealed record FortunaIdentity(
 {
     public Guid SubjectId => Id;
     public string? DisplayName { get; init; }
+    public bool IsLocal { get; init; }
 }

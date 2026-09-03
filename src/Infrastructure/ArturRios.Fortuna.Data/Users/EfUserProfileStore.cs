@@ -27,6 +27,18 @@ public sealed class EfUserProfileStore(
         return profile is null ? null : Snapshot(profile);
     }
 
+    public async Task<UserProfileSnapshot?> FindByPublicIdAsync(
+        Guid publicId,
+        CancellationToken cancellationToken)
+    {
+        var profile = await context.UserProfiles
+            .AsNoTracking()
+            .Include(x => x.DisplayCurrency)
+            .SingleOrDefaultAsync(x => x.PublicId == publicId, cancellationToken);
+
+        return profile is null ? null : Snapshot(profile);
+    }
+
     public async Task<UserProfileSnapshot> GetOrCreateAsync(
         Guid externalSubject,
         string displayName,
@@ -73,7 +85,7 @@ public sealed class EfUserProfileStore(
 
     private UserProfileSnapshot Snapshot(UserProfile profile) => new(
         profile.PublicId,
-        Guid.Parse(profile.ExternalSubject!),
+        profile.ExternalSubject is null ? null : Guid.Parse(profile.ExternalSubject),
         profile.DisplayName,
         profile.DisplayCurrency.Code,
         options.DefaultDisplayCurrency is null,

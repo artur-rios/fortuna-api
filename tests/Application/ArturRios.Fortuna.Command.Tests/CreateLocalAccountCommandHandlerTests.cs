@@ -151,6 +151,10 @@ public sealed class CreateLocalAccountCommandHandlerTests
 
         public Task<bool> ExistsAsync(CancellationToken cancellationToken) => Task.FromResult(Exists);
 
+        public Task<LocalAccountCredentialSnapshot?> FindForAuthenticationAsync(
+            string name,
+            CancellationToken cancellationToken) => Task.FromResult<LocalAccountCredentialSnapshot?>(null);
+
         public Task<LocalAccountCreationResult> CreateAsync(
             LocalAccountCreation creation,
             CancellationToken cancellationToken)

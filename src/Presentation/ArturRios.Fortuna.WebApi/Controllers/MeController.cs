@@ -26,7 +26,8 @@ public sealed class MeController(
     {
         var query = new GetMyProfileQuery
         {
-            ExternalSubject = actorAccessor.Actor!.SubjectId
+            ExternalSubject = actorAccessor.Actor!.SubjectId,
+            IsLocal = actorAccessor.Actor.IsLocal
         };
         var result = await queryMediator.ExecuteQueryAsync<GetMyProfileQuery, UserProfileOutput>(query);
 

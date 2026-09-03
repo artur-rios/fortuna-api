@@ -77,6 +77,8 @@ try
     builder.Services.AddScoped<IValidator<CreateLocalAccountCommand>, CreateLocalAccountCommandValidator>();
     builder.Services.AddScoped<ICommandHandlerAsync<CreateLocalAccountCommand, CreateLocalAccountCommandOutput>,
         CreateLocalAccountCommandHandler>();
+    builder.Services.AddScoped<ICommandHandlerAsync<AuthenticateLocalAccountCommand,
+        AuthenticateLocalAccountCommandOutput>, AuthenticateLocalAccountCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();
@@ -111,6 +113,7 @@ try
     builder.Services.AddSingleton(jwtConfiguration);
     builder.Services.AddSingleton<JwtHandler>();
     builder.Services.AddSingleton<FortunaIdentityMapper>();
+    builder.Services.AddSingleton<ILocalAuthTokenIssuer, LocalAuthTokenIssuer>();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(document =>
     {

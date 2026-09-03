@@ -12,7 +12,7 @@ public sealed class UserProfileProvisioningMiddleware(RequestDelegate next)
         IUserProfileProvisioner profiles)
     {
         var actor = actorAccessor.Actor;
-        if (actor is not null)
+        if (actor is not null && !actor.IsLocal)
         {
             if (string.IsNullOrWhiteSpace(actor.DisplayName))
             {

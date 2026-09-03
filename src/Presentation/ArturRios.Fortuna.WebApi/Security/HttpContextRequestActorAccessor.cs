@@ -20,7 +20,8 @@ public sealed class HttpContextRequestActorAccessor(IHttpContextAccessor httpCon
                     identity.ScopeId,
                     identity.Permissions)
                 {
-                    DisplayName = identity.DisplayName
+                    DisplayName = identity.DisplayName,
+                    IsLocal = identity.IsLocal
                 };
         }
     }

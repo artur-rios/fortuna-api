@@ -124,7 +124,7 @@ and the [project board](https://github.com/users/artur-rios/projects/12) are the
 | Milestone | Delivers | Depends on | Issues | Status |
 |---|---|---|---|---|
 | [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 1 | 1 / 1 closed |
-| [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, the two-stage deletion lifecycle and the audit trail | M-01 | 12 | 3 / 12 closed |
+| [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, the two-stage deletion lifecycle and the audit trail | M-01 | 12 | 4 / 12 closed |
 | [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 19 | 0 / 19 closed |
 | [M-04 — Money movement](https://github.com/artur-rios/fortuna-api/milestone/4) | Transactions, transfers, installment plans, recurring commitments and reconciliation | M-03 | 11 | 0 / 11 closed |
 | [M-05 — Organization and planning](https://github.com/artur-rios/fortuna-api/milestone/5) | Categories, tags, counterparties, budgets and goals | M-04 | 11 | 0 / 11 closed |
@@ -149,7 +149,7 @@ pull request.
 | [#2](https://github.com/artur-rios/fortuna-api/issues/2) | ✅ UC-01: Authenticate a Request with a Heimdall Token | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#3](https://github.com/artur-rios/fortuna-api/issues/3) | ✅ UC-02: Provision a User Profile on First Access | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#4](https://github.com/artur-rios/fortuna-api/issues/4) | ✅ UC-03: Create a Desktop Local Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#5](https://github.com/artur-rios/fortuna-api/issues/5) | UC-04: Authenticate with a Local Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#5](https://github.com/artur-rios/fortuna-api/issues/5) | ✅ UC-04: Authenticate with a Local Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#6](https://github.com/artur-rios/fortuna-api/issues/6) | UC-05: Recover a Local Account with a Recovery Code | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#7](https://github.com/artur-rios/fortuna-api/issues/7) | UC-06: Regenerate Local Account Recovery Codes | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#8](https://github.com/artur-rios/fortuna-api/issues/8) | UC-07: List Supported Currencies | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

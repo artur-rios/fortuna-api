@@ -12,9 +12,9 @@ public sealed class GetMyProfileQueryHandler(IUserProfileReader profiles)
 {
     public async Task<DataOutput<UserProfileOutput?>> HandleAsync(GetMyProfileQuery query)
     {
-        var profile = await profiles.FindByExternalSubjectAsync(
-            query.ExternalSubject,
-            CancellationToken.None);
+        var profile = query.IsLocal
+            ? await profiles.FindByPublicIdAsync(query.ExternalSubject, CancellationToken.None)
+            : await profiles.FindByExternalSubjectAsync(query.ExternalSubject, CancellationToken.None);
         if (profile is null)
         {
             return DataOutput<UserProfileOutput?>.New.WithError(UserProfileMessages.ProfileNotFound);

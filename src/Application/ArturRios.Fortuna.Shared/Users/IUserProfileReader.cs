@@ -5,4 +5,8 @@ public interface IUserProfileReader
     Task<UserProfileSnapshot?> FindByExternalSubjectAsync(
         Guid externalSubject,
         CancellationToken cancellationToken);
+
+    Task<UserProfileSnapshot?> FindByPublicIdAsync(
+        Guid publicId,
+        CancellationToken cancellationToken);
 }
