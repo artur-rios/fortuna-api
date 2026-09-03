@@ -24,12 +24,12 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
             select count(*)
             from information_schema.tables
             where table_schema = 'fortuna'
-              and table_name in ('currency', 'exchange_rate', 'background_job');
+              and table_name in ('currency', 'exchange_rate', 'background_job', 'user');
             """;
 
         var count = Convert.ToInt32(await command.ExecuteScalarAsync(CancellationToken.None));
 
-        Assert.Equal(3, count);
+        Assert.Equal(4, count);
     }
 
     [FunctionalFact]

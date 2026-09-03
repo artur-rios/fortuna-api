@@ -13,6 +13,7 @@ public sealed class FortunaIdentityMapper : IAuthenticatedUserMapper
 {
     public const string SubjectClaim = TokenClaimKeys.Id;
     public const string RoleClaim = TokenClaimKeys.RoleId;
+    public const string DisplayNameClaim = "name";
     public const string ScopeClaim = "scopeId";
     public const string PermissionsClaim = "scopePermissions";
 
@@ -32,6 +33,11 @@ public sealed class FortunaIdentityMapper : IAuthenticatedUserMapper
         if (identity.ScopeId is not null)
         {
             claims[ScopeClaim] = identity.ScopeId.Value.ToString();
+        }
+
+        if (!string.IsNullOrWhiteSpace(identity.DisplayName))
+        {
+            claims[DisplayNameClaim] = identity.DisplayName;
         }
 
         if (identity.Permissions.Count > 0)
@@ -58,7 +64,10 @@ public sealed class FortunaIdentityMapper : IAuthenticatedUserMapper
             ? parsedScope
             : (Guid?)null;
 
-        return new FortunaIdentity(subjectId, roleId, scopeId, ReadPermissions(claims));
+        return new FortunaIdentity(subjectId, roleId, scopeId, ReadPermissions(claims))
+        {
+            DisplayName = claims.GetValueOrDefault(DisplayNameClaim)
+        };
     }
 
     private static IReadOnlyCollection<string> ReadPermissions(

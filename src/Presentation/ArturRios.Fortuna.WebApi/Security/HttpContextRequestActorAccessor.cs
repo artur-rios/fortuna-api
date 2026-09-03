@@ -18,7 +18,10 @@ public sealed class HttpContextRequestActorAccessor(IHttpContextAccessor httpCon
                     identity.SubjectId,
                     identity.RoleId,
                     identity.ScopeId,
-                    identity.Permissions);
+                    identity.Permissions)
+                {
+                    DisplayName = identity.DisplayName
+                };
         }
     }
 }

@@ -35,6 +35,59 @@ public sealed class FoundationApiTests
         Assert.NotNull(options.StoragePath);
         Assert.Equal(256, options.JobQueueCapacity);
         Assert.False(options.RunMigrations);
+        Assert.Equal("BRL", options.DefaultDisplayCurrency);
+        Assert.Equal("pt-BR", options.Locale);
+    }
+
+    [UnitFact]
+    public void GivenDefaultCurrencyIsLowercase_WhenConfigurationLoads_ThenItIsNormalized()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = "usd";
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal("USD", options.DefaultDisplayCurrency);
+    }
+
+    [UnitFact]
+    public void GivenLocaleMissing_WhenConfigurationLoads_ThenStartupIsRejected()
+    {
+        var values = ValidSettings();
+        values.Remove("FORTUNA_LOCALE");
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_LOCALE", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("not-a-locale")]
+    [InlineData("pt")]
+    public void GivenInvalidOrNeutralLocale_WhenConfigurationLoads_ThenStartupIsRejected(string locale)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_LOCALE"] = locale;
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("specific locale", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("US")]
+    [InlineData("123")]
+    public void GivenInvalidDefaultCurrency_WhenConfigurationLoads_ThenStartupIsRejected(string currency)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = currency;
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("ISO 4217", exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]
@@ -153,6 +206,8 @@ public sealed class FoundationApiTests
         ["FORTUNA_AUTH_TOKEN_SECRET"] = "fortuna-tests-signing-key-with-enough-entropy",
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = "heimdall-tests",
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = "fortuna-tests",
-        ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600"
+        ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
+        ["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = "BRL",
+        ["FORTUNA_LOCALE"] = "pt-BR"
     };
 }

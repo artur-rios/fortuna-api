@@ -162,6 +162,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Migrations | `FORTUNA_RUN_MIGRATIONS` | Whether the entrypoint applies pending migrations before starting. `false` when they are applied out of band. |
 | Token validation | `FORTUNA_AUTH_TOKEN_SECRET`, `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS`, `FORTUNA_AUTH_TOKEN_ISSUER`, `FORTUNA_AUTH_TOKEN_AUDIENCE` | The signing configuration Heimdall issues with and Fortuna validates against. The `PREVIOUS` key is set during a rotation so tokens signed with the retired key keep working. **Secret.** |
 | Token lifetime | `FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS` | Bounds the window in which a token revoked at Heimdall is still accepted here (NFR-14). |
+| User profile defaults | `FORTUNA_DEFAULT_DISPLAY_CURRENCY`, `FORTUNA_LOCALE` | The optional ISO 4217 currency is assigned to newly provisioned profiles. When it is unset, the required specific locale (for example `pt-BR`) supplies an inferred currency that the client must ask the user to confirm. |
 | Local authentication | `FORTUNA_LOCAL_AUTH_ENABLED`, `FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT` | Desktop mode. When disabled, the local account endpoints respond `404`. |
 | Aggregator | `FORTUNA_PLUGGY_CLIENT_ID`, `FORTUNA_PLUGGY_CLIENT_SECRET`, `FORTUNA_PLUGGY_BASE_URL` | Unset, the Pluggy source is listed as unavailable rather than failing at call time. **Secret.** |
 | Exchange rates | `FORTUNA_RATES_SOURCE_BASE_URL`, `FORTUNA_RATES_SYNC_CRON`, `FORTUNA_RATES_CURRENCIES` | The PTAX service needs no key. |

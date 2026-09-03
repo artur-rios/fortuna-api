@@ -13,4 +13,5 @@ public sealed record FortunaIdentity(
     IReadOnlyCollection<string> Permissions) : IAuthenticatedUser
 {
     public Guid SubjectId => Id;
+    public string? DisplayName { get; init; }
 }

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace ArturRios.Fortuna.WebApi.Configuration;
 
 public sealed record FortunaOptions
@@ -18,6 +20,8 @@ public sealed record FortunaOptions
     public required string AuthTokenIssuer { get; init; }
     public required string AuthTokenAudience { get; init; }
     public double AuthTokenExpirationInSeconds { get; init; }
+    public string? DefaultDisplayCurrency { get; init; }
+    public required string Locale { get; init; }
 
     public static FortunaOptions From(Func<string, string?> read)
     {
@@ -42,7 +46,9 @@ public sealed record FortunaOptions
             AuthTokenExpirationInSeconds = PositiveDouble(
                 read("FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"),
                 "FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS",
-                3600)
+                3600),
+            DefaultDisplayCurrency = CurrencyCode(read("FORTUNA_DEFAULT_DISPLAY_CURRENCY")),
+            Locale = SpecificLocale(read("FORTUNA_LOCALE"))
         };
 
         if (!string.Equals(options.DataDatabaseType, "PostgreSql", StringComparison.OrdinalIgnoreCase))
@@ -108,5 +114,48 @@ public sealed record FortunaOptions
         return double.TryParse(value, out var parsed) && parsed > 0
             ? parsed
             : throw new InvalidOperationException($"Environment variable '{key}' must be a positive number.");
+    }
+
+    private static string? CurrencyCode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var code = value.Trim().ToUpperInvariant();
+
+        return code.Length == 3 && code.All(char.IsAsciiLetter)
+            ? code
+            : throw new InvalidOperationException(
+                "FORTUNA_DEFAULT_DISPLAY_CURRENCY must be a three-letter ISO 4217 code when set.");
+    }
+
+    private static string SpecificLocale(string? value)
+    {
+        const string key = "FORTUNA_LOCALE";
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"Required environment variable '{key}' is not set.");
+        }
+
+        try
+        {
+            var culture = CultureInfo.GetCultureInfo(value.Trim());
+            if (culture.IsNeutralCulture)
+            {
+                throw new ArgumentException("A neutral culture does not identify a region.", key);
+            }
+
+            _ = new RegionInfo(culture.Name);
+
+            return culture.Name;
+        }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidOperationException(
+                $"Environment variable '{key}' must be a specific locale such as 'pt-BR'.",
+                exception);
+        }
     }
 }

@@ -5,4 +5,7 @@ public sealed record RequestActor(
     Guid SubjectId,
     int RoleId,
     Guid? ScopeId,
-    IReadOnlyCollection<string> Permissions);
+    IReadOnlyCollection<string> Permissions)
+{
+    public string? DisplayName { get; init; }
+}
