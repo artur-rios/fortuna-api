@@ -13,6 +13,10 @@ public sealed class GetMyProfileQueryHandlerTests
         public Task<UserProfileSnapshot?> FindByExternalSubjectAsync(
             Guid externalSubject,
             CancellationToken cancellationToken) => Task.FromResult(profile);
+
+        public Task<UserProfileSnapshot?> FindByPublicIdAsync(
+            Guid publicId,
+            CancellationToken cancellationToken) => Task.FromResult(profile);
     }
 
     [UnitFact]

@@ -14,6 +14,7 @@ public sealed class FortunaIdentityMapper : IAuthenticatedUserMapper
     public const string SubjectClaim = TokenClaimKeys.Id;
     public const string RoleClaim = TokenClaimKeys.RoleId;
     public const string DisplayNameClaim = "name";
+    public const string LocalIdentityClaim = "fortuna_local";
     public const string ScopeClaim = "scopeId";
     public const string PermissionsClaim = "scopePermissions";
 
@@ -38,6 +39,11 @@ public sealed class FortunaIdentityMapper : IAuthenticatedUserMapper
         if (!string.IsNullOrWhiteSpace(identity.DisplayName))
         {
             claims[DisplayNameClaim] = identity.DisplayName;
+        }
+
+        if (identity.IsLocal)
+        {
+            claims[LocalIdentityClaim] = bool.TrueString;
         }
 
         if (identity.Permissions.Count > 0)
@@ -66,7 +72,10 @@ public sealed class FortunaIdentityMapper : IAuthenticatedUserMapper
 
         return new FortunaIdentity(subjectId, roleId, scopeId, ReadPermissions(claims))
         {
-            DisplayName = claims.GetValueOrDefault(DisplayNameClaim)
+            DisplayName = claims.GetValueOrDefault(DisplayNameClaim),
+            IsLocal = claims.TryGetValue(LocalIdentityClaim, out var local) &&
+                      bool.TryParse(local, out var isLocal) &&
+                      isLocal
         };
     }
 

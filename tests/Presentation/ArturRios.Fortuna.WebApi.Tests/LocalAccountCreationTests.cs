@@ -1,12 +1,16 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
+using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Util.Hashing;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Hosting;
@@ -138,6 +142,130 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
         Assert.Equal(0, await context.LocalAccounts.CountAsync());
     }
 
+    [FunctionalFact]
+    public async Task GivenMatchingLocalCredentials_WhenAuthenticating_ThenLocalTokenAccessesExistingProfile()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+        var creation = await client.PostAsJsonAsync("/api/local-accounts", ValidCommand());
+        var created = await creation.Content.ReadFromJsonAsync<CreationEnvelope>();
+
+        var response = await client.PostAsJsonAsync("/api/local-accounts/authenticate", ValidLogin());
+        var authenticated = await response.Content.ReadFromJsonAsync<AuthenticationEnvelope>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(authenticated?.Data);
+        Assert.NotEmpty(authenticated.Data.Token);
+        Assert.True(authenticated.Data.ExpiresAt > DateTimeOffset.UtcNow);
+        var token = new JwtSecurityTokenHandler().ReadJwtToken(authenticated.Data.Token);
+        Assert.Equal("heimdall-tests", token.Issuer);
+        Assert.Contains("fortuna-tests", token.Audiences);
+        Assert.Equal(
+            created!.Data!.UserId.ToString(),
+            token.Claims.Single(claim => claim.Type == FortunaIdentityMapper.SubjectClaim).Value);
+        Assert.Equal(
+            ((int)HeimdallRoles.User).ToString(),
+            token.Claims.Single(claim => claim.Type == FortunaIdentityMapper.RoleClaim).Value);
+        Assert.Equal(
+            "Local User",
+            token.Claims.Single(claim => claim.Type == FortunaIdentityMapper.DisplayNameClaim).Value);
+        Assert.Equal(
+            bool.TrueString,
+            token.Claims.Single(claim => claim.Type == FortunaIdentityMapper.LocalIdentityClaim).Value);
+        Assert.InRange(
+            Math.Abs((authenticated.Data.ExpiresAt.UtcDateTime - token.ValidTo).TotalSeconds),
+            0,
+            2);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", authenticated.Data.Token);
+        var profile = await client.GetFromJsonAsync<ProfileEnvelope>("/api/me");
+        Assert.Equal(created.Data.UserId, profile!.Data!.Id);
+        Assert.Equal("Local User", profile.Data.DisplayName);
+        await using var context = CreateContext();
+        Assert.Equal(1, await context.UserProfiles.CountAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenWrongSecretOrUnknownName_WhenAuthenticating_ThenUnauthorizedResponsesMatch()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+        _ = await client.PostAsJsonAsync("/api/local-accounts", ValidCommand());
+
+        var wrong = await client.PostAsJsonAsync("/api/local-accounts/authenticate", new
+        {
+            name = "Local User",
+            secret = "wrong-secret"
+        });
+        var unknown = await client.PostAsJsonAsync("/api/local-accounts/authenticate", new
+        {
+            name = "Unknown User",
+            secret = Secret
+        });
+        var wrongBody = await wrong.Content.ReadFromJsonAsync<ErrorEnvelope>();
+        var unknownBody = await unknown.Content.ReadFromJsonAsync<ErrorEnvelope>();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
+        Assert.Equal(wrong.StatusCode, unknown.StatusCode);
+        Assert.Equal(wrongBody!.Errors.ToArray(), unknownBody!.Errors.ToArray());
+        Assert.Contains(LocalAuthenticationMessages.InvalidCredentials, wrongBody.Errors);
+        await using var context = CreateContext();
+        Assert.Equal(1, await context.LocalAccounts.CountAsync());
+        Assert.Equal(1, await context.UserProfiles.CountAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenNoLocalAccount_WhenAuthenticating_ThenUnauthorizedIsReturned()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/local-accounts/authenticate", ValidLogin());
+        var body = await response.Content.ReadFromJsonAsync<ErrorEnvelope>();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Contains(LocalAuthenticationMessages.InvalidCredentials, body!.Errors);
+        await using var context = CreateContext();
+        Assert.Equal(0, await context.LocalAccounts.CountAsync());
+        Assert.Equal(0, await context.UserProfiles.CountAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenLocalAuthenticationDisabled_WhenAuthenticating_ThenEndpointIsHidden()
+    {
+        await using var factory = CreateFactory(enabled: false);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/local-accounts/authenticate", ValidLogin());
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenPasswordResetRequested_WhenLocalModeIsEnabled_ThenRecoveryCodesAreDirected()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync("/api/local-accounts/password-reset", null);
+        var body = await response.Content.ReadFromJsonAsync<ErrorEnvelope>();
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Contains(LocalAuthenticationMessages.PasswordResetUnavailable, body!.Errors);
+        Assert.Contains("recovery", body.Errors.Single(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [FunctionalFact]
+    public async Task GivenPasswordResetRequested_WhenLocalModeIsDisabled_ThenEndpointIsHidden()
+    {
+        await using var factory = CreateFactory(enabled: false);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync("/api/local-accounts/password-reset", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -187,6 +315,12 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
         StorageMode = LocalAccountStorageMode.InMemory
     };
 
+    private static object ValidLogin() => new
+    {
+        name = "Local User",
+        secret = Secret
+    };
+
     private static byte[] HashRecoveryCode(string recoveryCode) =>
         SHA256.HashData(Encoding.UTF8.GetBytes(recoveryCode));
 
@@ -216,6 +350,11 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
         LocalAccountStorageMode StorageMode,
         IReadOnlyCollection<string> RecoveryCodes,
         string RecoveryWarning);
+    private sealed record AuthenticationEnvelope(AuthenticationData? Data);
+    private sealed record AuthenticationData(string Token, DateTimeOffset ExpiresAt);
+    private sealed record ProfileEnvelope(ProfileData? Data);
+    private sealed record ProfileData(Guid Id, string DisplayName);
+    private sealed record ErrorEnvelope(IReadOnlyCollection<string> Errors);
 
     private sealed class ByteArrayComparer : IEqualityComparer<byte[]>
     {

@@ -8,4 +8,5 @@ public sealed record RequestActor(
     IReadOnlyCollection<string> Permissions)
 {
     public string? DisplayName { get; init; }
+    public bool IsLocal { get; init; }
 }
