@@ -146,7 +146,7 @@ pull request.
 
 | Issue | Work | Spec |
 |---|---|---|
-| [#2](https://github.com/artur-rios/fortuna-api/issues/2) | UC-01: Authenticate a Request with a Heimdall Token | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#2](https://github.com/artur-rios/fortuna-api/issues/2) | ✅ UC-01: Authenticate a Request with a Heimdall Token | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#3](https://github.com/artur-rios/fortuna-api/issues/3) | UC-02: Provision a User Profile on First Access | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#4](https://github.com/artur-rios/fortuna-api/issues/4) | UC-03: Create a Desktop Local Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#5](https://github.com/artur-rios/fortuna-api/issues/5) | UC-04: Authenticate with a Local Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

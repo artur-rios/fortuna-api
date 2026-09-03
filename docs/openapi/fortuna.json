@@ -1,5 +1,14 @@
 {
-  "components": {},
+  "components": {
+    "securitySchemes": {
+      "Bearer": {
+        "bearerFormat": "JWT",
+        "description": "Enter the Heimdall JWT bearer token.",
+        "scheme": "Bearer",
+        "type": "http"
+      }
+    }
+  },
   "info": {
     "title": "Fortuna API",
     "version": "v1"
@@ -19,6 +28,9 @@
       }
     }
   },
+  "security": [
+    {}
+  ],
   "tags": [
     {
       "name": "HealthCheck"

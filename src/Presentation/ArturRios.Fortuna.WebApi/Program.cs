@@ -6,12 +6,20 @@ using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.WebApi.Configuration;
+using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Services;
+using ArturRios.Jwt;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
+using System.Text;
 
 var options = FortunaOptions.From(Environment.GetEnvironmentVariable);
 ConfigureLogging(options);
@@ -34,19 +42,64 @@ try
     builder.Services.AddScoped<BackgroundJobProcessor>();
     builder.Services.AddHostedService<DatabaseInitializationHostedService>();
     builder.Services.AddHostedService<BackgroundJobHostedService>();
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<IRequestActorAccessor, HttpContextRequestActorAccessor>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();
     RegisterAttachmentStore(builder.Services, options);
 
     builder.Services.AddControllers();
-    builder.Services.AddAuthorization();
+    var jwtConfiguration = BuildJwtConfiguration(options);
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(authentication =>
+        {
+            authentication.MapInboundClaims = false;
+            authentication.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKeys = jwtConfiguration.Keys.Select(key =>
+                    new SymmetricSecurityKey(Encoding.ASCII.GetBytes(key.Secret))),
+                ValidateIssuer = true,
+                ValidIssuer = options.AuthTokenIssuer,
+                ValidateAudience = true,
+                ValidAudience = options.AuthTokenAudience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero
+            };
+        });
+    builder.Services.AddAuthorization(authorization =>
+        authorization.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build());
+    builder.Services.AddSingleton(jwtConfiguration);
+    builder.Services.AddSingleton<JwtHandler>();
+    builder.Services.AddSingleton<FortunaIdentityMapper>();
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen(document => document.SwaggerDoc("v1", new()
+    builder.Services.AddSwaggerGen(document =>
     {
-        Title = "Fortuna API",
-        Version = "v1"
-    }));
+        document.SwaggerDoc("v1", new()
+        {
+            Title = "Fortuna API",
+            Version = "v1"
+        });
+        var jwtSecurityScheme = new OpenApiSecurityScheme
+        {
+            BearerFormat = "JWT",
+            Name = "JWT Authentication",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.Http,
+            Scheme = JwtBearerDefaults.AuthenticationScheme,
+            Description = "Enter the Heimdall JWT bearer token."
+        };
+        var jwtRequirement = new OpenApiSecurityRequirement
+        {
+            { new OpenApiSecuritySchemeReference(JwtBearerDefaults.AuthenticationScheme), [] }
+        };
+
+        document.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, jwtSecurityScheme);
+        document.AddSecurityRequirement(_ => jwtRequirement);
+    });
 
     var app = builder.Build();
     if (!app.Environment.IsProduction())
@@ -57,6 +110,8 @@ try
 
     app.UseSerilogRequestLogging(logging =>
         logging.GetLevel = (_, _, _) => LogEventLevel.Information);
+    app.UseAuthentication();
+    app.UseMiddleware<AuthenticatedActorMiddleware>();
     app.UseAuthorization();
     app.MapControllers();
     app.Run();
@@ -99,6 +154,27 @@ static void RegisterAttachmentStore(IServiceCollection services, FortunaOptions 
     services.AddSingleton<IAttachmentStore>(provider => new S3AttachmentStore(
         provider.GetRequiredService<IAmazonS3>(),
         options.StorageS3Bucket!));
+}
+
+static JwtConfiguration BuildJwtConfiguration(FortunaOptions options)
+{
+    List<JwtKey> keys = [new("current", options.AuthTokenSecret)];
+
+    if (!string.IsNullOrWhiteSpace(options.AuthPreviousTokenSecret) &&
+        options.AuthPreviousTokenSecret != options.AuthTokenSecret)
+    {
+        keys.Add(new JwtKey("previous", options.AuthPreviousTokenSecret));
+    }
+
+    return new JwtConfiguration(
+        options.AuthTokenExpirationInSeconds,
+        options.AuthTokenIssuer,
+        options.AuthTokenAudience,
+        options.AuthTokenSecret,
+        [])
+    {
+        Keys = keys
+    };
 }
 
 public partial class Program;
