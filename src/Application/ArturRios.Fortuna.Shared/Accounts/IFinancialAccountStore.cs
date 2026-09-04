@@ -18,6 +18,12 @@ public interface IFinancialAccountReader
         Guid id,
         bool includeDeleted,
         CancellationToken cancellationToken);
+
+    Task<FinancialAccountBalanceSnapshot?> CalculateBalanceAsync(
+        Guid userId,
+        Guid id,
+        DateOnly asOf,
+        CancellationToken cancellationToken);
 }
 
 public interface IFinancialAccountUpdater
@@ -63,3 +69,9 @@ public sealed record FinancialAccountSnapshot(
     bool IsDeleted,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
+
+public sealed record FinancialAccountBalanceSnapshot(
+    Guid Id,
+    string CurrencyCode,
+    decimal Balance,
+    DateOnly AsOf);

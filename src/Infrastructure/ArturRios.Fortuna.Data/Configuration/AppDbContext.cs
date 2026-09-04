@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Jobs;
+using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,7 @@ public sealed class AppDbContext(
     public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<FinancialAccount> FinancialAccounts => Set<FinancialAccount>();
+    public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

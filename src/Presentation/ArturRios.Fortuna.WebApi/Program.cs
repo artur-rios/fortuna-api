@@ -154,6 +154,8 @@ try
         ListAuditEntriesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetFinancialAccountByIdQuery, FinancialAccountOutput>,
         GetFinancialAccountByIdQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetFinancialAccountBalanceQuery,
+        FinancialAccountBalanceOutput>, GetFinancialAccountBalanceQueryHandler>();
     builder.Services.AddScoped<IValidator<ListFinancialAccountsQuery>, ListFinancialAccountsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListFinancialAccountsQuery, FinancialAccountOutput>,
         ListFinancialAccountsQueryHandler>();

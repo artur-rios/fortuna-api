@@ -96,6 +96,23 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
+    [HttpGet("{id:guid}/balance")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<FinancialAccountBalanceOutput?>>> GetBalance(
+        Guid id,
+        [FromQuery] DateOnly? asOf = null)
+    {
+        var result = await queryMediator.ExecuteQueryAsync<
+            GetFinancialAccountBalanceQuery,
+            FinancialAccountBalanceOutput>(new GetFinancialAccountBalanceQuery
+            {
+                Id = id,
+                AsOf = asOf
+            });
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
     [HttpGet]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<FinancialAccountOutput>>> List(
