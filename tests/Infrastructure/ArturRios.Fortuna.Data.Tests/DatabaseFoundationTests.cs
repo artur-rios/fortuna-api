@@ -1,8 +1,11 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Domain.Jobs;
+using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Test.Attributes;
@@ -122,6 +125,52 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         await using var assertionContext = CreateContext();
         Assert.Equal(1, await assertionContext.LocalAccounts.CountAsync());
         Assert.Equal(1, await assertionContext.UserProfiles.CountAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenPublishedAndManualRates_WhenPublishedRatesAreSynchronized_ThenOnlyPublishedRowsChange()
+    {
+        await using var context = CreateContext();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        var currencies = await context.Currencies
+            .Where(currency => currency.Code == "BRL" || currency.Code == "USD")
+            .ToDictionaryAsync(currency => currency.Code);
+        var date = new DateOnly(2026, 9, 1);
+        context.ExchangeRates.AddRange(
+            new ExchangeRate(
+                currencies["USD"].Id,
+                currencies["BRL"].Id,
+                5.1m,
+                date,
+                ExchangeRateSource.Published),
+            new ExchangeRate(
+                currencies["USD"].Id,
+                currencies["BRL"].Id,
+                5.3m,
+                date,
+                ExchangeRateSource.Manual));
+        await context.SaveChangesAsync();
+        var store = new EfExchangeRateStore(context);
+        PublishedRateCandidate[] candidates =
+        [
+            new("USD", "BRL", 5.2m, date),
+            new("BRL", "USD", 1m / 5.2m, date)
+        ];
+
+        var changed = await store.UpsertPublishedAsync(candidates, CancellationToken.None);
+        var unchanged = await store.UpsertPublishedAsync(candidates, CancellationToken.None);
+
+        Assert.Equal(new PublishedRateUpsertResult(2, 0), changed);
+        Assert.Equal(new PublishedRateUpsertResult(0, 2), unchanged);
+        Assert.Equal(5.2m, await context.ExchangeRates
+            .Where(rate => rate.Source == ExchangeRateSource.Published &&
+                rate.BaseCurrencyId == currencies["USD"].Id)
+            .Select(rate => rate.Rate)
+            .SingleAsync());
+        Assert.Equal(5.3m, await context.ExchangeRates
+            .Where(rate => rate.Source == ExchangeRateSource.Manual)
+            .Select(rate => rate.Rate)
+            .SingleAsync());
     }
 
     public async Task InitializeAsync()

@@ -130,8 +130,19 @@ public sealed class BackgroundJobProcessorTests
     {
         public int SaveCount { get; private set; }
 
+        public Task<BackgroundJob> CreateAsync(
+            string type,
+            string payload,
+            string idempotencyKey,
+            string? correlationId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public Task<BackgroundJob?> FindAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult<BackgroundJob?>(job is not null && id == job.Id ? job : null);
+
+        public Task<BackgroundJob?> FindByIdempotencyKeyAsync(
+            string idempotencyKey,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<IReadOnlyList<BackgroundJob>> RecoverAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<BackgroundJob>>([]);

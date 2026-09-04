@@ -401,6 +401,66 @@
         },
         "type": "object"
       },
+      "SynchronizeExchangeRatesCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "correlationId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "requestedDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SynchronizeExchangeRatesCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "requestedDate": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SynchronizeExchangeRatesCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UserProfileOutput": {
         "additionalProperties": false,
         "properties": {
@@ -542,6 +602,54 @@
         },
         "tags": [
           "Currencies"
+        ]
+      }
+    },
+    "/api/exchange-rates/sync": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynchronizeExchangeRatesCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynchronizeExchangeRatesCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynchronizeExchangeRatesCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "ExchangeRates"
         ]
       }
     },
@@ -814,6 +922,9 @@
   "tags": [
     {
       "name": "Currencies"
+    },
+    {
+      "name": "ExchangeRates"
     },
     {
       "name": "HealthCheck"

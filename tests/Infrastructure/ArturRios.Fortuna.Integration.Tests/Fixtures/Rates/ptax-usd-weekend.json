@@ -1,0 +1,14 @@
+{
+  "value": [
+    {
+      "cotacaoVenda": 5.1100,
+      "dataHoraCotacao": "2026-09-03 13:00:00.000",
+      "tipoBoletim": "Fechamento PTAX"
+    },
+    {
+      "cotacaoVenda": 5.1200,
+      "dataHoraCotacao": "2026-09-04 13:00:00.000",
+      "tipoBoletim": "Fechamento PTAX"
+    }
+  ]
+}

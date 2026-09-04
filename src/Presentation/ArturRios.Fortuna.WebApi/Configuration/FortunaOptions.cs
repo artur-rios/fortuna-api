@@ -24,6 +24,9 @@ public sealed record FortunaOptions
     public required string Locale { get; init; }
     public bool LocalAuthEnabled { get; init; }
     public int LocalAuthRecoveryCodeCount { get; init; }
+    public Uri? RatesSourceBaseUri { get; init; }
+    public string? RatesSyncCron { get; init; }
+    public IReadOnlyCollection<string> RatesCurrencies { get; init; } = [];
 
     public static FortunaOptions From(Func<string, string?> read)
     {
@@ -55,7 +58,12 @@ public sealed record FortunaOptions
             LocalAuthRecoveryCodeCount = PositiveInteger(
                 read("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"),
                 "FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT",
-                10)
+                10),
+            RatesSourceBaseUri = OptionalAbsoluteUri(
+                read("FORTUNA_RATES_SOURCE_BASE_URL"),
+                "FORTUNA_RATES_SOURCE_BASE_URL"),
+            RatesSyncCron = read("FORTUNA_RATES_SYNC_CRON"),
+            RatesCurrencies = CurrencyCodes(read("FORTUNA_RATES_CURRENCIES"))
         };
 
         if (!string.Equals(options.DataDatabaseType, "PostgreSql", StringComparison.OrdinalIgnoreCase))
@@ -77,6 +85,32 @@ public sealed record FortunaOptions
         else
         {
             throw new InvalidOperationException("FORTUNA_STORAGE_PROVIDER must be 'Filesystem' or 'S3'.");
+        }
+
+        if (options.RatesSourceBaseUri is not null)
+        {
+            if (string.IsNullOrWhiteSpace(options.RatesSyncCron))
+            {
+                throw new InvalidOperationException(
+                    "Required environment variable 'FORTUNA_RATES_SYNC_CRON' is not set.");
+            }
+
+            try
+            {
+                _ = Services.CronSchedule.Parse(options.RatesSyncCron);
+            }
+            catch (FormatException exception)
+            {
+                throw new InvalidOperationException(
+                    "FORTUNA_RATES_SYNC_CRON must be a valid five-field UTC cron expression.",
+                    exception);
+            }
+
+            if (options.RatesCurrencies.Count < 2)
+            {
+                throw new InvalidOperationException(
+                    "FORTUNA_RATES_CURRENCIES must contain at least two ISO 4217 codes.");
+            }
         }
 
         return options;
@@ -136,6 +170,36 @@ public sealed record FortunaOptions
             ? code
             : throw new InvalidOperationException(
                 "FORTUNA_DEFAULT_DISPLAY_CURRENCY must be a three-letter ISO 4217 code when set.");
+    }
+
+    private static IReadOnlyCollection<string> CurrencyCodes(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        return value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(code => CurrencyCode(code)!)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static Uri? OptionalAbsoluteUri(string? value, string key)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(value.Trim().TrimEnd('/') + "/", UriKind.Absolute, out var uri) ||
+            uri.Scheme is not ("http" or "https"))
+        {
+            throw new InvalidOperationException(
+                $"Environment variable '{key}' must be an absolute HTTP or HTTPS URL.");
+        }
+
+        return uri;
     }
 
     private static string SpecificLocale(string? value)

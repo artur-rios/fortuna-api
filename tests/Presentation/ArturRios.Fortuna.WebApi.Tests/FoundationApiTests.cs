@@ -1,5 +1,6 @@
 using System.Net;
 using ArturRios.Fortuna.WebApi.Configuration;
+using ArturRios.Fortuna.WebApi.Services;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -180,6 +181,48 @@ public sealed class FoundationApiTests
             () => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
+    public void GivenConfiguredRateSource_WhenConfigurationLoads_ThenUrlScheduleAndCurrenciesAreValidated()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_RATES_SOURCE_BASE_URL"] = "https://rates.example.test/odata";
+        values["FORTUNA_RATES_SYNC_CRON"] = "0 18 * * 1-5";
+        values["FORTUNA_RATES_CURRENCIES"] = "brl, usd, eur,USD";
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal(new Uri("https://rates.example.test/odata/"), options.RatesSourceBaseUri);
+        Assert.Equal("0 18 * * 1-5", options.RatesSyncCron);
+        Assert.Equal(["BRL", "USD", "EUR"], options.RatesCurrencies);
+    }
+
+    [UnitTheory]
+    [InlineData("not-a-url", "0 18 * * 1-5", "BRL,USD")]
+    [InlineData("https://rates.example.test", "invalid", "BRL,USD")]
+    [InlineData("https://rates.example.test", "0 18 * * 1-5", "BRL")]
+    public void GivenInvalidRateSourceSettings_WhenConfigurationLoads_ThenStartupIsRejected(
+        string url,
+        string cron,
+        string currencies)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_RATES_SOURCE_BASE_URL"] = url;
+        values["FORTUNA_RATES_SYNC_CRON"] = cron;
+        values["FORTUNA_RATES_CURRENCIES"] = currencies;
+
+        Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
+    }
+
+    [UnitFact]
+    public void GivenWeekdayCron_WhenMatchingUtcInstants_ThenOnlyScheduledMinutesMatch()
+    {
+        var schedule = CronSchedule.Parse("*/15 9-17 * * 1-5");
+
+        Assert.True(schedule.Matches(DateTimeOffset.Parse("2026-09-04T09:30:00Z")));
+        Assert.False(schedule.Matches(DateTimeOffset.Parse("2026-09-05T09:30:00Z")));
+        Assert.False(schedule.Matches(DateTimeOffset.Parse("2026-09-04T09:31:00Z")));
     }
 
     [FunctionalFact]
