@@ -1,5 +1,3 @@
-using ArturRios.Fortuna.Domain.Users;
-
 namespace ArturRios.Fortuna.Domain.Auditing;
 
 public enum AuditOutcome : short
@@ -16,7 +14,7 @@ public sealed class AuditEntry
     }
 
     public AuditEntry(
-        UserProfile? user,
+        Guid? actorUserId,
         string operation,
         string? entityType,
         Guid? entityPublicId,
@@ -39,8 +37,7 @@ public sealed class AuditEntry
             throw new ArgumentException("An audit reason cannot exceed 1000 characters.", nameof(reason));
         }
 
-        User = user;
-        UserId = user?.Id;
+        ActorUserId = actorUserId;
         Operation = operation;
         EntityType = entityType;
         EntityPublicId = entityPublicId;
@@ -50,8 +47,7 @@ public sealed class AuditEntry
     }
 
     public long Id { get; private set; }
-    public long? UserId { get; private set; }
-    public UserProfile? User { get; private set; }
+    public Guid? ActorUserId { get; private set; }
     public string Operation { get; private set; } = string.Empty;
     public string? EntityType { get; private set; }
     public Guid? EntityPublicId { get; private set; }

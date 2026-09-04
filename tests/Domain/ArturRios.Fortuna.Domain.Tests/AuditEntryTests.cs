@@ -20,7 +20,7 @@ public sealed class AuditEntryTests
             "Rate must be greater than zero.",
             occurredAt);
 
-        Assert.Null(entry.UserId);
+        Assert.Null(entry.ActorUserId);
         Assert.Equal("RecordManualExchangeRateCommand", entry.Operation);
         Assert.Equal("ExchangeRate", entry.EntityType);
         Assert.Equal(entityId, entry.EntityPublicId);

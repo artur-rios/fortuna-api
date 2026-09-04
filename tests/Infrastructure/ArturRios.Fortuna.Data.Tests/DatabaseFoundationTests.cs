@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
+using ArturRios.Fortuna.Data.Lifecycle;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Domain.Jobs;
@@ -11,6 +12,8 @@ using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -75,6 +78,142 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         Assert.Equal(1, await context.Currencies.CountAsync(x => x.Code == "BRL", CancellationToken.None));
         Assert.Equal(2, await context.Currencies.Where(x => x.Code == "BRL").Select(x => x.MinorUnitDigits).SingleAsync(CancellationToken.None));
         Assert.Equal(0, await context.Currencies.Where(x => x.Code == "JPY").Select(x => x.MinorUnitDigits).SingleAsync(CancellationToken.None));
+    }
+
+    [FunctionalFact]
+    public async Task GivenMappedLifecycleRecord_WhenSoftDeletedAndRestored_ThenStatePersistsAndLiveQueryExcludesIt()
+    {
+        await using var context = CreateContext();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        var currency = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+        var profile = new UserProfile(Guid.NewGuid(), "Lifecycle User", currency, DateTimeOffset.UtcNow);
+        context.UserProfiles.Add(profile);
+        await context.SaveChangesAsync();
+        var deletedAt = DateTimeOffset.UtcNow.AddMinutes(1);
+
+        var deletion = profile.SoftDelete(deletedAt);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var deleted = await context.UserProfiles.SingleAsync(item => item.PublicId == profile.PublicId);
+        Assert.True(deleted.IsDeleted);
+        Assert.Equal(deletion.CascadeId, deleted.DeletionCascadeId);
+        Assert.False(await context.UserProfiles.WhereLive().AnyAsync(item => item.PublicId == profile.PublicId));
+
+        var cascadeId = deleted.Restore(DateTimeOffset.UtcNow.AddMinutes(2));
+        await context.SaveChangesAsync();
+        Assert.Equal(deletion.CascadeId, cascadeId);
+        Assert.True(await context.UserProfiles.WhereLive().AnyAsync(item => item.PublicId == profile.PublicId));
+    }
+
+    [FunctionalFact]
+    public async Task GivenExistingAuditRows_WhenLifecycleMigrationRuns_ThenActorPublicIdsArePreserved()
+    {
+        var databaseName = $"fortuna_migration_{Guid.NewGuid():N}";
+        var connectionBuilder = new NpgsqlConnectionStringBuilder(database.GetConnectionString());
+        await using (var adminConnection = new NpgsqlConnection(connectionBuilder.ConnectionString))
+        {
+            await adminConnection.OpenAsync();
+            await using var createDatabase = adminConnection.CreateCommand();
+            createDatabase.CommandText = $"CREATE DATABASE \"{databaseName}\"";
+            await createDatabase.ExecuteNonQueryAsync();
+        }
+
+        connectionBuilder.Database = databaseName;
+        await using (var previousContext = CreateContext(connectionBuilder.ConnectionString))
+        {
+            await previousContext.GetService<IMigrator>().MigrateAsync(
+                "20260904012237_AddManualExchangeRateAudit");
+        }
+
+        var actorId = Guid.NewGuid();
+        await using (var previousConnection = new NpgsqlConnection(connectionBuilder.ConnectionString))
+        {
+            await previousConnection.OpenAsync();
+            await using var insert = previousConnection.CreateCommand();
+            insert.CommandText = """
+                INSERT INTO fortuna.currency (code, name, minor_unit_digits)
+                VALUES ('BRL', 'Brazilian Real', 2);
+
+                INSERT INTO fortuna."user" (
+                    public_id, external_subject, display_name, display_currency_id,
+                    is_deleted, created_at, updated_at)
+                VALUES (
+                    @actor_id, CAST(@actor_id AS text), 'Migration Actor',
+                    (SELECT id FROM fortuna.currency WHERE code = 'BRL'),
+                    false, now(), now());
+
+                INSERT INTO fortuna.audit_entry (user_id, operation, outcome, occurred_at)
+                SELECT id, 'ExistingWriteCommand', 1, now()
+                FROM fortuna."user"
+                WHERE public_id = @actor_id;
+                """;
+            insert.Parameters.AddWithValue("actor_id", actorId);
+            await insert.ExecuteNonQueryAsync();
+        }
+
+        await using (var currentContext = CreateContext(connectionBuilder.ConnectionString))
+        {
+            await currentContext.Database.MigrateAsync();
+        }
+
+        await using var currentConnection = new NpgsqlConnection(connectionBuilder.ConnectionString);
+        await currentConnection.OpenAsync();
+        await using var select = currentConnection.CreateCommand();
+        select.CommandText = """
+            SELECT actor_user_id
+            FROM fortuna.audit_entry
+            WHERE operation = 'ExistingWriteCommand';
+            """;
+
+        Assert.Equal(actorId, (Guid?)await select.ExecuteScalarAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenAuditedSoftDeletedRecord_WhenHardDeleted_ThenAuditEntrySurvivesWithoutForeignKey()
+    {
+        await using var context = CreateContext();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        var currency = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+        var actor = new UserProfile(Guid.NewGuid(), "Audit Actor", currency, DateTimeOffset.UtcNow);
+        var target = new UserProfile(Guid.NewGuid(), "Hard Delete Target", currency, DateTimeOffset.UtcNow);
+        context.UserProfiles.AddRange(actor, target);
+        await context.SaveChangesAsync();
+        var audit = new AuditEntry(
+            actor.PublicId,
+            "DeleteRecordCommand",
+            "UserProfile",
+            target.PublicId,
+            AuditOutcome.Succeeded,
+            null,
+            DateTimeOffset.UtcNow);
+        context.AuditEntries.Add(audit);
+        await context.SaveChangesAsync();
+        var actorId = actor.Id;
+        var targetId = target.PublicId;
+        var auditId = audit.Id;
+        context.ChangeTracker.Clear();
+
+        var persistedTarget = await context.UserProfiles.SingleAsync(item => item.PublicId == targetId);
+        persistedTarget.SoftDelete(DateTimeOffset.UtcNow.AddMinutes(1));
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        persistedTarget = await context.UserProfiles.SingleAsync(item => item.PublicId == targetId);
+        var retainedBeforeDelete = await context.AuditEntries
+            .AsNoTracking()
+            .SingleAsync(item => item.Id == auditId);
+        Assert.Equal(actor.PublicId, retainedBeforeDelete.ActorUserId);
+        Assert.NotEqual(actorId, persistedTarget.Id);
+        persistedTarget.EnsureHardDeletionAllowed();
+        context.UserProfiles.Remove(persistedTarget);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var retainedAudit = await context.AuditEntries.SingleAsync(item => item.Id == auditId);
+        Assert.Equal(actor.PublicId, retainedAudit.ActorUserId);
+        Assert.Equal(targetId, retainedAudit.EntityPublicId);
+        Assert.Equal("DeleteRecordCommand", retainedAudit.Operation);
     }
 
     [FunctionalFact]
@@ -327,8 +466,13 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
 
     private AppDbContext CreateContext()
     {
+        return CreateContext(database.GetConnectionString());
+    }
+
+    private static AppDbContext CreateContext(string connectionString)
+    {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(database.GetConnectionString())
+            .UseNpgsql(connectionString)
             .Options;
         return new AppDbContext(options, NullLoggerFactory.Instance, DatabaseDiagnosticsOptions.Disabled);
     }
