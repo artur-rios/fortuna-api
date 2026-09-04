@@ -6,6 +6,9 @@ public static class CreditCardMessages
     public const string RetrievedSuccessfully = "Credit card retrieved successfully.";
     public const string ListedSuccessfully = "Credit cards retrieved successfully.";
     public const string UpdatedSuccessfully = "Credit card updated successfully.";
+    public const string DeletedSuccessfully = "Credit card deleted successfully.";
+    public const string RestoredSuccessfully = "Credit card restored successfully.";
+    public const string HardDeletedSuccessfully = "Credit card permanently deleted successfully.";
     public const string NotFound = "Credit card not found.";
     public const string DuplicateName = "A live credit card already uses this name.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
@@ -23,6 +26,12 @@ public static class CreditCardMessages
     public const string ClosingDayInvalid = "ClosingDay must be between 1 and 31.";
     public const string DueDayInvalid = "DueDay must be between 1 and 31.";
     public const string LastFourDigitsInvalid = "LastFourDigits must contain exactly four numeric digits.";
+    public const string RestoreRequiresSoftDeletion =
+        "Credit card must be soft-deleted before it can be restored.";
+    public const string HardDeleteRequiresSoftDeletion =
+        "Credit card must be soft-deleted before permanent deletion.";
+    public const string HardDeleteHasLiveTransactions =
+        "Credit card cannot be permanently deleted while live transactions reference it.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SortByUnsupported =
