@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -111,8 +112,47 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public CreditCardStatement? Statement { get; private set; }
     public TransactionDirection Direction { get; private set; }
     public decimal Amount { get; private set; }
+    public decimal? OriginalAmount { get; private set; }
+    public long? OriginalCurrencyId { get; private set; }
+    public Currency? OriginalCurrency { get; private set; }
+    public decimal? AppliedRate { get; private set; }
+    public DateOnly? RateDate { get; private set; }
     public DateOnly OccurredOn { get; private set; }
     public bool IsLateArriving { get; private set; }
+
+    public void RecordForeignCurrencyDetails(
+        decimal originalAmount,
+        Currency originalCurrency,
+        decimal appliedRate,
+        DateOnly rateDate,
+        DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(originalCurrency);
+        if (originalAmount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(originalAmount));
+        }
+
+        if (appliedRate <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(appliedRate));
+        }
+
+        var billedCurrency = FinancialAccount?.Currency ?? CreditCard?.Currency;
+        if (billedCurrency is null || originalCurrency.Code == billedCurrency.Code)
+        {
+            throw new ArgumentException(
+                "The original currency must differ from the billed currency.",
+                nameof(originalCurrency));
+        }
+
+        OriginalAmount = originalAmount;
+        OriginalCurrency = originalCurrency;
+        OriginalCurrencyId = originalCurrency.Id;
+        AppliedRate = appliedRate;
+        RateDate = rateDate;
+        MarkUpdated(updatedAt);
+    }
 
     public void AssignToStatement(
         CreditCardStatement statement,

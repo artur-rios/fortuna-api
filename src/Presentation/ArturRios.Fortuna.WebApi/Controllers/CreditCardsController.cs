@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.Requests;
 using ArturRios.Mediator.Command;
 using ArturRios.Mediator.Query;
 using ArturRios.Output;
@@ -30,6 +31,18 @@ public sealed class CreditCardsController(
         "Descending"
     };
 
+    private static readonly HashSet<string> StatementListQueryFields =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "PageNumber",
+            "PageSize",
+            "Status",
+            "From",
+            "To",
+            "SortBy",
+            "Descending"
+        };
+
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
@@ -55,7 +68,14 @@ public sealed class CreditCardsController(
             [CreditCardMessages.LastFourDigitsInvalid] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
-            [CreditCardMessages.SortByUnsupported] = StatusCodes.Status400BadRequest
+            [CreditCardMessages.SortByUnsupported] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
+            [CreditCardStatementMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
+            [CreditCardStatementMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.StatusInvalid] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.PeriodInvalid] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.SortByUnsupported] = StatusCodes.Status400BadRequest
         };
 
     [HttpPost]
@@ -142,6 +162,38 @@ public sealed class CreditCardsController(
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListCreditCardsQuery,
             CreditCardOutput>(query);
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpGet("{id:guid}/statements")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<PaginatedOutput<CreditCardStatementOutput>>> ListStatements(
+        Guid id,
+        [FromQuery] ListCreditCardStatementsRequest request)
+    {
+        var unsupported = Request.Query.Keys.FirstOrDefault(key =>
+            !StatementListQueryFields.Contains(key));
+        if (unsupported is not null)
+        {
+            return BadRequest(PaginatedOutput<CreditCardStatementOutput>.New
+                .WithError(CreditCardStatementMessages.UnsupportedFilter(unsupported)));
+        }
+
+        var query = new ListCreditCardStatementsQuery
+        {
+            CreditCardId = id,
+            Status = request.Status,
+            From = request.From,
+            To = request.To,
+            SortBy = request.SortBy,
+            Descending = request.Descending,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize
+        };
+        var result = await queryMediator.ExecutePaginatedQueryAsync<
+            ListCreditCardStatementsQuery,
+            CreditCardStatementOutput>(query);
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
