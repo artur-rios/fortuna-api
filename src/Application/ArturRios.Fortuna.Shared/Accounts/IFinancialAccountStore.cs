@@ -9,6 +9,17 @@ public interface IFinancialAccountStore
         CancellationToken cancellationToken);
 }
 
+public interface IFinancialAccountReader
+{
+    IQueryable<FinancialAccount> Query();
+
+    Task<FinancialAccountSnapshot?> FindByIdAsync(
+        Guid userId,
+        Guid id,
+        bool includeDeleted,
+        CancellationToken cancellationToken);
+}
+
 public sealed record FinancialAccountCreation(
     Guid UserId,
     string Name,

@@ -7,8 +7,33 @@ using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Accounts;
 
-public sealed class EfFinancialAccountStore(AppDbContext context) : IFinancialAccountStore
+public sealed class EfFinancialAccountStore(AppDbContext context) : IFinancialAccountStore, IFinancialAccountReader
 {
+    public IQueryable<FinancialAccount> Query() => context.FinancialAccounts.AsNoTracking();
+
+    public async Task<FinancialAccountSnapshot?> FindByIdAsync(
+        Guid userId,
+        Guid id,
+        bool includeDeleted,
+        CancellationToken cancellationToken) => await context.FinancialAccounts
+        .AsNoTracking()
+        .Where(account =>
+            account.User.PublicId == userId &&
+            account.PublicId == id &&
+            (includeDeleted || !account.IsDeleted))
+        .Select(account => new FinancialAccountSnapshot(
+            account.PublicId,
+            account.User.PublicId,
+            account.Name,
+            account.Institution,
+            account.AccountType,
+            account.Currency.Code,
+            account.OpeningBalance,
+            account.IsDeleted,
+            account.CreatedAt,
+            account.UpdatedAt))
+        .SingleOrDefaultAsync(cancellationToken);
+
     public async Task<FinancialAccountCreationResult> CreateAsync(
         FinancialAccountCreation creation,
         CancellationToken cancellationToken)

@@ -3,6 +3,9 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class FinancialAccountMessages
 {
     public const string CreatedSuccessfully = "Financial account created successfully.";
+    public const string RetrievedSuccessfully = "Financial account retrieved successfully.";
+    public const string ListedSuccessfully = "Financial accounts retrieved successfully.";
+    public const string NotFound = "Financial account not found.";
     public const string DuplicateName = "A live financial account already uses this name.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
     public const string NameRequired = "Name is required.";
@@ -14,6 +17,13 @@ public static class FinancialAccountMessages
     public const string CurrencyNotSupported = "CurrencyCode is not supported.";
     public const string OpeningBalancePrecisionInvalid =
         "OpeningBalance must contain at most 15 whole and 4 decimal digits.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
+    public const string SortByUnsupported =
+        "SortBy must be Name, Institution, AccountType, CurrencyCode, OpeningBalance, CreatedAt or UpdatedAt.";
+
+    public static string UnsupportedFilter(string field) =>
+        $"Unsupported filter field '{field}'.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
 }

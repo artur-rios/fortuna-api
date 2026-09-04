@@ -35,6 +35,7 @@ public sealed class FoundationApiTests
         Assert.Equal("Filesystem", options.StorageProvider);
         Assert.NotNull(options.StoragePath);
         Assert.Equal(256, options.JobQueueCapacity);
+        Assert.Equal(100, options.PageSizeMaximum);
         Assert.False(options.RunMigrations);
         Assert.Equal("BRL", options.DefaultDisplayCurrency);
         Assert.Equal("pt-BR", options.Locale);
@@ -144,6 +145,20 @@ public sealed class FoundationApiTests
         var exception = Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("positive integer", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("0")]
+    [InlineData("not-a-number")]
+    public void GivenInvalidMaximumPageSize_WhenConfigurationLoads_ThenStartupIsRejected(string value)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_PAGE_SIZE_MAX"] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_PAGE_SIZE_MAX", exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]
