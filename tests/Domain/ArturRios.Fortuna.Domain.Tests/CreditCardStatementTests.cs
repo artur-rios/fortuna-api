@@ -98,6 +98,81 @@ public sealed class CreditCardStatementTests
             charge.AssignToStatement(otherStatement, false, Now));
     }
 
+    [UnitFact]
+    public void GivenPartialSettlement_WhenBalanceCarried_ThenNextAmountDueIncludesIt()
+    {
+        var statement = Statement(Card());
+        statement.RecalculatePurchaseTotal(25m, Now);
+
+        statement.SetPreviousBalance(75m, Now.AddMinutes(1));
+
+        Assert.Equal(75m, statement.PreviousBalance);
+        Assert.Equal(100m, statement.AmountDue);
+    }
+
+    [UnitFact]
+    public void GivenSettledStatement_WhenBalanceCarried_ThenItIsRejected()
+    {
+        var card = Card();
+        var statement = Statement(card);
+        var settlement = new FinancialTransaction(
+            card.User,
+            card,
+            TransactionDirection.Earning,
+            1m,
+            new DateOnly(2026, 9, 25),
+            Now);
+        statement.Close(Now);
+        statement.Settle(settlement, Now);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            statement.SetPreviousBalance(1m, Now));
+    }
+
+    [UnitFact]
+    public void GivenOutboundMovement_WhenStatementSettled_ThenItIsRejected()
+    {
+        var card = Card();
+        var statement = Statement(card);
+        var settlement = new FinancialTransaction(
+            card.User,
+            card,
+            TransactionDirection.Expense,
+            1m,
+            new DateOnly(2026, 9, 25),
+            Now);
+        statement.Close(Now);
+
+        Assert.Throws<ArgumentException>(() => statement.Settle(settlement, Now));
+    }
+
+    [UnitFact]
+    public void GivenOtherCardMovement_WhenStatementSettled_ThenItIsRejected()
+    {
+        var card = Card();
+        var otherCard = new CreditCard(
+            card.User,
+            "Travel",
+            "Bank",
+            card.Currency,
+            1000m,
+            20,
+            5,
+            null,
+            Now);
+        var statement = Statement(card);
+        var settlement = new FinancialTransaction(
+            card.User,
+            otherCard,
+            TransactionDirection.Earning,
+            1m,
+            new DateOnly(2026, 9, 25),
+            Now);
+        statement.Close(Now);
+
+        Assert.Throws<ArgumentException>(() => statement.Settle(settlement, Now));
+    }
+
     private static CreditCardStatement Statement(CreditCard card) => new(
         card,
         BillingCycle.Containing(new DateOnly(2026, 9, 10), card.ClosingDay, card.DueDay),

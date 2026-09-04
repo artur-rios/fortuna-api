@@ -115,6 +115,24 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
         }
     }
 
+    public void SetPreviousBalance(decimal previousBalance, DateTimeOffset updatedAt)
+    {
+        if (Status == CreditCardStatementStatus.Settled)
+        {
+            throw new InvalidOperationException("A settled statement's composition is frozen.");
+        }
+
+        if (previousBalance < 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(previousBalance));
+        }
+
+        PreviousBalance = previousBalance;
+        AmountDue = PreviousBalance - PaymentsReceived + PurchaseTotal +
+            ForeignTaxTotal + OtherEntries;
+        MarkUpdated(updatedAt);
+    }
+
     public void Settle(FinancialTransaction settlementTransaction, DateTimeOffset updatedAt)
     {
         if (Status != CreditCardStatementStatus.Closed)
@@ -122,8 +140,16 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
             throw new InvalidOperationException("Only a closed statement can be settled.");
         }
 
-        SettlementTransaction = settlementTransaction ??
-            throw new ArgumentNullException(nameof(settlementTransaction));
+        ArgumentNullException.ThrowIfNull(settlementTransaction);
+        if (settlementTransaction.CreditCard?.PublicId != CreditCard.PublicId ||
+            settlementTransaction.Direction != TransactionDirection.Earning)
+        {
+            throw new ArgumentException(
+                "A statement settlement must be an inbound movement on its credit card.",
+                nameof(settlementTransaction));
+        }
+
+        SettlementTransaction = settlementTransaction;
         SettlementTransactionId = settlementTransaction.Id;
         Status = CreditCardStatementStatus.Settled;
         MarkUpdated(updatedAt);

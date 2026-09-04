@@ -24,7 +24,17 @@ public sealed class StatementsController(
         {
             [CreditCardStatementMessages.NotFound] = StatusCodes.Status404NotFound,
             [CreditCardStatementMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
-            [CreditCardStatementMessages.SettledStatementFrozen] = StatusCodes.Status409Conflict
+            [CreditCardStatementMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
+            [CreditCardStatementMessages.SettledStatementFrozen] = StatusCodes.Status409Conflict,
+            [CreditCardStatementMessages.StatementOpen] = StatusCodes.Status409Conflict,
+            [CreditCardStatementMessages.StatementAlreadySettled] = StatusCodes.Status409Conflict,
+            [CreditCardStatementMessages.ExchangeRateUnavailable] = StatusCodes.Status409Conflict,
+            [CreditCardStatementMessages.StatementIdRequired] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.FinancialAccountIdRequired] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.PaymentAmountPositive] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.PaymentAmountPrecisionInvalid] =
+                StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.PaymentDateRequired] = StatusCodes.Status400BadRequest
         };
 
     [HttpGet("{id:guid}")]
@@ -44,6 +54,19 @@ public sealed class StatementsController(
         var result = await commandMediator.ExecuteCommandAsync<
             CloseCreditCardStatementCommand,
             CloseCreditCardStatementCommandOutput>(new CloseCreditCardStatementCommand { Id = id });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/settle")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<SettleCreditCardStatementCommandOutput?>>> Settle(
+        Guid id,
+        [FromBody] SettleCreditCardStatementCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            SettleCreditCardStatementCommand,
+            SettleCreditCardStatementCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

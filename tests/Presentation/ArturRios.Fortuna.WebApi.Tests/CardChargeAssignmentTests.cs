@@ -6,6 +6,7 @@ using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
@@ -490,6 +491,250 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorList.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenClosedStatement_WhenPaidInFull_ThenPairedTransferSettlesIt()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Checking", "BRL", 1000m);
+        var card = await CreateCardAsync(client, "Paid in full", 20, 5);
+        var charge = await RecordAsync(client, card.Id, 100m, new DateOnly(2026, 9, 10));
+        (await client.PostAsync($"/api/statements/{charge.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+
+        var response = await SettleAsync(
+            client,
+            charge.StatementId,
+            account.Id,
+            100m,
+            new DateOnly(2026, 9, 25));
+
+        Assert.Equal(HttpStatusCode.OK, response.Response.StatusCode);
+        Assert.Equal("Settled", response.Data.Status);
+        Assert.Equal(0m, response.Data.RemainingBalance);
+        Assert.Equal(0m, response.Data.CreditAmount);
+        Assert.Null(response.Data.CarryStatementId);
+        var accountBalance = await client.GetFromJsonAsync<AccountBalanceEnvelope>(
+            $"/api/accounts/{account.Id}/balance?asOf=2026-09-25");
+        var cardBalance = await client.GetFromJsonAsync<CreditCardBalanceEnvelope>(
+            $"/api/credit-cards/{card.Id}");
+        Assert.Equal(900m, accountBalance?.Data?.Balance);
+        Assert.Equal(0m, cardBalance?.Data?.UsedAmount);
+        await using var context = CreateContext();
+        var transfer = await context.Transfers.SingleAsync(item =>
+            item.PublicId == response.Data.TransferId);
+        Assert.Equal(response.Data.OutboundTransactionId,
+            (await context.FinancialTransactions.SingleAsync(item =>
+                item.Id == transfer.OutboundTransactionId)).PublicId);
+        var statement = await context.CreditCardStatements.SingleAsync(item =>
+            item.PublicId == charge.StatementId);
+        Assert.Equal(CreditCardStatementStatus.Settled, statement.Status);
+    }
+
+    [FunctionalFact]
+    public async Task GivenOpenOrSettledStatement_WhenPaid_ThenConflictIsReturned()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Conflict account", "BRL", 1000m);
+        var card = await CreateCardAsync(client, "Conflict card", 20, 5);
+        var charge = await RecordAsync(client, card.Id, 100m, new DateOnly(2026, 9, 10));
+
+        var open = await SettleAsync(
+            client,
+            charge.StatementId,
+            account.Id,
+            100m,
+            new DateOnly(2026, 9, 25));
+        (await client.PostAsync($"/api/statements/{charge.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+        var settled = await SettleAsync(
+            client,
+            charge.StatementId,
+            account.Id,
+            100m,
+            new DateOnly(2026, 9, 25));
+        var repeated = await SettleAsync(
+            client,
+            charge.StatementId,
+            account.Id,
+            100m,
+            new DateOnly(2026, 9, 25));
+
+        Assert.Equal(HttpStatusCode.Conflict, open.Response.StatusCode);
+        Assert.Contains(CreditCardStatementMessages.StatementOpen,
+            await open.Response.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.OK, settled.Response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, repeated.Response.StatusCode);
+        Assert.Contains(CreditCardStatementMessages.StatementAlreadySettled,
+            await repeated.Response.Content.ReadAsStringAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenPartialPayment_WhenSettled_ThenRemainderCarriesToNextStatement()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Partial account", "BRL", 1000m);
+        var card = await CreateCardAsync(client, "Partial card", 20, 5);
+        var charge = await RecordAsync(client, card.Id, 100m, new DateOnly(2026, 9, 10));
+        (await client.PostAsync($"/api/statements/{charge.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+
+        var settlement = await SettleAsync(
+            client,
+            charge.StatementId,
+            account.Id,
+            40m,
+            new DateOnly(2026, 9, 25));
+        var carry = await client.GetFromJsonAsync<StatementReadEnvelope>(
+            $"/api/statements/{settlement.Data.CarryStatementId}");
+
+        Assert.Equal(60m, settlement.Data.RemainingBalance);
+        Assert.Equal(60m, carry?.Data?.PreviousBalance);
+        Assert.Equal(60m, carry?.Data?.AmountDue);
+        Assert.Empty(carry!.Data!.Transactions);
+    }
+
+    [FunctionalFact]
+    public async Task GivenOverpayment_WhenSettled_ThenExcessIsCardCredit()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Credit account", "BRL", 1000m);
+        var card = await CreateCardAsync(client, "Credit card", 20, 5);
+        var charge = await RecordAsync(client, card.Id, 100m, new DateOnly(2026, 9, 10));
+        (await client.PostAsync($"/api/statements/{charge.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+
+        var settlement = await SettleAsync(
+            client,
+            charge.StatementId,
+            account.Id,
+            125m,
+            new DateOnly(2026, 9, 25));
+
+        Assert.Equal(25m, settlement.Data.CreditAmount);
+        Assert.Equal(0m, settlement.Data.RemainingBalance);
+        Assert.Null(settlement.Data.CarryStatementId);
+        var cardBalance = await client.GetFromJsonAsync<CreditCardBalanceEnvelope>(
+            $"/api/credit-cards/{card.Id}");
+        Assert.Equal(0m, cardBalance?.Data?.UsedAmount);
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignPayingAccount_WhenSettled_ThenRateAndDateAreRecorded()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Dollar account", "USD", 1000m);
+        var card = await CreateCardAsync(client, "Foreign payment", 20, 5);
+        var charge = await RecordAsync(client, card.Id, 500m, new DateOnly(2026, 9, 10));
+        (await client.PostAsync($"/api/statements/{charge.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+        await using (var context = CreateContext())
+        {
+            var usd = await context.Currencies.SingleAsync(item => item.Code == "USD");
+            var brl = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+            context.ExchangeRates.Add(new ExchangeRate(
+                usd.Id,
+                brl.Id,
+                5m,
+                new DateOnly(2026, 9, 24),
+                ExchangeRateSource.Manual));
+            await context.SaveChangesAsync();
+        }
+
+        var settlement = await SettleAsync(
+            client,
+            charge.StatementId,
+            account.Id,
+            100m,
+            new DateOnly(2026, 9, 25));
+
+        Assert.Equal(500m, settlement.Data.AppliedAmount);
+        Assert.Equal("USD", settlement.Data.PaymentCurrencyCode);
+        Assert.Equal("BRL", settlement.Data.CreditCardCurrencyCode);
+        Assert.Equal(5m, settlement.Data.AppliedRate);
+        Assert.Equal(new DateOnly(2026, 9, 24), settlement.Data.RateDate);
+        await using var assertionContext = CreateContext();
+        var transfer = await assertionContext.Transfers.SingleAsync(item =>
+            item.PublicId == settlement.Data.TransferId);
+        Assert.Equal(5m, transfer.AppliedRate);
+        var inbound = await assertionContext.FinancialTransactions
+            .Include(item => item.OriginalCurrency)
+            .SingleAsync(item => item.PublicId == settlement.Data.InboundTransactionId);
+        Assert.Equal(100m, inbound.OriginalAmount);
+        Assert.Equal("USD", inbound.OriginalCurrency?.Code);
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignOrDeletedPayingAccount_WhenSettled_ThenNotFoundIsReturned()
+    {
+        await using var factory = CreateFactory();
+        using var owner = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(owner, "Owned statement", 20, 5);
+        var charge = await RecordAsync(owner, card.Id, 100m, new DateOnly(2026, 9, 10));
+        (await owner.PostAsync($"/api/statements/{charge.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+        var deleted = await CreateAccountAsync(owner, "Deleted payer", "BRL", 1000m);
+        (await owner.DeleteAsync($"/api/accounts/{deleted.Id}")).EnsureSuccessStatusCode();
+        using var other = factory.CreateClient();
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+        var foreign = await CreateAccountAsync(other, "Foreign payer", "BRL", 1000m);
+
+        var deletedResult = await SettleAsync(
+            owner, charge.StatementId, deleted.Id, 100m, new DateOnly(2026, 9, 25));
+        var foreignResult = await SettleAsync(
+            owner, charge.StatementId, foreign.Id, 100m, new DateOnly(2026, 9, 25));
+
+        Assert.Equal(HttpStatusCode.NotFound, deletedResult.Response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, foreignResult.Response.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenInvalidOrUnauthorizedSettlement_WhenPosted_ThenItIsRejected()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var invalid = await client.PostAsJsonAsync($"/api/statements/{Guid.NewGuid()}/settle", new
+        {
+            FinancialAccountId = Guid.Empty,
+            Amount = 0m,
+            PaymentDate = default(DateOnly)
+        });
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+        var body = new
+        {
+            FinancialAccountId = Guid.NewGuid(),
+            Amount = 1m,
+            PaymentDate = new DateOnly(2026, 9, 25)
+        };
+        var anonymousResult = await anonymous.PostAsJsonAsync(
+            $"/api/statements/{Guid.NewGuid()}/settle",
+            body);
+        var administratorResult = await administrator.PostAsJsonAsync(
+            $"/api/statements/{Guid.NewGuid()}/settle",
+            body);
+        var invalidBody = await invalid.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Contains(CreditCardStatementMessages.FinancialAccountIdRequired, invalidBody);
+        Assert.Contains(CreditCardStatementMessages.PaymentAmountPositive, invalidBody);
+        Assert.Contains(CreditCardStatementMessages.PaymentDateRequired, invalidBody);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResult.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, administratorResult.StatusCode);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -599,6 +844,41 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         return (await response.Content.ReadFromJsonAsync<CardEnvelope>())!.Data!;
     }
 
+    private static async Task<AccountData> CreateAccountAsync(
+        HttpClient client,
+        string name,
+        string currencyCode,
+        decimal openingBalance)
+    {
+        var response = await client.PostAsJsonAsync("/api/accounts", new
+        {
+            Name = name,
+            Institution = "Example Bank",
+            AccountType = 1,
+            CurrencyCode = currencyCode,
+            OpeningBalance = openingBalance
+        });
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<AccountEnvelope>())!.Data!;
+    }
+
+    private static async Task<SettlementResponse> SettleAsync(
+        HttpClient client,
+        Guid statementId,
+        Guid accountId,
+        decimal amount,
+        DateOnly paymentDate)
+    {
+        var response = await client.PostAsJsonAsync($"/api/statements/{statementId}/settle", new
+        {
+            FinancialAccountId = accountId,
+            Amount = amount,
+            PaymentDate = paymentDate
+        });
+        var envelope = await response.Content.ReadFromJsonAsync<SettlementEnvelope>();
+        return new SettlementResponse(response, envelope?.Data!);
+    }
+
     private static void Authorize(HttpClient client, Guid subject, HeimdallRoles role)
     {
         var identity = new FortunaIdentity(subject, (int)role, Guid.NewGuid(), [])
@@ -637,6 +917,12 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
 
     private sealed record CardEnvelope(CardData? Data);
     private sealed record CardData(Guid Id);
+    private sealed record AccountEnvelope(AccountData? Data);
+    private sealed record AccountData(Guid Id);
+    private sealed record AccountBalanceEnvelope(AccountBalanceData? Data);
+    private sealed record AccountBalanceData(decimal Balance);
+    private sealed record CreditCardBalanceEnvelope(CreditCardBalanceData? Data);
+    private sealed record CreditCardBalanceData(decimal UsedAmount);
     private sealed record ChargeEnvelope(ChargeData? Data, IReadOnlyList<string> Messages);
     private sealed record ChargeData(
         Guid Id,
@@ -698,4 +984,24 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         string? OriginalCurrencyCode,
         decimal? AppliedRate,
         DateOnly? RateDate);
+    private sealed record SettlementResponse(HttpResponseMessage Response, SettlementData Data);
+    private sealed record SettlementEnvelope(SettlementData? Data);
+    private sealed record SettlementData(
+        Guid Id,
+        string Status,
+        Guid TransferId,
+        Guid OutboundTransactionId,
+        Guid InboundTransactionId,
+        Guid FinancialAccountId,
+        decimal PaymentAmount,
+        string PaymentCurrencyCode,
+        decimal AppliedAmount,
+        string CreditCardCurrencyCode,
+        decimal StatementAmountDue,
+        decimal RemainingBalance,
+        Guid? CarryStatementId,
+        decimal CreditAmount,
+        decimal? AppliedRate,
+        DateOnly? RateDate,
+        DateOnly PaymentDate);
 }

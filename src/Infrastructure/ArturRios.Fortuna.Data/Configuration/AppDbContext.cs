@@ -26,6 +26,7 @@ public sealed class AppDbContext(
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<FinancialAccount> FinancialAccounts => Set<FinancialAccount>();
     public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
+    public DbSet<Transfer> Transfers => Set<Transfer>();
     public DbSet<CreditCard> CreditCards => Set<CreditCard>();
     public DbSet<CreditCardStatement> CreditCardStatements => Set<CreditCardStatement>();
 
