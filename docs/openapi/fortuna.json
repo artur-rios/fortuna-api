@@ -279,6 +279,117 @@
         },
         "type": "object"
       },
+      "CreateCreditCardCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "closingDay": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "creditLimit": {
+            "format": "double",
+            "type": "number"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "dueDay": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "issuer": {
+            "nullable": true,
+            "type": "string"
+          },
+          "lastFourDigits": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateCreditCardCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "closingDay": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "creditLimit": {
+            "format": "double",
+            "type": "number"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "dueDay": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "issuer": {
+            "nullable": true,
+            "type": "string"
+          },
+          "lastFourDigits": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateCreditCardCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CreateCreditCardCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "CreateFinancialAccountCommand": {
         "additionalProperties": false,
         "properties": {
@@ -1786,6 +1897,54 @@
         ]
       }
     },
+    "/api/credit-cards": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCreditCardCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCreditCardCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCreditCardCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCreditCardCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCreditCardCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCreditCardCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "CreditCards"
+        ]
+      }
+    },
     "/api/currencies": {
       "get": {
         "responses": {
@@ -2270,6 +2429,9 @@
     },
     {
       "name": "AuditEntries"
+    },
+    {
+      "name": "CreditCards"
     },
     {
       "name": "Currencies"

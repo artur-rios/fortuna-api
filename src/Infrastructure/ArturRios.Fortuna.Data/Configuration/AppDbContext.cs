@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -25,6 +26,7 @@ public sealed class AppDbContext(
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<FinancialAccount> FinancialAccounts => Set<FinancialAccount>();
     public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
+    public DbSet<CreditCard> CreditCards => Set<CreditCard>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

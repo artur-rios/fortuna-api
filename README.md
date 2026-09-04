@@ -125,7 +125,7 @@ and the [project board](https://github.com/users/artur-rios/projects/12) are the
 |---|---|---|---|---|
 | [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 1 | 1 / 1 closed |
 | [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, the two-stage deletion lifecycle and the audit trail | M-01 | 12 | 12 / 12 closed |
-| [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 19 | 5 / 19 closed |
+| [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 19 | 6 / 19 closed |
 | [M-04 — Money movement](https://github.com/artur-rios/fortuna-api/milestone/4) | Transactions, transfers, installment plans, recurring commitments and reconciliation | M-03 | 11 | 0 / 11 closed |
 | [M-05 — Organization and planning](https://github.com/artur-rios/fortuna-api/milestone/5) | Categories, tags, counterparties, budgets and goals | M-04 | 11 | 0 / 11 closed |
 | [M-06 — Ingestion](https://github.com/artur-rios/fortuna-api/milestone/6) | The source contract, Pluggy connections and synchronization, Excel and Nubank PDF imports, and job monitoring | M-04 | 10 | 0 / 10 closed |
@@ -168,7 +168,7 @@ pull request.
 | [#14](https://github.com/artur-rios/fortuna-api/issues/14) | ✅ UC-13: Update a Financial Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#15](https://github.com/artur-rios/fortuna-api/issues/15) | ✅ UC-14: View an Account Balance | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#16](https://github.com/artur-rios/fortuna-api/issues/16) | ✅ UC-15: Delete a Financial Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#17](https://github.com/artur-rios/fortuna-api/issues/17) | UC-16: Create a Credit Card | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#17](https://github.com/artur-rios/fortuna-api/issues/17) | ✅ UC-16: Create a Credit Card | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#18](https://github.com/artur-rios/fortuna-api/issues/18) | UC-17: View Credit Cards and Limits | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#19](https://github.com/artur-rios/fortuna-api/issues/19) | UC-18: Update a Credit Card | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#20](https://github.com/artur-rios/fortuna-api/issues/20) | UC-19: Delete a Credit Card | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
