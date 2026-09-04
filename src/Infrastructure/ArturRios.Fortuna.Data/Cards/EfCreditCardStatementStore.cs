@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Cards;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ArturRios.Fortuna.Data.Cards;
 
 public sealed class EfCreditCardStatementStore(AppDbContext context)
-    : ICreditCardStatementCloser, ICreditCardStatementReader
+    : ICreditCardStatementCloser, ICreditCardStatementReader,
+        ICreditCardStatementSettlementStore
 {
     public IQueryable<CreditCardStatementReadSnapshot> Query(Guid userId)
     {
@@ -88,6 +90,179 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
         statement => statement.Id == statementId,
         cancellationToken);
 
+    public async Task<CreditCardStatementSettlementResult> SettleAsync(
+        CreditCardStatementSettlement settlement,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        var statement = await context.CreditCardStatements
+            .Include(item => item.CreditCard)
+            .ThenInclude(item => item.User)
+            .Include(item => item.CreditCard)
+            .ThenInclude(item => item.Currency)
+            .SingleOrDefaultAsync(item =>
+                item.PublicId == settlement.StatementId &&
+                item.CreditCard.User.PublicId == settlement.UserId &&
+                !item.IsDeleted &&
+                !item.CreditCard.IsDeleted,
+                cancellationToken);
+        if (statement is null)
+        {
+            return SettlementResult(CreditCardStatementSettlementOutcome.StatementNotFound);
+        }
+
+        if (statement.Status == CreditCardStatementStatus.Open)
+        {
+            return SettlementResult(CreditCardStatementSettlementOutcome.StatementOpen);
+        }
+
+        if (statement.Status == CreditCardStatementStatus.Settled)
+        {
+            return SettlementResult(
+                CreditCardStatementSettlementOutcome.StatementAlreadySettled);
+        }
+
+        var account = await context.FinancialAccounts
+            .Include(item => item.User)
+            .Include(item => item.Currency)
+            .SingleOrDefaultAsync(item =>
+                item.PublicId == settlement.FinancialAccountId &&
+                item.User.PublicId == settlement.UserId &&
+                !item.IsDeleted,
+                cancellationToken);
+        if (account is null)
+        {
+            return SettlementResult(
+                CreditCardStatementSettlementOutcome.FinancialAccountNotFound);
+        }
+
+        ExchangeRate? exchangeRate = null;
+        var appliedAmount = settlement.Amount;
+        if (account.Currency.Code != statement.CreditCard.Currency.Code)
+        {
+            exchangeRate = await context.ExchangeRates
+                .Include(rate => rate.BaseCurrency)
+                .Include(rate => rate.QuoteCurrency)
+                .Where(rate =>
+                    rate.BaseCurrency.Code == account.Currency.Code &&
+                    rate.QuoteCurrency.Code == statement.CreditCard.Currency.Code &&
+                    rate.RateDate <= settlement.PaymentDate)
+                .OrderByDescending(rate => rate.RateDate)
+                .ThenByDescending(rate => rate.Source)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (exchangeRate is null)
+            {
+                return SettlementResult(
+                    CreditCardStatementSettlementOutcome.ExchangeRateUnavailable);
+            }
+
+            appliedAmount = decimal.Round(
+                settlement.Amount * exchangeRate.Rate,
+                statement.CreditCard.Currency.MinorUnitDigits,
+                MidpointRounding.AwayFromZero);
+        }
+
+        var outbound = new FinancialTransaction(
+            account.User,
+            account,
+            TransactionDirection.Expense,
+            settlement.Amount,
+            settlement.PaymentDate,
+            settlement.CreatedAt);
+        var inbound = new FinancialTransaction(
+            statement.CreditCard.User,
+            statement.CreditCard,
+            TransactionDirection.Earning,
+            appliedAmount,
+            settlement.PaymentDate,
+            settlement.CreatedAt);
+        if (exchangeRate is not null)
+        {
+            inbound.RecordForeignCurrencyDetails(
+                settlement.Amount,
+                account.Currency,
+                exchangeRate.Rate,
+                exchangeRate.RateDate,
+                settlement.CreatedAt);
+        }
+
+        var transfer = new Transfer(
+            outbound,
+            inbound,
+            exchangeRate?.Rate,
+            exchangeRate?.RateDate,
+            settlement.CreatedAt);
+        var remainingBalance = Math.Max(statement.AmountDue - appliedAmount, 0m);
+        var creditAmount = Math.Max(appliedAmount - statement.AmountDue, 0m);
+        CreditCardStatement? carryStatement = null;
+        if (remainingBalance > 0m)
+        {
+            var cycle = BillingCycle.Containing(
+                statement.PeriodEnd.AddDays(1),
+                statement.CreditCard.ClosingDay,
+                statement.CreditCard.DueDay);
+            while (true)
+            {
+                carryStatement = await context.CreditCardStatements.SingleOrDefaultAsync(item =>
+                    item.CreditCardId == statement.CreditCardId &&
+                    item.PeriodStart == cycle.PeriodStart &&
+                    item.PeriodEnd == cycle.PeriodEnd &&
+                    !item.IsDeleted,
+                    cancellationToken);
+                if (carryStatement is null)
+                {
+                    carryStatement = new CreditCardStatement(
+                        statement.CreditCard,
+                        cycle,
+                        settlement.CreatedAt);
+                    context.CreditCardStatements.Add(carryStatement);
+                    break;
+                }
+
+                if (carryStatement.Status != CreditCardStatementStatus.Settled)
+                {
+                    break;
+                }
+
+                cycle = cycle.Next(
+                    statement.CreditCard.ClosingDay,
+                    statement.CreditCard.DueDay);
+            }
+
+            carryStatement.SetPreviousBalance(
+                carryStatement.PreviousBalance + remainingBalance,
+                settlement.CreatedAt);
+        }
+
+        statement.Settle(inbound, settlement.CreatedAt);
+        context.FinancialTransactions.AddRange(outbound, inbound);
+        context.Transfers.Add(transfer);
+        await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+
+        return SettlementResult(
+            CreditCardStatementSettlementOutcome.Succeeded,
+            new CreditCardStatementSettlementSnapshot(
+                statement.PublicId,
+                statement.Status.ToString(),
+                transfer.PublicId,
+                outbound.PublicId,
+                inbound.PublicId,
+                account.PublicId,
+                settlement.Amount,
+                account.Currency.Code,
+                appliedAmount,
+                statement.CreditCard.Currency.Code,
+                statement.AmountDue,
+                remainingBalance,
+                carryStatement?.PublicId,
+                creditAmount,
+                exchangeRate?.Rate,
+                exchangeRate?.RateDate,
+                settlement.PaymentDate));
+    }
+
     public async Task<CreditCardStatementCloseResult> CloseAsync(
         Guid userId,
         Guid statementId,
@@ -149,5 +324,11 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
             statement.Status.ToString(),
             statement.PurchaseTotal,
             statement.AmountDue),
+        outcome);
+
+    private static CreditCardStatementSettlementResult SettlementResult(
+        CreditCardStatementSettlementOutcome outcome,
+        CreditCardStatementSettlementSnapshot? settlement = null) => new(
+        settlement,
         outcome);
 }

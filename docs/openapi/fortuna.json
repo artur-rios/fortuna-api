@@ -1748,6 +1748,136 @@
         },
         "type": "object"
       },
+      "SettleCreditCardStatementCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "financialAccountId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "paymentDate": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SettleCreditCardStatementCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "carryStatementId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "creditAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "creditCardCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "financialAccountId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "inboundTransactionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "outboundTransactionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "paymentAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "paymentCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "paymentDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "remainingBalance": {
+            "format": "double",
+            "type": "number"
+          },
+          "statementAmountDue": {
+            "format": "double",
+            "type": "number"
+          },
+          "status": {
+            "nullable": true,
+            "type": "string"
+          },
+          "transferId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SettleCreditCardStatementCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "SynchronizeExchangeRatesCommand": {
         "additionalProperties": false,
         "properties": {
@@ -3562,6 +3692,65 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Statements"
+        ]
+      }
+    },
+    "/api/statements/{id}/settle": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettleCreditCardStatementCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettleCreditCardStatementCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettleCreditCardStatementCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutputDataOutput"
                 }
               }
             },
