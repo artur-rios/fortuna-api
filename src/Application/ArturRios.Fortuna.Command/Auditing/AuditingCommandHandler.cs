@@ -56,9 +56,11 @@ public sealed class AuditingCommandHandler<TCommand, TOutput>(
 
     private static string ResolveEntityType(string operation) => operation
         .Replace("Command", string.Empty, StringComparison.Ordinal)
+        .Replace("HardDelete", string.Empty, StringComparison.Ordinal)
         .Replace("Create", string.Empty, StringComparison.Ordinal)
         .Replace("Record", string.Empty, StringComparison.Ordinal)
         .Replace("Update", string.Empty, StringComparison.Ordinal)
         .Replace("Delete", string.Empty, StringComparison.Ordinal)
+        .Replace("Restore", string.Empty, StringComparison.Ordinal)
         .Replace("Regenerate", string.Empty, StringComparison.Ordinal);
 }

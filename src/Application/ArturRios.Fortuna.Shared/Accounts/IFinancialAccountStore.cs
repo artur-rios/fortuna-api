@@ -33,6 +33,40 @@ public interface IFinancialAccountUpdater
         CancellationToken cancellationToken);
 }
 
+public interface IFinancialAccountLifecycleStore
+{
+    Task<FinancialAccountLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<FinancialAccountLifecycleResult> RestoreAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<FinancialAccountLifecycleResult> HardDeleteAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken);
+}
+
+public enum FinancialAccountLifecycleOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    RestoreRequiresSoftDeletion = 3,
+    HardDeleteRequiresSoftDeletion = 4,
+    HardDeleteHasLiveTransactions = 5,
+    DuplicateName = 6
+}
+
+public sealed record FinancialAccountLifecycleResult(
+    Guid? Id,
+    FinancialAccountLifecycleOutcome Outcome);
+
 public sealed record FinancialAccountCreation(
     Guid UserId,
     string Name,

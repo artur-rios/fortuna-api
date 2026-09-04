@@ -7,6 +7,9 @@ public static class FinancialAccountMessages
     public const string ListedSuccessfully = "Financial accounts retrieved successfully.";
     public const string UpdatedSuccessfully = "Financial account updated successfully.";
     public const string BalanceRetrievedSuccessfully = "Financial account balance retrieved successfully.";
+    public const string DeletedSuccessfully = "Financial account deleted successfully.";
+    public const string RestoredSuccessfully = "Financial account restored successfully.";
+    public const string HardDeletedSuccessfully = "Financial account permanently deleted successfully.";
     public const string NotFound = "Financial account not found.";
     public const string DuplicateName = "A live financial account already uses this name.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
@@ -23,6 +26,12 @@ public static class FinancialAccountMessages
     public const string CurrencyImmutable = "CurrencyCode cannot be changed after account creation.";
     public const string OpeningBalanceImmutable =
         "OpeningBalance cannot be changed after account creation.";
+    public const string RestoreRequiresSoftDeletion =
+        "Financial account must be soft-deleted before it can be restored.";
+    public const string HardDeleteRequiresSoftDeletion =
+        "Financial account must be soft-deleted before permanent deletion.";
+    public const string HardDeleteHasLiveTransactions =
+        "Financial account cannot be permanently deleted while live transactions reference it.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SortByUnsupported =

@@ -80,6 +80,8 @@ try
         provider.GetRequiredService<EfFinancialAccountStore>());
     builder.Services.AddScoped<IFinancialAccountUpdater>(provider =>
         provider.GetRequiredService<EfFinancialAccountStore>());
+    builder.Services.AddScoped<IFinancialAccountLifecycleStore>(provider =>
+        provider.GetRequiredService<EfFinancialAccountStore>());
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
@@ -139,6 +141,12 @@ try
         UpdateFinancialAccountCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateFinancialAccountCommand,
         UpdateFinancialAccountCommandOutput, UpdateFinancialAccountCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteFinancialAccountCommand,
+        FinancialAccountLifecycleCommandOutput, DeleteFinancialAccountCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RestoreFinancialAccountCommand,
+        FinancialAccountLifecycleCommandOutput, RestoreFinancialAccountCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<HardDeleteFinancialAccountCommand,
+        FinancialAccountLifecycleCommandOutput, HardDeleteFinancialAccountCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

@@ -1,4 +1,6 @@
 using ArturRios.Fortuna.Command.Auditing;
+using ArturRios.Fortuna.Command.Input;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Mediator.Command;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -75,6 +77,66 @@ public sealed class AuditingCommandHandlerTests
         var result = await Handler(inner, writer).HandleAsync(new AuditStubCommand());
 
         Assert.True(result.Success);
+    }
+
+    [UnitFact]
+    public async Task GivenRestoreCommand_WhenAudited_ThenCanonicalEntityTypeIsWritten()
+    {
+        var id = Guid.NewGuid();
+        var inner = new Mock<ICommandHandlerAsync<
+            RestoreFinancialAccountCommand,
+            FinancialAccountLifecycleCommandOutput>>();
+        inner.Setup(handler => handler.HandleAsync(It.IsAny<RestoreFinancialAccountCommand>()))
+            .ReturnsAsync(DataOutput<FinancialAccountLifecycleCommandOutput?>.New
+                .WithData(new FinancialAccountLifecycleCommandOutput { Id = id }));
+        var writer = new Mock<IAuditEntryWriter>();
+        var handler = new AuditingCommandHandler<
+            RestoreFinancialAccountCommand,
+            FinancialAccountLifecycleCommandOutput>(
+            inner.Object,
+            writer.Object,
+            NullLogger<AuditingCommandHandler<
+                RestoreFinancialAccountCommand,
+                FinancialAccountLifecycleCommandOutput>>.Instance);
+
+        await handler.HandleAsync(new RestoreFinancialAccountCommand());
+
+        writer.Verify(entry => entry.WriteAsync(
+            nameof(RestoreFinancialAccountCommand),
+            "FinancialAccount",
+            id,
+            true,
+            null), Times.Once);
+    }
+
+    [UnitFact]
+    public async Task GivenHardDeleteCommand_WhenAudited_ThenCanonicalEntityTypeIsWritten()
+    {
+        var id = Guid.NewGuid();
+        var inner = new Mock<ICommandHandlerAsync<
+            HardDeleteFinancialAccountCommand,
+            FinancialAccountLifecycleCommandOutput>>();
+        inner.Setup(handler => handler.HandleAsync(It.IsAny<HardDeleteFinancialAccountCommand>()))
+            .ReturnsAsync(DataOutput<FinancialAccountLifecycleCommandOutput?>.New
+                .WithData(new FinancialAccountLifecycleCommandOutput { Id = id }));
+        var writer = new Mock<IAuditEntryWriter>();
+        var handler = new AuditingCommandHandler<
+            HardDeleteFinancialAccountCommand,
+            FinancialAccountLifecycleCommandOutput>(
+            inner.Object,
+            writer.Object,
+            NullLogger<AuditingCommandHandler<
+                HardDeleteFinancialAccountCommand,
+                FinancialAccountLifecycleCommandOutput>>.Instance);
+
+        await handler.HandleAsync(new HardDeleteFinancialAccountCommand());
+
+        writer.Verify(entry => entry.WriteAsync(
+            nameof(HardDeleteFinancialAccountCommand),
+            "FinancialAccount",
+            id,
+            true,
+            null), Times.Once);
     }
 
     private static AuditingCommandHandler<AuditStubCommand, AuditStubOutput> Handler(
