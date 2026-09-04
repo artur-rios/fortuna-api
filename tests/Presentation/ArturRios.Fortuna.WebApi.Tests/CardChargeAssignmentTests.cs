@@ -1,0 +1,381 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using ArturRios.Fortuna.Command.Input;
+using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Seeding;
+using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Security;
+using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.Security;
+using ArturRios.Jwt;
+using ArturRios.Util.Test.Attributes;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Testcontainers.PostgreSql;
+
+namespace ArturRios.Fortuna.WebApi.Tests;
+
+public sealed class CardChargeAssignmentTests : IAsyncLifetime
+{
+    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
+    private const string Issuer = "heimdall-tests";
+    private const string Audience = "fortuna-tests";
+    private readonly PostgreSqlContainer database =
+        new PostgreSqlBuilder("postgres:17-alpine").Build();
+
+    [FunctionalFact]
+    public async Task GivenChargesInSameCycle_WhenRecorded_ThenStatementIsReusedAndTotaled()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Rewards", 20, 5);
+
+        var first = await RecordAsync(client, card.Id, 40m, new DateOnly(2026, 9, 10));
+        var second = await RecordAsync(client, card.Id, 60m, new DateOnly(2026, 9, 15));
+
+        Assert.Equal(first.StatementId, second.StatementId);
+        Assert.Equal(100m, second.StatementPurchaseTotal);
+        Assert.Equal("Open", second.StatementStatus);
+        Assert.False(second.IsLateArriving);
+        await using var context = CreateContext();
+        Assert.Equal(1, await context.CreditCardStatements.CountAsync());
+        Assert.Equal(2, await context.FinancialTransactions.CountAsync(item =>
+            item.StatementId != null));
+        Assert.Contains(await context.AuditEntries.ToArrayAsync(), item =>
+            item.Operation == nameof(RecordCardChargeCommand));
+    }
+
+    [FunctionalFact]
+    public async Task GivenSettledCycle_WhenChargeArrives_ThenNextOpenStatementReceivesLateCharge()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Settled", 20, 5);
+        var original = await RecordAsync(client, card.Id, 100m, new DateOnly(2026, 9, 10));
+        await SetStatementStatusAsync(original.StatementId, settled: true);
+
+        var late = await RecordAsync(client, card.Id, 25m, new DateOnly(2026, 9, 12));
+
+        Assert.NotEqual(original.StatementId, late.StatementId);
+        Assert.True(late.IsLateArriving);
+        Assert.Equal(new DateOnly(2026, 9, 21), late.StatementPeriodStart);
+        Assert.Equal(new DateOnly(2026, 10, 20), late.StatementPeriodEnd);
+        Assert.Equal(25m, late.StatementPurchaseTotal);
+        await using var context = CreateContext();
+        var settled = await context.CreditCardStatements.SingleAsync(item =>
+            item.PublicId == original.StatementId);
+        Assert.Equal(CreditCardStatementStatus.Settled, settled.Status);
+        Assert.Equal(100m, settled.PurchaseTotal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenClosedUnsettledCycle_WhenChargeArrives_ThenSameStatementIsRecomputed()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Closed", 20, 5);
+        var original = await RecordAsync(client, card.Id, 10m, new DateOnly(2026, 9, 10));
+        await SetStatementStatusAsync(original.StatementId, settled: false);
+
+        var added = await RecordAsync(client, card.Id, 15m, new DateOnly(2026, 9, 11));
+
+        Assert.Equal(original.StatementId, added.StatementId);
+        Assert.Equal("Closed", added.StatementStatus);
+        Assert.Equal(25m, added.StatementPurchaseTotal);
+        Assert.False(added.IsLateArriving);
+    }
+
+    [FunctionalFact]
+    public async Task GivenChargeBeforeEarliestCycle_WhenRecorded_ThenEarlierStatementIsOpened()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Backdated", 20, 5);
+        var current = await RecordAsync(client, card.Id, 10m, new DateOnly(2026, 10, 10));
+
+        var earlier = await RecordAsync(client, card.Id, 20m, new DateOnly(2026, 8, 10));
+
+        Assert.True(earlier.StatementPeriodStart < current.StatementPeriodStart);
+        Assert.Equal(new DateOnly(2026, 7, 21), earlier.StatementPeriodStart);
+        Assert.Equal(new DateOnly(2026, 8, 20), earlier.StatementPeriodEnd);
+        await using var context = CreateContext();
+        Assert.Equal(2, await context.CreditCardStatements.CountAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenClosingDayBeyondFebruary_WhenChargeRecorded_ThenMonthEndClosesCycle()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Month End", 31, 5);
+
+        var charge = await RecordAsync(client, card.Id, 20m, new DateOnly(2027, 2, 20));
+
+        Assert.Equal(new DateOnly(2027, 2, 1), charge.StatementPeriodStart);
+        Assert.Equal(new DateOnly(2027, 2, 28), charge.StatementClosingDate);
+        Assert.Equal(new DateOnly(2027, 3, 5), charge.StatementDueDate);
+    }
+
+    [FunctionalFact]
+    public async Task GivenInvalidCharge_WhenRecorded_ThenBadRequestNamesFields()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+
+        var response = await client.PostAsJsonAsync("/api/transactions", new
+        {
+            CreditCardId = Guid.Empty,
+            Amount = 0m,
+            OccurredOn = default(DateOnly)
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains(TransactionMessages.CreditCardIdRequired, body, StringComparison.Ordinal);
+        Assert.Contains(TransactionMessages.AmountPositive, body, StringComparison.Ordinal);
+        Assert.Contains(TransactionMessages.OccurredOnRequired, body, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenMissingForeignOrDeletedCard_WhenChargeRecorded_ThenSameNotFoundIsReturned()
+    {
+        await using var factory = CreateFactory();
+        using var owner = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        var foreignCard = await CreateCardAsync(owner, "Foreign", 20, 5);
+        var deletedCard = await CreateCardAsync(owner, "Deleted", 20, 5);
+        (await owner.DeleteAsync($"/api/credit-cards/{deletedCard.Id}")).EnsureSuccessStatusCode();
+        using var other = factory.CreateClient();
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+
+        var foreign = await other.PostAsJsonAsync("/api/transactions",
+            Charge(foreignCard.Id, 10m, new DateOnly(2026, 9, 1)));
+        var missing = await other.PostAsJsonAsync("/api/transactions",
+            Charge(Guid.NewGuid(), 10m, new DateOnly(2026, 9, 1)));
+        var deleted = await owner.PostAsJsonAsync("/api/transactions",
+            Charge(deletedCard.Id, 10m, new DateOnly(2026, 9, 1)));
+
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, deleted.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenUnauthorizedActor_WhenChargeRecorded_ThenAccessIsRefused()
+    {
+        await using var factory = CreateFactory();
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+        var body = Charge(Guid.NewGuid(), 10m, new DateOnly(2026, 9, 1));
+
+        var anonymousResponse = await anonymous.PostAsJsonAsync("/api/transactions", body);
+        var administratorResponse = await administrator.PostAsJsonAsync("/api/transactions", body);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, administratorResponse.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenCardStatements_WhenCardLifecycleRuns_ThenOnlyCascadeDeletedStatementRestores()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Lifecycle", 20, 5);
+        var first = await RecordAsync(client, card.Id, 10m, new DateOnly(2026, 8, 10));
+        var second = await RecordAsync(client, card.Id, 20m, new DateOnly(2026, 9, 10));
+        await using (var context = CreateContext())
+        {
+            var preDeleted = await context.CreditCardStatements.SingleAsync(item =>
+                item.PublicId == first.StatementId);
+            preDeleted.SoftDelete(DateTimeOffset.UtcNow);
+            await context.SaveChangesAsync();
+        }
+
+        (await client.DeleteAsync($"/api/credit-cards/{card.Id}")).EnsureSuccessStatusCode();
+        (await client.PostAsync($"/api/credit-cards/{card.Id}/restore", null))
+            .EnsureSuccessStatusCode();
+
+        await using var assertionContext = CreateContext();
+        var statements = await assertionContext.CreditCardStatements
+            .Where(item => item.CreditCard.PublicId == card.Id)
+            .ToArrayAsync();
+        Assert.True(statements.Single(item => item.PublicId == first.StatementId).IsDeleted);
+        Assert.False(statements.Single(item => item.PublicId == second.StatementId).IsDeleted);
+    }
+
+    public async Task InitializeAsync()
+    {
+        await database.StartAsync();
+        await using var context = CreateContext();
+        await context.Database.MigrateAsync();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+    }
+
+    public async Task DisposeAsync() => await database.DisposeAsync();
+
+    private async Task SetStatementStatusAsync(Guid statementId, bool settled)
+    {
+        await using var context = CreateContext();
+        var statement = await context.CreditCardStatements
+            .Include(item => item.CreditCard)
+            .ThenInclude(item => item.User)
+            .SingleAsync(item => item.PublicId == statementId);
+        statement.Close(DateTimeOffset.UtcNow);
+        if (settled)
+        {
+            var settlement = new FinancialTransaction(
+                statement.CreditCard.User,
+                statement.CreditCard,
+                TransactionDirection.Earning,
+                statement.AmountDue,
+                statement.DueDate,
+                DateTimeOffset.UtcNow);
+            context.FinancialTransactions.Add(settlement);
+            await context.SaveChangesAsync();
+            statement.Settle(settlement, DateTimeOffset.UtcNow);
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private WebApplicationFactory<Program> CreateFactory()
+    {
+        foreach (var setting in ValidSettings())
+        {
+            Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+        }
+
+        return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment(Environments.Development);
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IHostedService>();
+                services.RemoveAll<AppDbContext>();
+                services.RemoveAll<DbContextOptions<AppDbContext>>();
+                services.AddDbContext<AppDbContext>(options =>
+                    options.UseNpgsql(database.GetConnectionString()));
+            });
+        });
+    }
+
+    private AppDbContext CreateContext()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(database.GetConnectionString())
+            .Options;
+        return new AppDbContext(
+            options,
+            Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
+            DatabaseDiagnosticsOptions.Disabled);
+    }
+
+    private static async Task<ChargeData> RecordAsync(
+        HttpClient client,
+        Guid cardId,
+        decimal amount,
+        DateOnly occurredOn)
+    {
+        var response = await client.PostAsJsonAsync(
+            "/api/transactions",
+            Charge(cardId, amount, occurredOn));
+        var envelope = await response.Content.ReadFromJsonAsync<ChargeEnvelope>();
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Contains(TransactionMessages.CardChargeCreatedSuccessfully, envelope!.Messages);
+        return envelope.Data!;
+    }
+
+    private static object Charge(Guid cardId, decimal amount, DateOnly occurredOn) => new
+    {
+        CreditCardId = cardId,
+        Amount = amount,
+        OccurredOn = occurredOn
+    };
+
+    private static async Task<CardData> CreateCardAsync(
+        HttpClient client,
+        string name,
+        short closingDay,
+        short dueDay)
+    {
+        var response = await client.PostAsJsonAsync("/api/credit-cards", new
+        {
+            Name = name,
+            Issuer = "Example Bank",
+            CurrencyCode = "BRL",
+            CreditLimit = 1000m,
+            ClosingDay = closingDay,
+            DueDay = dueDay,
+            LastFourDigits = "1234"
+        });
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<CardEnvelope>())!.Data!;
+    }
+
+    private static void Authorize(HttpClient client, Guid subject, HeimdallRoles role)
+    {
+        var identity = new FortunaIdentity(subject, (int)role, Guid.NewGuid(), [])
+        {
+            DisplayName = "Account Owner"
+        };
+        var configuration = new JwtConfiguration(
+            3600,
+            Issuer,
+            Audience,
+            Secret,
+            new FortunaIdentityMapper().ToClaims(identity));
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            new JwtHandler().CreateToken(configuration));
+    }
+
+    private static Dictionary<string, string?> ValidSettings() => new()
+    {
+        ["FORTUNA_DATA_CONNECTIONSTRING"] =
+            "Host=localhost;Database=fortuna;Username=postgres;Password=postgres;Search Path=fortuna",
+        ["FORTUNA_DATA_DATABASETYPE"] = "PostgreSql",
+        ["FORTUNA_STORAGE_PROVIDER"] = "Filesystem",
+        ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
+        ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
+        ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
+        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
+        ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
+        ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
+        ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
+        ["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = "BRL",
+        ["FORTUNA_LOCALE"] = "pt-BR",
+        ["FORTUNA_LOCAL_AUTH_ENABLED"] = "false",
+        ["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = "10"
+    };
+
+    private sealed record CardEnvelope(CardData? Data);
+    private sealed record CardData(Guid Id);
+    private sealed record ChargeEnvelope(ChargeData? Data, IReadOnlyList<string> Messages);
+    private sealed record ChargeData(
+        Guid Id,
+        Guid CreditCardId,
+        decimal Amount,
+        DateOnly OccurredOn,
+        bool IsLateArriving,
+        Guid StatementId,
+        DateOnly StatementPeriodStart,
+        DateOnly StatementPeriodEnd,
+        DateOnly StatementClosingDate,
+        DateOnly StatementDueDate,
+        string StatementStatus,
+        decimal StatementPurchaseTotal);
+}

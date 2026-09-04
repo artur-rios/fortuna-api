@@ -154,8 +154,14 @@ public sealed class EfCreditCardStore(AppDbContext context)
         }
 
         var transactions = await CardTransactionsAsync(card.Id, cancellationToken);
+        var statements = await CardStatementsAsync(card.Id, cancellationToken);
         var outstandingAmount = CalculateOutstandingAmount(transactions);
         var deletion = card.SoftDelete(changedAt);
+        foreach (var statement in statements)
+        {
+            statement.SoftDeleteFromCascade(deletion.CascadeId, changedAt);
+        }
+
         foreach (var transaction in transactions)
         {
             transaction.SoftDeleteFromCascade(deletion.CascadeId, changedAt);
@@ -187,7 +193,13 @@ public sealed class EfCreditCardStore(AppDbContext context)
         }
 
         var transactions = await CardTransactionsAsync(card.Id, cancellationToken);
+        var statements = await CardStatementsAsync(card.Id, cancellationToken);
         var cascadeId = card.Restore(changedAt);
+        foreach (var statement in statements)
+        {
+            statement.RestoreFromCascade(cascadeId, changedAt);
+        }
+
         foreach (var transaction in transactions)
         {
             transaction.RestoreFromCascade(cascadeId, changedAt);
@@ -208,6 +220,11 @@ public sealed class EfCreditCardStore(AppDbContext context)
             foreach (var transaction in transactions)
             {
                 context.Entry(transaction).State = EntityState.Detached;
+            }
+
+            foreach (var statement in statements)
+            {
+                context.Entry(statement).State = EntityState.Detached;
             }
 
             return LifecycleResult(CreditCardLifecycleOutcome.DuplicateName);
@@ -232,9 +249,28 @@ public sealed class EfCreditCardStore(AppDbContext context)
         }
 
         var transactions = await CardTransactionsAsync(card.Id, cancellationToken);
-        var liveReferences = transactions.Any(item => !item.IsDeleted)
-            ? new[] { "transactions" }
-            : [];
+        var statements = await CardStatementsAsync(card.Id, cancellationToken);
+        var liveReferences = new List<string>();
+        if (transactions.Any(item => !item.IsDeleted))
+        {
+            liveReferences.Add("transactions");
+        }
+
+        if (statements.Any(item => !item.IsDeleted))
+        {
+            liveReferences.Add("statements");
+        }
+
+        var settlementIds = statements
+            .Where(item => item.SettlementTransactionId.HasValue)
+            .Select(item => item.SettlementTransactionId!.Value)
+            .ToArray();
+        if (await context.FinancialTransactions.AnyAsync(item =>
+            settlementIds.Contains(item.Id) && !item.IsDeleted,
+            cancellationToken))
+        {
+            liveReferences.Add("statement settlement transactions");
+        }
         try
         {
             card.EnsureHardDeletionAllowed(liveReferences);
@@ -256,6 +292,7 @@ public sealed class EfCreditCardStore(AppDbContext context)
         var outstandingAmount = CalculateOutstandingAmount(transactions);
         var currencyCode = card.Currency.Code;
         context.FinancialTransactions.RemoveRange(transactions);
+        context.CreditCardStatements.RemoveRange(statements);
         context.CreditCards.Remove(card);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -280,6 +317,12 @@ public sealed class EfCreditCardStore(AppDbContext context)
     private Task<List<Domain.Transactions.FinancialTransaction>> CardTransactionsAsync(
         long cardId,
         CancellationToken cancellationToken) => context.FinancialTransactions
+        .Where(item => item.CreditCardId == cardId)
+        .ToListAsync(cancellationToken);
+
+    private Task<List<CreditCardStatement>> CardStatementsAsync(
+        long cardId,
+        CancellationToken cancellationToken) => context.CreditCardStatements
         .Where(item => item.CreditCardId == cardId)
         .ToListAsync(cancellationToken);
 

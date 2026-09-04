@@ -30,9 +30,11 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.Property(transaction => transaction.UserId).IsRequired();
         builder.Property(transaction => transaction.FinancialAccountId);
         builder.Property(transaction => transaction.CreditCardId);
+        builder.Property(transaction => transaction.StatementId);
         builder.Property(transaction => transaction.Direction).IsRequired();
         builder.Property(transaction => transaction.Amount).HasPrecision(19, 4).IsRequired();
         builder.Property(transaction => transaction.OccurredOn).IsRequired();
+        builder.Property(transaction => transaction.IsLateArriving).HasDefaultValue(false).IsRequired();
         builder.Property(transaction => transaction.IsDeleted).HasDefaultValue(false).IsRequired();
         builder.Property(transaction => transaction.DeletionCascadeId);
         builder.Property(transaction => transaction.CreatedAt).IsRequired();
@@ -62,6 +64,10 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.HasOne(transaction => transaction.CreditCard)
             .WithMany()
             .HasForeignKey(transaction => transaction.CreditCardId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(transaction => transaction.Statement)
+            .WithMany()
+            .HasForeignKey(transaction => transaction.StatementId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

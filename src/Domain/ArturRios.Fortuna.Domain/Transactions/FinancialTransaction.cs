@@ -107,7 +107,34 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public FinancialAccount? FinancialAccount { get; private set; }
     public long? CreditCardId { get; private set; }
     public CreditCard? CreditCard { get; private set; }
+    public long? StatementId { get; private set; }
+    public CreditCardStatement? Statement { get; private set; }
     public TransactionDirection Direction { get; private set; }
     public decimal Amount { get; private set; }
     public DateOnly OccurredOn { get; private set; }
+    public bool IsLateArriving { get; private set; }
+
+    public void AssignToStatement(
+        CreditCardStatement statement,
+        bool isLateArriving,
+        DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(statement);
+        if (CreditCard is null || CreditCard.PublicId != statement.CreditCard.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and statement must belong to the same credit card.",
+                nameof(statement));
+        }
+
+        if (statement.Status == CreditCardStatementStatus.Settled)
+        {
+            throw new InvalidOperationException("A settled statement's composition is frozen.");
+        }
+
+        Statement = statement;
+        StatementId = statement.Id;
+        IsLateArriving = isLateArriving;
+        MarkUpdated(updatedAt);
+    }
 }

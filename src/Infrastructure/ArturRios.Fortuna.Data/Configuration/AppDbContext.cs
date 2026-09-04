@@ -27,6 +27,7 @@ public sealed class AppDbContext(
     public DbSet<FinancialAccount> FinancialAccounts => Set<FinancialAccount>();
     public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
     public DbSet<CreditCard> CreditCards => Set<CreditCard>();
+    public DbSet<CreditCardStatement> CreditCardStatements => Set<CreditCardStatement>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
