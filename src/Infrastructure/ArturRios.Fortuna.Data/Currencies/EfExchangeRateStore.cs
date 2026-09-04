@@ -77,4 +77,52 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
         await transaction.CommitAsync(cancellationToken);
         return new PublishedRateUpsertResult(stored, unchanged);
     }
+
+    public async Task<ManualRateUpsertResult> UpsertManualAsync(
+        ManualRateCandidate rate,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({RateSyncLockId})",
+            cancellationToken);
+
+        var currencies = await context.Currencies
+            .Where(currency =>
+                currency.Code == rate.BaseCurrencyCode ||
+                currency.Code == rate.QuoteCurrencyCode)
+            .ToDictionaryAsync(currency => currency.Code, cancellationToken);
+        if (!currencies.TryGetValue(rate.BaseCurrencyCode, out var baseCurrency) ||
+            !currencies.TryGetValue(rate.QuoteCurrencyCode, out var quoteCurrency))
+        {
+            throw new InvalidOperationException(ManualExchangeRateMessages.CurrencyNotSupported);
+        }
+
+        var current = await context.ExchangeRates.SingleOrDefaultAsync(
+            candidate =>
+                candidate.BaseCurrencyId == baseCurrency.Id &&
+                candidate.QuoteCurrencyId == quoteCurrency.Id &&
+                candidate.RateDate == rate.RateDate &&
+                candidate.Source == ExchangeRateSource.Manual,
+            cancellationToken);
+        var replacedExisting = current is not null;
+        if (current is null)
+        {
+            current = new ExchangeRate(
+                baseCurrency.Id,
+                quoteCurrency.Id,
+                rate.Rate,
+                rate.RateDate,
+                ExchangeRateSource.Manual);
+            context.ExchangeRates.Add(current);
+        }
+        else
+        {
+            current.ReplaceManualRate(rate.Rate);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new ManualRateUpsertResult(current.Rate, replacedExisting);
+    }
 }

@@ -1,11 +1,13 @@
 using Amazon.Runtime;
 using Amazon.S3;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Auditing;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Command.Handlers;
+using ArturRios.Fortuna.Command.Auditing;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
 using ArturRios.Fortuna.Command.Output;
@@ -14,6 +16,7 @@ using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Rates;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
@@ -56,6 +59,8 @@ try
     builder.Services.AddScoped<DatabaseSeeder>();
     builder.Services.AddScoped<ICurrencyReader, EfCurrencyReader>();
     builder.Services.AddScoped<IExchangeRateStore, EfExchangeRateStore>();
+    builder.Services.AddScoped<IAuditEntryStore, EfAuditEntryStore>();
+    builder.Services.AddScoped<IAuditEntryWriter, AuditEntryWriter>();
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
@@ -91,17 +96,21 @@ try
     builder.Services.AddSingleton<ILocalRecoveryCodeGenerator, LocalRecoveryCodeGenerator>();
     builder.Services.AddScoped<CommandMediator>();
     builder.Services.AddScoped<IValidator<CreateLocalAccountCommand>, CreateLocalAccountCommandValidator>();
-    builder.Services.AddScoped<ICommandHandlerAsync<CreateLocalAccountCommand, CreateLocalAccountCommandOutput>,
-        CreateLocalAccountCommandHandler>();
-    builder.Services.AddScoped<ICommandHandlerAsync<AuthenticateLocalAccountCommand,
-        AuthenticateLocalAccountCommandOutput>, AuthenticateLocalAccountCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<CreateLocalAccountCommand,
+        CreateLocalAccountCommandOutput, CreateLocalAccountCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<AuthenticateLocalAccountCommand,
+        AuthenticateLocalAccountCommandOutput, AuthenticateLocalAccountCommandHandler>();
     builder.Services.AddScoped<IValidator<RecoverLocalAccountCommand>, RecoverLocalAccountCommandValidator>();
-    builder.Services.AddScoped<ICommandHandlerAsync<RecoverLocalAccountCommand,
-        RecoverLocalAccountCommandOutput>, RecoverLocalAccountCommandHandler>();
-    builder.Services.AddScoped<ICommandHandlerAsync<RegenerateLocalAccountRecoveryCodesCommand,
-        RegenerateLocalAccountRecoveryCodesCommandOutput>, RegenerateLocalAccountRecoveryCodesCommandHandler>();
-    builder.Services.AddScoped<ICommandHandlerAsync<SynchronizeExchangeRatesCommand,
-        SynchronizeExchangeRatesCommandOutput>, SynchronizeExchangeRatesCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RecoverLocalAccountCommand,
+        RecoverLocalAccountCommandOutput, RecoverLocalAccountCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RegenerateLocalAccountRecoveryCodesCommand,
+        RegenerateLocalAccountRecoveryCodesCommandOutput, RegenerateLocalAccountRecoveryCodesCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<SynchronizeExchangeRatesCommand,
+        SynchronizeExchangeRatesCommandOutput, SynchronizeExchangeRatesCommandHandler>();
+    builder.Services.AddScoped<IValidator<RecordManualExchangeRateCommand>,
+        RecordManualExchangeRateCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<RecordManualExchangeRateCommand,
+        RecordManualExchangeRateCommandOutput, RecordManualExchangeRateCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

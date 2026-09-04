@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Users;
@@ -19,6 +20,7 @@ public sealed class AppDbContext(
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<LocalAccount> LocalAccounts => Set<LocalAccount>();
     public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

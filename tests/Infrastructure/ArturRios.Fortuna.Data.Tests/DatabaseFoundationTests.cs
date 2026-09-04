@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Seeding;
@@ -31,12 +32,13 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
             from information_schema.tables
             where table_schema = 'fortuna'
               and table_name in (
-                'currency', 'exchange_rate', 'background_job', 'user', 'local_account', 'recovery_code');
+                'currency', 'exchange_rate', 'background_job', 'user', 'local_account', 'recovery_code',
+                'audit_entry');
             """;
 
         var count = Convert.ToInt32(await command.ExecuteScalarAsync(CancellationToken.None));
 
-        Assert.Equal(6, count);
+        Assert.Equal(7, count);
     }
 
     [FunctionalFact]
@@ -171,6 +173,71 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
             .Where(rate => rate.Source == ExchangeRateSource.Manual)
             .Select(rate => rate.Rate)
             .SingleAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenPublishedRate_WhenManualRateIsUpsertedTwice_ThenPublishedRemainsAndManualIsReplaced()
+    {
+        await using var context = CreateContext();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        var currencies = await context.Currencies
+            .Where(currency => currency.Code == "BRL" || currency.Code == "USD")
+            .ToDictionaryAsync(currency => currency.Code);
+        var date = new DateOnly(2026, 9, 4);
+        context.ExchangeRates.Add(new ExchangeRate(
+            currencies["USD"].Id,
+            currencies["BRL"].Id,
+            5.1m,
+            date,
+            ExchangeRateSource.Published));
+        await context.SaveChangesAsync();
+        var store = new EfExchangeRateStore(context);
+
+        var created = await store.UpsertManualAsync(
+            new ManualRateCandidate("USD", "BRL", 5.25m, date),
+            CancellationToken.None);
+        var replaced = await store.UpsertManualAsync(
+            new ManualRateCandidate("USD", "BRL", 5.4m, date),
+            CancellationToken.None);
+
+        Assert.False(created.ReplacedExisting);
+        Assert.True(replaced.ReplacedExisting);
+        Assert.Equal(5.4m, replaced.Rate);
+        Assert.Equal(5.1m, await context.ExchangeRates
+            .Where(rate => rate.Source == ExchangeRateSource.Published && rate.RateDate == date)
+            .Select(rate => rate.Rate)
+            .SingleAsync());
+        Assert.Equal(5.4m, await context.ExchangeRates
+            .Where(rate => rate.Source == ExchangeRateSource.Manual && rate.RateDate == date)
+            .Select(rate => rate.Rate)
+            .SingleAsync());
+    }
+
+    [FunctionalTheory]
+    [InlineData("update fortuna.audit_entry set operation = operation")]
+    [InlineData("delete from fortuna.audit_entry where false")]
+    [InlineData("truncate table fortuna.audit_entry")]
+    public async Task GivenAuditEntryTable_WhenMutationIsAttempted_ThenDatabaseRefusesIt(string sql)
+    {
+        await using var context = CreateContext();
+        context.AuditEntries.Add(new AuditEntry(
+            null,
+            "RecordManualExchangeRateCommand",
+            null,
+            null,
+            AuditOutcome.Succeeded,
+            null,
+            DateTimeOffset.UtcNow));
+        await context.SaveChangesAsync();
+        await using var connection = new NpgsqlConnection(database.GetConnectionString());
+        await connection.OpenAsync(CancellationToken.None);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+
+        var exception = await Assert.ThrowsAsync<PostgresException>(async () =>
+            await command.ExecuteNonQueryAsync(CancellationToken.None));
+
+        Assert.Equal(PostgresErrorCodes.RestrictViolation, exception.SqlState);
     }
 
     public async Task InitializeAsync()
