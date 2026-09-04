@@ -10,12 +10,20 @@ public interface ILocalAccountStore
         string name,
         CancellationToken cancellationToken);
 
+    Task<LocalAccountCredentialSnapshot?> FindForAuthenticationByUserIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken);
+
     Task<LocalAccountCreationResult> CreateAsync(
         LocalAccountCreation creation,
         CancellationToken cancellationToken);
 
     Task<LocalAccountRecoveryResult> RecoverAsync(
         LocalAccountRecovery recovery,
+        CancellationToken cancellationToken);
+
+    Task<bool> RegenerateRecoveryCodesAsync(
+        LocalAccountRecoveryCodeRegeneration regeneration,
         CancellationToken cancellationToken);
 }
 
@@ -66,3 +74,10 @@ public sealed record LocalAccountRecoverySnapshot(
 public sealed record LocalAccountRecoveryResult(
     LocalAccountRecoveryStatus Status,
     LocalAccountRecoverySnapshot? Account);
+
+public sealed record LocalAccountRecoveryCodeRegeneration(
+    Guid UserId,
+    byte[] ExpectedSecretHash,
+    byte[] ExpectedSalt,
+    IReadOnlyCollection<byte[]> RecoveryCodeHashes,
+    DateTimeOffset RegeneratedAt);

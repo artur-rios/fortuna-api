@@ -77,4 +77,17 @@ public sealed class LocalAccount
         Salt = salt;
         UpdatedAt = updatedAt;
     }
+
+    public void ReplaceRecoveryCodes(
+        IEnumerable<byte[]> recoveryCodeHashes,
+        DateTimeOffset updatedAt)
+    {
+        RecoveryCodes.Clear();
+        foreach (var codeHash in recoveryCodeHashes)
+        {
+            AddRecoveryCode(codeHash, updatedAt);
+        }
+
+        UpdatedAt = updatedAt;
+    }
 }

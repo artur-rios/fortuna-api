@@ -116,6 +116,10 @@ public sealed class RecoverLocalAccountCommandHandlerTests
             string name,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
+        public Task<LocalAccountCredentialSnapshot?> FindForAuthenticationByUserIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public Task<LocalAccountCreationResult> CreateAsync(
             LocalAccountCreation creation,
             CancellationToken cancellationToken) => throw new NotSupportedException();
@@ -127,6 +131,10 @@ public sealed class RecoverLocalAccountCommandHandlerTests
             Recovery = recovery;
             return Task.FromResult(result);
         }
+
+        public Task<bool> RegenerateRecoveryCodesAsync(
+            LocalAccountRecoveryCodeRegeneration regeneration,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class StubTokenIssuer : ILocalAuthTokenIssuer

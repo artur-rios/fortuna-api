@@ -3,6 +3,7 @@ using System.Text;
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
@@ -130,6 +131,7 @@ public sealed class CreateLocalAccountCommandHandlerTests
             new CreateLocalAccountCommandValidator(),
             store,
             new FakeCredentialStoreAvailability(credentialStoreAvailable),
+            new LocalRecoveryCodeGenerator(),
             new LocalAccountOptions(enabled, recoveryCodeCount, "BRL", "pt-BR"),
             new FixedTimeProvider(Now));
 
@@ -155,6 +157,10 @@ public sealed class CreateLocalAccountCommandHandlerTests
             string name,
             CancellationToken cancellationToken) => Task.FromResult<LocalAccountCredentialSnapshot?>(null);
 
+        public Task<LocalAccountCredentialSnapshot?> FindForAuthenticationByUserIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public Task<LocalAccountCreationResult> CreateAsync(
             LocalAccountCreation creation,
             CancellationToken cancellationToken)
@@ -177,6 +183,10 @@ public sealed class CreateLocalAccountCommandHandlerTests
 
         public Task<LocalAccountRecoveryResult> RecoverAsync(
             LocalAccountRecovery recovery,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> RegenerateRecoveryCodesAsync(
+            LocalAccountRecoveryCodeRegeneration regeneration,
             CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 

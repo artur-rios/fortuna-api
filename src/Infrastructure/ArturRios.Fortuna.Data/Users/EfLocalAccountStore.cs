@@ -35,6 +35,24 @@ public sealed class EfLocalAccountStore(
                 account.Salt);
     }
 
+    public async Task<LocalAccountCredentialSnapshot?> FindForAuthenticationByUserIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var account = await context.LocalAccounts
+            .AsNoTracking()
+            .Include(x => x.User)
+            .SingleOrDefaultAsync(x => x.User.PublicId == userId, cancellationToken);
+
+        return account is null
+            ? null
+            : new LocalAccountCredentialSnapshot(
+                account.User.PublicId,
+                account.User.DisplayName,
+                account.SecretHash,
+                account.Salt);
+    }
+
     public async Task<LocalAccountCreationResult> CreateAsync(
         LocalAccountCreation creation,
         CancellationToken cancellationToken)
@@ -138,6 +156,39 @@ public sealed class EfLocalAccountStore(
                 account.User.PublicId,
                 account.User.DisplayName,
                 unusedCodes.Length - 1));
+    }
+
+    public async Task<bool> RegenerateRecoveryCodesAsync(
+        LocalAccountRecoveryCodeRegeneration regeneration,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({AccountLockId})",
+            cancellationToken);
+        var account = await context.LocalAccounts
+            .Include(x => x.User)
+            .Include(x => x.RecoveryCodes)
+            .SingleOrDefaultAsync(x => x.User.PublicId == regeneration.UserId, cancellationToken);
+
+        if (account is null ||
+            !CryptographicOperations.FixedTimeEquals(
+                account.SecretHash,
+                regeneration.ExpectedSecretHash) ||
+            !CryptographicOperations.FixedTimeEquals(
+                account.Salt,
+                regeneration.ExpectedSalt))
+        {
+            return false;
+        }
+
+        account.ReplaceRecoveryCodes(
+            regeneration.RecoveryCodeHashes,
+            regeneration.RegeneratedAt);
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return true;
     }
 
     private static string CurrencyForLocale(string locale) =>

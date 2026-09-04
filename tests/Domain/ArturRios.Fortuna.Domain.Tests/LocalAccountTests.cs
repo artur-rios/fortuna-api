@@ -81,6 +81,24 @@ public sealed class LocalAccountTests
         Assert.Equal(usedAt, code.UsedAt);
     }
 
+    [UnitFact]
+    public void GivenReplacementRecoveryCodes_WhenReplacingSet_ThenEveryOldCodeIsInvalidated()
+    {
+        var createdAt = DateTimeOffset.Parse("2026-09-03T00:00:00Z");
+        var updatedAt = createdAt.AddHours(1);
+        var account = Account(createdAt);
+        account.AddRecoveryCode([1, 1, 1], createdAt);
+        account.AddRecoveryCode([2, 2, 2], createdAt);
+        account.RecoveryCodes.First().MarkUsed(createdAt.AddMinutes(1));
+
+        account.ReplaceRecoveryCodes([[3, 3, 3], [4, 4, 4]], updatedAt);
+
+        Assert.Equal(2, account.RecoveryCodes.Count);
+        Assert.Equal([[3, 3, 3], [4, 4, 4]], account.RecoveryCodes.Select(code => code.CodeHash));
+        Assert.All(account.RecoveryCodes, code => Assert.Null(code.UsedAt));
+        Assert.Equal(updatedAt, account.UpdatedAt);
+    }
+
     private static LocalAccount Account(DateTimeOffset createdAt) => new(
         new UserProfile("Local User", Currency, createdAt),
         "Local User",
