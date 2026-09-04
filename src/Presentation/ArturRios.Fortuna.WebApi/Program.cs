@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
 using ArturRios.Fortuna.Command.Output;
+using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
@@ -73,6 +74,7 @@ try
         options.Locale));
     builder.Services.AddScoped<ILocalAccountStore, EfLocalAccountStore>();
     builder.Services.AddSingleton<ILocalCredentialStoreAvailability, LocalCredentialStoreAvailability>();
+    builder.Services.AddSingleton<ILocalRecoveryCodeGenerator, LocalRecoveryCodeGenerator>();
     builder.Services.AddScoped<CommandMediator>();
     builder.Services.AddScoped<IValidator<CreateLocalAccountCommand>, CreateLocalAccountCommandValidator>();
     builder.Services.AddScoped<ICommandHandlerAsync<CreateLocalAccountCommand, CreateLocalAccountCommandOutput>,
@@ -82,6 +84,8 @@ try
     builder.Services.AddScoped<IValidator<RecoverLocalAccountCommand>, RecoverLocalAccountCommandValidator>();
     builder.Services.AddScoped<ICommandHandlerAsync<RecoverLocalAccountCommand,
         RecoverLocalAccountCommandOutput>, RecoverLocalAccountCommandHandler>();
+    builder.Services.AddScoped<ICommandHandlerAsync<RegenerateLocalAccountRecoveryCodesCommand,
+        RegenerateLocalAccountRecoveryCodesCommandOutput>, RegenerateLocalAccountRecoveryCodesCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

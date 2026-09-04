@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
@@ -7,7 +5,6 @@ using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
 using ArturRios.Util.Hashing;
-using ArturRios.Util.Random;
 using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
@@ -16,12 +13,11 @@ public sealed class CreateLocalAccountCommandHandler(
     IValidator<CreateLocalAccountCommand> validator,
     ILocalAccountStore accounts,
     ILocalCredentialStoreAvailability credentialStore,
+    ILocalRecoveryCodeGenerator recoveryCodeGenerator,
     LocalAccountOptions options,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<CreateLocalAccountCommand, CreateLocalAccountCommandOutput>
 {
-    private const int RecoveryCodeSegmentLength = 4;
-
     public async Task<DataOutput<CreateLocalAccountCommandOutput?>> HandleAsync(
         CreateLocalAccountCommand command)
     {
@@ -48,14 +44,14 @@ public sealed class CreateLocalAccountCommandHandler(
         }
 
         var secretHash = Hash.EncodeWithRandomSalt(command.Secret, out var salt);
-        var recoveryCodes = GenerateRecoveryCodes(options.RecoveryCodeCount);
+        var recoveryCodes = recoveryCodeGenerator.Generate(options.RecoveryCodeCount);
         var creation = await accounts.CreateAsync(
             new LocalAccountCreation(
                 command.DisplayName,
                 secretHash,
                 salt,
                 command.StorageMode,
-                recoveryCodes.Select(HashRecoveryCode).ToArray(),
+                recoveryCodes.Select(code => code.Hash).ToArray(),
                 timeProvider.GetUtcNow()),
             CancellationToken.None);
 
@@ -73,34 +69,11 @@ public sealed class CreateLocalAccountCommandHandler(
                 UserId = account.UserId,
                 DisplayName = account.DisplayName,
                 StorageMode = account.StorageMode,
-                RecoveryCodes = recoveryCodes,
+                RecoveryCodes = recoveryCodes.Select(code => code.Value).ToArray(),
                 RecoveryWarning = LocalAccountMessages.RecoveryWarning,
                 CreatedAt = account.CreatedAt
             })
             .WithMessage(LocalAccountMessages.CreatedSuccessfully);
     }
 
-    private static IReadOnlyCollection<string> GenerateRecoveryCodes(int count)
-    {
-        var codes = new HashSet<string>(StringComparer.Ordinal);
-        while (codes.Count < count)
-        {
-            var raw = CustomRandom.Text(new RandomStringOptions
-            {
-                Length = RecoveryCodeSegmentLength * 2,
-                IncludeDigits = true,
-                IncludeUppercase = true,
-                IncludeLowercase = false,
-                IncludeSpecialCharacters = false
-            });
-            codes.Add($"{raw[..RecoveryCodeSegmentLength]}-{raw[RecoveryCodeSegmentLength..]}");
-        }
-
-        return [.. codes];
-    }
-
-    // Recovery codes are random high-entropy values and the schema intentionally has no per-code
-    // salt. Match Heimdall's recovery-code pattern: persist only a one-way SHA-256 digest.
-    private static byte[] HashRecoveryCode(string recoveryCode) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(recoveryCode));
 }

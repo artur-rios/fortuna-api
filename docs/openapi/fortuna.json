@@ -250,6 +250,64 @@
         },
         "type": "object"
       },
+      "RegenerateLocalAccountRecoveryCodesCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "secret": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RegenerateLocalAccountRecoveryCodesCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "recoveryCodes": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "recoveryWarning": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RegenerateLocalAccountRecoveryCodesCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UserProfileOutput": {
         "additionalProperties": false,
         "properties": {
@@ -488,6 +546,54 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecoverLocalAccountCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "LocalAccounts"
+        ]
+      }
+    },
+    "/api/local-accounts/recovery-codes/regenerate": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutputDataOutput"
                 }
               }
             },

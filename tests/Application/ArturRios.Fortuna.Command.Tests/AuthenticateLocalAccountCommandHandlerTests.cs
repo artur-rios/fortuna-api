@@ -95,12 +95,20 @@ public sealed class AuthenticateLocalAccountCommandHandlerTests
             string name,
             CancellationToken cancellationToken) => Task.FromResult(credentials);
 
+        public Task<LocalAccountCredentialSnapshot?> FindForAuthenticationByUserIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public Task<LocalAccountCreationResult> CreateAsync(
             LocalAccountCreation creation,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<LocalAccountRecoveryResult> RecoverAsync(
             LocalAccountRecovery recovery,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> RegenerateRecoveryCodesAsync(
+            LocalAccountRecoveryCodeRegeneration regeneration,
             CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
