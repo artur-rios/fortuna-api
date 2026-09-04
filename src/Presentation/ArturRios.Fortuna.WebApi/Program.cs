@@ -26,6 +26,7 @@ using ArturRios.Fortuna.WebApi.Services;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
+using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Jwt;
 using ArturRios.Mediator.Command;
 using ArturRios.Mediator.Command.Interfaces;
@@ -58,7 +59,11 @@ try
         postgres => postgres.MigrationsHistoryTable("__ef_migrations_history", AppDbContext.Schema)));
     builder.Services.AddScoped<DatabaseSeeder>();
     builder.Services.AddScoped<ICurrencyReader, EfCurrencyReader>();
-    builder.Services.AddScoped<IExchangeRateStore, EfExchangeRateStore>();
+    builder.Services.AddScoped<EfExchangeRateStore>();
+    builder.Services.AddScoped<IExchangeRateStore>(provider =>
+        provider.GetRequiredService<EfExchangeRateStore>());
+    builder.Services.AddScoped<IExchangeRateReader>(provider =>
+        provider.GetRequiredService<EfExchangeRateStore>());
     builder.Services.AddScoped<IAuditEntryStore, EfAuditEntryStore>();
     builder.Services.AddScoped<IAuditEntryWriter, AuditEntryWriter>();
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
@@ -118,6 +123,9 @@ try
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,
         GetCurrencyByCodeQueryHandler>();
+    builder.Services.AddScoped<IValidator<ConvertFigureQuery>, ConvertFigureQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<ConvertFigureQuery, ConvertFigureQueryOutput>,
+        ConvertFigureQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();

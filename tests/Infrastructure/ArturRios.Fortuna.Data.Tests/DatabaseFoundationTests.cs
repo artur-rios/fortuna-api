@@ -213,6 +213,82 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
             .SingleAsync());
     }
 
+    [FunctionalFact]
+    public async Task GivenManualAndPublishedRateOnSameDate_WhenRead_ThenManualRateTakesPrecedence()
+    {
+        await using var context = CreateContext();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        var currencies = await context.Currencies
+            .Where(currency => currency.Code == "USD" || currency.Code == "EUR")
+            .ToDictionaryAsync(currency => currency.Code);
+        var date = new DateOnly(2030, 1, 1);
+        context.ExchangeRates.AddRange(
+            new ExchangeRate(currencies["USD"].Id, currencies["EUR"].Id, 0.8m, date, ExchangeRateSource.Published),
+            new ExchangeRate(currencies["USD"].Id, currencies["EUR"].Id, 0.9m, date, ExchangeRateSource.Manual));
+        await context.SaveChangesAsync();
+        var store = new EfExchangeRateStore(context);
+
+        var rate = await store.FindApplicableAsync("USD", "EUR", date, CancellationToken.None);
+
+        Assert.NotNull(rate);
+        Assert.Equal(0.9m, rate.Rate);
+        Assert.Equal(date, rate.RateDate);
+        Assert.Equal(ExchangeRateSource.Manual, rate.Source);
+    }
+
+    [FunctionalFact]
+    public async Task GivenNoRateOnFigureDate_WhenRead_ThenLatestPriorRateIsReturned()
+    {
+        await using var context = CreateContext();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        var currencies = await context.Currencies
+            .Where(currency => currency.Code == "EUR" || currency.Code == "JPY")
+            .ToDictionaryAsync(currency => currency.Code);
+        var olderDate = new DateOnly(2029, 12, 1);
+        var latestPriorDate = new DateOnly(2030, 1, 2);
+        context.ExchangeRates.AddRange(
+            new ExchangeRate(currencies["EUR"].Id, currencies["JPY"].Id, 150m, olderDate, ExchangeRateSource.Published),
+            new ExchangeRate(currencies["EUR"].Id, currencies["JPY"].Id, 160m, latestPriorDate, ExchangeRateSource.Published));
+        await context.SaveChangesAsync();
+        var store = new EfExchangeRateStore(context);
+
+        var rate = await store.FindApplicableAsync(
+            "EUR",
+            "JPY",
+            latestPriorDate.AddDays(3),
+            CancellationToken.None);
+
+        Assert.NotNull(rate);
+        Assert.Equal(160m, rate.Rate);
+        Assert.Equal(latestPriorDate, rate.RateDate);
+    }
+
+    [FunctionalFact]
+    public async Task GivenOnlyFutureRate_WhenRead_ThenNoApplicableRateIsReturned()
+    {
+        await using var context = CreateContext();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        var currencies = await context.Currencies
+            .Where(currency => currency.Code == "GBP" || currency.Code == "CAD")
+            .ToDictionaryAsync(currency => currency.Code);
+        context.ExchangeRates.Add(new ExchangeRate(
+            currencies["GBP"].Id,
+            currencies["CAD"].Id,
+            1.8m,
+            new DateOnly(2031, 1, 1),
+            ExchangeRateSource.Published));
+        await context.SaveChangesAsync();
+        var store = new EfExchangeRateStore(context);
+
+        var rate = await store.FindApplicableAsync(
+            "GBP",
+            "CAD",
+            new DateOnly(2030, 12, 31),
+            CancellationToken.None);
+
+        Assert.Null(rate);
+    }
+
     [FunctionalTheory]
     [InlineData("update fortuna.audit_entry set operation = operation")]
     [InlineData("delete from fortuna.audit_entry where false")]
