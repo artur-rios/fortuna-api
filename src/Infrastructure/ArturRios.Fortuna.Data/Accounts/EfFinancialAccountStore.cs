@@ -73,6 +73,56 @@ public sealed class EfFinancialAccountStore(AppDbContext context)
         return new FinancialAccountCreationResult(Snapshot(account), DuplicateName: false);
     }
 
+    public async Task<FinancialAccountBalanceSnapshot?> CalculateBalanceAsync(
+        Guid userId,
+        Guid id,
+        DateOnly asOf,
+        CancellationToken cancellationToken)
+    {
+        var account = await context.FinancialAccounts
+            .AsNoTracking()
+            .Where(item =>
+                item.User.PublicId == userId &&
+                item.PublicId == id &&
+                !item.IsDeleted)
+            .Select(item => new
+            {
+                item.Id,
+                item.UserId,
+                item.PublicId,
+                CurrencyCode = item.Currency.Code,
+                item.OpeningBalance,
+                item.CreatedAt
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (account is null)
+        {
+            return null;
+        }
+
+        var openedOn = DateOnly.FromDateTime(account.CreatedAt.UtcDateTime);
+        var movement = asOf < openedOn
+            ? 0m
+            : await context.FinancialTransactions
+                .AsNoTracking()
+                .Where(transaction =>
+                    transaction.FinancialAccountId == account.Id &&
+                    transaction.UserId == account.UserId &&
+                    !transaction.IsDeleted &&
+                    transaction.OccurredOn <= asOf)
+                .Select(transaction => (decimal?)(transaction.Direction ==
+                    Domain.Transactions.TransactionDirection.Earning
+                        ? transaction.Amount
+                        : -transaction.Amount))
+                .SumAsync(cancellationToken) ?? 0m;
+
+        return new FinancialAccountBalanceSnapshot(
+            account.PublicId,
+            account.CurrencyCode,
+            account.OpeningBalance + movement,
+            asOf);
+    }
+
     public async Task<FinancialAccountUpdateResult> UpdateAsync(
         FinancialAccountUpdate update,
         CancellationToken cancellationToken)

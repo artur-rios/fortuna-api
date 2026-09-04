@@ -6,6 +6,7 @@ public static class FinancialAccountMessages
     public const string RetrievedSuccessfully = "Financial account retrieved successfully.";
     public const string ListedSuccessfully = "Financial accounts retrieved successfully.";
     public const string UpdatedSuccessfully = "Financial account updated successfully.";
+    public const string BalanceRetrievedSuccessfully = "Financial account balance retrieved successfully.";
     public const string NotFound = "Financial account not found.";
     public const string DuplicateName = "A live financial account already uses this name.";
     public const string ProfileNotFound = "The acting user's profile was not found.";

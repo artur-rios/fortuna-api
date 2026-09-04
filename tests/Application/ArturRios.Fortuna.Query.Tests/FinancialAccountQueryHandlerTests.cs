@@ -346,6 +346,12 @@ public sealed class FinancialAccountQueryHandlerTests
             return Task.FromResult(account is null ? null : Snapshot(account));
         }
 
+        public Task<FinancialAccountBalanceSnapshot?> CalculateBalanceAsync(
+            Guid userId,
+            Guid id,
+            DateOnly asOf,
+            CancellationToken cancellationToken) => Task.FromResult<FinancialAccountBalanceSnapshot?>(null);
+
         private static FinancialAccountSnapshot Snapshot(FinancialAccount account) => new(
             account.PublicId,
             account.User.PublicId,
