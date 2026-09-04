@@ -556,6 +556,91 @@
         },
         "type": "object"
       },
+      "CreateInvestmentCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "institution": {
+            "nullable": true,
+            "type": "string"
+          },
+          "instrument": {
+            "nullable": true,
+            "type": "string"
+          },
+          "investmentType": {
+            "$ref": "#/components/schemas/InvestmentType"
+          }
+        },
+        "type": "object"
+      },
+      "CreateInvestmentCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "institution": {
+            "nullable": true,
+            "type": "string"
+          },
+          "instrument": {
+            "nullable": true,
+            "type": "string"
+          },
+          "investmentType": {
+            "$ref": "#/components/schemas/InvestmentType"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateInvestmentCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CreateInvestmentCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "CreateLocalAccountCommand": {
         "additionalProperties": false,
         "properties": {
@@ -1345,6 +1430,16 @@
         "type": "object"
       },
       "FinancialAccountType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "InvestmentType": {
         "enum": [
           1,
           2,
@@ -3373,6 +3468,54 @@
         ]
       }
     },
+    "/api/investments": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvestmentCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvestmentCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvestmentCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateInvestmentCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateInvestmentCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateInvestmentCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Investments"
+        ]
+      }
+    },
     "/api/local-accounts": {
       "post": {
         "requestBody": {
@@ -3844,6 +3987,9 @@
     },
     {
       "name": "HealthCheck"
+    },
+    {
+      "name": "Investments"
     },
     {
       "name": "LocalAccounts"

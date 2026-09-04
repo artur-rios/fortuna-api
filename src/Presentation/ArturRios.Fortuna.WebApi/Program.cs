@@ -6,6 +6,7 @@ using ArturRios.Fortuna.Data.Auditing;
 using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
+using ArturRios.Fortuna.Data.Investments;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Data.Transactions;
@@ -19,6 +20,7 @@ using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Rates;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Cards;
@@ -103,6 +105,7 @@ try
     builder.Services.AddScoped<ICreditCardStatementSettlementStore>(provider =>
         provider.GetRequiredService<EfCreditCardStatementStore>());
     builder.Services.AddScoped<ICardChargeStore, EfCardChargeStore>();
+    builder.Services.AddScoped<IInvestmentStore, EfInvestmentStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
@@ -189,6 +192,10 @@ try
         SettleCreditCardStatementCommandValidator>();
     builder.Services.AddAuditedCommandHandler<SettleCreditCardStatementCommand,
         SettleCreditCardStatementCommandOutput, SettleCreditCardStatementCommandHandler>();
+    builder.Services.AddScoped<IValidator<CreateInvestmentCommand>,
+        CreateInvestmentCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<CreateInvestmentCommand,
+        CreateInvestmentCommandOutput, CreateInvestmentCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

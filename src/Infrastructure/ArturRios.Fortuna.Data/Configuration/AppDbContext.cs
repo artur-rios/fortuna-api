@@ -3,6 +3,7 @@ using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Jobs;
+using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +30,7 @@ public sealed class AppDbContext(
     public DbSet<Transfer> Transfers => Set<Transfer>();
     public DbSet<CreditCard> CreditCards => Set<CreditCard>();
     public DbSet<CreditCardStatement> CreditCardStatements => Set<CreditCardStatement>();
+    public DbSet<Investment> Investments => Set<Investment>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
