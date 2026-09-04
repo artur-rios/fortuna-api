@@ -1138,6 +1138,108 @@
         },
         "type": "object"
       },
+      "RecordCardChargeCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "creditCardId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordCardChargeCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "creditCardId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isLateArriving": {
+            "type": "boolean"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "statementClosingDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "statementDueDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "statementId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "statementPeriodEnd": {
+            "format": "date",
+            "type": "string"
+          },
+          "statementPeriodStart": {
+            "format": "date",
+            "type": "string"
+          },
+          "statementPurchaseTotal": {
+            "format": "double",
+            "type": "number"
+          },
+          "statementStatus": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordCardChargeCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecordCardChargeCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RecordManualExchangeRateCommand": {
         "additionalProperties": false,
         "properties": {
@@ -2999,6 +3101,54 @@
         ]
       }
     },
+    "/api/transactions": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCardChargeCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCardChargeCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCardChargeCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCardChargeCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCardChargeCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCardChargeCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
     "/healthcheck": {
       "get": {
         "responses": {
@@ -3039,6 +3189,9 @@
     },
     {
       "name": "Me"
+    },
+    {
+      "name": "Transactions"
     }
   ]
 }

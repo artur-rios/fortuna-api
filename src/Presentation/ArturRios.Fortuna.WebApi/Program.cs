@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Auditing;
 using ArturRios.Fortuna.Command.Input;
@@ -22,6 +23,7 @@ using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Currencies;
+using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Pagination;
@@ -93,6 +95,7 @@ try
         provider.GetRequiredService<EfCreditCardStore>());
     builder.Services.AddScoped<ICreditCardLifecycleStore>(provider =>
         provider.GetRequiredService<EfCreditCardStore>());
+    builder.Services.AddScoped<ICardChargeStore, EfCardChargeStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
@@ -170,6 +173,9 @@ try
         CreditCardLifecycleCommandOutput, RestoreCreditCardCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteCreditCardCommand,
         CreditCardLifecycleCommandOutput, HardDeleteCreditCardCommandHandler>();
+    builder.Services.AddScoped<IValidator<RecordCardChargeCommand>, RecordCardChargeCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<RecordCardChargeCommand,
+        RecordCardChargeCommandOutput, RecordCardChargeCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();
