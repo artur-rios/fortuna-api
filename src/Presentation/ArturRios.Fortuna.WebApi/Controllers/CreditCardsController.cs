@@ -44,6 +44,7 @@ public sealed class CreditCardsController(
             [CreditCardMessages.CurrencyRequired] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.CurrencyInvalid] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest,
+            [CreditCardMessages.CurrencyImmutable] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.CreditLimitPositive] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.CreditLimitPrecisionInvalid] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.ClosingDayInvalid] = StatusCodes.Status400BadRequest,
@@ -62,6 +63,20 @@ public sealed class CreditCardsController(
         var result = await commandMediator.ExecuteCommandAsync<
             CreateCreditCardCommand,
             CreateCreditCardCommandOutput>(command);
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPut("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<UpdateCreditCardCommandOutput?>>> Update(
+        Guid id,
+        [FromBody] UpdateCreditCardCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            UpdateCreditCardCommand,
+            UpdateCreditCardCommandOutput>(command);
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

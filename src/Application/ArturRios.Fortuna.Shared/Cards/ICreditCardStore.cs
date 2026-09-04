@@ -17,6 +17,13 @@ public interface ICreditCardReader
         CancellationToken cancellationToken);
 }
 
+public interface ICreditCardUpdater
+{
+    Task<CreditCardUpdateResult> UpdateAsync(
+        CreditCardUpdate update,
+        CancellationToken cancellationToken);
+}
+
 public sealed record CreditCardCreation(
     Guid UserId,
     string Name,
@@ -29,6 +36,20 @@ public sealed record CreditCardCreation(
     DateTimeOffset CreatedAt);
 
 public sealed record CreditCardCreationResult(
+    CreditCardSnapshot? Card,
+    bool DuplicateName);
+
+public sealed record CreditCardUpdate(
+    Guid UserId,
+    Guid Id,
+    string Name,
+    string Issuer,
+    decimal CreditLimit,
+    short ClosingDay,
+    short DueDay,
+    DateTimeOffset UpdatedAt);
+
+public sealed record CreditCardUpdateResult(
     CreditCardSnapshot? Card,
     bool DuplicateName);
 
