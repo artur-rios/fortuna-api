@@ -78,6 +78,8 @@ try
         provider.GetRequiredService<EfFinancialAccountStore>());
     builder.Services.AddScoped<IFinancialAccountReader>(provider =>
         provider.GetRequiredService<EfFinancialAccountStore>());
+    builder.Services.AddScoped<IFinancialAccountUpdater>(provider =>
+        provider.GetRequiredService<EfFinancialAccountStore>());
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
@@ -133,6 +135,10 @@ try
         CreateFinancialAccountCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateFinancialAccountCommand,
         CreateFinancialAccountCommandOutput, CreateFinancialAccountCommandHandler>();
+    builder.Services.AddScoped<IValidator<UpdateFinancialAccountCommand>,
+        UpdateFinancialAccountCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<UpdateFinancialAccountCommand,
+        UpdateFinancialAccountCommandOutput, UpdateFinancialAccountCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

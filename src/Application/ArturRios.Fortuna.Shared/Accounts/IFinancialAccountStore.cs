@@ -20,6 +20,13 @@ public interface IFinancialAccountReader
         CancellationToken cancellationToken);
 }
 
+public interface IFinancialAccountUpdater
+{
+    Task<FinancialAccountUpdateResult> UpdateAsync(
+        FinancialAccountUpdate update,
+        CancellationToken cancellationToken);
+}
+
 public sealed record FinancialAccountCreation(
     Guid UserId,
     string Name,
@@ -30,6 +37,18 @@ public sealed record FinancialAccountCreation(
     DateTimeOffset CreatedAt);
 
 public sealed record FinancialAccountCreationResult(
+    FinancialAccountSnapshot? Account,
+    bool DuplicateName);
+
+public sealed record FinancialAccountUpdate(
+    Guid UserId,
+    Guid Id,
+    string Name,
+    string? Institution,
+    FinancialAccountType AccountType,
+    DateTimeOffset UpdatedAt);
+
+public sealed record FinancialAccountUpdateResult(
     FinancialAccountSnapshot? Account,
     bool DuplicateName);
 

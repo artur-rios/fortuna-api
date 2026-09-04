@@ -7,7 +7,8 @@ using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Accounts;
 
-public sealed class EfFinancialAccountStore(AppDbContext context) : IFinancialAccountStore, IFinancialAccountReader
+public sealed class EfFinancialAccountStore(AppDbContext context)
+    : IFinancialAccountStore, IFinancialAccountReader, IFinancialAccountUpdater
 {
     public IQueryable<FinancialAccount> Query() => context.FinancialAccounts.AsNoTracking();
 
@@ -70,6 +71,47 @@ public sealed class EfFinancialAccountStore(AppDbContext context) : IFinancialAc
         }
 
         return new FinancialAccountCreationResult(Snapshot(account), DuplicateName: false);
+    }
+
+    public async Task<FinancialAccountUpdateResult> UpdateAsync(
+        FinancialAccountUpdate update,
+        CancellationToken cancellationToken)
+    {
+        var account = await context.FinancialAccounts
+            .Include(item => item.User)
+            .Include(item => item.Currency)
+            .SingleOrDefaultAsync(item =>
+                item.User.PublicId == update.UserId &&
+                item.PublicId == update.Id &&
+                !item.IsDeleted,
+                cancellationToken);
+        if (account is null)
+        {
+            return new FinancialAccountUpdateResult(null, DuplicateName: false);
+        }
+
+        account.UpdateDetails(
+            update.Name,
+            update.Institution,
+            update.AccountType,
+            update.UpdatedAt);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: FinancialAccountMap.LiveNameIndex
+            })
+        {
+            context.Entry(account).State = EntityState.Detached;
+            return new FinancialAccountUpdateResult(null, DuplicateName: true);
+        }
+
+        return new FinancialAccountUpdateResult(Snapshot(account), DuplicateName: false);
     }
 
     private static FinancialAccountSnapshot Snapshot(FinancialAccount account) => new(
