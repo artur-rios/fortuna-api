@@ -47,6 +47,9 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
             [FinancialAccountMessages.OwnerImmutable] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.CurrencyImmutable] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.OpeningBalanceImmutable] = StatusCodes.Status400BadRequest,
+            [FinancialAccountMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
+            [FinancialAccountMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
+            [FinancialAccountMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict,
             [FinancialAccountMessages.NotFound] = StatusCodes.Status404NotFound,
             [FinancialAccountMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
@@ -109,6 +112,39 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
                 Id = id,
                 AsOf = asOf
             });
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<FinancialAccountLifecycleCommandOutput?>>> Delete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            DeleteFinancialAccountCommand,
+            FinancialAccountLifecycleCommandOutput>(new DeleteFinancialAccountCommand { Id = id });
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/restore")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<FinancialAccountLifecycleCommandOutput?>>> Restore(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            RestoreFinancialAccountCommand,
+            FinancialAccountLifecycleCommandOutput>(new RestoreFinancialAccountCommand { Id = id });
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}/hard")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<FinancialAccountLifecycleCommandOutput?>>> HardDelete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            HardDeleteFinancialAccountCommand,
+            FinancialAccountLifecycleCommandOutput>(new HardDeleteFinancialAccountCommand { Id = id });
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

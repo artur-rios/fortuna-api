@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Accounts;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -8,7 +9,8 @@ using Npgsql;
 namespace ArturRios.Fortuna.Data.Accounts;
 
 public sealed class EfFinancialAccountStore(AppDbContext context)
-    : IFinancialAccountStore, IFinancialAccountReader, IFinancialAccountUpdater
+    : IFinancialAccountStore, IFinancialAccountReader, IFinancialAccountUpdater,
+        IFinancialAccountLifecycleStore
 {
     public IQueryable<FinancialAccount> Query() => context.FinancialAccounts.AsNoTracking();
 
@@ -163,6 +165,135 @@ public sealed class EfFinancialAccountStore(AppDbContext context)
 
         return new FinancialAccountUpdateResult(Snapshot(account), DuplicateName: false);
     }
+
+    public async Task<FinancialAccountLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        var account = await FindTrackedAsync(userId, id, cancellationToken);
+        if (account is null)
+        {
+            return LifecycleResult(FinancialAccountLifecycleOutcome.NotFound);
+        }
+
+        var deletion = account.SoftDelete(changedAt);
+        var transactions = await context.FinancialTransactions
+            .Where(item => item.FinancialAccountId == account.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var transaction in transactions)
+        {
+            transaction.SoftDeleteFromCascade(deletion.CascadeId, changedAt);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        return LifecycleResult(FinancialAccountLifecycleOutcome.Succeeded, account.PublicId);
+    }
+
+    public async Task<FinancialAccountLifecycleResult> RestoreAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        var account = await FindTrackedAsync(userId, id, cancellationToken);
+        if (account is null)
+        {
+            return LifecycleResult(FinancialAccountLifecycleOutcome.NotFound);
+        }
+
+        if (!account.IsDeleted)
+        {
+            return LifecycleResult(FinancialAccountLifecycleOutcome.RestoreRequiresSoftDeletion);
+        }
+
+        var transactions = await context.FinancialTransactions
+            .Where(item => item.FinancialAccountId == account.Id)
+            .ToListAsync(cancellationToken);
+        var cascadeId = account.Restore(changedAt);
+        foreach (var transaction in transactions)
+        {
+            transaction.RestoreFromCascade(cascadeId, changedAt);
+        }
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: FinancialAccountMap.LiveNameIndex
+            })
+        {
+            context.Entry(account).State = EntityState.Detached;
+            foreach (var transaction in transactions)
+            {
+                context.Entry(transaction).State = EntityState.Detached;
+            }
+
+            return LifecycleResult(FinancialAccountLifecycleOutcome.DuplicateName);
+        }
+
+        return LifecycleResult(FinancialAccountLifecycleOutcome.Succeeded, account.PublicId);
+    }
+
+    public async Task<FinancialAccountLifecycleResult> HardDeleteAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var account = await FindTrackedAsync(userId, id, cancellationToken);
+        if (account is null)
+        {
+            return LifecycleResult(FinancialAccountLifecycleOutcome.NotFound);
+        }
+
+        var transactions = await context.FinancialTransactions
+            .Where(item => item.FinancialAccountId == account.Id)
+            .ToListAsync(cancellationToken);
+        var liveReferences = transactions.Any(item => !item.IsDeleted)
+            ? new[] { "transactions" }
+            : [];
+        try
+        {
+            account.EnsureHardDeletionAllowed(liveReferences);
+        }
+        catch (RecordLifecycleConflictException exception)
+        {
+            return exception.Conflict switch
+            {
+                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion =>
+                    LifecycleResult(FinancialAccountLifecycleOutcome.HardDeleteRequiresSoftDeletion),
+                RecordLifecycleConflict.HardDeleteHasLiveReferences =>
+                    LifecycleResult(FinancialAccountLifecycleOutcome.HardDeleteHasLiveTransactions),
+                _ => throw new InvalidOperationException(
+                    "An unexpected lifecycle conflict prevented hard deletion.",
+                    exception)
+            };
+        }
+
+        context.FinancialTransactions.RemoveRange(transactions);
+        context.FinancialAccounts.Remove(account);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return LifecycleResult(FinancialAccountLifecycleOutcome.Succeeded, account.PublicId);
+    }
+
+    private Task<FinancialAccount?> FindTrackedAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken) => context.FinancialAccounts
+        .SingleOrDefaultAsync(item =>
+            item.User.PublicId == userId &&
+            item.PublicId == id,
+            cancellationToken);
+
+    private static FinancialAccountLifecycleResult LifecycleResult(
+        FinancialAccountLifecycleOutcome outcome,
+        Guid? id = null) => new(id, outcome);
 
     private static FinancialAccountSnapshot Snapshot(FinancialAccount account) => new(
         account.PublicId,
