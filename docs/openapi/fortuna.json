@@ -193,6 +193,14 @@
         },
         "type": "object"
       },
+      "ExchangeRateSource": {
+        "enum": [
+          1,
+          2
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
       "ListSupportedCurrenciesQueryOutput": {
         "additionalProperties": false,
         "properties": {
@@ -250,6 +258,90 @@
         "properties": {
           "data": {
             "nullable": true
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordManualExchangeRateCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "baseCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "quoteCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rate": {
+            "format": "double",
+            "type": "number"
+          },
+          "rateDate": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordManualExchangeRateCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "baseCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "quoteCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rate": {
+            "format": "double",
+            "type": "number"
+          },
+          "rateDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "replacedExisting": {
+            "type": "boolean"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          },
+          "takesPrecedence": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "RecordManualExchangeRateCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutput"
           },
           "errors": {
             "items": {
@@ -602,6 +694,54 @@
         },
         "tags": [
           "Currencies"
+        ]
+      }
+    },
+    "/api/exchange-rates": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordManualExchangeRateCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordManualExchangeRateCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordManualExchangeRateCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "ExchangeRates"
         ]
       }
     },

@@ -97,5 +97,9 @@ public sealed class ExchangeRateSyncJobHandlerTests
             Rates = rates;
             return Task.FromResult(new PublishedRateUpsertResult(rates.Count, 0));
         }
+
+        public Task<ManualRateUpsertResult> UpsertManualAsync(
+            ManualRateCandidate rate,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

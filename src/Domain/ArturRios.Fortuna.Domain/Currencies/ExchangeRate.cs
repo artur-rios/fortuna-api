@@ -60,4 +60,25 @@ public sealed class ExchangeRate
         Rate = rate;
         return true;
     }
+
+    public bool ReplaceManualRate(decimal rate)
+    {
+        if (Source != ExchangeRateSource.Manual)
+        {
+            throw new InvalidOperationException("Only a manual exchange rate can be replaced manually.");
+        }
+
+        if (rate <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rate), "An exchange rate must be positive.");
+        }
+
+        if (Rate == rate)
+        {
+            return false;
+        }
+
+        Rate = rate;
+        return true;
+    }
 }
