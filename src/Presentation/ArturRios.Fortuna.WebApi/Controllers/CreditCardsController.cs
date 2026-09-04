@@ -45,6 +45,9 @@ public sealed class CreditCardsController(
             [CreditCardMessages.CurrencyInvalid] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.CurrencyImmutable] = StatusCodes.Status400BadRequest,
+            [CreditCardMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
+            [CreditCardMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
+            [CreditCardMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict,
             [CreditCardMessages.CreditLimitPositive] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.CreditLimitPrecisionInvalid] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.ClosingDayInvalid] = StatusCodes.Status400BadRequest,
@@ -77,6 +80,39 @@ public sealed class CreditCardsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateCreditCardCommand,
             UpdateCreditCardCommandOutput>(command);
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<CreditCardLifecycleCommandOutput?>>> Delete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            DeleteCreditCardCommand,
+            CreditCardLifecycleCommandOutput>(new DeleteCreditCardCommand { Id = id });
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/restore")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<CreditCardLifecycleCommandOutput?>>> Restore(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            RestoreCreditCardCommand,
+            CreditCardLifecycleCommandOutput>(new RestoreCreditCardCommand { Id = id });
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}/hard")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<CreditCardLifecycleCommandOutput?>>> HardDelete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            HardDeleteCreditCardCommand,
+            CreditCardLifecycleCommandOutput>(new HardDeleteCreditCardCommand { Id = id });
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

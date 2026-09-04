@@ -24,6 +24,42 @@ public interface ICreditCardUpdater
         CancellationToken cancellationToken);
 }
 
+public interface ICreditCardLifecycleStore
+{
+    Task<CreditCardLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<CreditCardLifecycleResult> RestoreAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<CreditCardLifecycleResult> HardDeleteAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken);
+}
+
+public enum CreditCardLifecycleOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    RestoreRequiresSoftDeletion = 3,
+    HardDeleteRequiresSoftDeletion = 4,
+    HardDeleteHasLiveTransactions = 5,
+    DuplicateName = 6
+}
+
+public sealed record CreditCardLifecycleResult(
+    Guid? Id,
+    CreditCardLifecycleOutcome Outcome,
+    string? CurrencyCode = null,
+    decimal OutstandingAmount = 0m);
+
 public sealed record CreditCardCreation(
     Guid UserId,
     string Name,
