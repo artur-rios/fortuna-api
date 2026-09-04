@@ -112,6 +112,8 @@ public abstract class RecordLifecycleEntity
         }
     }
 
+    protected void MarkUpdated(DateTimeOffset updatedAt) => UpdatedAt = updatedAt;
+
     private void MarkDeleted(Guid cascadeId, DateTimeOffset deletedAt)
     {
         IsDeleted = true;

@@ -44,6 +44,9 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
             [FinancialAccountMessages.CurrencyInvalid] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.OpeningBalancePrecisionInvalid] = StatusCodes.Status400BadRequest,
+            [FinancialAccountMessages.OwnerImmutable] = StatusCodes.Status400BadRequest,
+            [FinancialAccountMessages.CurrencyImmutable] = StatusCodes.Status400BadRequest,
+            [FinancialAccountMessages.OpeningBalanceImmutable] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.NotFound] = StatusCodes.Status404NotFound,
             [FinancialAccountMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
@@ -58,6 +61,20 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
         var result = await commandMediator.ExecuteCommandAsync<
             CreateFinancialAccountCommand,
             CreateFinancialAccountCommandOutput>(command);
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPut("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<UpdateFinancialAccountCommandOutput?>>> Update(
+        Guid id,
+        [FromBody] UpdateFinancialAccountCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            UpdateFinancialAccountCommand,
+            UpdateFinancialAccountCommandOutput>(command);
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

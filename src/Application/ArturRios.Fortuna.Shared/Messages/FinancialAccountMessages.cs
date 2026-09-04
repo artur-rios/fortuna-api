@@ -5,6 +5,7 @@ public static class FinancialAccountMessages
     public const string CreatedSuccessfully = "Financial account created successfully.";
     public const string RetrievedSuccessfully = "Financial account retrieved successfully.";
     public const string ListedSuccessfully = "Financial accounts retrieved successfully.";
+    public const string UpdatedSuccessfully = "Financial account updated successfully.";
     public const string NotFound = "Financial account not found.";
     public const string DuplicateName = "A live financial account already uses this name.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
@@ -17,6 +18,10 @@ public static class FinancialAccountMessages
     public const string CurrencyNotSupported = "CurrencyCode is not supported.";
     public const string OpeningBalancePrecisionInvalid =
         "OpeningBalance must contain at most 15 whole and 4 decimal digits.";
+    public const string OwnerImmutable = "OwnerId cannot be changed after account creation.";
+    public const string CurrencyImmutable = "CurrencyCode cannot be changed after account creation.";
+    public const string OpeningBalanceImmutable =
+        "OpeningBalance cannot be changed after account creation.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SortByUnsupported =

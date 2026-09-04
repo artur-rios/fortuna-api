@@ -67,4 +67,36 @@ public sealed class FinancialAccount : RecordLifecycleEntity
     public long CurrencyId { get; private set; }
     public Currency Currency { get; private set; } = null!;
     public decimal OpeningBalance { get; private set; }
+
+    public void UpdateDetails(
+        string name,
+        string? institution,
+        FinancialAccountType accountType,
+        DateTimeOffset updatedAt)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
+        {
+            throw new ArgumentException(
+                "An account name between 1 and 200 characters is required.",
+                nameof(name));
+        }
+
+        if (institution?.Trim().Length > 200)
+        {
+            throw new ArgumentException(
+                "An institution cannot exceed 200 characters.",
+                nameof(institution));
+        }
+
+        if (!Enum.IsDefined(accountType))
+        {
+            throw new ArgumentOutOfRangeException(nameof(accountType));
+        }
+
+        Name = name.Trim();
+        NormalizedName = Name.ToUpperInvariant();
+        Institution = string.IsNullOrWhiteSpace(institution) ? null : institution.Trim();
+        AccountType = accountType;
+        MarkUpdated(updatedAt);
+    }
 }
