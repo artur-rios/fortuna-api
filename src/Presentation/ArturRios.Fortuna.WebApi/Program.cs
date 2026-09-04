@@ -3,6 +3,7 @@ using Amazon.S3;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Accounts;
 using ArturRios.Fortuna.Data.Auditing;
+using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Users;
@@ -19,6 +20,7 @@ using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Auditing;
+using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
@@ -82,6 +84,7 @@ try
         provider.GetRequiredService<EfFinancialAccountStore>());
     builder.Services.AddScoped<IFinancialAccountLifecycleStore>(provider =>
         provider.GetRequiredService<EfFinancialAccountStore>());
+    builder.Services.AddScoped<ICreditCardStore, EfCreditCardStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
@@ -147,6 +150,9 @@ try
         FinancialAccountLifecycleCommandOutput, RestoreFinancialAccountCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteFinancialAccountCommand,
         FinancialAccountLifecycleCommandOutput, HardDeleteFinancialAccountCommandHandler>();
+    builder.Services.AddScoped<IValidator<CreateCreditCardCommand>, CreateCreditCardCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<CreateCreditCardCommand,
+        CreateCreditCardCommandOutput, CreateCreditCardCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();
