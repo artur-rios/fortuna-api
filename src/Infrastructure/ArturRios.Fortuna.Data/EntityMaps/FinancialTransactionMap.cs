@@ -17,6 +17,12 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
                 "ck_financial_transaction_amount",
                 "amount > 0");
             table.HasCheckConstraint(
+                "ck_financial_transaction_foreign_currency",
+                "(original_amount IS NULL AND original_currency_id IS NULL AND " +
+                "applied_rate IS NULL AND rate_date IS NULL) OR " +
+                "(original_amount > 0 AND original_currency_id IS NOT NULL AND " +
+                "applied_rate > 0 AND rate_date IS NOT NULL)");
+            table.HasCheckConstraint(
                 "ck_financial_transaction_target",
                 "(financial_account_id IS NOT NULL AND credit_card_id IS NULL) OR " +
                 "(financial_account_id IS NULL AND credit_card_id IS NOT NULL)");
@@ -33,6 +39,10 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.Property(transaction => transaction.StatementId);
         builder.Property(transaction => transaction.Direction).IsRequired();
         builder.Property(transaction => transaction.Amount).HasPrecision(19, 4).IsRequired();
+        builder.Property(transaction => transaction.OriginalAmount).HasPrecision(19, 4);
+        builder.Property(transaction => transaction.OriginalCurrencyId);
+        builder.Property(transaction => transaction.AppliedRate).HasPrecision(19, 8);
+        builder.Property(transaction => transaction.RateDate);
         builder.Property(transaction => transaction.OccurredOn).IsRequired();
         builder.Property(transaction => transaction.IsLateArriving).HasDefaultValue(false).IsRequired();
         builder.Property(transaction => transaction.IsDeleted).HasDefaultValue(false).IsRequired();
@@ -68,6 +78,10 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.HasOne(transaction => transaction.Statement)
             .WithMany()
             .HasForeignKey(transaction => transaction.StatementId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(transaction => transaction.OriginalCurrency)
+            .WithMany()
+            .HasForeignKey(transaction => transaction.OriginalCurrencyId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -95,7 +95,11 @@ try
         provider.GetRequiredService<EfCreditCardStore>());
     builder.Services.AddScoped<ICreditCardLifecycleStore>(provider =>
         provider.GetRequiredService<EfCreditCardStore>());
-    builder.Services.AddScoped<ICreditCardStatementCloser, EfCreditCardStatementStore>();
+    builder.Services.AddScoped<EfCreditCardStatementStore>();
+    builder.Services.AddScoped<ICreditCardStatementCloser>(provider =>
+        provider.GetRequiredService<EfCreditCardStatementStore>());
+    builder.Services.AddScoped<ICreditCardStatementReader>(provider =>
+        provider.GetRequiredService<EfCreditCardStatementStore>());
     builder.Services.AddScoped<ICardChargeStore, EfCardChargeStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
@@ -204,6 +208,12 @@ try
     builder.Services.AddScoped<IValidator<ListCreditCardsQuery>, ListCreditCardsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListCreditCardsQuery, CreditCardOutput>,
         ListCreditCardsQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetCreditCardStatementByIdQuery,
+        CreditCardStatementOutput>, GetCreditCardStatementByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListCreditCardStatementsQuery>,
+        ListCreditCardStatementsQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListCreditCardStatementsQuery,
+        CreditCardStatementOutput>, ListCreditCardStatementsQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();

@@ -127,6 +127,79 @@ public sealed class FinancialTransactionTests
         Assert.Equal("direction", exception.ParamName);
     }
 
+    [UnitFact]
+    public void GivenForeignCurrencyCharge_WhenDetailsRecorded_ThenConversionIsRetained()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Card(user),
+            TransactionDirection.Expense,
+            125.50m,
+            new DateOnly(2026, 9, 4),
+            Now);
+        var usd = new Currency("USD", "US dollar", 2);
+        var rateDate = new DateOnly(2026, 9, 3);
+
+        transaction.RecordForeignCurrencyDetails(25m, usd, 5.02m, rateDate, Now.AddMinutes(1));
+
+        Assert.Equal(25m, transaction.OriginalAmount);
+        Assert.Equal(usd, transaction.OriginalCurrency);
+        Assert.Equal(5.02m, transaction.AppliedRate);
+        Assert.Equal(rateDate, transaction.RateDate);
+        Assert.Equal(Now.AddMinutes(1), transaction.UpdatedAt);
+    }
+
+    [UnitFact]
+    public void GivenBilledCurrencyAsOriginal_WhenDetailsRecorded_ThenItIsRejected()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Card(user),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now);
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            transaction.RecordForeignCurrencyDetails(
+                10m,
+                Currency(),
+                1m,
+                new DateOnly(2026, 9, 4),
+                Now));
+
+        Assert.Equal("originalCurrency", exception.ParamName);
+    }
+
+    [UnitTheory]
+    [InlineData(0, 1)]
+    [InlineData(-1, 1)]
+    [InlineData(1, 0)]
+    [InlineData(1, -1)]
+    public void GivenNonPositiveConversionFigure_WhenDetailsRecorded_ThenItIsRejected(
+        decimal originalAmount,
+        decimal appliedRate)
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Card(user),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            transaction.RecordForeignCurrencyDetails(
+                originalAmount,
+                new Currency("USD", "US dollar", 2),
+                appliedRate,
+                new DateOnly(2026, 9, 4),
+                Now));
+    }
+
     private static UserProfile User() => new(
         Guid.NewGuid(),
         "Account Owner",

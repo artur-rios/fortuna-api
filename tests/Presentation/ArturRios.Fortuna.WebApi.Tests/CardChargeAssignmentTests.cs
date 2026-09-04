@@ -338,6 +338,158 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         Assert.Equal("Closed", result?.Data?.Status);
     }
 
+    [FunctionalFact]
+    public async Task GivenLiveDeletedLateAndForeignCharges_WhenStatementRead_ThenInvoiceIsComplete()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Invoice", 20, 5);
+        var live = await RecordAsync(client, card.Id, 100m, new DateOnly(2026, 9, 10));
+        var foreign = await RecordAsync(client, card.Id, 50m, new DateOnly(2026, 9, 11));
+        var deleted = await RecordAsync(client, card.Id, 25m, new DateOnly(2026, 9, 12));
+        await using (var context = CreateContext())
+        {
+            var statement = await context.CreditCardStatements
+                .Include(item => item.CreditCard)
+                .SingleAsync(item => item.PublicId == live.StatementId);
+            var foreignTransaction = await context.FinancialTransactions
+                .Include(item => item.CreditCard)
+                .ThenInclude(item => item!.Currency)
+                .SingleAsync(item => item.PublicId == foreign.Id);
+            var deletedTransaction = await context.FinancialTransactions
+                .SingleAsync(item => item.PublicId == deleted.Id);
+            var usd = await context.Currencies.SingleAsync(item => item.Code == "USD");
+            foreignTransaction.AssignToStatement(statement, true, DateTimeOffset.UtcNow);
+            foreignTransaction.RecordForeignCurrencyDetails(
+                10m,
+                usd,
+                5m,
+                new DateOnly(2026, 9, 10),
+                DateTimeOffset.UtcNow);
+            deletedTransaction.SoftDelete(DateTimeOffset.UtcNow);
+            await context.SaveChangesAsync();
+        }
+
+        var response = await client.GetAsync($"/api/statements/{live.StatementId}");
+        var result = await response.Content.ReadFromJsonAsync<StatementReadEnvelope>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(card.Id, result?.Data?.CreditCardId);
+        Assert.Equal("BRL", result?.Data?.CurrencyCode);
+        Assert.Equal(150m, result?.Data?.PurchaseTotal);
+        Assert.Equal(150m, result?.Data?.AmountDue);
+        Assert.Equal(2, result?.Data?.Transactions.Count);
+        var foreignCharge = result!.Data!.Transactions.Single(item => item.Id == foreign.Id);
+        Assert.True(foreignCharge.IsLateArriving);
+        Assert.Equal(10m, foreignCharge.OriginalAmount);
+        Assert.Equal("USD", foreignCharge.OriginalCurrencyCode);
+        Assert.Equal(5m, foreignCharge.AppliedRate);
+        Assert.Equal(new DateOnly(2026, 9, 10), foreignCharge.RateDate);
+        Assert.DoesNotContain(result.Data.Transactions, item => item.Id == deleted.Id);
+        Assert.Contains(CreditCardStatementMessages.RetrievedSuccessfully, result.Messages);
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignStatementOrCard_WhenViewed_ThenNotFoundIsReturned()
+    {
+        await using var factory = CreateFactory();
+        using var owner = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(owner, "Private statement", 20, 5);
+        var charge = await RecordAsync(owner, card.Id, 10m, new DateOnly(2026, 9, 10));
+        using var other = factory.CreateClient();
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+
+        var detail = await other.GetAsync($"/api/statements/{charge.StatementId}");
+        var list = await other.GetAsync($"/api/credit-cards/{card.Id}/statements");
+
+        Assert.Equal(HttpStatusCode.NotFound, detail.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, list.StatusCode);
+        Assert.Contains(CreditCardStatementMessages.NotFound,
+            await detail.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+        Assert.Contains(CreditCardStatementMessages.CreditCardNotFound,
+            await list.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenFilteredStatements_WhenListed_ThenTheyAreSortedAndPaginated()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Statement history", 20, 5);
+        var august = await RecordAsync(client, card.Id, 10m, new DateOnly(2026, 8, 10));
+        var september = await RecordAsync(client, card.Id, 30m, new DateOnly(2026, 9, 10));
+        await RecordAsync(client, card.Id, 50m, new DateOnly(2026, 10, 10));
+        (await client.PostAsync($"/api/statements/{august.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+        (await client.PostAsync($"/api/statements/{september.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+
+        var response = await client.GetAsync(
+            $"/api/credit-cards/{card.Id}/statements?Status=Closed" +
+            "&From=2026-07-01&To=2026-09-20&SortBy=AmountDue" +
+            "&Descending=true&PageNumber=1&PageSize=1");
+        var page = await response.Content.ReadFromJsonAsync<StatementReadPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, page?.TotalItems);
+        Assert.Equal(1, page?.PageSize);
+        Assert.Equal(30m, Assert.Single(page!.Data).AmountDue);
+        Assert.Contains(CreditCardStatementMessages.ListedSuccessfully, page.Messages);
+    }
+
+    [FunctionalFact]
+    public async Task GivenInvalidOrUnsupportedStatementFilter_WhenListed_ThenBadRequestNamesIt()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Invalid filters", 20, 5);
+
+        var invalid = await client.GetAsync(
+            $"/api/credit-cards/{card.Id}/statements?PageNumber=0" +
+            "&Status=Closed&From=2026-10-01&To=2026-09-01&SortBy=Balance");
+        var invalidStatus = await client.GetAsync(
+            $"/api/credit-cards/{card.Id}/statements?Status=999");
+        var unsupported = await client.GetAsync(
+            $"/api/credit-cards/{card.Id}/statements?CurrencyCode=BRL");
+        var invalidBody = await invalid.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, invalidStatus.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, unsupported.StatusCode);
+        Assert.Contains(CreditCardStatementMessages.InvalidPageNumber, invalidBody);
+        Assert.Contains(CreditCardStatementMessages.PeriodInvalid, invalidBody);
+        Assert.Contains(CreditCardStatementMessages.SortByUnsupported, invalidBody);
+        Assert.Contains("Status", await invalidStatus.Content.ReadAsStringAsync());
+        Assert.Contains("CurrencyCode", await unsupported.Content.ReadAsStringAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenAnonymousOrAdministrator_WhenStatementsViewed_ThenAccessIsRefused()
+    {
+        await using var factory = CreateFactory();
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+        var id = Guid.NewGuid();
+
+        var anonymousDetail = await anonymous.GetAsync($"/api/statements/{id}");
+        var anonymousList = await anonymous.GetAsync($"/api/credit-cards/{id}/statements");
+        var administratorDetail = await administrator.GetAsync($"/api/statements/{id}");
+        var administratorList = await administrator.GetAsync(
+            $"/api/credit-cards/{id}/statements");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousDetail.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousList.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, administratorDetail.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, administratorList.StatusCode);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -510,4 +662,40 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         string Status,
         decimal PurchaseTotal,
         decimal AmountDue);
+    private sealed record StatementReadEnvelope(
+        StatementReadData? Data,
+        IReadOnlyList<string> Messages);
+    private sealed record StatementReadPage(
+        List<StatementReadData> Data,
+        int PageNumber,
+        int PageSize,
+        int TotalItems,
+        IReadOnlyList<string> Messages);
+    private sealed record StatementReadData(
+        Guid Id,
+        Guid CreditCardId,
+        string CurrencyCode,
+        DateOnly PeriodStart,
+        DateOnly PeriodEnd,
+        DateOnly ClosingDate,
+        DateOnly DueDate,
+        decimal PreviousBalance,
+        decimal PaymentsReceived,
+        decimal PurchaseTotal,
+        decimal ForeignTaxTotal,
+        decimal OtherEntries,
+        decimal AmountDue,
+        string Status,
+        Guid? SettlementTransactionId,
+        List<StatementTransactionData> Transactions);
+    private sealed record StatementTransactionData(
+        Guid Id,
+        string Direction,
+        decimal Amount,
+        DateOnly OccurredOn,
+        bool IsLateArriving,
+        decimal? OriginalAmount,
+        string? OriginalCurrencyCode,
+        decimal? AppliedRate,
+        DateOnly? RateDate);
 }
