@@ -64,7 +64,11 @@ try
         provider.GetRequiredService<EfExchangeRateStore>());
     builder.Services.AddScoped<IExchangeRateReader>(provider =>
         provider.GetRequiredService<EfExchangeRateStore>());
-    builder.Services.AddScoped<IAuditEntryStore, EfAuditEntryStore>();
+    builder.Services.AddScoped<EfAuditEntryStore>();
+    builder.Services.AddScoped<IAuditEntryStore>(provider =>
+        provider.GetRequiredService<EfAuditEntryStore>());
+    builder.Services.AddScoped<IAuditEntryReader>(provider =>
+        provider.GetRequiredService<EfAuditEntryStore>());
     builder.Services.AddScoped<IAuditEntryWriter, AuditEntryWriter>();
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
@@ -126,6 +130,9 @@ try
     builder.Services.AddScoped<IValidator<ConvertFigureQuery>, ConvertFigureQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<ConvertFigureQuery, ConvertFigureQueryOutput>,
         ConvertFigureQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListAuditEntriesQuery>, ListAuditEntriesQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>,
+        ListAuditEntriesQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();
