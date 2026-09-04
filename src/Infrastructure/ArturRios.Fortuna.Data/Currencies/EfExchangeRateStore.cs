@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Currencies;
 
-public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateStore
+public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateStore, IExchangeRateReader
 {
     private const long RateSyncLockId = 0x5241544553594E43;
 
@@ -125,4 +125,25 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
         await transaction.CommitAsync(cancellationToken);
         return new ManualRateUpsertResult(current.Rate, replacedExisting);
     }
+
+    public async Task<ExchangeRateSnapshot?> FindApplicableAsync(
+        string baseCurrencyCode,
+        string quoteCurrencyCode,
+        DateOnly figureDate,
+        CancellationToken cancellationToken) =>
+        await context.ExchangeRates
+            .AsNoTracking()
+            .Where(rate =>
+                rate.BaseCurrency.Code == baseCurrencyCode &&
+                rate.QuoteCurrency.Code == quoteCurrencyCode &&
+                rate.RateDate <= figureDate)
+            .OrderByDescending(rate => rate.RateDate)
+            .ThenByDescending(rate => rate.Source)
+            .Select(rate => new ExchangeRateSnapshot(
+                rate.BaseCurrency.Code,
+                rate.QuoteCurrency.Code,
+                rate.Rate,
+                rate.RateDate,
+                rate.Source))
+            .FirstOrDefaultAsync(cancellationToken);
 }
