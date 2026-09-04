@@ -7,6 +7,16 @@ public interface ICreditCardStore
         CancellationToken cancellationToken);
 }
 
+public interface ICreditCardReader
+{
+    IQueryable<CreditCardLimitSnapshot> QueryLimits();
+
+    Task<CreditCardLimitSnapshot?> FindByIdWithLimitsAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken);
+}
+
 public sealed record CreditCardCreation(
     Guid UserId,
     string Name,
@@ -35,3 +45,20 @@ public sealed record CreditCardSnapshot(
     bool IsDeleted,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
+
+public sealed class CreditCardLimitSnapshot
+{
+    public Guid Id { get; init; }
+    public Guid UserId { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string Issuer { get; init; } = string.Empty;
+    public string CurrencyCode { get; init; } = string.Empty;
+    public decimal CreditLimit { get; init; }
+    public short ClosingDay { get; init; }
+    public short DueDay { get; init; }
+    public string? LastFourDigits { get; init; }
+    public decimal OutstandingAmount { get; init; }
+    public bool IsDeleted { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset UpdatedAt { get; init; }
+}
