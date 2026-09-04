@@ -683,7 +683,7 @@ There is no balance column. A balance is always computed (FR-AC-07, FR-AC-08).
 | Audit Entry field | Type | Constraints | Description |
 | --- | --- | --- | --- |
 | Id | `bigint` | PK | Internal key. Append-only; no update, no delete. |
-| UserId | `bigint` | FK, nullable | The acting identity, where one was resolved. |
+| ActorUserId | `uuid` | Nullable, no FK | The acting identity's public identifier, where one was resolved; retained after hard deletion. |
 | Operation | `varchar(150)` | Required | What was attempted. |
 | EntityType / EntityPublicId | `varchar(100)` / `uuid` | Nullable | The target, where one was resolved. |
 | Outcome | `smallint` | Required | Succeeded or Refused. |

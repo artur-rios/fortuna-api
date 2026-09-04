@@ -5,8 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Auditing;
 
-public sealed class EfAuditEntryStore(AppDbContext context) : IAuditEntryStore
+public sealed class EfAuditEntryStore(AppDbContext context) : IAuditEntryStore, IAuditEntryReader
 {
+    public IQueryable<AuditEntry> Query() => context.AuditEntries.AsNoTracking();
+
     public async Task AppendAsync(AuditEntryWrite entry, CancellationToken cancellationToken)
     {
         Guid? actorUserId = null;

@@ -1,6 +1,100 @@
 {
   "components": {
     "schemas": {
+      "AuditEntryOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "actorUserId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "entityId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "entityType": {
+            "nullable": true,
+            "type": "string"
+          },
+          "occurredAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "operation": {
+            "nullable": true,
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/AuditOutcome"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AuditEntryOutputPaginatedOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "totalItems": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "readOnly": true,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AuditOutcome": {
+        "enum": [
+          1,
+          2
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
       "AuthenticateLocalAccountCommand": {
         "additionalProperties": false,
         "properties": {
@@ -768,6 +862,98 @@
   },
   "openapi": "3.0.4",
   "paths": {
+    "/api/audit-entries": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "EntityType",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "EntityId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Operation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Outcome",
+            "schema": {
+              "$ref": "#/components/schemas/AuditOutcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "From",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "To",
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEntryOutputPaginatedOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEntryOutputPaginatedOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEntryOutputPaginatedOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "AuditEntries"
+        ]
+      }
+    },
     "/api/currencies": {
       "get": {
         "responses": {
@@ -1247,6 +1433,9 @@
     {}
   ],
   "tags": [
+    {
+      "name": "AuditEntries"
+    },
     {
       "name": "Currencies"
     },
