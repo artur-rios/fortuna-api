@@ -2,12 +2,14 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ArturRios.Fortuna.Command.Input;
+using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Jwt;
 using ArturRios.Util.Test.Attributes;
@@ -217,6 +219,125 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         Assert.False(statements.Single(item => item.PublicId == second.StatementId).IsDeleted);
     }
 
+    [FunctionalFact]
+    public async Task GivenLiveCharges_WhenStatementClosed_ThenLiveTotalAndDueDateAreReturned()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Closing", 20, 5);
+        var live = await RecordAsync(client, card.Id, 70m, new DateOnly(2026, 9, 10));
+        var deleted = await RecordAsync(client, card.Id, 30m, new DateOnly(2026, 9, 11));
+        await using (var context = CreateContext())
+        {
+            var transaction = await context.FinancialTransactions.SingleAsync(item =>
+                item.PublicId == deleted.Id);
+            transaction.SoftDelete(DateTimeOffset.UtcNow);
+            await context.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsync($"/api/statements/{live.StatementId}/close", null);
+        var result = await response.Content.ReadFromJsonAsync<StatementEnvelope>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Closed", result?.Data?.Status);
+        Assert.Equal(70m, result?.Data?.PurchaseTotal);
+        Assert.Equal(70m, result?.Data?.AmountDue);
+        Assert.Equal(new DateOnly(2026, 10, 5), result?.Data?.DueDate);
+    }
+
+    [FunctionalFact]
+    public async Task GivenFutureOpenStatement_WhenAutomaticCloseRuns_ThenItRemainsOpen()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        var subject = Guid.NewGuid();
+        Authorize(client, subject, HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Future", 20, 5);
+        var charge = await RecordAsync(client, card.Id, 10m, new DateOnly(2030, 9, 10));
+        await using var context = CreateContext();
+        var userId = await context.UserProfiles
+            .Where(item => item.ExternalSubject == subject.ToString("D"))
+            .Select(item => item.PublicId)
+            .SingleAsync();
+        var result = await new EfCreditCardStatementStore(context).CloseAsync(
+            userId,
+            charge.StatementId,
+            new DateOnly(2030, 9, 20),
+            explicitRequest: false,
+            DateTimeOffset.UtcNow,
+            CancellationToken.None);
+
+        Assert.Equal(CreditCardStatementCloseOutcome.NotDue, result.Outcome);
+        Assert.Equal("Open", result.Statement?.Status);
+    }
+
+    [FunctionalFact]
+    public async Task GivenClosedUnsettledStatement_WhenClosedAgain_ThenTotalIsRecomputed()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Reclose", 20, 5);
+        var first = await RecordAsync(client, card.Id, 10m, new DateOnly(2026, 9, 10));
+        (await client.PostAsync($"/api/statements/{first.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+        await RecordAsync(client, card.Id, 15m, new DateOnly(2026, 9, 11));
+
+        var response = await client.PostAsync($"/api/statements/{first.StatementId}/close", null);
+        var result = await response.Content.ReadFromJsonAsync<StatementEnvelope>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(25m, result?.Data?.PurchaseTotal);
+        Assert.Equal("Closed", result?.Data?.Status);
+    }
+
+    [FunctionalFact]
+    public async Task GivenSettledStatement_WhenClosedAgain_ThenConflictIsReturned()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Frozen", 20, 5);
+        var charge = await RecordAsync(client, card.Id, 10m, new DateOnly(2026, 9, 10));
+        await SetStatementStatusAsync(charge.StatementId, settled: true);
+
+        var response = await client.PostAsync($"/api/statements/{charge.StatementId}/close", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains(CreditCardStatementMessages.SettledStatementFrozen,
+            await response.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenEmptyStatement_WhenExplicitlyClosed_ThenTotalIsZero()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var cardData = await CreateCardAsync(client, "Empty", 20, 5);
+        Guid statementId;
+        await using (var context = CreateContext())
+        {
+            var card = await context.CreditCards.SingleAsync(item => item.PublicId == cardData.Id);
+            var statement = new CreditCardStatement(
+                card,
+                BillingCycle.Containing(new DateOnly(2026, 9, 10), 20, 5),
+                DateTimeOffset.UtcNow);
+            context.CreditCardStatements.Add(statement);
+            await context.SaveChangesAsync();
+            statementId = statement.PublicId;
+        }
+
+        var response = await client.PostAsync($"/api/statements/{statementId}/close", null);
+        var result = await response.Content.ReadFromJsonAsync<StatementEnvelope>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(0m, result?.Data?.AmountDue);
+        Assert.Equal("Closed", result?.Data?.Status);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -378,4 +499,15 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         DateOnly StatementDueDate,
         string StatementStatus,
         decimal StatementPurchaseTotal);
+    private sealed record StatementEnvelope(StatementData? Data);
+    private sealed record StatementData(
+        Guid Id,
+        Guid CreditCardId,
+        DateOnly PeriodStart,
+        DateOnly PeriodEnd,
+        DateOnly ClosingDate,
+        DateOnly DueDate,
+        string Status,
+        decimal PurchaseTotal,
+        decimal AmountDue);
 }
