@@ -17,6 +17,10 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
                 "ck_financial_transaction_amount",
                 "amount > 0");
             table.HasCheckConstraint(
+                "ck_financial_transaction_target",
+                "(financial_account_id IS NOT NULL AND credit_card_id IS NULL) OR " +
+                "(financial_account_id IS NULL AND credit_card_id IS NOT NULL)");
+            table.HasCheckConstraint(
                 "ck_financial_transaction_deletion_state",
                 "(is_deleted AND deletion_cascade_id IS NOT NULL) OR " +
                 "(NOT is_deleted AND deletion_cascade_id IS NULL)");
@@ -24,7 +28,8 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.HasKey(transaction => transaction.Id);
         builder.Property(transaction => transaction.PublicId).IsRequired();
         builder.Property(transaction => transaction.UserId).IsRequired();
-        builder.Property(transaction => transaction.FinancialAccountId).IsRequired();
+        builder.Property(transaction => transaction.FinancialAccountId);
+        builder.Property(transaction => transaction.CreditCardId);
         builder.Property(transaction => transaction.Direction).IsRequired();
         builder.Property(transaction => transaction.Amount).HasPrecision(19, 4).IsRequired();
         builder.Property(transaction => transaction.OccurredOn).IsRequired();
@@ -39,6 +44,12 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
             transaction.IsDeleted,
             transaction.OccurredOn
         });
+        builder.HasIndex(transaction => new
+        {
+            transaction.CreditCardId,
+            transaction.IsDeleted,
+            transaction.OccurredOn
+        });
         builder.HasIndex(transaction => new { transaction.UserId, transaction.IsDeleted });
         builder.HasOne(transaction => transaction.User)
             .WithMany()
@@ -47,6 +58,10 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.HasOne(transaction => transaction.FinancialAccount)
             .WithMany()
             .HasForeignKey(transaction => transaction.FinancialAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(transaction => transaction.CreditCard)
+            .WithMany()
+            .HasForeignKey(transaction => transaction.CreditCardId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

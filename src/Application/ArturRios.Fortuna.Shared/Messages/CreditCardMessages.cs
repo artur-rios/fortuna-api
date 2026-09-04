@@ -3,6 +3,9 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class CreditCardMessages
 {
     public const string CreatedSuccessfully = "Credit card created successfully.";
+    public const string RetrievedSuccessfully = "Credit card retrieved successfully.";
+    public const string ListedSuccessfully = "Credit cards retrieved successfully.";
+    public const string NotFound = "Credit card not found.";
     public const string DuplicateName = "A live credit card already uses this name.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
     public const string NameRequired = "Name is required.";
@@ -18,6 +21,13 @@ public static class CreditCardMessages
     public const string ClosingDayInvalid = "ClosingDay must be between 1 and 31.";
     public const string DueDayInvalid = "DueDay must be between 1 and 31.";
     public const string LastFourDigitsInvalid = "LastFourDigits must contain exactly four numeric digits.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
+    public const string SortByUnsupported =
+        "SortBy must be Name, Issuer, CurrencyCode, CreditLimit, UsedAmount, CreatedAt or UpdatedAt.";
+
+    public static string UnsupportedFilter(string field) =>
+        $"Unsupported filter field '{field}'.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
 }
