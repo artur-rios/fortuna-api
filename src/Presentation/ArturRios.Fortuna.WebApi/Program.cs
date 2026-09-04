@@ -1,6 +1,7 @@
 using Amazon.Runtime;
 using Amazon.S3;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
@@ -12,6 +13,7 @@ using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.WebApi.Configuration;
@@ -51,6 +53,7 @@ try
         options.DataConnectionString,
         postgres => postgres.MigrationsHistoryTable("__ef_migrations_history", AppDbContext.Schema)));
     builder.Services.AddScoped<DatabaseSeeder>();
+    builder.Services.AddScoped<ICurrencyReader, EfCurrencyReader>();
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
@@ -89,6 +92,10 @@ try
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
+        ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,
+        GetCurrencyByCodeQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();

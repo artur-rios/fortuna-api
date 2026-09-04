@@ -1,6 +1,7 @@
 using System.Globalization;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.EntityMaps;
+using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Users;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ namespace ArturRios.Fortuna.Data.Users;
 /// <summary>Reads and atomically provisions local profiles for Heimdall identities.</summary>
 public sealed class EfUserProfileStore(
     AppDbContext context,
+    DatabaseSeeder seeder,
     UserProfileProvisioningOptions options,
     TimeProvider timeProvider) : IUserProfileReader, IUserProfileProvisioner
 {
@@ -48,6 +50,11 @@ public sealed class EfUserProfileStore(
         if (existing is not null)
         {
             return existing;
+        }
+
+        if (!await context.Currencies.AnyAsync(cancellationToken))
+        {
+            await seeder.SeedAsync(cancellationToken);
         }
 
         var currencyCode = options.DefaultDisplayCurrency ?? CurrencyForLocale(options.Locale);
