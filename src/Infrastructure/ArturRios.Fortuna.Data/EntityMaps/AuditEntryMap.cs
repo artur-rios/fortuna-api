@@ -15,11 +15,8 @@ public sealed class AuditEntryMap : IEntityTypeConfiguration<AuditEntry>
         builder.Property(entry => entry.Reason).HasMaxLength(1000);
         builder.Property(entry => entry.Outcome).IsRequired();
         builder.Property(entry => entry.OccurredAt).IsRequired();
-        builder.HasOne(entry => entry.User)
-            .WithMany()
-            .HasForeignKey(entry => entry.UserId)
-            .OnDelete(DeleteBehavior.SetNull);
-        builder.HasIndex(entry => entry.UserId);
+        builder.Property(entry => entry.ActorUserId);
+        builder.HasIndex(entry => entry.ActorUserId);
         builder.HasIndex(entry => entry.OccurredAt);
     }
 }
