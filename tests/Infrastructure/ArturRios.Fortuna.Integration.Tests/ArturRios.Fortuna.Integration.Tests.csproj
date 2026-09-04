@@ -11,4 +11,8 @@
     <ProjectReference Include="..\..\..\src\Infrastructure\ArturRios.Fortuna.Integration\ArturRios.Fortuna.Integration.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Fixtures\Rates\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

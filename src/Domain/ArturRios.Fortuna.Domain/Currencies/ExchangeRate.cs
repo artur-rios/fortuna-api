@@ -39,4 +39,25 @@ public sealed class ExchangeRate
     public ExchangeRateSource Source { get; private set; }
     public Currency BaseCurrency { get; private set; } = null!;
     public Currency QuoteCurrency { get; private set; } = null!;
+
+    public bool ReplacePublishedRate(decimal rate)
+    {
+        if (Source != ExchangeRateSource.Published)
+        {
+            throw new InvalidOperationException("Only a published exchange rate can be replaced by synchronization.");
+        }
+
+        if (rate <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rate), "An exchange rate must be positive.");
+        }
+
+        if (Rate == rate)
+        {
+            return false;
+        }
+
+        Rate = rate;
+        return true;
+    }
 }

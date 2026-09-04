@@ -11,6 +11,7 @@ using ArturRios.Fortuna.Command.Input.Validation;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Integration.Ingestion;
+using ArturRios.Fortuna.Integration.Rates;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Currencies;
@@ -54,12 +55,14 @@ try
         postgres => postgres.MigrationsHistoryTable("__ef_migrations_history", AppDbContext.Schema)));
     builder.Services.AddScoped<DatabaseSeeder>();
     builder.Services.AddScoped<ICurrencyReader, EfCurrencyReader>();
+    builder.Services.AddScoped<IExchangeRateStore, EfExchangeRateStore>();
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddScoped<BackgroundJobProcessor>();
     builder.Services.AddHostedService<DatabaseInitializationHostedService>();
     builder.Services.AddHostedService<BackgroundJobHostedService>();
+    builder.Services.AddHostedService<ExchangeRateSyncHostedService>();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<IRequestActorAccessor, HttpContextRequestActorAccessor>();
     builder.Services.AddSingleton(new UserProfileProvisioningOptions(
@@ -75,6 +78,14 @@ try
         options.LocalAuthRecoveryCodeCount,
         options.DefaultDisplayCurrency,
         options.Locale));
+    builder.Services.AddSingleton(new RateSyncOptions(
+        options.RatesSourceBaseUri,
+        options.RatesSyncCron,
+        options.RatesCurrencies));
+    builder.Services.AddSingleton<IRateLimitDelay, RateLimitDelay>();
+    builder.Services.AddHttpClient<IPtaxRateClient, PtaxRateClient>(client =>
+        client.BaseAddress = options.RatesSourceBaseUri ?? new Uri("http://localhost/"));
+    builder.Services.AddScoped<IBackgroundJobHandler, ExchangeRateSyncJobHandler>();
     builder.Services.AddScoped<ILocalAccountStore, EfLocalAccountStore>();
     builder.Services.AddSingleton<ILocalCredentialStoreAvailability, LocalCredentialStoreAvailability>();
     builder.Services.AddSingleton<ILocalRecoveryCodeGenerator, LocalRecoveryCodeGenerator>();
@@ -89,6 +100,8 @@ try
         RecoverLocalAccountCommandOutput>, RecoverLocalAccountCommandHandler>();
     builder.Services.AddScoped<ICommandHandlerAsync<RegenerateLocalAccountRecoveryCodesCommand,
         RegenerateLocalAccountRecoveryCodesCommandOutput>, RegenerateLocalAccountRecoveryCodesCommandHandler>();
+    builder.Services.AddScoped<ICommandHandlerAsync<SynchronizeExchangeRatesCommand,
+        SynchronizeExchangeRatesCommandOutput>, SynchronizeExchangeRatesCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

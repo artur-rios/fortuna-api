@@ -38,4 +38,26 @@ public sealed class ExchangeRateTests
 
         Assert.Equal("rate", exception.ParamName);
     }
+
+    [UnitFact]
+    public void GivenPublishedRate_WhenSourceValueChanges_ThenExactValueIsReplaced()
+    {
+        var rate = new ExchangeRate(1, 2, 5.1m, DateOnly.MinValue, ExchangeRateSource.Published);
+
+        var changed = rate.ReplacePublishedRate(5.2m);
+        var unchanged = rate.ReplacePublishedRate(5.2m);
+
+        Assert.True(changed);
+        Assert.False(unchanged);
+        Assert.Equal(5.2m, rate.Rate);
+    }
+
+    [UnitFact]
+    public void GivenManualRate_WhenSynchronizationTriesToReplaceIt_ThenOperationIsRejected()
+    {
+        var rate = new ExchangeRate(1, 2, 5.1m, DateOnly.MinValue, ExchangeRateSource.Manual);
+
+        Assert.Throws<InvalidOperationException>(() => rate.ReplacePublishedRate(5.2m));
+        Assert.Equal(5.1m, rate.Rate);
+    }
 }
