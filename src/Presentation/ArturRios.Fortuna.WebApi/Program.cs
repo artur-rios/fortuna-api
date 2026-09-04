@@ -95,6 +95,7 @@ try
         provider.GetRequiredService<EfCreditCardStore>());
     builder.Services.AddScoped<ICreditCardLifecycleStore>(provider =>
         provider.GetRequiredService<EfCreditCardStore>());
+    builder.Services.AddScoped<ICreditCardStatementCloser, EfCreditCardStatementStore>();
     builder.Services.AddScoped<ICardChargeStore, EfCardChargeStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
@@ -176,6 +177,8 @@ try
     builder.Services.AddScoped<IValidator<RecordCardChargeCommand>, RecordCardChargeCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordCardChargeCommand,
         RecordCardChargeCommandOutput, RecordCardChargeCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<CloseCreditCardStatementCommand,
+        CloseCreditCardStatementCommandOutput, CloseCreditCardStatementCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

@@ -154,6 +154,79 @@
         },
         "type": "object"
       },
+      "CloseCreditCardStatementCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amountDue": {
+            "format": "double",
+            "type": "number"
+          },
+          "closingDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "creditCardId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "dueDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "periodEnd": {
+            "format": "date",
+            "type": "string"
+          },
+          "periodStart": {
+            "format": "date",
+            "type": "string"
+          },
+          "purchaseTotal": {
+            "format": "double",
+            "type": "number"
+          },
+          "status": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CloseCreditCardStatementCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ConvertFigureQuery": {
         "additionalProperties": false,
         "properties": {
@@ -3101,6 +3174,46 @@
         ]
       }
     },
+    "/api/statements/{id}/close": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Statements"
+        ]
+      }
+    },
     "/api/transactions": {
       "post": {
         "requestBody": {
@@ -3189,6 +3302,9 @@
     },
     {
       "name": "Me"
+    },
+    {
+      "name": "Statements"
     },
     {
       "name": "Transactions"
