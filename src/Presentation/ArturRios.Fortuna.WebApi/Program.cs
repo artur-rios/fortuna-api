@@ -22,6 +22,7 @@ using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Services;
@@ -72,7 +73,12 @@ try
     builder.Services.AddScoped<IAuditEntryReader>(provider =>
         provider.GetRequiredService<EfAuditEntryStore>());
     builder.Services.AddScoped<IAuditEntryWriter, AuditEntryWriter>();
-    builder.Services.AddScoped<IFinancialAccountStore, EfFinancialAccountStore>();
+    builder.Services.AddScoped<EfFinancialAccountStore>();
+    builder.Services.AddScoped<IFinancialAccountStore>(provider =>
+        provider.GetRequiredService<EfFinancialAccountStore>());
+    builder.Services.AddScoped<IFinancialAccountReader>(provider =>
+        provider.GetRequiredService<EfFinancialAccountStore>());
+    builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
@@ -140,6 +146,11 @@ try
     builder.Services.AddScoped<IValidator<ListAuditEntriesQuery>, ListAuditEntriesQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>,
         ListAuditEntriesQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetFinancialAccountByIdQuery, FinancialAccountOutput>,
+        GetFinancialAccountByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListFinancialAccountsQuery>, ListFinancialAccountsQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListFinancialAccountsQuery, FinancialAccountOutput>,
+        ListFinancialAccountsQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();

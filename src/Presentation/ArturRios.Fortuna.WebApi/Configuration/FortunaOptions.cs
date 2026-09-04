@@ -14,6 +14,7 @@ public sealed record FortunaOptions
     public string? StorageS3SecretKey { get; init; }
     public required string LogDirectory { get; init; }
     public int JobQueueCapacity { get; init; }
+    public int PageSizeMaximum { get; init; }
     public bool RunMigrations { get; init; }
     public required string AuthTokenSecret { get; init; }
     public string? AuthPreviousTokenSecret { get; init; }
@@ -43,6 +44,7 @@ public sealed record FortunaOptions
             StorageS3SecretKey = read("FORTUNA_STORAGE_S3_SECRET_KEY"),
             LogDirectory = Required(read, "FORTUNA_LOG_DIRECTORY"),
             JobQueueCapacity = PositiveInteger(read("FORTUNA_JOB_QUEUE_CAPACITY"), "FORTUNA_JOB_QUEUE_CAPACITY", 256),
+            PageSizeMaximum = PositiveInteger(read("FORTUNA_PAGE_SIZE_MAX"), "FORTUNA_PAGE_SIZE_MAX", 100),
             RunMigrations = Boolean(read("FORTUNA_RUN_MIGRATIONS"), "FORTUNA_RUN_MIGRATIONS", false),
             AuthTokenSecret = Required(read, "FORTUNA_AUTH_TOKEN_SECRET"),
             AuthPreviousTokenSecret = read("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),
