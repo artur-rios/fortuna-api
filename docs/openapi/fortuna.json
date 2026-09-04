@@ -1358,6 +1358,113 @@
         },
         "type": "object"
       },
+      "UpdateCreditCardCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "closingDay": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "creditLimit": {
+            "format": "double",
+            "type": "number"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "dueDay": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "issuer": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateCreditCardCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "closingDay": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "creditLimit": {
+            "format": "double",
+            "type": "number"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "dueDay": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "issuer": {
+            "nullable": true,
+            "type": "string"
+          },
+          "lastFourDigits": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateCreditCardCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UpdateCreditCardCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UpdateFinancialAccountCommand": {
         "additionalProperties": false,
         "properties": {
@@ -2195,6 +2302,63 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "CreditCards"
+        ]
+      },
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCreditCardCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCreditCardCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCreditCardCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCreditCardCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCreditCardCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCreditCardCommandOutputDataOutput"
                 }
               }
             },

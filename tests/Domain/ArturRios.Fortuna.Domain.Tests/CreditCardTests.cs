@@ -94,6 +94,48 @@ public sealed class CreditCardTests
         Assert.Equal("lastFourDigits", exception.ParamName);
     }
 
+    [UnitFact]
+    public void GivenValidDetails_WhenUpdated_ThenEditableFieldsAndTimestampChange()
+    {
+        var card = Create(lastFourDigits: "1234");
+        var currency = card.Currency;
+        var updatedAt = Now.AddHours(1);
+
+        card.UpdateDetails("  Travel  ", "  New Bank  ", 2500m, 28, 7, updatedAt);
+
+        Assert.Equal("Travel", card.Name);
+        Assert.Equal("TRAVEL", card.NormalizedName);
+        Assert.Equal("New Bank", card.Issuer);
+        Assert.Equal(2500m, card.CreditLimit);
+        Assert.Equal((short)28, card.ClosingDay);
+        Assert.Equal((short)7, card.DueDay);
+        Assert.Equal("1234", card.LastFourDigits);
+        Assert.Equal(currency, card.Currency);
+        Assert.Equal(updatedAt, card.UpdatedAt);
+    }
+
+    [UnitTheory]
+    [InlineData("", "Bank", 1000, (short)20, (short)5, "name")]
+    [InlineData("Card", "", 1000, (short)20, (short)5, "issuer")]
+    [InlineData("Card", "Bank", 0, (short)20, (short)5, "creditLimit")]
+    [InlineData("Card", "Bank", 1000, (short)0, (short)5, "closingDay")]
+    [InlineData("Card", "Bank", 1000, (short)20, (short)32, "dueDay")]
+    public void GivenInvalidDetails_WhenUpdated_ThenNamedFieldIsRejected(
+        string name,
+        string issuer,
+        decimal limit,
+        short closingDay,
+        short dueDay,
+        string field)
+    {
+        var card = Create();
+
+        var exception = Assert.ThrowsAny<ArgumentException>(() =>
+            card.UpdateDetails(name, issuer, limit, closingDay, dueDay, Now.AddHours(1)));
+
+        Assert.Equal(field, exception.ParamName);
+    }
+
     private static CreditCard Create(
         string name = "Rewards",
         string issuer = "Example Bank",

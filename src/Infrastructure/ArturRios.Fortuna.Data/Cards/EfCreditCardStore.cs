@@ -7,7 +7,8 @@ using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Cards;
 
-public sealed class EfCreditCardStore(AppDbContext context) : ICreditCardStore, ICreditCardReader
+public sealed class EfCreditCardStore(AppDbContext context)
+    : ICreditCardStore, ICreditCardReader, ICreditCardUpdater
 {
     public IQueryable<CreditCardLimitSnapshot> QueryLimits() => context.CreditCards
         .AsNoTracking()
@@ -95,4 +96,61 @@ public sealed class EfCreditCardStore(AppDbContext context) : ICreditCardStore, 
             card.CreatedAt,
             card.UpdatedAt), DuplicateName: false);
     }
+
+    public async Task<CreditCardUpdateResult> UpdateAsync(
+        CreditCardUpdate update,
+        CancellationToken cancellationToken)
+    {
+        var card = await context.CreditCards
+            .Include(item => item.User)
+            .Include(item => item.Currency)
+            .SingleOrDefaultAsync(item =>
+                item.User.PublicId == update.UserId &&
+                item.PublicId == update.Id &&
+                !item.IsDeleted,
+                cancellationToken);
+        if (card is null)
+        {
+            return new CreditCardUpdateResult(null, DuplicateName: false);
+        }
+
+        card.UpdateDetails(
+            update.Name,
+            update.Issuer,
+            update.CreditLimit,
+            update.ClosingDay,
+            update.DueDay,
+            update.UpdatedAt);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: CreditCardMap.LiveNameIndex
+            })
+        {
+            context.Entry(card).State = EntityState.Detached;
+            return new CreditCardUpdateResult(null, DuplicateName: true);
+        }
+
+        return new CreditCardUpdateResult(Snapshot(card), DuplicateName: false);
+    }
+
+    private static CreditCardSnapshot Snapshot(CreditCard card) => new(
+        card.PublicId,
+        card.User.PublicId,
+        card.Name,
+        card.Issuer,
+        card.Currency.Code,
+        card.CreditLimit,
+        card.ClosingDay,
+        card.DueDay,
+        card.LastFourDigits,
+        card.IsDeleted,
+        card.CreatedAt,
+        card.UpdatedAt);
 }

@@ -83,4 +83,50 @@ public sealed class CreditCard : RecordLifecycleEntity
     public short ClosingDay { get; private set; }
     public short DueDay { get; private set; }
     public string? LastFourDigits { get; private set; }
+
+    public void UpdateDetails(
+        string name,
+        string issuer,
+        decimal creditLimit,
+        short closingDay,
+        short dueDay,
+        DateTimeOffset updatedAt)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
+        {
+            throw new ArgumentException(
+                "A card name between 1 and 200 characters is required.",
+                nameof(name));
+        }
+
+        if (string.IsNullOrWhiteSpace(issuer) || issuer.Trim().Length > 200)
+        {
+            throw new ArgumentException(
+                "A card issuer between 1 and 200 characters is required.",
+                nameof(issuer));
+        }
+
+        if (creditLimit <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(creditLimit));
+        }
+
+        if (closingDay is < 1 or > 31)
+        {
+            throw new ArgumentOutOfRangeException(nameof(closingDay));
+        }
+
+        if (dueDay is < 1 or > 31)
+        {
+            throw new ArgumentOutOfRangeException(nameof(dueDay));
+        }
+
+        Name = name.Trim();
+        NormalizedName = Name.ToUpperInvariant();
+        Issuer = issuer.Trim();
+        CreditLimit = creditLimit;
+        ClosingDay = closingDay;
+        DueDay = dueDay;
+        MarkUpdated(updatedAt);
+    }
 }
