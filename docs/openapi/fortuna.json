@@ -279,6 +279,99 @@
         },
         "type": "object"
       },
+      "CreateFinancialAccountCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "accountType": {
+            "$ref": "#/components/schemas/FinancialAccountType"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "institution": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "openingBalance": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "CreateFinancialAccountCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "accountType": {
+            "$ref": "#/components/schemas/FinancialAccountType"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "institution": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "openingBalance": {
+            "format": "double",
+            "type": "number"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateFinancialAccountCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CreateFinancialAccountCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "CreateLocalAccountCommand": {
         "additionalProperties": false,
         "properties": {
@@ -433,6 +526,16 @@
           }
         },
         "type": "object"
+      },
+      "FinancialAccountType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "format": "int32",
+        "type": "integer"
       },
       "ListSupportedCurrenciesQueryOutput": {
         "additionalProperties": false,
@@ -862,6 +965,54 @@
   },
   "openapi": "3.0.4",
   "paths": {
+    "/api/accounts": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFinancialAccountCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFinancialAccountCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFinancialAccountCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateFinancialAccountCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateFinancialAccountCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateFinancialAccountCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
     "/api/audit-entries": {
       "get": {
         "parameters": [
@@ -1433,6 +1584,9 @@
     {}
   ],
   "tags": [
+    {
+      "name": "Accounts"
+    },
     {
       "name": "AuditEntries"
     },

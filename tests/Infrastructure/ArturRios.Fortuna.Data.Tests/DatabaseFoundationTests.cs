@@ -66,6 +66,32 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenFinancialAccountMigration_WhenInspected_ThenMoneyAndLiveNameRulesAreDurable()
+    {
+        await using var connection = new NpgsqlConnection(database.GetConnectionString());
+        await connection.OpenAsync(CancellationToken.None);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT numeric_precision, numeric_scale,
+                   (SELECT indexdef
+                    FROM pg_indexes
+                    WHERE schemaname = 'fortuna'
+                      AND tablename = 'financial_account'
+                      AND indexname = 'ux_financial_account_user_normalized_name_live')
+            FROM information_schema.columns
+            WHERE table_schema = 'fortuna'
+              AND table_name = 'financial_account'
+              AND column_name = 'opening_balance';
+            """;
+        await using var reader = await command.ExecuteReaderAsync(CancellationToken.None);
+
+        Assert.True(await reader.ReadAsync(CancellationToken.None));
+        Assert.Equal(19, reader.GetInt32(0));
+        Assert.Equal(4, reader.GetInt32(1));
+        Assert.Contains("WHERE (NOT is_deleted)", reader.GetString(2), StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
     public async Task GivenCurrencySeedRunsTwice_WhenSaved_ThenReferenceSetIsNotDuplicated()
     {
         await using var context = CreateContext();
