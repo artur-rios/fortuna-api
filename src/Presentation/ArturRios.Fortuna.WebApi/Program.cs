@@ -1,6 +1,7 @@
 using Amazon.Runtime;
 using Amazon.S3;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Accounts;
 using ArturRios.Fortuna.Data.Auditing;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
@@ -16,6 +17,7 @@ using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Rates;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Users;
@@ -70,6 +72,7 @@ try
     builder.Services.AddScoped<IAuditEntryReader>(provider =>
         provider.GetRequiredService<EfAuditEntryStore>());
     builder.Services.AddScoped<IAuditEntryWriter, AuditEntryWriter>();
+    builder.Services.AddScoped<IFinancialAccountStore, EfFinancialAccountStore>();
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
@@ -120,6 +123,10 @@ try
         RecordManualExchangeRateCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordManualExchangeRateCommand,
         RecordManualExchangeRateCommandOutput, RecordManualExchangeRateCommandHandler>();
+    builder.Services.AddScoped<IValidator<CreateFinancialAccountCommand>,
+        CreateFinancialAccountCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<CreateFinancialAccountCommand,
+        CreateFinancialAccountCommandOutput, CreateFinancialAccountCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();
