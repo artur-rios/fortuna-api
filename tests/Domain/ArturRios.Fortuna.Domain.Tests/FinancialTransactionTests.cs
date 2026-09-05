@@ -273,6 +273,110 @@ public sealed class FinancialTransactionTests
                 Now));
     }
 
+    [UnitFact]
+    public void GivenValidChanges_WhenUpdated_ThenEditableFieldsAndTimestampChange()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 3),
+            Now,
+            "Before",
+            tags: [new Tag(user, "Old", Now)]);
+        var category = new Category(user, "Dining", Now);
+        var counterparty = new Counterparty(user, "Cafe", Now);
+        var tag = new Tag(user, "Food", Now);
+        var changedAt = Now.AddHours(1);
+
+        transaction.UpdateDetails(
+            category,
+            TransactionDirection.Earning,
+            25m,
+            new DateOnly(2026, 9, 4),
+            "  After  ",
+            counterparty,
+            [tag, tag],
+            changedAt);
+
+        Assert.Equal(category, transaction.Category);
+        Assert.Equal(counterparty, transaction.Counterparty);
+        Assert.Equal(TransactionDirection.Earning, transaction.Direction);
+        Assert.Equal(25m, transaction.Amount);
+        Assert.Equal(new DateOnly(2026, 9, 4), transaction.OccurredOn);
+        Assert.Equal("After", transaction.Description);
+        Assert.Equal([tag], transaction.Tags);
+        Assert.Equal(changedAt, transaction.UpdatedAt);
+        Assert.False(transaction.IsManuallyCorrected);
+    }
+
+    [UnitFact]
+    public void GivenImportedTransaction_WhenUpdated_ThenItIsMarkedManuallyCorrected()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now);
+        typeof(FinancialTransaction)
+            .GetProperty(nameof(FinancialTransaction.SourceType))!
+            .SetValue(transaction, TransactionSourceType.Excel);
+
+        transaction.UpdateDetails(
+            Category(user),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            "Corrected",
+            null,
+            [],
+            Now.AddHours(1));
+
+        Assert.Equal(TransactionSourceType.Excel, transaction.SourceType);
+        Assert.True(transaction.IsManuallyCorrected);
+    }
+
+    [UnitFact]
+    public void GivenForeignClassification_WhenUpdated_ThenItIsRejected()
+    {
+        var owner = User();
+        var foreign = User();
+        var transaction = new FinancialTransaction(
+            owner,
+            Account(owner),
+            Category(owner),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now);
+
+        Assert.Throws<ArgumentException>(() => transaction.UpdateDetails(
+            Category(foreign),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            null,
+            null,
+            [],
+            Now.AddHours(1)));
+        Assert.Throws<ArgumentException>(() => transaction.UpdateDetails(
+            Category(owner),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            null,
+            new Counterparty(foreign, "Foreign", Now),
+            [],
+            Now.AddHours(1)));
+    }
+
     private static UserProfile User() => new(
         Guid.NewGuid(),
         "Account Owner",

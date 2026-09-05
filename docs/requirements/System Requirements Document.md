@@ -586,6 +586,7 @@ There is no balance column. A balance is always computed (FR-AC-07, FR-AC-08).
 | ImportedRecordId | `bigint` | FK, nullable | The raw record it derives from. |
 | SourceType | `smallint` | Required | Manual, Pluggy, Excel, PDF. |
 | IsReconciled | `boolean` | Required, default false | Matched against an imported record. |
+| IsManuallyCorrected | `boolean` | Required, default false | An imported transaction has since been corrected by its owner. |
 | IsLateArriving | `boolean` | Required, default false | Attached to a later statement than its date implies (FR-CC-08). |
 | IsDeleted | `boolean` | Required | Soft-deletion flag. |
 

@@ -1,9 +1,9 @@
 using ArturRios.Fortuna.Domain.Transactions;
-using ArturRios.Mediator.Query;
+using ArturRios.Mediator.Command;
 
-namespace ArturRios.Fortuna.Query.Output;
+namespace ArturRios.Fortuna.Command.Output;
 
-public sealed class TransactionOutput : QueryOutput
+public sealed class UpdateTransactionCommandOutput : CommandOutput
 {
     public Guid Id { get; set; }
     public Guid? FinancialAccountId { get; set; }
@@ -29,13 +29,12 @@ public sealed class TransactionOutput : QueryOutput
     public bool IsTransfer { get; set; }
     public Guid? StatementId { get; set; }
     public bool IsLateArriving { get; set; }
-    public IReadOnlyCollection<TransactionLabelOutput> Tags { get; set; } = [];
-    public bool IsDeleted { get; set; }
+    public IReadOnlyCollection<UpdateTransactionTagOutput> Tags { get; set; } = [];
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
 
-public sealed class TransactionLabelOutput
+public sealed class UpdateTransactionTagOutput
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

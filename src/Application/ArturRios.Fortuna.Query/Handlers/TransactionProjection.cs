@@ -27,6 +27,7 @@ internal static class TransactionProjection
         Description = transaction.Description,
         SourceType = transaction.SourceType,
         IsReconciled = transaction.IsReconciled,
+        IsManuallyCorrected = transaction.IsManuallyCorrected,
         IsTransfer = transaction.IsTransfer,
         StatementId = transaction.StatementId,
         IsLateArriving = transaction.IsLateArriving,

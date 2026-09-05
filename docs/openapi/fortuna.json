@@ -2828,6 +2828,9 @@
           "isLateArriving": {
             "type": "boolean"
           },
+          "isManuallyCorrected": {
+            "type": "boolean"
+          },
           "isReconciled": {
             "type": "boolean"
           },
@@ -3311,6 +3314,224 @@
           },
           "timestamp": {
             "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTransactionCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "counterparty": {
+            "nullable": true,
+            "type": "string"
+          },
+          "creditCardId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/TransactionDirection"
+          },
+          "financialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "ownerId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTransactionCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "categoryName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "counterpartyId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "counterpartyName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "creditCardId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "creditCardName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/TransactionDirection"
+          },
+          "financialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "financialAccountName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isLateArriving": {
+            "type": "boolean"
+          },
+          "isManuallyCorrected": {
+            "type": "boolean"
+          },
+          "isReconciled": {
+            "type": "boolean"
+          },
+          "isTransfer": {
+            "type": "boolean"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "originalAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "originalCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "sourceType": {
+            "$ref": "#/components/schemas/TransactionSourceType"
+          },
+          "statementId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/UpdateTransactionTagOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTransactionCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UpdateTransactionCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTransactionTagOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
             "type": "string"
           }
         },
@@ -5776,6 +5997,63 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Transactions"
+        ]
+      },
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTransactionCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTransactionCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTransactionCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTransactionCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTransactionCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTransactionCommandOutputDataOutput"
                 }
               }
             },

@@ -45,6 +45,7 @@ public sealed class TransactionsController(
         new Dictionary<string, int>
         {
             [TransactionMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
+            [TransactionMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
             [TransactionMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
@@ -66,6 +67,10 @@ public sealed class TransactionsController(
             [TransactionMessages.TagRequired] = StatusCodes.Status400BadRequest,
             [TransactionMessages.TagTooLong] = StatusCodes.Status400BadRequest,
             [TransactionMessages.OwnerImmutable] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.TransactionTargetImmutable] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.TransactionCurrencyImmutable] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.SettledStatementFrozen] = StatusCodes.Status409Conflict,
+            [TransactionMessages.TransferFieldsRestricted] = StatusCodes.Status400BadRequest,
             [TransactionMessages.NotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.TransactionIdRequired] = StatusCodes.Status400BadRequest,
             [TransactionMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
@@ -127,6 +132,19 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RecordTransactionCommand,
             RecordTransactionCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPut("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<UpdateTransactionCommandOutput?>>> Update(
+        Guid id,
+        [FromBody] UpdateTransactionCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            UpdateTransactionCommand,
+            UpdateTransactionCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }
