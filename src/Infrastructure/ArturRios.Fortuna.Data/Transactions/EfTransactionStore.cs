@@ -789,10 +789,14 @@ public sealed class EfTransactionStore(AppDbContext context)
                 ? null
                 : transaction.InstallmentPlan.PublicId,
             InstallmentNumber = transaction.InstallmentNumber,
+            RecurringTransactionId = transaction.RecurringTransaction == null
+                ? null
+                : transaction.RecurringTransaction.PublicId,
             StatementId = transaction.Statement == null
                 ? null
                 : transaction.Statement.PublicId,
             IsLateArriving = transaction.IsLateArriving,
+            IsPossibleDuplicate = transaction.IsPossibleDuplicate,
             Tags = transaction.Tags
                 .OrderBy(tag => tag.Name)
                 .ThenBy(tag => tag.PublicId)

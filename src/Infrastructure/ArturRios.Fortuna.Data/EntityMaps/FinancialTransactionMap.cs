@@ -46,6 +46,7 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.Property(transaction => transaction.StatementId);
         builder.Property(transaction => transaction.InstallmentPlanId);
         builder.Property(transaction => transaction.InstallmentNumber);
+        builder.Property(transaction => transaction.RecurringTransactionId);
         builder.Property(transaction => transaction.CategoryId).IsRequired();
         builder.Property(transaction => transaction.CounterpartyId);
         builder.Property(transaction => transaction.Direction).IsRequired();
@@ -67,6 +68,7 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
             .HasDefaultValue(false)
             .IsRequired();
         builder.Property(transaction => transaction.IsLateArriving).HasDefaultValue(false).IsRequired();
+        builder.Property(transaction => transaction.IsPossibleDuplicate).HasDefaultValue(false).IsRequired();
         builder.Property(transaction => transaction.IsDeleted).HasDefaultValue(false).IsRequired();
         builder.Property(transaction => transaction.DeletionCascadeId);
         builder.Property(transaction => transaction.CreatedAt).IsRequired();
@@ -90,6 +92,11 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
             transaction.InstallmentPlanId,
             transaction.InstallmentNumber
         }).IsUnique();
+        builder.HasIndex(transaction => new
+        {
+            transaction.RecurringTransactionId,
+            transaction.OccurredOn
+        }).IsUnique();
         builder.HasOne(transaction => transaction.User)
             .WithMany()
             .HasForeignKey(transaction => transaction.UserId)
@@ -110,6 +117,10 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
             .WithMany(plan => plan.Installments)
             .HasForeignKey(transaction => transaction.InstallmentPlanId)
             .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(transaction => transaction.RecurringTransaction)
+            .WithMany()
+            .HasForeignKey(transaction => transaction.RecurringTransactionId)
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(transaction => transaction.Category)
             .WithMany()
             .HasForeignKey(transaction => transaction.CategoryId)

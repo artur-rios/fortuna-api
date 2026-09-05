@@ -17,6 +17,13 @@ public interface IRecurringTransactionReader
         CancellationToken cancellationToken);
 }
 
+public interface IRecurringTransactionMaterializer
+{
+    Task<RecurringMaterializationResult> MaterializeAsync(
+        RecurringMaterializationRun run,
+        CancellationToken cancellationToken);
+}
+
 public sealed record RecurringTransactionRecord(
     Guid UserId,
     Guid? FinancialAccountId,
@@ -43,6 +50,51 @@ public enum RecurringTransactionRecordOutcome
 public sealed record RecurringTransactionRecordResult(
     RecurringTransactionSnapshot? Rule,
     RecurringTransactionRecordOutcome Outcome);
+
+public sealed record RecurringMaterializationRun(
+    Guid UserId,
+    DateOnly Through,
+    DateTimeOffset MaterializedAt);
+
+public sealed record RecurringMaterializationResult(
+    IReadOnlyCollection<RecurringRuleMaterializationResult> Rules)
+{
+    public int CreatedCount => Rules.Sum(rule => rule.CreatedCount);
+    public int PossibleDuplicateCount => Rules.Sum(rule => rule.PossibleDuplicateCount);
+}
+
+public sealed record RecurringRuleMaterializationResult(
+    Guid RuleId,
+    IReadOnlyCollection<RecurringOccurrenceMaterializationResult> Occurrences,
+    bool IsComplete,
+    RecurringMaterializationSkipReason? SkipReason = null)
+{
+    public int CreatedCount => Occurrences.Count(occurrence => occurrence.TransactionId.HasValue);
+    public int PossibleDuplicateCount => Occurrences.Count(occurrence => occurrence.IsPossibleDuplicate);
+}
+
+public sealed record RecurringOccurrenceMaterializationResult(
+    DateOnly OccurredOn,
+    Guid? TransactionId,
+    bool IsPossibleDuplicate,
+    string? Error = null);
+
+public enum RecurringMaterializationSkipReason
+{
+    FinancialAccountDeleted = 1,
+    CreditCardDeleted = 2,
+    CategoryDeleted = 3
+}
+
+public static class RecurringMaterializationJob
+{
+    public const string Type = "recurring-transaction-materialization";
+}
+
+public sealed record RecurringMaterializationJobPayload(
+    Guid UserId,
+    DateOnly Through,
+    DateTimeOffset RequestedAt);
 
 public sealed class RecurringTransactionSnapshot
 {

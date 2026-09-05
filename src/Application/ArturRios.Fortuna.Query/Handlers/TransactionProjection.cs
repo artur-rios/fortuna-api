@@ -31,8 +31,10 @@ internal static class TransactionProjection
         IsTransfer = transaction.IsTransfer,
         InstallmentPlanId = transaction.InstallmentPlanId,
         InstallmentNumber = transaction.InstallmentNumber,
+        RecurringTransactionId = transaction.RecurringTransactionId,
         StatementId = transaction.StatementId,
         IsLateArriving = transaction.IsLateArriving,
+        IsPossibleDuplicate = transaction.IsPossibleDuplicate,
         Tags = transaction.Tags.Select(tag => new TransactionLabelOutput
         {
             Id = tag.Id,

@@ -24,6 +24,7 @@ public sealed class RecurringTransactionsController(
         {
             [RecurringTransactionMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [RecurringTransactionMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
+            [RecurringTransactionMessages.MaterializedSuccessfully] = StatusCodes.Status200OK,
             [RecurringTransactionMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [RecurringTransactionMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
             [RecurringTransactionMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
@@ -61,6 +62,17 @@ public sealed class RecurringTransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DefineRecurringTransactionCommand,
             DefineRecurringTransactionCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("materialize")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<MaterializeRecurringTransactionsCommandOutput?>>> Materialize(
+        [FromBody] MaterializeRecurringTransactionsCommand command)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            MaterializeRecurringTransactionsCommand,
+            MaterializeRecurringTransactionsCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

@@ -2200,6 +2200,73 @@
         "format": "int32",
         "type": "integer"
       },
+      "MaterializeRecurringTransactionsCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "ownerId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MaterializeRecurringTransactionsCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "createdCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "materializedThrough": {
+            "format": "date",
+            "type": "string"
+          },
+          "possibleDuplicateCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RecurringRuleMaterializationCommandOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "MaterializeRecurringTransactionsCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ObjectDataOutput": {
         "additionalProperties": false,
         "properties": {
@@ -3096,6 +3163,60 @@
         "format": "int32",
         "type": "integer"
       },
+      "RecurringOccurrenceMaterializationCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isPossibleDuplicate": {
+            "type": "boolean"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "transactionId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecurringRuleMaterializationCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "createdCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "isComplete": {
+            "type": "boolean"
+          },
+          "occurrences": {
+            "items": {
+              "$ref": "#/components/schemas/RecurringOccurrenceMaterializationCommandOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "possibleDuplicateCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "ruleId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "skipReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RecurringTransactionOutput": {
         "additionalProperties": false,
         "properties": {
@@ -3663,6 +3784,9 @@
           "isManuallyCorrected": {
             "type": "boolean"
           },
+          "isPossibleDuplicate": {
+            "type": "boolean"
+          },
           "isReconciled": {
             "type": "boolean"
           },
@@ -3684,6 +3808,11 @@
           },
           "rateDate": {
             "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "recurringTransactionId": {
+            "format": "uuid",
             "nullable": true,
             "type": "string"
           },
@@ -6816,6 +6945,54 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/DefineRecurringTransactionCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "RecurringTransactions"
+        ]
+      }
+    },
+    "/api/recurring-transactions/materialize": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutputDataOutput"
                 }
               }
             },

@@ -132,6 +132,8 @@ try
         provider.GetRequiredService<EfRecurringTransactionStore>());
     builder.Services.AddScoped<IRecurringTransactionReader>(provider =>
         provider.GetRequiredService<EfRecurringTransactionStore>());
+    builder.Services.AddScoped<IRecurringTransactionMaterializer>(provider =>
+        provider.GetRequiredService<EfRecurringTransactionStore>());
     builder.Services.AddScoped<EfInvestmentStore>();
     builder.Services.AddScoped<IInvestmentStore>(provider =>
         provider.GetRequiredService<EfInvestmentStore>());
@@ -148,6 +150,7 @@ try
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddScoped<BackgroundJobProcessor>();
+    builder.Services.AddScoped<IBackgroundJobHandler, RecurringMaterializationJobHandler>();
     builder.Services.AddHostedService<DatabaseInitializationHostedService>();
     builder.Services.AddHostedService<BackgroundJobHostedService>();
     builder.Services.AddHostedService<ExchangeRateSyncHostedService>();
@@ -254,6 +257,10 @@ try
         DefineRecurringTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DefineRecurringTransactionCommand,
         DefineRecurringTransactionCommandOutput, DefineRecurringTransactionCommandHandler>();
+    builder.Services.AddScoped<IValidator<MaterializeRecurringTransactionsCommand>,
+        MaterializeRecurringTransactionsCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<MaterializeRecurringTransactionsCommand,
+        MaterializeRecurringTransactionsCommandOutput, MaterializeRecurringTransactionsCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CloseCreditCardStatementCommand,
         CloseCreditCardStatementCommandOutput, CloseCreditCardStatementCommandHandler>();
     builder.Services.AddScoped<IValidator<SettleCreditCardStatementCommand>,
