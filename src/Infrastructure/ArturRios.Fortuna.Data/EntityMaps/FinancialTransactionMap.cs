@@ -47,6 +47,7 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.Property(transaction => transaction.InstallmentPlanId);
         builder.Property(transaction => transaction.InstallmentNumber);
         builder.Property(transaction => transaction.RecurringTransactionId);
+        builder.Property(transaction => transaction.ImportedRecordId);
         builder.Property(transaction => transaction.CategoryId).IsRequired();
         builder.Property(transaction => transaction.CounterpartyId);
         builder.Property(transaction => transaction.Direction).IsRequired();
@@ -97,6 +98,7 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
             transaction.RecurringTransactionId,
             transaction.OccurredOn
         }).IsUnique();
+        builder.HasIndex(transaction => transaction.ImportedRecordId).IsUnique();
         builder.HasOne(transaction => transaction.User)
             .WithMany()
             .HasForeignKey(transaction => transaction.UserId)
@@ -120,6 +122,10 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.HasOne(transaction => transaction.RecurringTransaction)
             .WithMany()
             .HasForeignKey(transaction => transaction.RecurringTransactionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(transaction => transaction.ImportedRecord)
+            .WithOne(record => record.Transaction)
+            .HasForeignKey<FinancialTransaction>(transaction => transaction.ImportedRecordId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(transaction => transaction.Category)
             .WithMany()

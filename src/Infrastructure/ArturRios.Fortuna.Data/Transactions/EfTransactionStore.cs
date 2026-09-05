@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Lifecycle;
+using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Transactions;
@@ -12,7 +13,11 @@ using Microsoft.EntityFrameworkCore;
 namespace ArturRios.Fortuna.Data.Transactions;
 
 public sealed class EfTransactionStore(AppDbContext context)
-    : ITransactionStore, ITransactionReader, ITransactionUpdater, ITransactionLifecycleStore
+    : ITransactionStore,
+        ITransactionReader,
+        ITransactionUpdater,
+        ITransactionLifecycleStore,
+        ITransactionReconciliationStore
 {
     public IQueryable<TransactionReadSnapshot> Query(TransactionSearchCriteria criteria) =>
         Project(Filter(criteria));
@@ -384,6 +389,82 @@ public sealed class EfTransactionStore(AppDbContext context)
             includeDeleted: false,
             cancellationToken);
         return UpdateResult(TransactionUpdateOutcome.Succeeded, snapshot);
+    }
+
+    public async Task<TransactionReconciliationResult> ReconcileAsync(
+        TransactionReconciliation change,
+        CancellationToken cancellationToken)
+    {
+        var transaction = await context.FinancialTransactions
+            .Include(item => item.User)
+            .Include(item => item.Statement)
+            .SingleOrDefaultAsync(item =>
+                item.User.PublicId == change.UserId &&
+                item.PublicId == change.TransactionId &&
+                !item.IsDeleted,
+                cancellationToken);
+        if (transaction is null)
+        {
+            return ReconciliationResult(
+                TransactionReconciliationOutcome.TransactionNotFound);
+        }
+
+        if (transaction.Statement?.Status == CreditCardStatementStatus.Settled)
+        {
+            return ReconciliationResult(
+                TransactionReconciliationOutcome.SettledStatementFrozen);
+        }
+
+        if (change.Unreconcile)
+        {
+            if (!transaction.IsReconciled)
+            {
+                return ReconciliationResult(
+                    TransactionReconciliationOutcome.TransactionNotReconciled);
+            }
+
+            transaction.Unreconcile(change.ChangedAt);
+            await context.SaveChangesAsync(cancellationToken);
+            return await SuccessfulReconciliationAsync(change, cancellationToken);
+        }
+
+        if (transaction.IsReconciled)
+        {
+            return ReconciliationResult(
+                TransactionReconciliationOutcome.TransactionAlreadyReconciled);
+        }
+
+        var importedRecord = await context.ImportedRecords
+            .Include(record => record.ImportJob)
+                .ThenInclude(job => job.User)
+            .SingleOrDefaultAsync(record =>
+                record.Id == change.ImportedRecordId &&
+                record.ImportJob.PublicId == change.ImportJobId &&
+                record.ImportJob.User.PublicId == change.UserId &&
+                record.Outcome != ImportedRecordOutcome.Rejected &&
+                record.Amount.HasValue &&
+                record.OccurredOn.HasValue,
+                cancellationToken);
+        if (importedRecord is null)
+        {
+            return ReconciliationResult(
+                TransactionReconciliationOutcome.ImportedRecordNotFound);
+        }
+
+        var existing = await context.FinancialTransactions
+            .AsNoTracking()
+            .SingleOrDefaultAsync(item => item.ImportedRecordId == importedRecord.Id,
+                cancellationToken);
+        if (existing is not null)
+        {
+            return ReconciliationResult(
+                TransactionReconciliationOutcome.ImportedRecordAlreadyMatched,
+                existing.PublicId);
+        }
+
+        transaction.Reconcile(importedRecord, change.ChangedAt);
+        await context.SaveChangesAsync(cancellationToken);
+        return await SuccessfulReconciliationAsync(change, cancellationToken);
     }
 
     public async Task<TransactionLifecycleResult> SoftDeleteAsync(
@@ -792,6 +873,16 @@ public sealed class EfTransactionStore(AppDbContext context)
             RecurringTransactionId = transaction.RecurringTransaction == null
                 ? null
                 : transaction.RecurringTransaction.PublicId,
+            ImportJobId = transaction.ImportedRecord == null
+                ? null
+                : transaction.ImportedRecord.ImportJob.PublicId,
+            ImportedRecordId = transaction.ImportedRecordId,
+            ImportedAmount = transaction.ImportedRecord == null
+                ? null
+                : transaction.ImportedRecord.Amount,
+            ImportedOccurredOn = transaction.ImportedRecord == null
+                ? null
+                : transaction.ImportedRecord.OccurredOn,
             StatementId = transaction.Statement == null
                 ? null
                 : transaction.Statement.PublicId,
@@ -1070,6 +1161,26 @@ public sealed class EfTransactionStore(AppDbContext context)
     private static TransactionUpdateResult UpdateResult(
         TransactionUpdateOutcome outcome,
         TransactionReadSnapshot? transaction = null) => new(transaction, outcome);
+
+    private async Task<TransactionReconciliationResult> SuccessfulReconciliationAsync(
+        TransactionReconciliation change,
+        CancellationToken cancellationToken)
+    {
+        var snapshot = await FindByIdAsync(
+            change.UserId,
+            change.TransactionId,
+            includeDeleted: false,
+            cancellationToken);
+        return ReconciliationResult(
+            TransactionReconciliationOutcome.Succeeded,
+            transaction: snapshot);
+    }
+
+    private static TransactionReconciliationResult ReconciliationResult(
+        TransactionReconciliationOutcome outcome,
+        Guid? conflictingTransactionId = null,
+        TransactionReadSnapshot? transaction = null) =>
+        new(transaction, outcome, conflictingTransactionId);
 
     private static TransactionLifecycleResult LifecycleResult(
         TransactionLifecycleOutcome outcome,

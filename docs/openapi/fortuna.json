@@ -2298,6 +2298,88 @@
         },
         "type": "object"
       },
+      "ReconcileTransactionCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "importJobId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "importedRecordId": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "unreconcile": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "ReconcileTransactionCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isReconciled": {
+            "type": "boolean"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/TransactionReconciliationOutput"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ReconcileTransactionCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReconcileTransactionCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RecordInstallmentPlanCommand": {
         "additionalProperties": false,
         "properties": {
@@ -3809,6 +3891,26 @@
             "format": "uuid",
             "type": "string"
           },
+          "importJobId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "importedAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "importedOccurredOn": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "importedRecordId": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
           "installmentNumber": {
             "format": "int32",
             "nullable": true,
@@ -3908,6 +4010,39 @@
           },
           "timestamp": {
             "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionReconciliationOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "hasDiscrepancy": {
+            "type": "boolean"
+          },
+          "importJobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "importedAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "importedOccurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "importedRecordId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "transactionAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "transactionOccurredOn": {
+            "format": "date",
             "type": "string"
           }
         },
@@ -7881,6 +8016,65 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/transactions/{id}/reconcile": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileTransactionCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileTransactionCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileTransactionCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcileTransactionCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcileTransactionCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcileTransactionCommandOutputDataOutput"
                 }
               }
             },

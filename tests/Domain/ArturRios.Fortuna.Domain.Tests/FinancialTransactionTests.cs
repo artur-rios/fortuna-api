@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Util.Test.Attributes;
@@ -12,6 +13,85 @@ public sealed class FinancialTransactionTests
 {
     private static readonly DateTimeOffset Now =
         new(2026, 9, 4, 12, 0, 0, TimeSpan.Zero);
+
+    [UnitFact]
+    public void GivenOwnedImportedRecord_WhenReconciledThenUnreconciled_ThenLinkTracksState()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            25m,
+            new DateOnly(2026, 9, 3),
+            Now);
+        var record = ImportedRecord(user);
+
+        transaction.Reconcile(record, Now.AddMinutes(1));
+
+        Assert.True(transaction.IsReconciled);
+        Assert.Equal(record, transaction.ImportedRecord);
+        Assert.Equal(Now.AddMinutes(1), transaction.UpdatedAt);
+
+        transaction.Unreconcile(Now.AddMinutes(2));
+
+        Assert.False(transaction.IsReconciled);
+        Assert.Null(transaction.ImportedRecord);
+        Assert.Null(transaction.ImportedRecordId);
+        Assert.Equal(Now.AddMinutes(2), transaction.UpdatedAt);
+    }
+
+    [UnitFact]
+    public void GivenAlreadyReconciledTransaction_WhenReconciledAgain_ThenItIsRejected()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            25m,
+            new DateOnly(2026, 9, 3),
+            Now);
+        transaction.Reconcile(ImportedRecord(user), Now);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            transaction.Reconcile(ImportedRecord(user), Now));
+    }
+
+    [UnitFact]
+    public void GivenForeignImportedRecord_WhenReconciled_ThenItIsRejected()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            25m,
+            new DateOnly(2026, 9, 3),
+            Now);
+
+        Assert.Throws<ArgumentException>(() =>
+            transaction.Reconcile(ImportedRecord(User()), Now));
+    }
+
+    [UnitFact]
+    public void GivenRecordedTransaction_WhenUnreconciled_ThenItIsRejected()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            25m,
+            new DateOnly(2026, 9, 3),
+            Now);
+
+        Assert.Throws<InvalidOperationException>(() => transaction.Unreconcile(Now));
+    }
 
     [UnitFact]
     public void GivenValidMovement_WhenCreated_ThenAccountLedgerFieldsAreFixed()
@@ -404,6 +484,13 @@ public sealed class FinancialTransactionTests
         5,
         null,
         Now);
+
+    private static ImportedRecord ImportedRecord(UserProfile user) => new(
+        new ImportJob(user, TransactionSourceType.Excel, Now),
+        "{\"amount\":25,\"occurredOn\":\"2026-09-03\"}",
+        ImportedRecordOutcome.Imported,
+        25m,
+        new DateOnly(2026, 9, 3));
 
     private static Currency Currency() => new("BRL", "Brazilian real", 2);
 }
