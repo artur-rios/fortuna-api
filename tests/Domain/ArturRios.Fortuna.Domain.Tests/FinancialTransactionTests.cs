@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
@@ -22,6 +23,7 @@ public sealed class FinancialTransactionTests
         var transaction = new FinancialTransaction(
             user,
             account,
+            Category(user),
             TransactionDirection.Expense,
             12.3456m,
             occurredOn,
@@ -46,6 +48,7 @@ public sealed class FinancialTransactionTests
         var transaction = new FinancialTransaction(
             user,
             card,
+            Category(user),
             TransactionDirection.Expense,
             99.99m,
             occurredOn,
@@ -60,6 +63,69 @@ public sealed class FinancialTransactionTests
     }
 
     [UnitFact]
+    public void GivenOptionalClassification_WhenCreated_ThenDetailsAndTagsAreRetained()
+    {
+        var user = User();
+        var category = Category(user);
+        var counterparty = new Counterparty(user, "Cafe", Now);
+        var tag = new Tag(user, "Food", Now);
+
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            category,
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now,
+            "  Lunch  ",
+            counterparty,
+            [tag, tag]);
+
+        Assert.Equal(category, transaction.Category);
+        Assert.Equal(counterparty, transaction.Counterparty);
+        Assert.Equal("Lunch", transaction.Description);
+        Assert.Equal(user.DisplayCurrency.Code, transaction.Currency.Code);
+        Assert.Single(transaction.Tags);
+        Assert.Equal(TransactionSourceType.Manual, transaction.SourceType);
+        Assert.False(transaction.IsReconciled);
+    }
+
+    [UnitFact]
+    public void GivenForeignClassification_WhenCreated_ThenItIsRejected()
+    {
+        var user = User();
+        var foreign = User();
+
+        Assert.Throws<ArgumentException>(() => new FinancialTransaction(
+            user,
+            Account(user),
+            Category(foreign),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now));
+        Assert.Throws<ArgumentException>(() => new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now,
+            counterparty: new Counterparty(foreign, "Foreign", Now)));
+        Assert.Throws<ArgumentException>(() => new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now,
+            tags: [new Tag(foreign, "Foreign", Now)]));
+    }
+
+    [UnitFact]
     public void GivenDifferentCardOwner_WhenCreated_ThenTransactionIsRejected()
     {
         var owner = User();
@@ -68,6 +134,7 @@ public sealed class FinancialTransactionTests
         var exception = Assert.Throws<ArgumentException>(() => new FinancialTransaction(
             other,
             Card(owner),
+            Category(other),
             TransactionDirection.Expense,
             1m,
             new DateOnly(2026, 9, 4),
@@ -85,6 +152,7 @@ public sealed class FinancialTransactionTests
         var exception = Assert.Throws<ArgumentException>(() => new FinancialTransaction(
             other,
             Account(owner),
+            Category(other),
             TransactionDirection.Earning,
             1m,
             new DateOnly(2026, 9, 4),
@@ -103,6 +171,7 @@ public sealed class FinancialTransactionTests
         var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new FinancialTransaction(
             user,
             Account(user),
+            Category(user),
             TransactionDirection.Earning,
             amount,
             new DateOnly(2026, 9, 4),
@@ -119,6 +188,7 @@ public sealed class FinancialTransactionTests
         var exception = Assert.Throws<ArgumentOutOfRangeException>(() => new FinancialTransaction(
             user,
             Account(user),
+            Category(user),
             (TransactionDirection)999,
             1m,
             new DateOnly(2026, 9, 4),
@@ -134,6 +204,7 @@ public sealed class FinancialTransactionTests
         var transaction = new FinancialTransaction(
             user,
             Card(user),
+            Category(user),
             TransactionDirection.Expense,
             125.50m,
             new DateOnly(2026, 9, 4),
@@ -157,6 +228,7 @@ public sealed class FinancialTransactionTests
         var transaction = new FinancialTransaction(
             user,
             Card(user),
+            Category(user),
             TransactionDirection.Expense,
             10m,
             new DateOnly(2026, 9, 4),
@@ -186,6 +258,7 @@ public sealed class FinancialTransactionTests
         var transaction = new FinancialTransaction(
             user,
             Card(user),
+            Category(user),
             TransactionDirection.Expense,
             10m,
             new DateOnly(2026, 9, 4),
@@ -205,6 +278,8 @@ public sealed class FinancialTransactionTests
         "Account Owner",
         Currency(),
         Now);
+
+    private static Category Category(UserProfile user) => new(user, "General", Now);
 
     private static FinancialAccount Account(UserProfile user) => new(
         user,

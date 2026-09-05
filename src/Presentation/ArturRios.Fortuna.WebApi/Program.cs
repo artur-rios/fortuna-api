@@ -104,7 +104,7 @@ try
         provider.GetRequiredService<EfCreditCardStatementStore>());
     builder.Services.AddScoped<ICreditCardStatementSettlementStore>(provider =>
         provider.GetRequiredService<EfCreditCardStatementStore>());
-    builder.Services.AddScoped<ICardChargeStore, EfCardChargeStore>();
+    builder.Services.AddScoped<ITransactionStore, EfTransactionStore>();
     builder.Services.AddScoped<EfInvestmentStore>();
     builder.Services.AddScoped<IInvestmentStore>(provider =>
         provider.GetRequiredService<EfInvestmentStore>());
@@ -193,9 +193,10 @@ try
         CreditCardLifecycleCommandOutput, RestoreCreditCardCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteCreditCardCommand,
         CreditCardLifecycleCommandOutput, HardDeleteCreditCardCommandHandler>();
-    builder.Services.AddScoped<IValidator<RecordCardChargeCommand>, RecordCardChargeCommandValidator>();
-    builder.Services.AddAuditedCommandHandler<RecordCardChargeCommand,
-        RecordCardChargeCommandOutput, RecordCardChargeCommandHandler>();
+    builder.Services.AddScoped<IValidator<RecordTransactionCommand>,
+        RecordTransactionCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<RecordTransactionCommand,
+        RecordTransactionCommandOutput, RecordTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CloseCreditCardStatementCommand,
         CloseCreditCardStatementCommandOutput, CloseCreditCardStatementCommandHandler>();
     builder.Services.AddScoped<IValidator<SettleCreditCardStatementCommand>,

@@ -187,7 +187,7 @@ pull request.
 
 | Issue | Work | Spec |
 |---|---|---|
-| [#31](https://github.com/artur-rios/fortuna-api/issues/31) | UC-30: Record a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#31](https://github.com/artur-rios/fortuna-api/issues/31) | ✅ UC-30: Record a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#32](https://github.com/artur-rios/fortuna-api/issues/32) | UC-31: Search Transactions | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#33](https://github.com/artur-rios/fortuna-api/issues/33) | UC-32: Update a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#34](https://github.com/artur-rios/fortuna-api/issues/34) | UC-33: Delete a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

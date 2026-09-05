@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
@@ -204,12 +205,15 @@ public sealed class FinancialAccountBalanceTests : IAsyncLifetime
         await using var context = CreateContext();
         var account = await context.FinancialAccounts
             .Include(item => item.User)
+            .Include(item => item.Currency)
             .SingleAsync(item => item.PublicId == accountId);
+        var category = new Category(account.User, "General", DateTimeOffset.UtcNow);
         foreach (var item in items)
         {
             var transaction = new FinancialTransaction(
                 account.User,
                 account,
+                category,
                 item.Direction,
                 item.Amount,
                 item.OccurredOn,

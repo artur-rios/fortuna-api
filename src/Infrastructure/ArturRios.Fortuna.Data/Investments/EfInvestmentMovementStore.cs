@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Investments;
@@ -87,9 +88,16 @@ public sealed class EfInvestmentMovementStore(AppDbContext context) : IInvestmen
         Transfer? transfer = null;
         if (account is not null)
         {
+            var transferCategory = await TransactionCategoryResolver.GetOrCreateAsync(
+                context,
+                account.User,
+                TransactionCategoryResolver.Transfers,
+                record.CreatedAt,
+                cancellationToken);
             outbound = new FinancialTransaction(
                 account.User,
                 account,
+                transferCategory,
                 TransactionDirection.Expense,
                 record.Amount,
                 record.OccurredOn,

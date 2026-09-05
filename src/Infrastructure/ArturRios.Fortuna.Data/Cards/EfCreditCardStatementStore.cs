@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -163,9 +164,16 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
                 MidpointRounding.AwayFromZero);
         }
 
+        var transferCategory = await TransactionCategoryResolver.GetOrCreateAsync(
+            context,
+            account.User,
+            TransactionCategoryResolver.Transfers,
+            settlement.CreatedAt,
+            cancellationToken);
         var outbound = new FinancialTransaction(
             account.User,
             account,
+            transferCategory,
             TransactionDirection.Expense,
             settlement.Amount,
             settlement.PaymentDate,
@@ -173,6 +181,7 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
         var inbound = new FinancialTransaction(
             statement.CreditCard.User,
             statement.CreditCard,
+            transferCategory,
             TransactionDirection.Earning,
             appliedAmount,
             settlement.PaymentDate,

@@ -6,6 +6,7 @@ using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -52,7 +53,7 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         Assert.Equal(2, await context.FinancialTransactions.CountAsync(item =>
             item.StatementId != null));
         Assert.Contains(await context.AuditEntries.ToArrayAsync(), item =>
-            item.Operation == nameof(RecordCardChargeCommand));
+            item.Operation == nameof(RecordTransactionCommand));
     }
 
     [FunctionalFact]
@@ -145,9 +146,11 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         });
         var body = await response.Content.ReadAsStringAsync();
 
-        Assert.Contains(TransactionMessages.CreditCardIdRequired, body, StringComparison.Ordinal);
+        Assert.Contains(TransactionMessages.ExactlyOneTargetRequired, body, StringComparison.Ordinal);
         Assert.Contains(TransactionMessages.AmountPositive, body, StringComparison.Ordinal);
         Assert.Contains(TransactionMessages.OccurredOnRequired, body, StringComparison.Ordinal);
+        Assert.Contains(TransactionMessages.CategoryIdRequired, body, StringComparison.Ordinal);
+        Assert.Contains(TransactionMessages.DirectionInvalid, body, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
@@ -516,7 +519,7 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         Assert.Equal(0m, response.Data.CreditAmount);
         Assert.Null(response.Data.CarryStatementId);
         var accountBalance = await client.GetFromJsonAsync<AccountBalanceEnvelope>(
-            $"/api/accounts/{account.Id}/balance?asOf=2026-09-25");
+            $"/api/accounts/{account.Id}/balance?asOf=2031-01-01");
         var cardBalance = await client.GetFromJsonAsync<CreditCardBalanceEnvelope>(
             $"/api/credit-cards/{card.Id}");
         Assert.Equal(900m, accountBalance?.Data?.Balance);
@@ -751,13 +754,24 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         var statement = await context.CreditCardStatements
             .Include(item => item.CreditCard)
             .ThenInclude(item => item.User)
+            .Include(item => item.CreditCard)
+            .ThenInclude(item => item.Currency)
             .SingleAsync(item => item.PublicId == statementId);
         statement.Close(DateTimeOffset.UtcNow);
         if (settled)
         {
+            var category = await context.Categories.SingleOrDefaultAsync(item =>
+                item.UserId == statement.CreditCard.User.Id &&
+                item.NormalizedName == "TRANSFERS" &&
+                !item.IsDeleted);
+            category ??= new Category(
+                statement.CreditCard.User,
+                "Transfers",
+                DateTimeOffset.UtcNow);
             var settlement = new FinancialTransaction(
                 statement.CreditCard.User,
                 statement.CreditCard,
+                category,
                 TransactionDirection.Earning,
                 statement.AmountDue,
                 statement.DueDate,
@@ -783,8 +797,12 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IHostedService>();
+                services.RemoveAll<TimeProvider>();
                 services.RemoveAll<AppDbContext>();
                 services.RemoveAll<DbContextOptions<AppDbContext>>();
+                services.AddSingleton<TimeProvider>(
+                    new FixedTimeProvider(
+                        new DateTimeOffset(2031, 1, 1, 0, 0, 0, TimeSpan.Zero)));
                 services.AddDbContext<AppDbContext>(options =>
                     options.UseNpgsql(database.GetConnectionString()));
             });
@@ -802,27 +820,52 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
             DatabaseDiagnosticsOptions.Disabled);
     }
 
-    private static async Task<ChargeData> RecordAsync(
+    private async Task<ChargeData> RecordAsync(
         HttpClient client,
         Guid cardId,
         decimal amount,
         DateOnly occurredOn)
     {
+        var categoryId = await EnsureCategoryForCardAsync(cardId);
         var response = await client.PostAsJsonAsync(
             "/api/transactions",
-            Charge(cardId, amount, occurredOn));
+            Charge(cardId, amount, occurredOn, categoryId));
         var envelope = await response.Content.ReadFromJsonAsync<ChargeEnvelope>();
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        Assert.Contains(TransactionMessages.CardChargeCreatedSuccessfully, envelope!.Messages);
+        Assert.Contains(TransactionMessages.RecordedSuccessfully, envelope!.Messages);
         return envelope.Data!;
     }
 
-    private static object Charge(Guid cardId, decimal amount, DateOnly occurredOn) => new
+    private async Task<Guid> EnsureCategoryForCardAsync(Guid cardId)
     {
-        CreditCardId = cardId,
-        Amount = amount,
-        OccurredOn = occurredOn
-    };
+        await using var context = CreateContext();
+        var card = await context.CreditCards
+            .Include(item => item.User)
+            .SingleAsync(item => item.PublicId == cardId);
+        var category = await context.Categories.SingleOrDefaultAsync(item =>
+            item.UserId == card.UserId && item.NormalizedName == "GENERAL" && !item.IsDeleted);
+        if (category is null)
+        {
+            category = new Category(card.User, "General", DateTimeOffset.UtcNow);
+            context.Categories.Add(category);
+            await context.SaveChangesAsync();
+        }
+
+        return category.PublicId;
+    }
+
+    private static object Charge(
+        Guid cardId,
+        decimal amount,
+        DateOnly occurredOn,
+        Guid? categoryId = null) => new
+        {
+            CreditCardId = cardId,
+            CategoryId = categoryId ?? Guid.NewGuid(),
+            Direction = TransactionDirection.Expense,
+            Amount = amount,
+            OccurredOn = occurredOn
+        };
 
     private static async Task<CardData> CreateCardAsync(
         HttpClient client,
@@ -1004,4 +1047,9 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         decimal? AppliedRate,
         DateOnly? RateDate,
         DateOnly PaymentDate);
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
 }

@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
@@ -46,6 +47,7 @@ public sealed class CreditCardStatementTests
         var charge = new FinancialTransaction(
             card.User,
             card,
+            Category(card.User),
             TransactionDirection.Expense,
             125.50m,
             new DateOnly(2026, 9, 10),
@@ -68,6 +70,7 @@ public sealed class CreditCardStatementTests
         var settlement = new FinancialTransaction(
             card.User,
             card,
+            Category(card.User),
             TransactionDirection.Earning,
             100m,
             new DateOnly(2026, 9, 25),
@@ -89,6 +92,7 @@ public sealed class CreditCardStatementTests
         var charge = new FinancialTransaction(
             chargeCard.User,
             chargeCard,
+            Category(chargeCard.User),
             TransactionDirection.Expense,
             10m,
             new DateOnly(2026, 9, 1),
@@ -118,6 +122,7 @@ public sealed class CreditCardStatementTests
         var settlement = new FinancialTransaction(
             card.User,
             card,
+            Category(card.User),
             TransactionDirection.Earning,
             1m,
             new DateOnly(2026, 9, 25),
@@ -137,6 +142,7 @@ public sealed class CreditCardStatementTests
         var settlement = new FinancialTransaction(
             card.User,
             card,
+            Category(card.User),
             TransactionDirection.Expense,
             1m,
             new DateOnly(2026, 9, 25),
@@ -164,6 +170,7 @@ public sealed class CreditCardStatementTests
         var settlement = new FinancialTransaction(
             card.User,
             otherCard,
+            Category(card.User),
             TransactionDirection.Earning,
             1m,
             new DateOnly(2026, 9, 25),
@@ -177,6 +184,8 @@ public sealed class CreditCardStatementTests
         card,
         BillingCycle.Containing(new DateOnly(2026, 9, 10), card.ClosingDay, card.DueDay),
         Now);
+
+    private static Category Category(UserProfile user) => new(user, "General", Now);
 
     private static CreditCard Card()
     {
