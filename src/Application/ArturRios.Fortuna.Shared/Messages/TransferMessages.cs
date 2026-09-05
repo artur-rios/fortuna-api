@@ -3,11 +3,15 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class TransferMessages
 {
     public const string RecordedSuccessfully = "Transfer recorded successfully.";
+    public const string RetrievedSuccessfully = "Transfer retrieved successfully.";
+    public const string DeletedSuccessfully = "Transfer deleted successfully.";
+    public const string RestoredSuccessfully = "Transfer restored successfully.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
     public const string OriginFinancialAccountNotFound = "Origin financial account not found.";
     public const string DestinationFinancialAccountNotFound =
         "Destination financial account not found.";
     public const string DestinationStatementNotFound = "Destination statement not found.";
+    public const string NotFound = "Transfer not found.";
     public const string AccountsMustDiffer =
         "Origin and destination financial accounts must be different.";
     public const string ExchangeRateUnavailable =
@@ -16,6 +20,11 @@ public static class TransferMessages
         "The converted amount is too small for the destination currency.";
     public const string StatementOpen = "An open statement cannot be settled.";
     public const string StatementAlreadySettled = "The statement is already settled.";
+    public const string SettledStatementFrozen =
+        "The transfer settled a statement whose composition is frozen.";
+    public const string RestoreRequiresSoftDeletion =
+        "Transfer must be soft-deleted before it can be restored.";
+    public const string TransferIdRequired = "Transfer id is required.";
     public const string OriginFinancialAccountIdRequired =
         "OriginFinancialAccountId is required.";
     public const string ExactlyOneDestinationRequired =

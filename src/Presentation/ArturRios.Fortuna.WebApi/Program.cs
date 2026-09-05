@@ -113,7 +113,13 @@ try
         provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<ITransactionLifecycleStore>(provider =>
         provider.GetRequiredService<EfTransactionStore>());
-    builder.Services.AddScoped<ITransferStore, EfTransferStore>();
+    builder.Services.AddScoped<EfTransferStore>();
+    builder.Services.AddScoped<ITransferStore>(provider =>
+        provider.GetRequiredService<EfTransferStore>());
+    builder.Services.AddScoped<ITransferReader>(provider =>
+        provider.GetRequiredService<EfTransferStore>());
+    builder.Services.AddScoped<ITransferLifecycleStore>(provider =>
+        provider.GetRequiredService<EfTransferStore>());
     builder.Services.AddScoped<EfInvestmentStore>();
     builder.Services.AddScoped<IInvestmentStore>(provider =>
         provider.GetRequiredService<EfInvestmentStore>());
@@ -220,6 +226,10 @@ try
         RecordTransferCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordTransferCommand,
         RecordTransferCommandOutput, RecordTransferCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteTransferCommand,
+        TransferLifecycleCommandOutput, DeleteTransferCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RestoreTransferCommand,
+        TransferLifecycleCommandOutput, RestoreTransferCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CloseCreditCardStatementCommand,
         CloseCreditCardStatementCommandOutput, CloseCreditCardStatementCommandHandler>();
     builder.Services.AddScoped<IValidator<SettleCreditCardStatementCommand>,
@@ -297,6 +307,10 @@ try
         SearchTransactionsQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<SearchTransactionsQuery, TransactionSearchOutput>,
         SearchTransactionsQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetTransferByIdQuery>,
+        GetTransferByIdQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetTransferByIdQuery, TransferOutput>,
+        GetTransferByIdQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();
