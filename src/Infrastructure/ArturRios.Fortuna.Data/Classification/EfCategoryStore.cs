@@ -7,7 +7,7 @@ using Npgsql;
 namespace ArturRios.Fortuna.Data.Classification;
 
 public sealed class EfCategoryStore(AppDbContext context)
-    : ICategoryStore, ICategoryReader, ICategoryUpdater
+    : ICategoryStore, ICategoryReader, ICategoryUpdater, ICategoryTransactionReassigner
 {
     private const string RootSiblingNameIndex = "ix_category_user_id_normalized_name";
     private const string NestedSiblingNameIndex =
@@ -189,6 +189,76 @@ public sealed class EfCategoryStore(AppDbContext context)
             CategoryUpdateOutcome.Succeeded);
     }
 
+    public async Task<CategoryTransactionReassignmentResult> ReassignAsync(
+        CategoryTransactionReassignment reassignment,
+        CancellationToken cancellationToken)
+    {
+        if (reassignment.SourceCategoryId == reassignment.TargetCategoryId)
+        {
+            return ReassignmentResult(CategoryTransactionReassignmentOutcome.SameCategory);
+        }
+
+        var categories = await context.Categories
+            .AsNoTracking()
+            .Where(category =>
+                category.User.PublicId == reassignment.UserId &&
+                !category.IsDeleted &&
+                (category.PublicId == reassignment.SourceCategoryId ||
+                    category.PublicId == reassignment.TargetCategoryId))
+            .Select(category => new CategoryIdentity(
+                category.Id,
+                category.UserId,
+                category.PublicId))
+            .ToArrayAsync(cancellationToken);
+        var source = categories.SingleOrDefault(category =>
+            category.PublicId == reassignment.SourceCategoryId);
+        var target = categories.SingleOrDefault(category =>
+            category.PublicId == reassignment.TargetCategoryId);
+        if (source is null || target is null)
+        {
+            return ReassignmentResult(CategoryTransactionReassignmentOutcome.CategoryNotFound);
+        }
+
+        var sourceCategoryIds = new HashSet<long> { source.Id };
+        if (reassignment.IncludeDescendants)
+        {
+            var hierarchy = await context.Categories
+                .AsNoTracking()
+                .Where(category => category.UserId == source.UserId)
+                .Select(category => new CategoryParent(category.Id, category.ParentId))
+                .ToArrayAsync(cancellationToken);
+            var children = hierarchy.ToLookup(category => category.ParentId);
+            var pending = new Queue<long>();
+            pending.Enqueue(source.Id);
+
+            while (pending.TryDequeue(out var parentId))
+            {
+                foreach (var child in children[parentId])
+                {
+                    if (sourceCategoryIds.Add(child.Id))
+                    {
+                        pending.Enqueue(child.Id);
+                    }
+                }
+            }
+        }
+
+        sourceCategoryIds.Remove(target.Id);
+        var reassignedCount = await context.FinancialTransactions
+            .Where(transaction =>
+                transaction.UserId == source.UserId &&
+                !transaction.IsDeleted &&
+                sourceCategoryIds.Contains(transaction.CategoryId))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(transaction => transaction.CategoryId, target.Id)
+                .SetProperty(transaction => transaction.UpdatedAt, reassignment.ChangedAt),
+                cancellationToken);
+
+        return new CategoryTransactionReassignmentResult(
+            reassignedCount,
+            CategoryTransactionReassignmentOutcome.Succeeded);
+    }
+
     private async Task<bool> ParentChainHasCycleAsync(
         long userId,
         long parentId,
@@ -251,4 +321,10 @@ public sealed class EfCategoryStore(AppDbContext context)
 
     private static CategoryUpdateResult UpdateResult(CategoryUpdateOutcome outcome) =>
         new(null, outcome);
+
+    private static CategoryTransactionReassignmentResult ReassignmentResult(
+        CategoryTransactionReassignmentOutcome outcome) => new(0, outcome);
+
+    private sealed record CategoryIdentity(long Id, long UserId, Guid PublicId);
+    private sealed record CategoryParent(long Id, long? ParentId);
 }
