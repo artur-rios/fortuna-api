@@ -203,7 +203,7 @@ pull request.
 
 | Issue | Work | Spec |
 |---|---|---|
-| [#42](https://github.com/artur-rios/fortuna-api/issues/42) | UC-41: Create a Category | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#42](https://github.com/artur-rios/fortuna-api/issues/42) | ✅ UC-41: Create a Category | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#43](https://github.com/artur-rios/fortuna-api/issues/43) | UC-42: View the Category Tree | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#44](https://github.com/artur-rios/fortuna-api/issues/44) | UC-43: Update a Category | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#45](https://github.com/artur-rios/fortuna-api/issues/45) | UC-44: Reassign Transactions Between Categories | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

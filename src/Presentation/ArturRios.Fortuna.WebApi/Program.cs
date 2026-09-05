@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Accounts;
 using ArturRios.Fortuna.Data.Auditing;
 using ArturRios.Fortuna.Data.Cards;
+using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Investments;
@@ -24,6 +25,7 @@ using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Cards;
+using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
@@ -115,6 +117,7 @@ try
         provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<ITransactionReconciliationStore>(provider =>
         provider.GetRequiredService<EfTransactionStore>());
+    builder.Services.AddScoped<ICategoryStore, EfCategoryStore>();
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -244,6 +247,9 @@ try
         ReconcileTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ReconcileTransactionCommand,
         ReconcileTransactionCommandOutput, ReconcileTransactionCommandHandler>();
+    builder.Services.AddScoped<IValidator<CreateCategoryCommand>, CreateCategoryCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<CreateCategoryCommand,
+        CreateCategoryCommandOutput, CreateCategoryCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
