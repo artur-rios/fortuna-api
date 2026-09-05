@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
@@ -248,10 +249,13 @@ public sealed class CreditCardLifecycleTests : IAsyncLifetime
         await using var context = CreateContext();
         var card = await context.CreditCards
             .Include(item => item.User)
+            .Include(item => item.Currency)
             .SingleAsync(item => item.PublicId == cardId);
+        var category = new Category(card.User, "General", DateTimeOffset.UtcNow);
         var expense = new FinancialTransaction(
             card.User,
             card,
+            category,
             TransactionDirection.Expense,
             120m,
             DateOnly.FromDateTime(DateTime.UtcNow),
@@ -259,6 +263,7 @@ public sealed class CreditCardLifecycleTests : IAsyncLifetime
         var credit = new FinancialTransaction(
             card.User,
             card,
+            category,
             TransactionDirection.Earning,
             20m,
             DateOnly.FromDateTime(DateTime.UtcNow),
@@ -266,6 +271,7 @@ public sealed class CreditCardLifecycleTests : IAsyncLifetime
         var preDeleted = new FinancialTransaction(
             card.User,
             card,
+            category,
             TransactionDirection.Expense,
             999m,
             DateOnly.FromDateTime(DateTime.UtcNow),

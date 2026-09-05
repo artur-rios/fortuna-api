@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
@@ -12,6 +13,14 @@ public enum TransactionDirection : short
     Earning = 2
 }
 
+public enum TransactionSourceType : short
+{
+    Manual = 1,
+    Pluggy = 2,
+    Excel = 3,
+    Pdf = 4
+}
+
 public sealed class FinancialTransaction : RecordLifecycleEntity
 {
     private FinancialTransaction()
@@ -21,36 +30,52 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public FinancialTransaction(
         UserProfile user,
         FinancialAccount account,
+        Category category,
         TransactionDirection direction,
         decimal amount,
         DateOnly occurredOn,
-        DateTimeOffset createdAt) : this(
+        DateTimeOffset createdAt,
+        string? description = null,
+        Counterparty? counterparty = null,
+        IReadOnlyCollection<Tag>? tags = null) : this(
             user,
             account,
             null,
             nameof(account),
+            category,
             direction,
             amount,
             occurredOn,
-            createdAt)
+            createdAt,
+            description,
+            counterparty,
+            tags)
     {
     }
 
     public FinancialTransaction(
         UserProfile user,
         CreditCard card,
+        Category category,
         TransactionDirection direction,
         decimal amount,
         DateOnly occurredOn,
-        DateTimeOffset createdAt) : this(
+        DateTimeOffset createdAt,
+        string? description = null,
+        Counterparty? counterparty = null,
+        IReadOnlyCollection<Tag>? tags = null) : this(
             user,
             null,
             card,
             nameof(card),
+            category,
             direction,
             amount,
             occurredOn,
-            createdAt)
+            createdAt,
+            description,
+            counterparty,
+            tags)
     {
     }
 
@@ -59,10 +84,14 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         FinancialAccount? account,
         CreditCard? card,
         string targetParameterName,
+        Category category,
         TransactionDirection direction,
         decimal amount,
         DateOnly occurredOn,
-        DateTimeOffset createdAt) : base(createdAt)
+        DateTimeOffset createdAt,
+        string? description,
+        Counterparty? counterparty,
+        IReadOnlyCollection<Tag>? tags) : base(createdAt)
     {
         User = user ?? throw new ArgumentNullException(nameof(user));
 
@@ -77,6 +106,36 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
             throw new ArgumentException(
                 "The transaction and its target must have the same owner.",
                 targetParameterName);
+        }
+
+        ArgumentNullException.ThrowIfNull(category);
+        if (category.User.PublicId != user.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and its category must have the same owner.",
+                nameof(category));
+        }
+
+        if (counterparty is not null && counterparty.User.PublicId != user.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and its counterparty must have the same owner.",
+                nameof(counterparty));
+        }
+
+        if (description?.Trim().Length > 500)
+        {
+            throw new ArgumentException(
+                "A description cannot exceed 500 characters.",
+                nameof(description));
+        }
+
+        var labels = tags?.DistinctBy(tag => tag.PublicId).ToArray() ?? [];
+        if (labels.Any(tag => tag.User.PublicId != user.PublicId))
+        {
+            throw new ArgumentException(
+                "The transaction and its tags must have the same owner.",
+                nameof(tags));
         }
 
         if (!Enum.IsDefined(direction))
@@ -96,9 +155,21 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         FinancialAccountId = account?.Id;
         CreditCard = card;
         CreditCardId = card?.Id;
+        Category = category;
+        CategoryId = category.Id;
+        Counterparty = counterparty;
+        CounterpartyId = counterparty?.Id;
         Direction = direction;
         Amount = amount;
+        Currency = account?.Currency ?? card!.Currency;
+        CurrencyId = Currency.Id;
         OccurredOn = occurredOn;
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        SourceType = TransactionSourceType.Manual;
+        foreach (var tag in labels)
+        {
+            Tags.Add(tag);
+        }
     }
 
     public long Id { get; private set; }
@@ -110,15 +181,25 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public CreditCard? CreditCard { get; private set; }
     public long? StatementId { get; private set; }
     public CreditCardStatement? Statement { get; private set; }
+    public long CategoryId { get; private set; }
+    public Category Category { get; private set; } = null!;
+    public long? CounterpartyId { get; private set; }
+    public Counterparty? Counterparty { get; private set; }
     public TransactionDirection Direction { get; private set; }
     public decimal Amount { get; private set; }
+    public long CurrencyId { get; private set; }
+    public Currency Currency { get; private set; } = null!;
     public decimal? OriginalAmount { get; private set; }
     public long? OriginalCurrencyId { get; private set; }
     public Currency? OriginalCurrency { get; private set; }
     public decimal? AppliedRate { get; private set; }
     public DateOnly? RateDate { get; private set; }
     public DateOnly OccurredOn { get; private set; }
+    public string? Description { get; private set; }
+    public TransactionSourceType SourceType { get; private set; }
+    public bool IsReconciled { get; private set; }
     public bool IsLateArriving { get; private set; }
+    public ICollection<Tag> Tags { get; } = [];
 
     public void RecordForeignCurrencyDetails(
         decimal originalAmount,

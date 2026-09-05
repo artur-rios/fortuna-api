@@ -17,23 +17,38 @@ public sealed class TransactionsController(CommandMediator commandMediator) : Co
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
-            [TransactionMessages.CardChargeCreatedSuccessfully] = StatusCodes.Status201Created,
+            [TransactionMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [TransactionMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
+            [TransactionMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
-            [TransactionMessages.CreditCardIdRequired] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.CategoryNotFound] = StatusCodes.Status404NotFound,
+            [TransactionMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.ExchangeRateUnavailable] = StatusCodes.Status409Conflict,
+            [TransactionMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest,
             [TransactionMessages.AmountPositive] = StatusCodes.Status400BadRequest,
             [TransactionMessages.AmountPrecisionInvalid] = StatusCodes.Status400BadRequest,
-            [TransactionMessages.OccurredOnRequired] = StatusCodes.Status400BadRequest
+            [TransactionMessages.OccurredOnRequired] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.OccurredOnTooFarInFuture] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.DirectionInvalid] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.ExactlyOneTargetRequired] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.CategoryIdRequired] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.CurrencyInvalid] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.DescriptionTooLong] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.CounterpartyTooLong] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.TooManyTags] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.TagRequired] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.TagTooLong] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.OwnerImmutable] = StatusCodes.Status400BadRequest
         };
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
-    public async Task<ActionResult<DataOutput<RecordCardChargeCommandOutput?>>> RecordCardCharge(
-        [FromBody] RecordCardChargeCommand command)
+    public async Task<ActionResult<DataOutput<RecordTransactionCommandOutput?>>> Record(
+        [FromBody] RecordTransactionCommand command)
     {
         var result = await commandMediator.ExecuteCommandAsync<
-            RecordCardChargeCommand,
-            RecordCardChargeCommandOutput>(command);
+            RecordTransactionCommand,
+            RecordTransactionCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

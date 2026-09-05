@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Investments;
@@ -30,6 +31,9 @@ public sealed class AppDbContext(
     public DbSet<Transfer> Transfers => Set<Transfer>();
     public DbSet<CreditCard> CreditCards => Set<CreditCard>();
     public DbSet<CreditCardStatement> CreditCardStatements => Set<CreditCardStatement>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Tag> Tags => Set<Tag>();
+    public DbSet<Counterparty> Counterparties => Set<Counterparty>();
     public DbSet<Investment> Investments => Set<Investment>();
     public DbSet<InvestmentMovement> InvestmentMovements => Set<InvestmentMovement>();
     public DbSet<InvestmentValuation> InvestmentValuations => Set<InvestmentValuation>();

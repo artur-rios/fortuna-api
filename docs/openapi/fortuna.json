@@ -1828,108 +1828,6 @@
         },
         "type": "object"
       },
-      "RecordCardChargeCommand": {
-        "additionalProperties": false,
-        "properties": {
-          "amount": {
-            "format": "double",
-            "type": "number"
-          },
-          "creditCardId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "occurredOn": {
-            "format": "date",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "RecordCardChargeCommandOutput": {
-        "additionalProperties": false,
-        "properties": {
-          "amount": {
-            "format": "double",
-            "type": "number"
-          },
-          "creditCardId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "isLateArriving": {
-            "type": "boolean"
-          },
-          "occurredOn": {
-            "format": "date",
-            "type": "string"
-          },
-          "statementClosingDate": {
-            "format": "date",
-            "type": "string"
-          },
-          "statementDueDate": {
-            "format": "date",
-            "type": "string"
-          },
-          "statementId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "statementPeriodEnd": {
-            "format": "date",
-            "type": "string"
-          },
-          "statementPeriodStart": {
-            "format": "date",
-            "type": "string"
-          },
-          "statementPurchaseTotal": {
-            "format": "double",
-            "type": "number"
-          },
-          "statementStatus": {
-            "nullable": true,
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "RecordCardChargeCommandOutputDataOutput": {
-        "additionalProperties": false,
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/RecordCardChargeCommandOutput"
-          },
-          "errors": {
-            "items": {
-              "type": "string"
-            },
-            "nullable": true,
-            "type": "array"
-          },
-          "messages": {
-            "items": {
-              "type": "string"
-            },
-            "nullable": true,
-            "type": "array"
-          },
-          "success": {
-            "readOnly": true,
-            "type": "boolean"
-          },
-          "timestamp": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
       "RecordInvestmentMovementCommand": {
         "additionalProperties": false,
         "properties": {
@@ -2223,6 +2121,219 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordTransactionCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "counterparty": {
+            "nullable": true,
+            "type": "string"
+          },
+          "creditCardId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/TransactionDirection"
+          },
+          "financialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "ownerId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "RecordTransactionCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "categoryName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "counterpartyId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "counterpartyName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "creditCardId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/TransactionDirection"
+          },
+          "financialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isLateArriving": {
+            "type": "boolean"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "originalAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "originalCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "statementClosingDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "statementDueDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "statementId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "statementPeriodEnd": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "statementPeriodStart": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "statementPurchaseTotal": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "statementStatus": {
+            "nullable": true,
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionTagOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordTransactionCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecordTransactionCommandOutput"
           },
           "errors": {
             "items": {
@@ -2559,6 +2670,28 @@
           },
           "timestamp": {
             "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionDirection": {
+        "enum": [
+          1,
+          2
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "TransactionTagOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
             "type": "string"
           }
         },
@@ -5069,17 +5202,17 @@
           "content": {
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/RecordCardChargeCommand"
+                "$ref": "#/components/schemas/RecordTransactionCommand"
               }
             },
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RecordCardChargeCommand"
+                "$ref": "#/components/schemas/RecordTransactionCommand"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/RecordCardChargeCommand"
+                "$ref": "#/components/schemas/RecordTransactionCommand"
               }
             }
           }
@@ -5089,17 +5222,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RecordCardChargeCommandOutputDataOutput"
+                  "$ref": "#/components/schemas/RecordTransactionCommandOutputDataOutput"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RecordCardChargeCommandOutputDataOutput"
+                  "$ref": "#/components/schemas/RecordTransactionCommandOutputDataOutput"
                 }
               },
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/RecordCardChargeCommandOutputDataOutput"
+                  "$ref": "#/components/schemas/RecordTransactionCommandOutputDataOutput"
                 }
               }
             },

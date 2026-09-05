@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
@@ -263,10 +264,15 @@ public sealed class CreditCardViewTests : IAsyncLifetime
         await using var context = CreateContext();
         var card = await context.CreditCards
             .Include(item => item.User)
+            .Include(item => item.Currency)
             .SingleAsync(item => item.PublicId == cardId);
+        var category = await context.Categories.SingleOrDefaultAsync(item =>
+            item.UserId == card.User.Id && item.NormalizedName == "GENERAL" && !item.IsDeleted);
+        category ??= new Category(card.User, "General", DateTimeOffset.UtcNow);
         var transaction = new FinancialTransaction(
             card.User,
             card,
+            category,
             direction,
             amount,
             new DateOnly(2026, 9, 4),

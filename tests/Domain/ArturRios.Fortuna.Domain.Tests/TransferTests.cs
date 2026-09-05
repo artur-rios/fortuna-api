@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -144,6 +145,7 @@ public sealed class TransferTests
             user.DisplayCurrency,
             0m,
             Now),
+        new Category(user, "Transfers", Now),
         direction,
         10m,
         new DateOnly(2026, 9, 4),
@@ -163,6 +165,7 @@ public sealed class TransferTests
             5,
             null,
             Now),
+        new Category(user, "Transfers", Now),
         direction,
         10m,
         new DateOnly(2026, 9, 4),

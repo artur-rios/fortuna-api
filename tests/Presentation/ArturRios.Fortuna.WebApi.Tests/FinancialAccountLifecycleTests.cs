@@ -5,6 +5,7 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
@@ -244,10 +245,13 @@ public sealed class FinancialAccountLifecycleTests : IAsyncLifetime
         await using var context = CreateContext();
         var account = await context.FinancialAccounts
             .Include(item => item.User)
+            .Include(item => item.Currency)
             .SingleAsync(item => item.PublicId == accountId);
+        var category = new Category(account.User, "General", DateTimeOffset.UtcNow);
         var first = new FinancialTransaction(
             account.User,
             account,
+            category,
             TransactionDirection.Earning,
             50m,
             DateOnly.FromDateTime(DateTime.UtcNow),
@@ -255,6 +259,7 @@ public sealed class FinancialAccountLifecycleTests : IAsyncLifetime
         var second = new FinancialTransaction(
             account.User,
             account,
+            category,
             TransactionDirection.Earning,
             10m,
             DateOnly.FromDateTime(DateTime.UtcNow),

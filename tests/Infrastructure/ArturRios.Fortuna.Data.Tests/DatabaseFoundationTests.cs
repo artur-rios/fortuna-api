@@ -196,6 +196,97 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenExistingTransactions_WhenRecordingMigrationRuns_ThenRequiredLinksAreBackfilled()
+    {
+        var databaseName = $"fortuna_transaction_migration_{Guid.NewGuid():N}";
+        var connectionBuilder = new NpgsqlConnectionStringBuilder(database.GetConnectionString());
+        await using (var adminConnection = new NpgsqlConnection(connectionBuilder.ConnectionString))
+        {
+            await adminConnection.OpenAsync();
+            await using var createDatabase = adminConnection.CreateCommand();
+            createDatabase.CommandText = $"CREATE DATABASE \"{databaseName}\"";
+            await createDatabase.ExecuteNonQueryAsync();
+        }
+
+        connectionBuilder.Database = databaseName;
+        await using (var previousContext = CreateContext(connectionBuilder.ConnectionString))
+        {
+            await previousContext.GetService<IMigrator>().MigrateAsync(
+                "20260905014621_AddInvestmentValuations");
+        }
+
+        var subject = Guid.NewGuid();
+        await using (var previousConnection = new NpgsqlConnection(connectionBuilder.ConnectionString))
+        {
+            await previousConnection.OpenAsync();
+            await using var insert = previousConnection.CreateCommand();
+            insert.CommandText = """
+                INSERT INTO fortuna.currency (code, name, minor_unit_digits)
+                VALUES ('BRL', 'Brazilian Real', 2);
+
+                INSERT INTO fortuna."user" (
+                    public_id, external_subject, display_name, display_currency_id,
+                    is_deleted, created_at, updated_at)
+                VALUES (
+                    @subject, CAST(@subject AS text), 'Transaction Owner',
+                    (SELECT id FROM fortuna.currency WHERE code = 'BRL'),
+                    false, now(), now());
+
+                INSERT INTO fortuna.financial_account (
+                    public_id, user_id, name, normalized_name, account_type,
+                    currency_id, opening_balance, is_deleted, created_at, updated_at)
+                SELECT gen_random_uuid(), id, 'Daily', 'DAILY', 1,
+                       (SELECT id FROM fortuna.currency WHERE code = 'BRL'),
+                       0, false, now(), now()
+                FROM fortuna."user" WHERE public_id = @subject;
+
+                INSERT INTO fortuna.financial_transaction (
+                    public_id, user_id, financial_account_id, direction, amount,
+                    occurred_on, is_deleted, created_at, updated_at)
+                SELECT gen_random_uuid(), "user".id, account.id, 1, 25,
+                       current_date, false, now(), now()
+                FROM fortuna."user" AS "user"
+                JOIN fortuna.financial_account AS account ON account.user_id = "user".id
+                WHERE "user".public_id = @subject;
+                """;
+            insert.Parameters.AddWithValue("subject", subject);
+            await insert.ExecuteNonQueryAsync();
+        }
+
+        await using (var currentContext = CreateContext(connectionBuilder.ConnectionString))
+        {
+            await currentContext.Database.MigrateAsync();
+        }
+
+        await using var currentConnection = new NpgsqlConnection(connectionBuilder.ConnectionString);
+        await currentConnection.OpenAsync();
+        await using var select = currentConnection.CreateCommand();
+        select.CommandText = """
+            SELECT category.name, currency.code,
+                   (SELECT column_default
+                    FROM information_schema.columns
+                    WHERE table_schema = 'fortuna'
+                      AND table_name = 'financial_transaction'
+                      AND column_name = 'category_id'),
+                   (SELECT column_default
+                    FROM information_schema.columns
+                    WHERE table_schema = 'fortuna'
+                      AND table_name = 'financial_transaction'
+                      AND column_name = 'currency_id')
+            FROM fortuna.financial_transaction AS transaction
+            JOIN fortuna.category AS category ON category.id = transaction.category_id
+            JOIN fortuna.currency AS currency ON currency.id = transaction.currency_id;
+            """;
+        await using var reader = await select.ExecuteReaderAsync();
+
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal("Uncategorized", reader.GetString(0));
+        Assert.Equal("BRL", reader.GetString(1));
+        Assert.True(reader.IsDBNull(2));
+        Assert.True(reader.IsDBNull(3));
+    }
+
+    [FunctionalFact]
     public async Task GivenAuditedSoftDeletedRecord_WhenHardDeleted_ThenAuditEntrySurvivesWithoutForeignKey()
     {
         await using var context = CreateContext();
