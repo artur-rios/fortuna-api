@@ -64,4 +64,36 @@ public sealed class Investment : RecordLifecycleEntity
     public InvestmentType InvestmentType { get; private set; }
     public long CurrencyId { get; private set; }
     public Currency Currency { get; private set; } = null!;
+
+    public void UpdateDetails(
+        string instrument,
+        string? institution,
+        InvestmentType investmentType,
+        DateTimeOffset updatedAt)
+    {
+        if (string.IsNullOrWhiteSpace(instrument) || instrument.Trim().Length > 200)
+        {
+            throw new ArgumentException(
+                "An instrument name between 1 and 200 characters is required.",
+                nameof(instrument));
+        }
+
+        if (institution?.Trim().Length > 200)
+        {
+            throw new ArgumentException(
+                "An institution cannot exceed 200 characters.",
+                nameof(institution));
+        }
+
+        if (!Enum.IsDefined(investmentType))
+        {
+            throw new ArgumentOutOfRangeException(nameof(investmentType));
+        }
+
+        Instrument = instrument.Trim();
+        NormalizedInstrument = Instrument.ToUpperInvariant();
+        Institution = string.IsNullOrWhiteSpace(institution) ? null : institution.Trim();
+        InvestmentType = investmentType;
+        MarkUpdated(updatedAt);
+    }
 }
