@@ -73,6 +73,124 @@ public sealed class RecurringTransactionTests
             new DateOnly(2026, 1, 1)));
     }
 
+    [UnitFact]
+    public void GivenBoundedMonthlyRule_WhenOccurrencesRequested_ThenOnlyDatesInWindowReturn()
+    {
+        var rule = Rule(
+            RecurrenceFrequency.Monthly,
+            new DateOnly(2026, 1, 31),
+            new DateOnly(2026, 4, 30));
+
+        var dates = rule.OccurrencesBetween(
+            new DateOnly(2026, 2, 1),
+            new DateOnly(2026, 5, 31));
+
+        Assert.Equal(
+            [new DateOnly(2026, 2, 28), new DateOnly(2026, 3, 31), new DateOnly(2026, 4, 30)],
+            dates);
+    }
+
+    [UnitFact]
+    public void GivenWindowBeforeStart_WhenOccurrencesRequested_ThenNoDatesReturn()
+    {
+        var rule = Rule(RecurrenceFrequency.Weekly, new DateOnly(2026, 2, 1));
+
+        var dates = rule.OccurrencesBetween(
+            new DateOnly(2026, 1, 1),
+            new DateOnly(2026, 1, 31));
+
+        Assert.Empty(dates);
+    }
+
+    [UnitFact]
+    public void GivenOccurrenceDate_WhenMarkedMaterialized_ThenMarkerAdvances()
+    {
+        var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 31));
+
+        rule.MarkMaterializedThrough(new DateOnly(2026, 2, 28), Now.AddDays(1));
+        rule.MarkMaterializedThrough(new DateOnly(2026, 1, 31), Now.AddDays(2));
+
+        Assert.Equal(new DateOnly(2026, 2, 28), rule.LastMaterializedOn);
+    }
+
+    [UnitFact]
+    public void GivenNonOccurrenceDate_WhenMarkedMaterialized_ThenItIsRejected()
+    {
+        var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 31));
+
+        Assert.Throws<ArgumentException>(() =>
+            rule.MarkMaterializedThrough(new DateOnly(2026, 2, 27), Now));
+    }
+
+    [UnitTheory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void GivenRuleEndState_WhenCompletionChecked_ThenExpectedStateReturns(
+        bool bounded,
+        bool expected)
+    {
+        var rule = Rule(
+            RecurrenceFrequency.Monthly,
+            new DateOnly(2026, 1, 1),
+            bounded ? new DateOnly(2026, 2, 1) : null);
+
+        Assert.Equal(expected, rule.IsCompleteOn(new DateOnly(2026, 2, 1)));
+    }
+
+    [UnitFact]
+    public void GivenMatchingTransaction_WhenMarkedAsOccurrence_ThenProvenanceIsStored()
+    {
+        var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 1));
+        var transaction = new FinancialTransaction(
+            rule.User,
+            rule.FinancialAccount!,
+            rule.Category,
+            rule.Direction,
+            rule.Amount,
+            rule.StartsOn,
+            Now);
+
+        transaction.MarkAsRecurringOccurrence(rule, true, Now.AddMinutes(1));
+
+        Assert.Same(rule, transaction.RecurringTransaction);
+        Assert.True(transaction.IsPossibleDuplicate);
+    }
+
+    [UnitFact]
+    public void GivenMismatchedTransaction_WhenMarkedAsOccurrence_ThenItIsRejected()
+    {
+        var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 1));
+        var transaction = new FinancialTransaction(
+            rule.User,
+            rule.FinancialAccount!,
+            rule.Category,
+            rule.Direction,
+            rule.Amount + 1m,
+            rule.StartsOn,
+            Now);
+
+        Assert.Throws<ArgumentException>(() =>
+            transaction.MarkAsRecurringOccurrence(rule, false, Now));
+    }
+
+    [UnitFact]
+    public void GivenAlreadyLinkedTransaction_WhenMarkedAsOccurrence_ThenItIsRejected()
+    {
+        var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 1));
+        var transaction = new FinancialTransaction(
+            rule.User,
+            rule.FinancialAccount!,
+            rule.Category,
+            rule.Direction,
+            rule.Amount,
+            rule.StartsOn,
+            Now);
+        transaction.MarkAsRecurringOccurrence(rule, false, Now);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            transaction.MarkAsRecurringOccurrence(rule, false, Now));
+    }
+
     private static RecurringTransaction Rule(
         RecurrenceFrequency frequency,
         DateOnly startsOn,

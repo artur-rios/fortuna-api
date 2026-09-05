@@ -184,6 +184,8 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public long? InstallmentPlanId { get; private set; }
     public InstallmentPlan? InstallmentPlan { get; private set; }
     public short? InstallmentNumber { get; private set; }
+    public long? RecurringTransactionId { get; private set; }
+    public RecurringTransaction? RecurringTransaction { get; private set; }
     public long CategoryId { get; private set; }
     public Category Category { get; private set; } = null!;
     public long? CounterpartyId { get; private set; }
@@ -203,7 +205,37 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public bool IsReconciled { get; private set; }
     public bool IsManuallyCorrected { get; private set; }
     public bool IsLateArriving { get; private set; }
+    public bool IsPossibleDuplicate { get; private set; }
     public ICollection<Tag> Tags { get; } = [];
+
+    public void MarkAsRecurringOccurrence(
+        RecurringTransaction recurringTransaction,
+        bool isPossibleDuplicate,
+        DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(recurringTransaction);
+        if (RecurringTransactionId.HasValue)
+        {
+            throw new InvalidOperationException("The transaction is already a recurring occurrence.");
+        }
+
+        if (recurringTransaction.User.PublicId != User.PublicId ||
+            recurringTransaction.Category.PublicId != Category.PublicId ||
+            recurringTransaction.Direction != Direction ||
+            recurringTransaction.Amount != Amount ||
+            recurringTransaction.FinancialAccount?.PublicId != FinancialAccount?.PublicId ||
+            recurringTransaction.CreditCard?.PublicId != CreditCard?.PublicId)
+        {
+            throw new ArgumentException(
+                "A recurring occurrence must match its rule's template.",
+                nameof(recurringTransaction));
+        }
+
+        RecurringTransaction = recurringTransaction;
+        RecurringTransactionId = recurringTransaction.Id;
+        IsPossibleDuplicate = isPossibleDuplicate;
+        MarkUpdated(updatedAt);
+    }
 
     public void UpdateDetails(
         Category category,

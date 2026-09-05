@@ -131,6 +131,60 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
         };
     }
 
+    public IReadOnlyCollection<DateOnly> OccurrencesBetween(DateOnly from, DateOnly through)
+    {
+        if (through < from || through < StartsOn)
+        {
+            return [];
+        }
+
+        var dates = new List<DateOnly>();
+        for (var index = 0; ; index++)
+        {
+            var occurrence = OccurrenceAt(index);
+            if (occurrence > through || EndsOn.HasValue && occurrence > EndsOn.Value)
+            {
+                break;
+            }
+
+            if (occurrence >= from)
+            {
+                dates.Add(occurrence);
+            }
+        }
+
+        return dates;
+    }
+
+    public bool IsCompleteOn(DateOnly date)
+    {
+        if (!EndsOn.HasValue)
+        {
+            return false;
+        }
+
+        return !NextOccurrences(date.AddDays(1), 1).Any();
+    }
+
+    public void MarkMaterializedThrough(DateOnly occurrence, DateTimeOffset updatedAt)
+    {
+        if (occurrence < StartsOn || EndsOn.HasValue && occurrence > EndsOn.Value)
+        {
+            throw new ArgumentOutOfRangeException(nameof(occurrence));
+        }
+
+        if (!OccurrencesBetween(occurrence, occurrence).Contains(occurrence))
+        {
+            throw new ArgumentException("The materialization marker must be an occurrence date.", nameof(occurrence));
+        }
+
+        if (!LastMaterializedOn.HasValue || occurrence > LastMaterializedOn.Value)
+        {
+            LastMaterializedOn = occurrence;
+            MarkUpdated(updatedAt);
+        }
+    }
+
     public IReadOnlyCollection<DateOnly> NextOccurrences(DateOnly from, int count = 5)
     {
         if (count < 1)

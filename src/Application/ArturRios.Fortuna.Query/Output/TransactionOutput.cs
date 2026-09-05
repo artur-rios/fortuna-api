@@ -29,8 +29,10 @@ public sealed class TransactionOutput : QueryOutput
     public bool IsTransfer { get; set; }
     public Guid? InstallmentPlanId { get; set; }
     public short? InstallmentNumber { get; set; }
+    public Guid? RecurringTransactionId { get; set; }
     public Guid? StatementId { get; set; }
     public bool IsLateArriving { get; set; }
+    public bool IsPossibleDuplicate { get; set; }
     public IReadOnlyCollection<TransactionLabelOutput> Tags { get; set; } = [];
     public bool IsDeleted { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

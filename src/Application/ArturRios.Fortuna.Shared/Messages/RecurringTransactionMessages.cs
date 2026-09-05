@@ -4,6 +4,8 @@ public static class RecurringTransactionMessages
 {
     public const string RecordedSuccessfully = "Recurring transaction defined successfully.";
     public const string RetrievedSuccessfully = "Recurring transaction retrieved successfully.";
+    public const string MaterializedSuccessfully = "Recurring transactions materialized successfully.";
+    public const string OccurrenceFailed = "The occurrence could not be materialized.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
     public const string FinancialAccountNotFound = "Financial account not found.";
     public const string CreditCardNotFound = "Credit card not found.";

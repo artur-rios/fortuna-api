@@ -95,8 +95,10 @@ public sealed class TransactionReadSnapshot
     public bool IsTransfer { get; init; }
     public Guid? InstallmentPlanId { get; init; }
     public short? InstallmentNumber { get; init; }
+    public Guid? RecurringTransactionId { get; init; }
     public Guid? StatementId { get; init; }
     public bool IsLateArriving { get; init; }
+    public bool IsPossibleDuplicate { get; init; }
     public IReadOnlyCollection<TransactionReadTagSnapshot> Tags { get; init; } = [];
     public bool IsDeleted { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
