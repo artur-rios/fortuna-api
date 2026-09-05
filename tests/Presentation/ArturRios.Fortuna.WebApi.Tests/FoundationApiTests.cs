@@ -41,6 +41,42 @@ public sealed class FoundationApiTests
         Assert.Equal("pt-BR", options.Locale);
         Assert.False(options.LocalAuthEnabled);
         Assert.Equal(10, options.LocalAuthRecoveryCodeCount);
+        Assert.Equal(0.01m, options.ReconciliationAmountTolerance);
+        Assert.Equal(1, options.ReconciliationDateToleranceDays);
+    }
+
+    [UnitFact]
+    public void GivenConfiguredReconciliationTolerances_WhenConfigurationLoads_ThenValuesAreApplied()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE"] = "2.50";
+        values["FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS"] = "3";
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal(2.50m, options.ReconciliationAmountTolerance);
+        Assert.Equal(3, options.ReconciliationDateToleranceDays);
+    }
+
+    [UnitTheory]
+    [InlineData("amount", "-0.01")]
+    [InlineData("amount", "invalid")]
+    [InlineData("date", "-1")]
+    [InlineData("date", "1.5")]
+    public void GivenInvalidReconciliationTolerance_WhenConfigurationLoads_ThenStartupIsRejected(
+        string field,
+        string value)
+    {
+        var values = ValidSettings();
+        var key = field == "amount"
+            ? "FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE"
+            : "FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS";
+        values[key] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]

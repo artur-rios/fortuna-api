@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -186,6 +187,8 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public short? InstallmentNumber { get; private set; }
     public long? RecurringTransactionId { get; private set; }
     public RecurringTransaction? RecurringTransaction { get; private set; }
+    public long? ImportedRecordId { get; private set; }
+    public ImportedRecord? ImportedRecord { get; private set; }
     public long CategoryId { get; private set; }
     public Category Category { get; private set; } = null!;
     public long? CounterpartyId { get; private set; }
@@ -207,6 +210,40 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public bool IsLateArriving { get; private set; }
     public bool IsPossibleDuplicate { get; private set; }
     public ICollection<Tag> Tags { get; } = [];
+
+    public void Reconcile(ImportedRecord importedRecord, DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(importedRecord);
+        if (IsReconciled)
+        {
+            throw new InvalidOperationException("The transaction is already reconciled.");
+        }
+
+        if (importedRecord.ImportJob.User.PublicId != User.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and imported record must have the same owner.",
+                nameof(importedRecord));
+        }
+
+        ImportedRecord = importedRecord;
+        ImportedRecordId = importedRecord.Id;
+        IsReconciled = true;
+        MarkUpdated(updatedAt);
+    }
+
+    public void Unreconcile(DateTimeOffset updatedAt)
+    {
+        if (!IsReconciled)
+        {
+            throw new InvalidOperationException("The transaction is not reconciled.");
+        }
+
+        ImportedRecord = null;
+        ImportedRecordId = null;
+        IsReconciled = false;
+        MarkUpdated(updatedAt);
+    }
 
     public void MarkAsRecurringOccurrence(
         RecurringTransaction recurringTransaction,

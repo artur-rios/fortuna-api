@@ -28,6 +28,8 @@ public sealed record FortunaOptions
     public Uri? RatesSourceBaseUri { get; init; }
     public string? RatesSyncCron { get; init; }
     public IReadOnlyCollection<string> RatesCurrencies { get; init; } = [];
+    public decimal ReconciliationAmountTolerance { get; init; }
+    public int ReconciliationDateToleranceDays { get; init; }
 
     public static FortunaOptions From(Func<string, string?> read)
     {
@@ -65,7 +67,15 @@ public sealed record FortunaOptions
                 read("FORTUNA_RATES_SOURCE_BASE_URL"),
                 "FORTUNA_RATES_SOURCE_BASE_URL"),
             RatesSyncCron = read("FORTUNA_RATES_SYNC_CRON"),
-            RatesCurrencies = CurrencyCodes(read("FORTUNA_RATES_CURRENCIES"))
+            RatesCurrencies = CurrencyCodes(read("FORTUNA_RATES_CURRENCIES")),
+            ReconciliationAmountTolerance = NonNegativeDecimal(
+                read("FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE"),
+                "FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE",
+                0.01m),
+            ReconciliationDateToleranceDays = NonNegativeInteger(
+                read("FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS"),
+                "FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS",
+                1)
         };
 
         if (!string.Equals(options.DataDatabaseType, "PostgreSql", StringComparison.OrdinalIgnoreCase))
@@ -145,6 +155,37 @@ public sealed record FortunaOptions
         return bool.TryParse(value, out var parsed)
             ? parsed
             : throw new InvalidOperationException($"Environment variable '{key}' must be true or false.");
+    }
+
+    private static int NonNegativeInteger(string? value, string key, int fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) &&
+            parsed >= 0
+            ? parsed
+            : throw new InvalidOperationException(
+                $"Environment variable '{key}' must be a non-negative integer.");
+    }
+
+    private static decimal NonNegativeDecimal(string? value, string key, decimal fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        return decimal.TryParse(
+                value,
+                NumberStyles.Number,
+                CultureInfo.InvariantCulture,
+                out var parsed) && parsed >= 0
+            ? parsed
+            : throw new InvalidOperationException(
+                $"Environment variable '{key}' must be a non-negative decimal.");
     }
 
     private static double PositiveDouble(string? value, string key, double fallback)

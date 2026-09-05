@@ -51,6 +51,13 @@ public interface ITransactionLifecycleStore
         CancellationToken cancellationToken);
 }
 
+public interface ITransactionReconciliationStore
+{
+    Task<TransactionReconciliationResult> ReconcileAsync(
+        TransactionReconciliation change,
+        CancellationToken cancellationToken);
+}
+
 public sealed class TransactionSearchCriteria
 {
     public Guid UserId { get; init; }
@@ -96,6 +103,10 @@ public sealed class TransactionReadSnapshot
     public Guid? InstallmentPlanId { get; init; }
     public short? InstallmentNumber { get; init; }
     public Guid? RecurringTransactionId { get; init; }
+    public Guid? ImportJobId { get; init; }
+    public long? ImportedRecordId { get; init; }
+    public decimal? ImportedAmount { get; init; }
+    public DateOnly? ImportedOccurredOn { get; init; }
     public Guid? StatementId { get; init; }
     public bool IsLateArriving { get; init; }
     public bool IsPossibleDuplicate { get; init; }
@@ -179,6 +190,30 @@ public enum TransactionLifecycleOutcome
 public sealed record TransactionLifecycleResult(
     Guid? Id,
     TransactionLifecycleOutcome Outcome);
+
+public sealed record TransactionReconciliation(
+    Guid UserId,
+    Guid TransactionId,
+    Guid? ImportJobId,
+    long? ImportedRecordId,
+    bool Unreconcile,
+    DateTimeOffset ChangedAt);
+
+public enum TransactionReconciliationOutcome
+{
+    Succeeded = 1,
+    TransactionNotFound = 2,
+    ImportedRecordNotFound = 3,
+    TransactionAlreadyReconciled = 4,
+    TransactionNotReconciled = 5,
+    ImportedRecordAlreadyMatched = 6,
+    SettledStatementFrozen = 7
+}
+
+public sealed record TransactionReconciliationResult(
+    TransactionReadSnapshot? Transaction,
+    TransactionReconciliationOutcome Outcome,
+    Guid? ConflictingTransactionId = null);
 
 public sealed record TransactionSnapshot(
     Guid Id,

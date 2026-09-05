@@ -30,6 +30,10 @@ public sealed class TransactionOutput : QueryOutput
     public Guid? InstallmentPlanId { get; set; }
     public short? InstallmentNumber { get; set; }
     public Guid? RecurringTransactionId { get; set; }
+    public Guid? ImportJobId { get; set; }
+    public long? ImportedRecordId { get; set; }
+    public decimal? ImportedAmount { get; set; }
+    public DateOnly? ImportedOccurredOn { get; set; }
     public Guid? StatementId { get; set; }
     public bool IsLateArriving { get; set; }
     public bool IsPossibleDuplicate { get; set; }

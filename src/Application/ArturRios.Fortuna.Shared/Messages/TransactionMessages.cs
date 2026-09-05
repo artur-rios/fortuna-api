@@ -4,6 +4,8 @@ public static class TransactionMessages
 {
     public const string RecordedSuccessfully = "Transaction recorded successfully.";
     public const string UpdatedSuccessfully = "Transaction updated successfully.";
+    public const string ReconciledSuccessfully = "Transaction reconciled successfully.";
+    public const string UnreconciledSuccessfully = "Transaction unreconciled successfully.";
     public const string DeletedSuccessfully = "Transaction deleted successfully.";
     public const string RestoredSuccessfully = "Transaction restored successfully.";
     public const string HardDeletedSuccessfully =
@@ -12,6 +14,11 @@ public static class TransactionMessages
     public const string ListedSuccessfully = "Transactions retrieved successfully.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
     public const string NotFound = "Transaction not found.";
+    public const string ImportedRecordNotFound = "Imported record not found.";
+    public const string AlreadyReconciled = "Transaction is already reconciled; unreconcile it first.";
+    public const string NotReconciled = "Transaction is not reconciled.";
+    public const string ImportedRecordAlreadyMatched =
+        "Imported record is already matched to another transaction.";
     public const string CreditCardNotFound = "Credit card not found.";
     public const string FinancialAccountNotFound = "Financial account not found.";
     public const string CategoryNotFound = "Category not found.";
@@ -52,6 +59,11 @@ public static class TransactionMessages
     public const string HardDeleteRequiresSoftDeletion =
         "Transaction must be soft-deleted before permanent deletion.";
     public const string TransactionIdRequired = "Transaction id is required.";
+    public const string ImportJobIdRequired = "ImportJobId is required when reconciling.";
+    public const string ImportedRecordIdRequired =
+        "ImportedRecordId must be greater than zero when reconciling.";
+    public const string UnreconcileReferencesForbidden =
+        "ImportJobId and ImportedRecordId must be omitted when unreconciling.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string DateRangeInvalid = "From cannot be later than To.";
@@ -72,4 +84,7 @@ public static class TransactionMessages
     public static string UnsupportedFilter(string filter) => $"Filter '{filter}' is not supported.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
+
+    public static string ConflictingTransaction(Guid transactionId) =>
+        $"Conflicting transaction: '{transactionId}'.";
 }

@@ -46,6 +46,8 @@ public sealed class TransactionsController(
         {
             [TransactionMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [TransactionMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
+            [TransactionMessages.ReconciledSuccessfully] = StatusCodes.Status200OK,
+            [TransactionMessages.UnreconciledSuccessfully] = StatusCodes.Status200OK,
             [TransactionMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [TransactionMessages.RestoredSuccessfully] = StatusCodes.Status200OK,
             [TransactionMessages.HardDeletedSuccessfully] = StatusCodes.Status200OK,
@@ -78,6 +80,10 @@ public sealed class TransactionsController(
             [TransactionMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [TransactionMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [TransactionMessages.NotFound] = StatusCodes.Status404NotFound,
+            [TransactionMessages.ImportedRecordNotFound] = StatusCodes.Status404NotFound,
+            [TransactionMessages.AlreadyReconciled] = StatusCodes.Status409Conflict,
+            [TransactionMessages.NotReconciled] = StatusCodes.Status409Conflict,
+            [TransactionMessages.ImportedRecordAlreadyMatched] = StatusCodes.Status409Conflict,
             [TransactionMessages.TransactionIdRequired] = StatusCodes.Status400BadRequest,
             [TransactionMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
             [TransactionMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
@@ -151,6 +157,19 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateTransactionCommand,
             UpdateTransactionCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/reconcile")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<ReconcileTransactionCommandOutput?>>> Reconcile(
+        Guid id,
+        [FromBody] ReconcileTransactionCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            ReconcileTransactionCommand,
+            ReconcileTransactionCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 

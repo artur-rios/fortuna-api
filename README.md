@@ -197,7 +197,7 @@ pull request.
 | [#38](https://github.com/artur-rios/fortuna-api/issues/38) | ✅ UC-37: Define a Recurring Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#39](https://github.com/artur-rios/fortuna-api/issues/39) | ✅ UC-38: Materialize Recurring Occurrences | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#40](https://github.com/artur-rios/fortuna-api/issues/40) | ✅ UC-39: Update a Recurring Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#41](https://github.com/artur-rios/fortuna-api/issues/41) | UC-40: Reconcile a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#41](https://github.com/artur-rios/fortuna-api/issues/41) | ✅ UC-40: Reconcile a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ### M-05 — Organization and planning
 

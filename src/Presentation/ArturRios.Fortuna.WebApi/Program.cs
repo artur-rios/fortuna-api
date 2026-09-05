@@ -113,6 +113,8 @@ try
         provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<ITransactionLifecycleStore>(provider =>
         provider.GetRequiredService<EfTransactionStore>());
+    builder.Services.AddScoped<ITransactionReconciliationStore>(provider =>
+        provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -150,6 +152,9 @@ try
     builder.Services.AddScoped<IInvestmentMovementStore, EfInvestmentMovementStore>();
     builder.Services.AddScoped<IInvestmentValuationStore, EfInvestmentValuationStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
+    builder.Services.AddSingleton(new ReconciliationOptions(
+        options.ReconciliationAmountTolerance,
+        options.ReconciliationDateToleranceDays));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
@@ -235,6 +240,10 @@ try
         UpdateTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateTransactionCommand,
         UpdateTransactionCommandOutput, UpdateTransactionCommandHandler>();
+    builder.Services.AddScoped<IValidator<ReconcileTransactionCommand>,
+        ReconcileTransactionCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<ReconcileTransactionCommand,
+        ReconcileTransactionCommandOutput, ReconcileTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
