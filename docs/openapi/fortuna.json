@@ -2360,6 +2360,136 @@
         },
         "type": "object"
       },
+      "RecordTransferCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "destinationFinancialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "destinationStatementId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "originFinancialAccountId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "ownerId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordTransferCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "destinationFinancialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "destinationStatementId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "inboundAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "inboundCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "inboundTransactionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "originFinancialAccountId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "outboundAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "outboundCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "outboundTransactionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordTransferCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecordTransferCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RecoverLocalAccountCommand": {
         "additionalProperties": false,
         "properties": {
@@ -6224,6 +6354,54 @@
         ]
       }
     },
+    "/api/transfers": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordTransferCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordTransferCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordTransferCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordTransferCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordTransferCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordTransferCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Transfers"
+        ]
+      }
+    },
     "/healthcheck": {
       "get": {
         "responses": {
@@ -6273,6 +6451,9 @@
     },
     {
       "name": "Transactions"
+    },
+    {
+      "name": "Transfers"
     }
   ]
 }
