@@ -6,7 +6,7 @@ using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Classification;
 
-public sealed class EfCategoryStore(AppDbContext context) : ICategoryStore
+public sealed class EfCategoryStore(AppDbContext context) : ICategoryStore, ICategoryReader
 {
     private const string RootSiblingNameIndex = "ix_category_user_id_normalized_name";
     private const string NestedSiblingNameIndex =
@@ -82,6 +82,28 @@ public sealed class EfCategoryStore(AppDbContext context) : ICategoryStore
                 category.UpdatedAt),
             CategoryCreationOutcome.Succeeded);
     }
+
+    public async Task<IReadOnlyCollection<CategoryReadSnapshot>> ListAsync(
+        Guid userId,
+        bool includeDeleted,
+        bool includeUsageCounts,
+        CancellationToken cancellationToken) => await context.Categories
+        .AsNoTracking()
+        .Where(category =>
+            category.User.PublicId == userId &&
+            (includeDeleted || !category.IsDeleted))
+        .Select(category => new CategoryReadSnapshot(
+            category.PublicId,
+            category.Name,
+            category.Parent == null ? null : category.Parent.PublicId,
+            category.IsDeleted,
+            includeUsageCounts
+                ? context.FinancialTransactions.Count(transaction =>
+                    transaction.CategoryId == category.Id && !transaction.IsDeleted)
+                : 0,
+            category.CreatedAt,
+            category.UpdatedAt))
+        .ToArrayAsync(cancellationToken);
 
     private async Task<bool> ParentChainHasCycleAsync(
         long userId,

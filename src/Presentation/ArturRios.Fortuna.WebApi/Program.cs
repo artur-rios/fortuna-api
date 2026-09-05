@@ -117,7 +117,11 @@ try
         provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<ITransactionReconciliationStore>(provider =>
         provider.GetRequiredService<EfTransactionStore>());
-    builder.Services.AddScoped<ICategoryStore, EfCategoryStore>();
+    builder.Services.AddScoped<EfCategoryStore>();
+    builder.Services.AddScoped<ICategoryStore>(provider =>
+        provider.GetRequiredService<EfCategoryStore>());
+    builder.Services.AddScoped<ICategoryReader>(provider =>
+        provider.GetRequiredService<EfCategoryStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -317,6 +321,10 @@ try
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetCategoryTreeQuery, CategoryTreeOutput>,
+        GetCategoryTreeQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetCategoryByIdQuery, CategoryOutput>,
+        GetCategoryByIdQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,

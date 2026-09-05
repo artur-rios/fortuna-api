@@ -3,6 +3,11 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class CategoryMessages
 {
     public const string CreatedSuccessfully = "Category created successfully.";
+    public const string TreeRetrievedSuccessfully = "Category tree retrieved successfully.";
+    public const string RetrievedSuccessfully = "Category retrieved successfully.";
+    public const string NotFound = "Category not found.";
+    public const string DefaultSetAvailable =
+        "No categories were found. A default category set can be seeded.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
     public const string ParentNotFound = "Parent category not found.";
     public const string DuplicateSiblingName =
