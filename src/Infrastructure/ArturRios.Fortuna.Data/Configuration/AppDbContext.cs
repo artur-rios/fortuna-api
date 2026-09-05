@@ -30,6 +30,7 @@ public sealed class AppDbContext(
     public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
     public DbSet<Transfer> Transfers => Set<Transfer>();
     public DbSet<InstallmentPlan> InstallmentPlans => Set<InstallmentPlan>();
+    public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
     public DbSet<CreditCard> CreditCards => Set<CreditCard>();
     public DbSet<CreditCardStatement> CreditCardStatements => Set<CreditCardStatement>();
     public DbSet<Category> Categories => Set<Category>();

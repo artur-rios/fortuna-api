@@ -127,6 +127,11 @@ try
         provider.GetRequiredService<EfInstallmentPlanStore>());
     builder.Services.AddScoped<IInstallmentPlanLifecycleStore>(provider =>
         provider.GetRequiredService<EfInstallmentPlanStore>());
+    builder.Services.AddScoped<EfRecurringTransactionStore>();
+    builder.Services.AddScoped<IRecurringTransactionStore>(provider =>
+        provider.GetRequiredService<EfRecurringTransactionStore>());
+    builder.Services.AddScoped<IRecurringTransactionReader>(provider =>
+        provider.GetRequiredService<EfRecurringTransactionStore>());
     builder.Services.AddScoped<EfInvestmentStore>();
     builder.Services.AddScoped<IInvestmentStore>(provider =>
         provider.GetRequiredService<EfInvestmentStore>());
@@ -245,6 +250,10 @@ try
         InstallmentPlanLifecycleCommandOutput, DeleteInstallmentPlanCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreInstallmentPlanCommand,
         InstallmentPlanLifecycleCommandOutput, RestoreInstallmentPlanCommandHandler>();
+    builder.Services.AddScoped<IValidator<DefineRecurringTransactionCommand>,
+        DefineRecurringTransactionCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<DefineRecurringTransactionCommand,
+        DefineRecurringTransactionCommandOutput, DefineRecurringTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CloseCreditCardStatementCommand,
         CloseCreditCardStatementCommandOutput, CloseCreditCardStatementCommandHandler>();
     builder.Services.AddScoped<IValidator<SettleCreditCardStatementCommand>,
@@ -330,6 +339,10 @@ try
         GetInstallmentPlanByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetInstallmentPlanByIdQuery,
         InstallmentPlanOutput>, GetInstallmentPlanByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetRecurringTransactionByIdQuery>,
+        GetRecurringTransactionByIdQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetRecurringTransactionByIdQuery,
+        RecurringTransactionOutput>, GetRecurringTransactionByIdQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();
