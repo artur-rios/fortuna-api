@@ -93,6 +93,8 @@ public sealed class TransactionReadSnapshot
     public bool IsReconciled { get; init; }
     public bool IsManuallyCorrected { get; init; }
     public bool IsTransfer { get; init; }
+    public Guid? InstallmentPlanId { get; init; }
+    public short? InstallmentNumber { get; init; }
     public Guid? StatementId { get; init; }
     public bool IsLateArriving { get; init; }
     public IReadOnlyCollection<TransactionReadTagSnapshot> Tags { get; init; } = [];
@@ -155,7 +157,8 @@ public enum TransactionUpdateOutcome
     NotFound = 2,
     CategoryNotFound = 3,
     SettledStatementFrozen = 4,
-    TransferFieldsRestricted = 5
+    TransferFieldsRestricted = 5,
+    InstallmentFieldsRestricted = 6
 }
 
 public sealed record TransactionUpdateResult(

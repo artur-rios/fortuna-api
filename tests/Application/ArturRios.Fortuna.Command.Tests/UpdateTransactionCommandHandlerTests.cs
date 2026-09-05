@@ -45,6 +45,8 @@ public sealed class UpdateTransactionCommandHandlerTests
         TransactionMessages.SettledStatementFrozen)]
     [InlineData(TransactionUpdateOutcome.TransferFieldsRestricted,
         TransactionMessages.TransferFieldsRestricted)]
+    [InlineData(TransactionUpdateOutcome.InstallmentFieldsRestricted,
+        TransactionMessages.InstallmentFieldsRestricted)]
     public async Task GivenStoreRefusal_WhenUpdated_ThenCanonicalErrorIsReturned(
         TransactionUpdateOutcome outcome,
         string expected)

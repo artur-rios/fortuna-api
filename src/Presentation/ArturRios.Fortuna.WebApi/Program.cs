@@ -120,6 +120,13 @@ try
         provider.GetRequiredService<EfTransferStore>());
     builder.Services.AddScoped<ITransferLifecycleStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
+    builder.Services.AddScoped<EfInstallmentPlanStore>();
+    builder.Services.AddScoped<IInstallmentPlanStore>(provider =>
+        provider.GetRequiredService<EfInstallmentPlanStore>());
+    builder.Services.AddScoped<IInstallmentPlanReader>(provider =>
+        provider.GetRequiredService<EfInstallmentPlanStore>());
+    builder.Services.AddScoped<IInstallmentPlanLifecycleStore>(provider =>
+        provider.GetRequiredService<EfInstallmentPlanStore>());
     builder.Services.AddScoped<EfInvestmentStore>();
     builder.Services.AddScoped<IInvestmentStore>(provider =>
         provider.GetRequiredService<EfInvestmentStore>());
@@ -230,6 +237,14 @@ try
         TransferLifecycleCommandOutput, DeleteTransferCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransferCommand,
         TransferLifecycleCommandOutput, RestoreTransferCommandHandler>();
+    builder.Services.AddScoped<IValidator<RecordInstallmentPlanCommand>,
+        RecordInstallmentPlanCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<RecordInstallmentPlanCommand,
+        RecordInstallmentPlanCommandOutput, RecordInstallmentPlanCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteInstallmentPlanCommand,
+        InstallmentPlanLifecycleCommandOutput, DeleteInstallmentPlanCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RestoreInstallmentPlanCommand,
+        InstallmentPlanLifecycleCommandOutput, RestoreInstallmentPlanCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CloseCreditCardStatementCommand,
         CloseCreditCardStatementCommandOutput, CloseCreditCardStatementCommandHandler>();
     builder.Services.AddScoped<IValidator<SettleCreditCardStatementCommand>,
@@ -311,6 +326,10 @@ try
         GetTransferByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetTransferByIdQuery, TransferOutput>,
         GetTransferByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetInstallmentPlanByIdQuery>,
+        GetInstallmentPlanByIdQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetInstallmentPlanByIdQuery,
+        InstallmentPlanOutput>, GetInstallmentPlanByIdQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();

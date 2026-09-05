@@ -29,6 +29,8 @@ internal static class TransactionProjection
         IsReconciled = transaction.IsReconciled,
         IsManuallyCorrected = transaction.IsManuallyCorrected,
         IsTransfer = transaction.IsTransfer,
+        InstallmentPlanId = transaction.InstallmentPlanId,
+        InstallmentNumber = transaction.InstallmentNumber,
         StatementId = transaction.StatementId,
         IsLateArriving = transaction.IsLateArriving,
         Tags = transaction.Tags.Select(tag => new TransactionLabelOutput

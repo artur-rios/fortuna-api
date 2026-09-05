@@ -74,6 +74,7 @@ public sealed class TransactionsController(
             [TransactionMessages.TransactionCurrencyImmutable] = StatusCodes.Status400BadRequest,
             [TransactionMessages.SettledStatementFrozen] = StatusCodes.Status409Conflict,
             [TransactionMessages.TransferFieldsRestricted] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.InstallmentFieldsRestricted] = StatusCodes.Status400BadRequest,
             [TransactionMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [TransactionMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [TransactionMessages.NotFound] = StatusCodes.Status404NotFound,

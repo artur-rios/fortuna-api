@@ -63,6 +63,8 @@ public sealed class UpdateTransactionCommandHandler(
                     TransactionMessages.SettledStatementFrozen,
                 TransactionUpdateOutcome.TransferFieldsRestricted =>
                     TransactionMessages.TransferFieldsRestricted,
+                TransactionUpdateOutcome.InstallmentFieldsRestricted =>
+                    TransactionMessages.InstallmentFieldsRestricted,
                 _ => throw new InvalidOperationException("Unknown transaction update outcome.")
             });
         }

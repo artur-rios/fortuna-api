@@ -181,6 +181,9 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public CreditCard? CreditCard { get; private set; }
     public long? StatementId { get; private set; }
     public CreditCardStatement? Statement { get; private set; }
+    public long? InstallmentPlanId { get; private set; }
+    public InstallmentPlan? InstallmentPlan { get; private set; }
+    public short? InstallmentNumber { get; private set; }
     public long CategoryId { get; private set; }
     public Category Category { get; private set; } = null!;
     public long? CounterpartyId { get; private set; }
@@ -331,6 +334,30 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         Statement = statement;
         StatementId = statement.Id;
         IsLateArriving = isLateArriving;
+        MarkUpdated(updatedAt);
+    }
+
+    public void AssignToInstallmentPlan(
+        InstallmentPlan installmentPlan,
+        short installmentNumber,
+        DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(installmentPlan);
+        if (CreditCard?.PublicId != installmentPlan.CreditCard.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and installment plan must belong to the same credit card.",
+                nameof(installmentPlan));
+        }
+
+        if (installmentNumber < 1 || installmentNumber > installmentPlan.InstallmentCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(installmentNumber));
+        }
+
+        InstallmentPlan = installmentPlan;
+        InstallmentPlanId = installmentPlan.Id;
+        InstallmentNumber = installmentNumber;
         MarkUpdated(updatedAt);
     }
 }
