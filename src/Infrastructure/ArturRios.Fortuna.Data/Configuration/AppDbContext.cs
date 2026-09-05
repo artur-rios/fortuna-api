@@ -32,6 +32,7 @@ public sealed class AppDbContext(
     public DbSet<CreditCardStatement> CreditCardStatements => Set<CreditCardStatement>();
     public DbSet<Investment> Investments => Set<Investment>();
     public DbSet<InvestmentMovement> InvestmentMovements => Set<InvestmentMovement>();
+    public DbSet<InvestmentValuation> InvestmentValuations => Set<InvestmentValuation>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

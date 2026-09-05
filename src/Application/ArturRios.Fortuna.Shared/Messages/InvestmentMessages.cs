@@ -5,6 +5,10 @@ public static class InvestmentMessages
     public const string CreatedSuccessfully = "Investment created successfully.";
     public const string MovementRecordedSuccessfully =
         "Investment movement recorded successfully.";
+    public const string ValuationRecordedSuccessfully =
+        "Investment valuation recorded successfully.";
+    public const string ValuationReplacedSuccessfully =
+        "Investment valuation replaced successfully.";
     public const string DuplicateInstrument =
         "A live investment already uses this instrument name.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
@@ -35,6 +39,10 @@ public static class InvestmentMessages
         "No exchange rate is available for the movement date.";
     public const string ConvertedAmountTooSmall =
         "The converted movement amount is below the investment currency precision.";
+    public const string ValuationValuePrecisionInvalid =
+        "Value must contain at most 15 whole and 4 decimal digits.";
+    public const string ValuedOnRequired = "ValuedOn is required.";
+    public const string ValuedOnFuture = "ValuedOn must not be in the future.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
 }

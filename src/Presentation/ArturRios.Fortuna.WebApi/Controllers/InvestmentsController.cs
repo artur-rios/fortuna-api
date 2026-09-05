@@ -38,7 +38,10 @@ public sealed class InvestmentsController(CommandMediator commandMediator) : Con
             [InvestmentMessages.FinancialAccountIdInvalid] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.FundingRequiresContribution] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.ExchangeRateUnavailable] = StatusCodes.Status409Conflict,
-            [InvestmentMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest
+            [InvestmentMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.ValuationValuePrecisionInvalid] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.ValuedOnRequired] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.ValuedOnFuture] = StatusCodes.Status400BadRequest
         };
 
     [HttpPost]
@@ -62,6 +65,19 @@ public sealed class InvestmentsController(CommandMediator commandMediator) : Con
         var result = await commandMediator.ExecuteCommandAsync<
             RecordInvestmentMovementCommand,
             RecordInvestmentMovementCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/valuations")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<RecordInvestmentValuationCommandOutput?>>> RecordValuation(
+        Guid id,
+        [FromBody] RecordInvestmentValuationCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            RecordInvestmentValuationCommand,
+            RecordInvestmentValuationCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }
