@@ -191,6 +191,86 @@ public sealed class RecurringTransactionTests
             transaction.MarkAsRecurringOccurrence(rule, false, Now));
     }
 
+    [UnitFact]
+    public void GivenMaterializedRule_WhenTemplateUpdated_ThenPastOccurrenceAndMarkerRemainUnchanged()
+    {
+        var startsOn = new DateOnly(2026, 1, 1);
+        var rule = Rule(RecurrenceFrequency.Monthly, startsOn);
+        var occurrence = new FinancialTransaction(
+            rule.User,
+            rule.FinancialAccount!,
+            rule.Category,
+            rule.Direction,
+            rule.Amount,
+            startsOn,
+            Now);
+        occurrence.MarkAsRecurringOccurrence(rule, false, Now);
+        rule.MarkMaterializedThrough(startsOn, Now);
+        var newCategory = new Category(rule.User, "Updated bills", Now);
+
+        rule.UpdateTemplate(
+            rule.FinancialAccount,
+            null,
+            newCategory,
+            TransactionDirection.Earning,
+            25m,
+            RecurrenceFrequency.Weekly,
+            startsOn,
+            null,
+            "Updated",
+            null,
+            Now.AddDays(1));
+
+        Assert.Equal(startsOn, rule.LastMaterializedOn);
+        Assert.Equal(25m, rule.Amount);
+        Assert.Equal(newCategory, rule.Category);
+        Assert.Equal(10m, occurrence.Amount);
+        Assert.NotEqual(newCategory, occurrence.Category);
+    }
+
+    [UnitFact]
+    public void GivenEndBeforeMaterializationMarker_WhenTemplateUpdated_ThenItIsAccepted()
+    {
+        var startsOn = new DateOnly(2026, 1, 1);
+        var rule = Rule(RecurrenceFrequency.Monthly, startsOn);
+        rule.MarkMaterializedThrough(new DateOnly(2026, 3, 1), Now);
+
+        rule.UpdateTemplate(
+            rule.FinancialAccount,
+            null,
+            rule.Category,
+            rule.Direction,
+            rule.Amount,
+            rule.Frequency,
+            startsOn,
+            new DateOnly(2026, 2, 1),
+            rule.Description,
+            rule.Counterparty,
+            Now.AddDays(1));
+
+        Assert.Equal(new DateOnly(2026, 2, 1), rule.EndsOn);
+        Assert.Equal(new DateOnly(2026, 3, 1), rule.LastMaterializedOn);
+    }
+
+    [UnitFact]
+    public void GivenEndBeforeNewStart_WhenTemplateUpdated_ThenItIsRejected()
+    {
+        var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 1));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => rule.UpdateTemplate(
+            rule.FinancialAccount,
+            null,
+            rule.Category,
+            rule.Direction,
+            rule.Amount,
+            rule.Frequency,
+            new DateOnly(2026, 2, 1),
+            new DateOnly(2026, 1, 1),
+            null,
+            null,
+            Now));
+    }
+
     private static RecurringTransaction Rule(
         RecurrenceFrequency frequency,
         DateOnly startsOn,

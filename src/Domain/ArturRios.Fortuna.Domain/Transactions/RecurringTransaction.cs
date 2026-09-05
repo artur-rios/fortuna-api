@@ -131,6 +131,76 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
         };
     }
 
+    public void UpdateTemplate(
+        FinancialAccount? financialAccount,
+        CreditCard? creditCard,
+        Category category,
+        TransactionDirection direction,
+        decimal amount,
+        RecurrenceFrequency frequency,
+        DateOnly startsOn,
+        DateOnly? endsOn,
+        string? description,
+        Counterparty? counterparty,
+        DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(category);
+        if ((financialAccount is null) == (creditCard is null))
+        {
+            throw new ArgumentException("Exactly one transaction target is required.");
+        }
+
+        var targetUser = financialAccount?.User ?? creditCard!.User;
+        if (targetUser.PublicId != User.PublicId || category.User.PublicId != User.PublicId ||
+            (counterparty is not null && counterparty.User.PublicId != User.PublicId))
+        {
+            throw new ArgumentException("The recurring transaction references must share an owner.");
+        }
+
+        if (amount <= 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount));
+        }
+
+        if (!Enum.IsDefined(direction))
+        {
+            throw new ArgumentOutOfRangeException(nameof(direction));
+        }
+
+        if (!Enum.IsDefined(frequency))
+        {
+            throw new ArgumentOutOfRangeException(nameof(frequency));
+        }
+
+        if (endsOn < startsOn)
+        {
+            throw new ArgumentOutOfRangeException(nameof(endsOn));
+        }
+
+        if (description?.Trim().Length > 500)
+        {
+            throw new ArgumentException("A description cannot exceed 500 characters.", nameof(description));
+        }
+
+        FinancialAccount = financialAccount;
+        FinancialAccountId = financialAccount?.Id;
+        CreditCard = creditCard;
+        CreditCardId = creditCard?.Id;
+        Category = category;
+        CategoryId = category.Id;
+        Counterparty = counterparty;
+        CounterpartyId = counterparty?.Id;
+        Direction = direction;
+        Amount = amount;
+        Currency = financialAccount?.Currency ?? creditCard!.Currency;
+        CurrencyId = Currency.Id;
+        Frequency = frequency;
+        StartsOn = startsOn;
+        EndsOn = endsOn;
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        MarkUpdated(updatedAt);
+    }
+
     public IReadOnlyCollection<DateOnly> OccurrencesBetween(DateOnly from, DateOnly through)
     {
         if (through < from || through < StartsOn)

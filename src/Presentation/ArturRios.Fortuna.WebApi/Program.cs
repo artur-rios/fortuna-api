@@ -132,6 +132,10 @@ try
         provider.GetRequiredService<EfRecurringTransactionStore>());
     builder.Services.AddScoped<IRecurringTransactionReader>(provider =>
         provider.GetRequiredService<EfRecurringTransactionStore>());
+    builder.Services.AddScoped<IRecurringTransactionUpdater>(provider =>
+        provider.GetRequiredService<EfRecurringTransactionStore>());
+    builder.Services.AddScoped<IRecurringTransactionLifecycleStore>(provider =>
+        provider.GetRequiredService<EfRecurringTransactionStore>());
     builder.Services.AddScoped<IRecurringTransactionMaterializer>(provider =>
         provider.GetRequiredService<EfRecurringTransactionStore>());
     builder.Services.AddScoped<EfInvestmentStore>();
@@ -257,6 +261,12 @@ try
         DefineRecurringTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DefineRecurringTransactionCommand,
         DefineRecurringTransactionCommandOutput, DefineRecurringTransactionCommandHandler>();
+    builder.Services.AddScoped<IValidator<UpdateRecurringTransactionCommand>,
+        UpdateRecurringTransactionCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<UpdateRecurringTransactionCommand,
+        UpdateRecurringTransactionCommandOutput, UpdateRecurringTransactionCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteRecurringTransactionCommand,
+        RecurringTransactionLifecycleCommandOutput, DeleteRecurringTransactionCommandHandler>();
     builder.Services.AddScoped<IValidator<MaterializeRecurringTransactionsCommand>,
         MaterializeRecurringTransactionsCommandValidator>();
     builder.Services.AddAuditedCommandHandler<MaterializeRecurringTransactionsCommand,

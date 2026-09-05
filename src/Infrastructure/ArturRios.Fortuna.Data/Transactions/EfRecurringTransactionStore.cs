@@ -14,7 +14,8 @@ public sealed class EfRecurringTransactionStore(
     AppDbContext context,
     TimeProvider timeProvider,
     ILogger<EfRecurringTransactionStore> logger)
-    : IRecurringTransactionStore, IRecurringTransactionReader, IRecurringTransactionMaterializer
+    : IRecurringTransactionStore, IRecurringTransactionReader, IRecurringTransactionUpdater,
+        IRecurringTransactionLifecycleStore, IRecurringTransactionMaterializer
 {
     public async Task<RecurringTransactionRecordResult> RecordAsync(
         RecurringTransactionRecord record,
@@ -73,6 +74,84 @@ public sealed class EfRecurringTransactionStore(
         return rule is null
             ? null
             : Snapshot(rule, DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime));
+    }
+
+    public async Task<RecurringTransactionUpdateResult> UpdateAsync(
+        RecurringTransactionUpdate update,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var rule = await FindRuleAsync(update.UserId, update.Id, cancellationToken);
+        if (rule is null)
+        {
+            return UpdateResult(RecurringTransactionUpdateOutcome.NotFound);
+        }
+
+        var account = update.FinancialAccountId.HasValue
+            ? await context.FinancialAccounts.Include(item => item.User).Include(item => item.Currency)
+                .SingleOrDefaultAsync(item =>
+                    item.PublicId == update.FinancialAccountId &&
+                    item.User.PublicId == update.UserId &&
+                    !item.IsDeleted,
+                    cancellationToken)
+            : null;
+        if (update.FinancialAccountId.HasValue && account is null)
+        {
+            return UpdateResult(RecurringTransactionUpdateOutcome.FinancialAccountNotFound);
+        }
+
+        var card = update.CreditCardId.HasValue
+            ? await context.CreditCards.Include(item => item.User).Include(item => item.Currency)
+                .SingleOrDefaultAsync(item =>
+                    item.PublicId == update.CreditCardId &&
+                    item.User.PublicId == update.UserId &&
+                    !item.IsDeleted,
+                    cancellationToken)
+            : null;
+        if (update.CreditCardId.HasValue && card is null)
+        {
+            return UpdateResult(RecurringTransactionUpdateOutcome.CreditCardNotFound);
+        }
+
+        var category = await context.Categories.SingleOrDefaultAsync(item =>
+            item.PublicId == update.CategoryId && item.UserId == rule.UserId && !item.IsDeleted,
+            cancellationToken);
+        if (category is null)
+        {
+            return UpdateResult(RecurringTransactionUpdateOutcome.CategoryNotFound);
+        }
+
+        var counterparty = await ResolveCounterpartyAsync(
+            rule.User, update.Counterparty, update.UpdatedAt, cancellationToken);
+        rule.UpdateTemplate(
+            account, card, category, update.Direction, update.Amount, update.Frequency,
+            update.StartsOn, update.EndsOn, update.Description, counterparty, update.UpdatedAt);
+        await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return UpdateResult(
+            RecurringTransactionUpdateOutcome.Succeeded,
+            Snapshot(rule, update.PreviewFrom));
+    }
+
+    public async Task<RecurringTransactionLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        var rule = await context.RecurringTransactions.SingleOrDefaultAsync(item =>
+            item.PublicId == id && item.User.PublicId == userId && !item.IsDeleted,
+            cancellationToken);
+        if (rule is null)
+        {
+            return new RecurringTransactionLifecycleResult(
+                null, RecurringTransactionLifecycleOutcome.NotFound);
+        }
+
+        rule.SoftDelete(changedAt);
+        await context.SaveChangesAsync(cancellationToken);
+        return new RecurringTransactionLifecycleResult(
+            rule.PublicId, RecurringTransactionLifecycleOutcome.Succeeded);
     }
 
     public async Task<RecurringMaterializationResult> MaterializeAsync(
@@ -299,28 +378,39 @@ public sealed class EfRecurringTransactionStore(
         return counterparty;
     }
 
-    private static RecurringTransactionSnapshot Snapshot(RecurringTransaction rule, DateOnly previewFrom) => new()
+    private static RecurringTransactionSnapshot Snapshot(RecurringTransaction rule, DateOnly previewFrom)
     {
-        Id = rule.PublicId,
-        FinancialAccountId = rule.FinancialAccount?.PublicId,
-        CreditCardId = rule.CreditCard?.PublicId,
-        CategoryId = rule.Category.PublicId,
-        Direction = rule.Direction,
-        Amount = rule.Amount,
-        CurrencyCode = rule.Currency.Code,
-        Frequency = rule.Frequency,
-        StartsOn = rule.StartsOn,
-        EndsOn = rule.EndsOn,
-        LastMaterializedOn = rule.LastMaterializedOn,
-        Description = rule.Description,
-        CounterpartyId = rule.Counterparty?.PublicId,
-        CounterpartyName = rule.Counterparty?.Name,
-        NextOccurrences = rule.NextOccurrences(previewFrom),
-        CreatedAt = rule.CreatedAt,
-        UpdatedAt = rule.UpdatedAt
-    };
+        var occurrenceFrom = rule.LastMaterializedOn.HasValue &&
+            rule.LastMaterializedOn.Value >= previewFrom
+                ? rule.LastMaterializedOn.Value.AddDays(1)
+                : previewFrom;
+        return new RecurringTransactionSnapshot
+        {
+            Id = rule.PublicId,
+            FinancialAccountId = rule.FinancialAccount?.PublicId,
+            CreditCardId = rule.CreditCard?.PublicId,
+            CategoryId = rule.Category.PublicId,
+            Direction = rule.Direction,
+            Amount = rule.Amount,
+            CurrencyCode = rule.Currency.Code,
+            Frequency = rule.Frequency,
+            StartsOn = rule.StartsOn,
+            EndsOn = rule.EndsOn,
+            LastMaterializedOn = rule.LastMaterializedOn,
+            Description = rule.Description,
+            CounterpartyId = rule.Counterparty?.PublicId,
+            CounterpartyName = rule.Counterparty?.Name,
+            NextOccurrences = rule.NextOccurrences(occurrenceFrom),
+            CreatedAt = rule.CreatedAt,
+            UpdatedAt = rule.UpdatedAt
+        };
+    }
 
     private static RecurringTransactionRecordResult Result(
         RecurringTransactionRecordOutcome outcome,
+        RecurringTransactionSnapshot? rule = null) => new(rule, outcome);
+
+    private static RecurringTransactionUpdateResult UpdateResult(
+        RecurringTransactionUpdateOutcome outcome,
         RecurringTransactionSnapshot? rule = null) => new(rule, outcome);
 }
