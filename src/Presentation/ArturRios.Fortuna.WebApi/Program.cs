@@ -111,6 +111,8 @@ try
         provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<ITransactionUpdater>(provider =>
         provider.GetRequiredService<EfTransactionStore>());
+    builder.Services.AddScoped<ITransactionLifecycleStore>(provider =>
+        provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<EfInvestmentStore>();
     builder.Services.AddScoped<IInvestmentStore>(provider =>
         provider.GetRequiredService<EfInvestmentStore>());
@@ -207,6 +209,12 @@ try
         UpdateTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateTransactionCommand,
         UpdateTransactionCommandOutput, UpdateTransactionCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
+        TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
+        TransactionLifecycleCommandOutput, RestoreTransactionCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<HardDeleteTransactionCommand,
+        TransactionLifecycleCommandOutput, HardDeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CloseCreditCardStatementCommand,
         CloseCreditCardStatementCommandOutput, CloseCreditCardStatementCommandHandler>();
     builder.Services.AddScoped<IValidator<SettleCreditCardStatementCommand>,

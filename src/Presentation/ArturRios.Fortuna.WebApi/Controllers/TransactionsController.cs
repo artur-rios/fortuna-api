@@ -46,6 +46,9 @@ public sealed class TransactionsController(
         {
             [TransactionMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [TransactionMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
+            [TransactionMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
+            [TransactionMessages.RestoredSuccessfully] = StatusCodes.Status200OK,
+            [TransactionMessages.HardDeletedSuccessfully] = StatusCodes.Status200OK,
             [TransactionMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
@@ -71,6 +74,8 @@ public sealed class TransactionsController(
             [TransactionMessages.TransactionCurrencyImmutable] = StatusCodes.Status400BadRequest,
             [TransactionMessages.SettledStatementFrozen] = StatusCodes.Status409Conflict,
             [TransactionMessages.TransferFieldsRestricted] = StatusCodes.Status400BadRequest,
+            [TransactionMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
+            [TransactionMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [TransactionMessages.NotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.TransactionIdRequired] = StatusCodes.Status400BadRequest,
             [TransactionMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
@@ -145,6 +150,37 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateTransactionCommand,
             UpdateTransactionCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<TransactionLifecycleCommandOutput?>>> Delete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            DeleteTransactionCommand,
+            TransactionLifecycleCommandOutput>(new DeleteTransactionCommand { Id = id });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/restore")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<TransactionLifecycleCommandOutput?>>> Restore(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            RestoreTransactionCommand,
+            TransactionLifecycleCommandOutput>(new RestoreTransactionCommand { Id = id });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}/hard")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<TransactionLifecycleCommandOutput?>>> HardDelete(
+        Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            HardDeleteTransactionCommand,
+            TransactionLifecycleCommandOutput>(new HardDeleteTransactionCommand { Id = id });
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

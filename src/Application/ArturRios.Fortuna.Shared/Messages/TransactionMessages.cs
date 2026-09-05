@@ -4,6 +4,10 @@ public static class TransactionMessages
 {
     public const string RecordedSuccessfully = "Transaction recorded successfully.";
     public const string UpdatedSuccessfully = "Transaction updated successfully.";
+    public const string DeletedSuccessfully = "Transaction deleted successfully.";
+    public const string RestoredSuccessfully = "Transaction restored successfully.";
+    public const string HardDeletedSuccessfully =
+        "Transaction permanently deleted successfully.";
     public const string RetrievedSuccessfully = "Transaction retrieved successfully.";
     public const string ListedSuccessfully = "Transactions retrieved successfully.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
@@ -41,6 +45,10 @@ public static class TransactionMessages
         "The transaction belongs to a settled statement whose composition is frozen.";
     public const string TransferFieldsRestricted =
         "A transfer leg permits changes only to Description, CategoryId, and Tags.";
+    public const string RestoreRequiresSoftDeletion =
+        "Transaction must be soft-deleted before it can be restored.";
+    public const string HardDeleteRequiresSoftDeletion =
+        "Transaction must be soft-deleted before permanent deletion.";
     public const string TransactionIdRequired = "Transaction id is required.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
