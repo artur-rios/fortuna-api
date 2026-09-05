@@ -3199,6 +3199,173 @@
         },
         "type": "object"
       },
+      "TransferLifecycleCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransferLifecycleCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TransferLifecycleCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransferOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "destinationCreditCardId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "destinationFinancialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "destinationInvestmentId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "destinationStatementId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "inboundAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "inboundCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "inboundInvestmentMovementId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "inboundIsDeleted": {
+            "type": "boolean"
+          },
+          "inboundTransactionId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "isDeleted": {
+            "type": "boolean"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "originFinancialAccountId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "outboundAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "outboundCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "outboundIsDeleted": {
+            "type": "boolean"
+          },
+          "outboundTransactionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransferOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TransferOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UpdateCreditCardCommand": {
         "additionalProperties": false,
         "properties": {
@@ -6391,6 +6558,132 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordTransferCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Transfers"
+        ]
+      }
+    },
+    "/api/transfers/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Transfers"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeDeleted",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Transfers"
+        ]
+      }
+    },
+    "/api/transfers/{id}/restore": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
                 }
               }
             },

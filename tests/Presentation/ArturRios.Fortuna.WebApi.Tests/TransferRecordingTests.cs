@@ -272,6 +272,199 @@ public sealed class TransferRecordingTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorResponse.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenLiveTransfer_WhenDeletedAndRestored_ThenBothBalancesAndReadsFollowState()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var origin = await CreateAccountAsync(client, "Lifecycle origin", "BRL", 100m);
+        var destination = await CreateAccountAsync(
+            client,
+            "Lifecycle destination",
+            "BRL",
+            0m);
+        var transfer = await RecordTransferAsync(client, origin, destination, 10m);
+
+        var before = await client.GetFromJsonAsync<TransferEnvelope>(
+            $"/api/transfers/{transfer.Id}");
+        var deleted = await client.DeleteAsync($"/api/transfers/{transfer.Id}");
+        var deletedOriginBalance = await BalanceAsync(client, origin);
+        var deletedDestinationBalance = await BalanceAsync(client, destination);
+        var hidden = await client.GetAsync($"/api/transfers/{transfer.Id}");
+        var tombstone = await client.GetFromJsonAsync<TransferEnvelope>(
+            $"/api/transfers/{transfer.Id}?includeDeleted=true");
+        var restored = await client.PostAsync($"/api/transfers/{transfer.Id}/restore", null);
+        var restoredOriginBalance = await BalanceAsync(client, origin);
+        var restoredDestinationBalance = await BalanceAsync(client, destination);
+        var after = await client.GetFromJsonAsync<TransferEnvelope>(
+            $"/api/transfers/{transfer.Id}");
+
+        Assert.Equal(transfer.Id, before?.Data?.Id);
+        Assert.Equal(HttpStatusCode.OK, deleted.StatusCode);
+        Assert.Equal(100m, deletedOriginBalance);
+        Assert.Equal(0m, deletedDestinationBalance);
+        Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+        Assert.True(tombstone?.Data?.IsDeleted);
+        Assert.True(tombstone?.Data?.OutboundIsDeleted);
+        Assert.True(tombstone?.Data?.InboundIsDeleted);
+        Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+        Assert.False(after?.Data?.IsDeleted);
+        Assert.Equal(90m, restoredOriginBalance);
+        Assert.Equal(10m, restoredDestinationBalance);
+        await using var context = CreateContext();
+        var audits = await context.AuditEntries
+            .Where(item => item.EntityPublicId == transfer.Id)
+            .ToArrayAsync();
+        Assert.Contains(audits, item =>
+            item.Operation == nameof(DeleteTransferCommand) &&
+            item.Outcome == AuditOutcome.Succeeded);
+        Assert.Contains(audits, item =>
+            item.Operation == nameof(RestoreTransferCommand) &&
+            item.Outcome == AuditOutcome.Succeeded);
+    }
+
+    [FunctionalFact]
+    public async Task GivenSingleLegDeletion_WhenRequested_ThenTheWholeTransferIsDeleted()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var origin = await CreateAccountAsync(client, "Leg origin", "BRL", 100m);
+        var destination = await CreateAccountAsync(client, "Leg destination", "BRL", 0m);
+        var transfer = await RecordTransferAsync(client, origin, destination, 10m);
+
+        var response = await client.DeleteAsync(
+            $"/api/transactions/{transfer.InboundTransactionId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await using var context = CreateContext();
+        var stored = await context.Transfers.SingleAsync(item => item.PublicId == transfer.Id);
+        var legs = await context.FinancialTransactions
+            .Where(item => item.PublicId == transfer.OutboundTransactionId ||
+                item.PublicId == transfer.InboundTransactionId)
+            .ToArrayAsync();
+        Assert.True(stored.IsDeleted);
+        Assert.All(legs, item => Assert.True(item.IsDeleted));
+        Assert.All(legs, item => Assert.Equal(stored.DeletionCascadeId,
+            item.DeletionCascadeId));
+    }
+
+    [FunctionalFact]
+    public async Task GivenInconsistentLegs_WhenTransferDeleted_ThenThePairIsNormalizedAndAudited()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var origin = await CreateAccountAsync(client, "Repair origin", "BRL", 100m);
+        var destination = await CreateAccountAsync(client, "Repair destination", "BRL", 0m);
+        var transfer = await RecordTransferAsync(client, origin, destination, 10m);
+        await using (var context = CreateContext())
+        {
+            var inbound = await context.FinancialTransactions.SingleAsync(item =>
+                item.PublicId == transfer.InboundTransactionId);
+            inbound.SoftDelete(DateTimeOffset.UtcNow);
+            await context.SaveChangesAsync();
+        }
+
+        var response = await client.DeleteAsync($"/api/transfers/{transfer.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await using var assertionContext = CreateContext();
+        var stored = await assertionContext.Transfers.SingleAsync(item =>
+            item.PublicId == transfer.Id);
+        var legs = await assertionContext.FinancialTransactions
+            .Where(item => item.PublicId == transfer.OutboundTransactionId ||
+                item.PublicId == transfer.InboundTransactionId)
+            .ToArrayAsync();
+        Assert.All(legs, item => Assert.True(item.IsDeleted));
+        Assert.All(legs, item => Assert.Equal(stored.DeletionCascadeId,
+            item.DeletionCascadeId));
+        Assert.Contains(await assertionContext.AuditEntries.ToArrayAsync(), item =>
+            item.Operation == nameof(DeleteTransferCommand) &&
+            item.EntityPublicId == transfer.Id &&
+            item.Outcome == AuditOutcome.Succeeded);
+    }
+
+    [FunctionalFact]
+    public async Task GivenStatementSettlement_WhenTransferDeleted_ThenFrozenConflictPreservesIt()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var origin = await CreateAccountAsync(client, "Frozen payer", "BRL", 1000m);
+        var card = await CreateCardAsync(client, "Frozen destination");
+        var categoryId = await SeedCategoryAsync(subject, "Frozen purchase");
+        var charge = await RecordChargeAsync(client, card, categoryId, 100m);
+        (await client.PostAsync($"/api/statements/{charge.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+        var transferResponse = await client.PostAsJsonAsync("/api/transfers", new
+        {
+            OriginFinancialAccountId = origin,
+            DestinationStatementId = charge.StatementId,
+            Amount = 100m,
+            OccurredOn = Today
+        });
+        var transfer = (await transferResponse.Content.ReadFromJsonAsync<TransferEnvelope>())!
+            .Data!;
+        var read = await client.GetFromJsonAsync<TransferEnvelope>(
+            $"/api/transfers/{transfer.Id}");
+
+        var response = await client.DeleteAsync($"/api/transfers/{transfer.Id}");
+
+        Assert.Equal(card, read?.Data?.DestinationCreditCardId);
+        Assert.Equal(charge.StatementId, read?.Data?.DestinationStatementId);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains(TransferMessages.SettledStatementFrozen,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        await using var context = CreateContext();
+        Assert.False((await context.Transfers.SingleAsync(item =>
+            item.PublicId == transfer.Id)).IsDeleted);
+        Assert.All(await context.FinancialTransactions
+            .Where(item => item.PublicId == transfer.OutboundTransactionId ||
+                item.PublicId == transfer.InboundTransactionId)
+            .ToArrayAsync(), item => Assert.False(item.IsDeleted));
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignMissingOrUnauthorizedTransfer_WhenManaged_ThenAccessIsHidden()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var owner = factory.CreateClient();
+        Authorize(owner, subject, HeimdallRoles.User);
+        var origin = await CreateAccountAsync(owner, "Private origin", "BRL", 100m);
+        var destination = await CreateAccountAsync(owner, "Private destination", "BRL", 0m);
+        var transfer = await RecordTransferAsync(owner, origin, destination, 10m);
+        using var other = factory.CreateClient();
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+
+        var foreignRead = await other.GetAsync($"/api/transfers/{transfer.Id}");
+        var foreignDelete = await other.DeleteAsync($"/api/transfers/{transfer.Id}");
+        var missingRestore = await other.PostAsync(
+            $"/api/transfers/{Guid.NewGuid()}/restore",
+            null);
+        var anonymousRead = await anonymous.GetAsync($"/api/transfers/{transfer.Id}");
+        var administratorDelete = await administrator.DeleteAsync(
+            $"/api/transfers/{transfer.Id}");
+
+        Assert.Equal(HttpStatusCode.NotFound, foreignRead.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, foreignDelete.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missingRestore.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousRead.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, administratorDelete.StatusCode);
+        await using var context = CreateContext();
+        Assert.False((await context.Transfers.SingleAsync(item =>
+            item.PublicId == transfer.Id)).IsDeleted);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -287,6 +480,19 @@ public sealed class TransferRecordingTests : IAsyncLifetime
         var result = await client.GetFromJsonAsync<BalanceEnvelope>(
             $"/api/accounts/{accountId}/balance?asOf={Today:yyyy-MM-dd}");
         return result!.Data!.Balance;
+    }
+
+    private static async Task<TransferData> RecordTransferAsync(
+        HttpClient client,
+        Guid origin,
+        Guid destination,
+        decimal amount)
+    {
+        var response = await client.PostAsJsonAsync(
+            "/api/transfers",
+            Request(origin, destination, amount));
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<TransferEnvelope>())!.Data!;
     }
 
     private async Task SeedRateAsync(
@@ -460,13 +666,17 @@ public sealed class TransferRecordingTests : IAsyncLifetime
         Guid InboundTransactionId,
         Guid OriginFinancialAccountId,
         Guid? DestinationFinancialAccountId,
+        Guid? DestinationCreditCardId,
         Guid? DestinationStatementId,
         decimal OutboundAmount,
         string OutboundCurrencyCode,
         decimal InboundAmount,
         string InboundCurrencyCode,
         decimal? AppliedRate,
-        DateOnly? RateDate);
+        DateOnly? RateDate,
+        bool OutboundIsDeleted = false,
+        bool InboundIsDeleted = false,
+        bool IsDeleted = false);
     private sealed record SearchEnvelope(SearchData? Data);
     private sealed record SearchData(
         IReadOnlyCollection<TransactionData> Items,

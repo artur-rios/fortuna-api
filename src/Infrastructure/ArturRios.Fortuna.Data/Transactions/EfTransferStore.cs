@@ -6,8 +6,78 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Transactions;
 
-public sealed class EfTransferStore(AppDbContext context) : ITransferStore
+public sealed class EfTransferStore(
+    AppDbContext context,
+    ITransactionLifecycleStore transactionLifecycle)
+    : ITransferStore, ITransferReader, ITransferLifecycleStore
 {
+    public Task<TransferReadSnapshot?> FindByIdAsync(
+        Guid userId,
+        Guid id,
+        bool includeDeleted,
+        CancellationToken cancellationToken)
+    {
+        var transfers = context.Transfers
+            .AsNoTracking()
+            .Where(transfer => transfer.OutboundTransaction.User.PublicId == userId);
+        if (!includeDeleted)
+        {
+            transfers = transfers.Where(transfer => !transfer.IsDeleted);
+        }
+
+        return transfers
+            .Where(transfer => transfer.PublicId == id)
+            .Select(transfer => new TransferReadSnapshot
+            {
+                Id = transfer.PublicId,
+                OutboundTransactionId = transfer.OutboundTransaction.PublicId,
+                InboundTransactionId = transfer.InboundTransaction == null
+                    ? null
+                    : transfer.InboundTransaction.PublicId,
+                InboundInvestmentMovementId = transfer.InboundInvestmentMovement == null
+                    ? null
+                    : transfer.InboundInvestmentMovement.PublicId,
+                OriginFinancialAccountId = transfer.OutboundTransaction.FinancialAccount!.PublicId,
+                DestinationFinancialAccountId = transfer.InboundTransaction == null ||
+                    transfer.InboundTransaction.FinancialAccount == null
+                    ? null
+                    : transfer.InboundTransaction.FinancialAccount.PublicId,
+                DestinationCreditCardId = transfer.InboundTransaction == null ||
+                    transfer.InboundTransaction.CreditCard == null
+                    ? null
+                    : transfer.InboundTransaction.CreditCard.PublicId,
+                DestinationStatementId = transfer.InboundTransactionId == null
+                    ? null
+                    : context.CreditCardStatements
+                        .Where(statement =>
+                            statement.SettlementTransactionId == transfer.InboundTransactionId)
+                        .Select(statement => (Guid?)statement.PublicId)
+                        .SingleOrDefault(),
+                DestinationInvestmentId = transfer.InboundInvestmentMovement == null
+                    ? null
+                    : transfer.InboundInvestmentMovement.Investment.PublicId,
+                OutboundAmount = transfer.OutboundTransaction.Amount,
+                OutboundCurrencyCode = transfer.OutboundTransaction.Currency.Code,
+                InboundAmount = transfer.InboundTransaction == null
+                    ? transfer.InboundInvestmentMovement!.Amount
+                    : transfer.InboundTransaction.Amount,
+                InboundCurrencyCode = transfer.InboundTransaction == null
+                    ? transfer.InboundInvestmentMovement!.Investment.Currency.Code
+                    : transfer.InboundTransaction.Currency.Code,
+                AppliedRate = transfer.AppliedRate,
+                RateDate = transfer.RateDate,
+                OccurredOn = transfer.OutboundTransaction.OccurredOn,
+                OutboundIsDeleted = transfer.OutboundTransaction.IsDeleted,
+                InboundIsDeleted = transfer.InboundTransaction == null
+                    ? transfer.InboundInvestmentMovement!.IsDeleted
+                    : transfer.InboundTransaction.IsDeleted,
+                IsDeleted = transfer.IsDeleted,
+                CreatedAt = transfer.CreatedAt,
+                UpdatedAt = transfer.UpdatedAt
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<TransferRecordResult> RecordAsync(
         TransferRecord record,
         CancellationToken cancellationToken)
@@ -133,7 +203,78 @@ public sealed class EfTransferStore(AppDbContext context) : ITransferStore
             transfer.CreatedAt));
     }
 
+    public Task<TransferLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken) => ChangeLifecycleAsync(
+        userId,
+        id,
+        (transactionId, token) => transactionLifecycle.SoftDeleteAsync(
+            userId,
+            transactionId,
+            changedAt,
+            token),
+        cancellationToken);
+
+    public Task<TransferLifecycleResult> RestoreAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken) => ChangeLifecycleAsync(
+        userId,
+        id,
+        (transactionId, token) => transactionLifecycle.RestoreAsync(
+            userId,
+            transactionId,
+            changedAt,
+            token),
+        cancellationToken);
+
+    private async Task<TransferLifecycleResult> ChangeLifecycleAsync(
+        Guid userId,
+        Guid id,
+        Func<Guid, CancellationToken, Task<TransactionLifecycleResult>> change,
+        CancellationToken cancellationToken)
+    {
+        var transfer = await context.Transfers
+            .AsNoTracking()
+            .Where(item =>
+                item.PublicId == id &&
+                item.OutboundTransaction.User.PublicId == userId)
+            .Select(item => new
+            {
+                item.PublicId,
+                OutboundTransactionId = item.OutboundTransaction.PublicId
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (transfer is null)
+        {
+            return LifecycleResult(TransferLifecycleOutcome.NotFound);
+        }
+
+        var result = await change(transfer.OutboundTransactionId, cancellationToken);
+        return result.Outcome switch
+        {
+            TransactionLifecycleOutcome.Succeeded => LifecycleResult(
+                TransferLifecycleOutcome.Succeeded,
+                transfer.PublicId),
+            TransactionLifecycleOutcome.NotFound => LifecycleResult(
+                TransferLifecycleOutcome.NotFound),
+            TransactionLifecycleOutcome.RestoreRequiresSoftDeletion => LifecycleResult(
+                TransferLifecycleOutcome.RestoreRequiresSoftDeletion),
+            TransactionLifecycleOutcome.SettledStatementFrozen => LifecycleResult(
+                TransferLifecycleOutcome.SettledStatementFrozen),
+            _ => throw new InvalidOperationException(
+                "The delegated transaction lifecycle returned an unsupported outcome.")
+        };
+    }
+
     private static TransferRecordResult Result(
         TransferRecordOutcome outcome,
         TransferSnapshot? transfer = null) => new(transfer, outcome);
+
+    private static TransferLifecycleResult LifecycleResult(
+        TransferLifecycleOutcome outcome,
+        Guid? id = null) => new(id, outcome);
 }

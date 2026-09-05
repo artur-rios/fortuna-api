@@ -192,7 +192,7 @@ pull request.
 | [#33](https://github.com/artur-rios/fortuna-api/issues/33) | ✅ UC-32: Update a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#34](https://github.com/artur-rios/fortuna-api/issues/34) | ✅ UC-33: Delete a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#35](https://github.com/artur-rios/fortuna-api/issues/35) | ✅ UC-34: Record a Transfer | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#36](https://github.com/artur-rios/fortuna-api/issues/36) | UC-35: Delete a Transfer | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#36](https://github.com/artur-rios/fortuna-api/issues/36) | ✅ UC-35: Delete a Transfer | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#37](https://github.com/artur-rios/fortuna-api/issues/37) | UC-36: Record an Installment Purchase | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#38](https://github.com/artur-rios/fortuna-api/issues/38) | UC-37: Define a Recurring Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#39](https://github.com/artur-rios/fortuna-api/issues/39) | UC-38: Materialize Recurring Occurrences | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
