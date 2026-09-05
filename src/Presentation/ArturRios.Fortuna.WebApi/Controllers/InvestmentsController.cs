@@ -1,8 +1,11 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Security;
+using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Mediator.Command;
+using ArturRios.Mediator.Query;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
@@ -12,8 +15,34 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/investments")]
-public sealed class InvestmentsController(CommandMediator commandMediator) : Controller
+public sealed class InvestmentsController(
+    CommandMediator commandMediator,
+    QueryMediator queryMediator) : Controller
 {
+    private static readonly HashSet<string> ListQueryFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "PageNumber",
+        "PageSize",
+        "Instrument",
+        "Institution",
+        "InvestmentType",
+        "CurrencyCode",
+        "DisplayCurrencyCode",
+        "FigureDate",
+        "SortBy",
+        "Descending"
+    };
+
+    private static readonly HashSet<string> ValuationQueryFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "PageNumber",
+        "PageSize",
+        "From",
+        "To",
+        "SortBy",
+        "Descending"
+    };
+
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
@@ -41,8 +70,70 @@ public sealed class InvestmentsController(CommandMediator commandMediator) : Con
             [InvestmentMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.ValuationValuePrecisionInvalid] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.ValuedOnRequired] = StatusCodes.Status400BadRequest,
-            [InvestmentMessages.ValuedOnFuture] = StatusCodes.Status400BadRequest
+            [InvestmentMessages.ValuedOnFuture] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.DisplayCurrencyInvalid] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.SortByUnsupported] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.ValuationSortByUnsupported] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.ValuationPeriodInvalid] = StatusCodes.Status400BadRequest
         };
+
+    [HttpGet]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<PaginatedOutput<InvestmentOutput>>> List(
+        [FromQuery] ListInvestmentsQuery query)
+    {
+        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ListQueryFields.Contains(key));
+        if (unsupported is not null)
+        {
+            return BadRequest(PaginatedOutput<InvestmentOutput>.New
+                .WithError(InvestmentMessages.UnsupportedFilter(unsupported)));
+        }
+
+        var result = await queryMediator.ExecutePaginatedQueryAsync<
+            ListInvestmentsQuery,
+            InvestmentOutput>(query);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpGet("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<InvestmentOutput?>>> GetById(
+        Guid id,
+        [FromQuery] string? displayCurrencyCode = null,
+        [FromQuery] DateOnly? figureDate = null)
+    {
+        var result = await queryMediator.ExecuteQueryAsync<
+            GetInvestmentByIdQuery,
+            InvestmentOutput>(new GetInvestmentByIdQuery
+            {
+                Id = id,
+                DisplayCurrencyCode = displayCurrencyCode,
+                FigureDate = figureDate
+            });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpGet("{id:guid}/valuations")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<PaginatedOutput<InvestmentValuationOutput>>> ListValuations(
+        Guid id,
+        [FromQuery] ListInvestmentValuationsQuery query)
+    {
+        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ValuationQueryFields.Contains(key));
+        if (unsupported is not null)
+        {
+            return BadRequest(PaginatedOutput<InvestmentValuationOutput>.New
+                .WithError(InvestmentMessages.UnsupportedFilter(unsupported)));
+        }
+
+        query.InvestmentId = id;
+        var result = await queryMediator.ExecutePaginatedQueryAsync<
+            ListInvestmentValuationsQuery,
+            InvestmentValuationOutput>(query);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]

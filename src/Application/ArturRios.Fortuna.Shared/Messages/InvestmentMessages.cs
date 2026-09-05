@@ -9,6 +9,10 @@ public static class InvestmentMessages
         "Investment valuation recorded successfully.";
     public const string ValuationReplacedSuccessfully =
         "Investment valuation replaced successfully.";
+    public const string RetrievedSuccessfully = "Investment retrieved successfully.";
+    public const string ListedSuccessfully = "Investments listed successfully.";
+    public const string ValuationHistoryRetrievedSuccessfully =
+        "Investment valuation history retrieved successfully.";
     public const string DuplicateInstrument =
         "A live investment already uses this instrument name.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
@@ -43,6 +47,18 @@ public static class InvestmentMessages
         "Value must contain at most 15 whole and 4 decimal digits.";
     public const string ValuedOnRequired = "ValuedOn is required.";
     public const string ValuedOnFuture = "ValuedOn must not be in the future.";
+    public const string DisplayCurrencyInvalid =
+        "DisplayCurrencyCode must be a three-letter ISO 4217 code.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
+    public const string SortByUnsupported =
+        "SortBy must be Instrument, Institution, InvestmentType, CurrencyCode, Position, " +
+        "CreatedAt or UpdatedAt.";
+    public const string ValuationSortByUnsupported =
+        "SortBy must be ValuedOn, Value, CreatedAt or UpdatedAt.";
+    public const string ValuationPeriodInvalid = "From must be earlier than or equal to To.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
+    public static string UnsupportedFilter(string name) =>
+        $"Unsupported investment filter '{name}'.";
 }

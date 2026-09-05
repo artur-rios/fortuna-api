@@ -105,7 +105,11 @@ try
     builder.Services.AddScoped<ICreditCardStatementSettlementStore>(provider =>
         provider.GetRequiredService<EfCreditCardStatementStore>());
     builder.Services.AddScoped<ICardChargeStore, EfCardChargeStore>();
-    builder.Services.AddScoped<IInvestmentStore, EfInvestmentStore>();
+    builder.Services.AddScoped<EfInvestmentStore>();
+    builder.Services.AddScoped<IInvestmentStore>(provider =>
+        provider.GetRequiredService<EfInvestmentStore>());
+    builder.Services.AddScoped<IInvestmentReader>(provider =>
+        provider.GetRequiredService<EfInvestmentStore>());
     builder.Services.AddScoped<IInvestmentMovementStore, EfInvestmentMovementStore>();
     builder.Services.AddScoped<IInvestmentValuationStore, EfInvestmentValuationStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
@@ -237,6 +241,16 @@ try
         ListCreditCardStatementsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListCreditCardStatementsQuery,
         CreditCardStatementOutput>, ListCreditCardStatementsQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetInvestmentByIdQuery>, GetInvestmentByIdQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetInvestmentByIdQuery, InvestmentOutput>,
+        GetInvestmentByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListInvestmentsQuery>, ListInvestmentsQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListInvestmentsQuery, InvestmentOutput>,
+        ListInvestmentsQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListInvestmentValuationsQuery>,
+        ListInvestmentValuationsQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListInvestmentValuationsQuery,
+        InvestmentValuationOutput>, ListInvestmentValuationsQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();
