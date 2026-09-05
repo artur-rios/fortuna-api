@@ -3,6 +3,7 @@ using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Transactions;
@@ -11,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ArturRios.Fortuna.Data.Transactions;
 
 public sealed class EfTransactionStore(AppDbContext context)
-    : ITransactionStore, ITransactionReader, ITransactionUpdater
+    : ITransactionStore, ITransactionReader, ITransactionUpdater, ITransactionLifecycleStore
 {
     public IQueryable<TransactionReadSnapshot> Query(TransactionSearchCriteria criteria) =>
         Project(Filter(criteria));
@@ -377,6 +378,161 @@ public sealed class EfTransactionStore(AppDbContext context)
         return UpdateResult(TransactionUpdateOutcome.Succeeded, snapshot);
     }
 
+    public async Task<TransactionLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        var transaction = await FindTrackedAsync(userId, id, cancellationToken);
+        if (transaction is null)
+        {
+            return LifecycleResult(TransactionLifecycleOutcome.NotFound);
+        }
+
+        var transfer = await FindTransferAsync(transaction.Id, cancellationToken);
+        var transactionLegs = TransactionLegs(transaction, transfer);
+        if (await HasSettledStatementAsync(transactionLegs, cancellationToken))
+        {
+            return LifecycleResult(TransactionLifecycleOutcome.SettledStatementFrozen);
+        }
+
+        if (transfer is null)
+        {
+            var deletion = transaction.SoftDelete(changedAt);
+            if (deletion.Changed)
+            {
+                AdjustStatementTotal(transaction, deleting: true, changedAt);
+            }
+        }
+        else
+        {
+            var cascadeId = transfer.SoftDelete(changedAt).CascadeId;
+            foreach (var leg in transactionLegs)
+            {
+                if (SoftDeleteToCascade(leg, cascadeId, changedAt))
+                {
+                    AdjustStatementTotal(leg, deleting: true, changedAt);
+                }
+            }
+
+            if (transfer.InboundInvestmentMovement is not null)
+            {
+                SoftDeleteToCascade(
+                    transfer.InboundInvestmentMovement,
+                    cascadeId,
+                    changedAt);
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
+    }
+
+    public async Task<TransactionLifecycleResult> RestoreAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        var transaction = await FindTrackedAsync(userId, id, cancellationToken);
+        if (transaction is null)
+        {
+            return LifecycleResult(TransactionLifecycleOutcome.NotFound);
+        }
+
+        if (!transaction.IsDeleted)
+        {
+            return LifecycleResult(TransactionLifecycleOutcome.RestoreRequiresSoftDeletion);
+        }
+
+        var transfer = await FindTransferAsync(transaction.Id, cancellationToken);
+        var transactionLegs = TransactionLegs(transaction, transfer);
+        if (await HasSettledStatementAsync(transactionLegs, cancellationToken))
+        {
+            return LifecycleResult(TransactionLifecycleOutcome.SettledStatementFrozen);
+        }
+
+        if (transfer is null)
+        {
+            transaction.Restore(changedAt);
+            AdjustStatementTotal(transaction, deleting: false, changedAt);
+        }
+        else
+        {
+            if (transfer.IsDeleted)
+            {
+                transfer.Restore(changedAt);
+            }
+
+            foreach (var leg in transactionLegs)
+            {
+                if (RestoreIfDeleted(leg, changedAt))
+                {
+                    AdjustStatementTotal(leg, deleting: false, changedAt);
+                }
+            }
+
+            if (transfer.InboundInvestmentMovement is not null)
+            {
+                RestoreIfDeleted(transfer.InboundInvestmentMovement, changedAt);
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
+    }
+
+    public async Task<TransactionLifecycleResult> HardDeleteAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        var transaction = await FindTrackedAsync(userId, id, cancellationToken);
+        if (transaction is null)
+        {
+            return LifecycleResult(TransactionLifecycleOutcome.NotFound);
+        }
+
+        var transfer = await FindTransferAsync(transaction.Id, cancellationToken);
+        var transactionLegs = TransactionLegs(transaction, transfer);
+        var allDeleted = transactionLegs.All(leg => leg.IsDeleted) &&
+            (transfer is null || transfer.IsDeleted) &&
+            (transfer?.InboundInvestmentMovement is null ||
+                transfer.InboundInvestmentMovement.IsDeleted);
+        if (!allDeleted)
+        {
+            return LifecycleResult(TransactionLifecycleOutcome.HardDeleteRequiresSoftDeletion);
+        }
+
+        if (await HasSettledStatementAsync(transactionLegs, cancellationToken))
+        {
+            return LifecycleResult(TransactionLifecycleOutcome.SettledStatementFrozen);
+        }
+
+        if (transfer is not null)
+        {
+            context.Transfers.Remove(transfer);
+            if (transfer.InboundInvestmentMovement is not null)
+            {
+                context.InvestmentMovements.Remove(transfer.InboundInvestmentMovement);
+            }
+        }
+
+        context.FinancialTransactions.RemoveRange(transactionLegs);
+        await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
+    }
+
     private Task<FinancialAccount?> FindAccountAsync(
         TransactionRecord record,
         CancellationToken cancellationToken) => record.FinancialAccountId.HasValue
@@ -402,6 +558,47 @@ public sealed class EfTransactionStore(AppDbContext context)
                 !item.IsDeleted,
                 cancellationToken)
         : Task.FromResult<CreditCard?>(null);
+
+    private Task<FinancialTransaction?> FindTrackedAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken) => context.FinancialTransactions
+        .Include(item => item.Statement)
+        .SingleOrDefaultAsync(item =>
+            item.User.PublicId == userId &&
+            item.PublicId == id,
+            cancellationToken);
+
+    private Task<Transfer?> FindTransferAsync(
+        long transactionId,
+        CancellationToken cancellationToken) => context.Transfers
+        .Include(item => item.OutboundTransaction)
+            .ThenInclude(item => item.Statement)
+        .Include(item => item.InboundTransaction)
+            .ThenInclude(item => item!.Statement)
+        .Include(item => item.InboundInvestmentMovement)
+        .SingleOrDefaultAsync(item =>
+            item.OutboundTransactionId == transactionId ||
+            item.InboundTransactionId == transactionId,
+            cancellationToken);
+
+    private async Task<bool> HasSettledStatementAsync(
+        IReadOnlyCollection<FinancialTransaction> transactions,
+        CancellationToken cancellationToken)
+    {
+        if (transactions.Any(item =>
+            item.Statement?.Status == CreditCardStatementStatus.Settled))
+        {
+            return true;
+        }
+
+        var transactionIds = transactions.Select(item => item.Id).ToArray();
+        return await context.CreditCardStatements.AnyAsync(statement =>
+            statement.Status == CreditCardStatementStatus.Settled &&
+            statement.SettlementTransactionId.HasValue &&
+            transactionIds.Contains(statement.SettlementTransactionId.Value),
+            cancellationToken);
+    }
 
     private IQueryable<FinancialTransaction> Filter(TransactionSearchCriteria criteria)
     {
@@ -741,6 +938,56 @@ public sealed class EfTransactionStore(AppDbContext context)
     private static decimal SignedAmount(TransactionDirection direction, decimal amount) =>
         direction == TransactionDirection.Expense ? amount : -amount;
 
+    private static IReadOnlyCollection<FinancialTransaction> TransactionLegs(
+        FinancialTransaction transaction,
+        Transfer? transfer) => transfer?.InboundTransaction is null
+        ? [transfer?.OutboundTransaction ?? transaction]
+        : [transfer.OutboundTransaction, transfer.InboundTransaction];
+
+    private static bool SoftDeleteToCascade(
+        RecordLifecycleEntity entity,
+        Guid cascadeId,
+        DateTimeOffset changedAt)
+    {
+        var wasDeleted = entity.IsDeleted;
+        if (entity.IsDeleted && entity.DeletionCascadeId != cascadeId)
+        {
+            entity.Restore(changedAt);
+        }
+
+        entity.SoftDeleteFromCascade(cascadeId, changedAt);
+        return !wasDeleted;
+    }
+
+    private static bool RestoreIfDeleted(
+        RecordLifecycleEntity entity,
+        DateTimeOffset changedAt)
+    {
+        if (!entity.IsDeleted)
+        {
+            return false;
+        }
+
+        entity.Restore(changedAt);
+        return true;
+    }
+
+    private static void AdjustStatementTotal(
+        FinancialTransaction transaction,
+        bool deleting,
+        DateTimeOffset changedAt)
+    {
+        if (transaction.Statement is null)
+        {
+            return;
+        }
+
+        var signedAmount = SignedAmount(transaction.Direction, transaction.Amount);
+        transaction.Statement.RecalculatePurchaseTotal(
+            transaction.Statement.PurchaseTotal + (deleting ? -signedAmount : signedAmount),
+            changedAt);
+    }
+
     private static TransactionRecordResult Result(
         TransactionRecordOutcome outcome,
         TransactionSnapshot? transaction = null) => new(transaction, outcome);
@@ -748,4 +995,8 @@ public sealed class EfTransactionStore(AppDbContext context)
     private static TransactionUpdateResult UpdateResult(
         TransactionUpdateOutcome outcome,
         TransactionReadSnapshot? transaction = null) => new(transaction, outcome);
+
+    private static TransactionLifecycleResult LifecycleResult(
+        TransactionLifecycleOutcome outcome,
+        Guid? id = null) => new(id, outcome);
 }

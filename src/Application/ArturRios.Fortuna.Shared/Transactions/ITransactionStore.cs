@@ -31,6 +31,26 @@ public interface ITransactionUpdater
         CancellationToken cancellationToken);
 }
 
+public interface ITransactionLifecycleStore
+{
+    Task<TransactionLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<TransactionLifecycleResult> RestoreAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<TransactionLifecycleResult> HardDeleteAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken);
+}
+
 public sealed class TransactionSearchCriteria
 {
     public Guid UserId { get; init; }
@@ -141,6 +161,19 @@ public enum TransactionUpdateOutcome
 public sealed record TransactionUpdateResult(
     TransactionReadSnapshot? Transaction,
     TransactionUpdateOutcome Outcome);
+
+public enum TransactionLifecycleOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    RestoreRequiresSoftDeletion = 3,
+    HardDeleteRequiresSoftDeletion = 4,
+    SettledStatementFrozen = 5
+}
+
+public sealed record TransactionLifecycleResult(
+    Guid? Id,
+    TransactionLifecycleOutcome Outcome);
 
 public sealed record TransactionSnapshot(
     Guid Id,
