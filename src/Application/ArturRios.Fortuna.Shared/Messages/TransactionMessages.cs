@@ -3,6 +3,7 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class TransactionMessages
 {
     public const string RecordedSuccessfully = "Transaction recorded successfully.";
+    public const string UpdatedSuccessfully = "Transaction updated successfully.";
     public const string RetrievedSuccessfully = "Transaction retrieved successfully.";
     public const string ListedSuccessfully = "Transactions retrieved successfully.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
@@ -32,6 +33,14 @@ public static class TransactionMessages
     public const string TagRequired = "Tag names cannot be empty.";
     public const string TagTooLong = "Tag names cannot exceed 200 characters.";
     public const string OwnerImmutable = "OwnerId cannot be supplied; ownership is fixed.";
+    public const string TransactionTargetImmutable =
+        "FinancialAccountId and CreditCardId cannot be supplied; the transaction target is fixed.";
+    public const string TransactionCurrencyImmutable =
+        "CurrencyCode cannot be supplied; the transaction currency is fixed by its target.";
+    public const string SettledStatementFrozen =
+        "The transaction belongs to a settled statement whose composition is frozen.";
+    public const string TransferFieldsRestricted =
+        "A transfer leg permits changes only to Description, CategoryId, and Tags.";
     public const string TransactionIdRequired = "Transaction id is required.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";

@@ -57,6 +57,9 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
         builder.Property(transaction => transaction.IsReconciled)
             .HasDefaultValue(false)
             .IsRequired();
+        builder.Property(transaction => transaction.IsManuallyCorrected)
+            .HasDefaultValue(false)
+            .IsRequired();
         builder.Property(transaction => transaction.IsLateArriving).HasDefaultValue(false).IsRequired();
         builder.Property(transaction => transaction.IsDeleted).HasDefaultValue(false).IsRequired();
         builder.Property(transaction => transaction.DeletionCascadeId);

@@ -24,6 +24,13 @@ public interface ITransactionReader
         CancellationToken cancellationToken);
 }
 
+public interface ITransactionUpdater
+{
+    Task<TransactionUpdateResult> UpdateAsync(
+        TransactionUpdate update,
+        CancellationToken cancellationToken);
+}
+
 public sealed class TransactionSearchCriteria
 {
     public Guid UserId { get; init; }
@@ -64,6 +71,7 @@ public sealed class TransactionReadSnapshot
     public string? Description { get; init; }
     public TransactionSourceType SourceType { get; init; }
     public bool IsReconciled { get; init; }
+    public bool IsManuallyCorrected { get; init; }
     public bool IsTransfer { get; init; }
     public Guid? StatementId { get; init; }
     public bool IsLateArriving { get; init; }
@@ -108,6 +116,31 @@ public enum TransactionRecordOutcome
 public sealed record TransactionRecordResult(
     TransactionSnapshot? Transaction,
     TransactionRecordOutcome Outcome);
+
+public sealed record TransactionUpdate(
+    Guid UserId,
+    Guid Id,
+    Guid CategoryId,
+    TransactionDirection Direction,
+    decimal Amount,
+    DateOnly OccurredOn,
+    string? Description,
+    string? Counterparty,
+    IReadOnlyCollection<string> Tags,
+    DateTimeOffset UpdatedAt);
+
+public enum TransactionUpdateOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    CategoryNotFound = 3,
+    SettledStatementFrozen = 4,
+    TransferFieldsRestricted = 5
+}
+
+public sealed record TransactionUpdateResult(
+    TransactionReadSnapshot? Transaction,
+    TransactionUpdateOutcome Outcome);
 
 public sealed record TransactionSnapshot(
     Guid Id,

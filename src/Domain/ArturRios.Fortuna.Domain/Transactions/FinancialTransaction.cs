@@ -198,8 +198,83 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public string? Description { get; private set; }
     public TransactionSourceType SourceType { get; private set; }
     public bool IsReconciled { get; private set; }
+    public bool IsManuallyCorrected { get; private set; }
     public bool IsLateArriving { get; private set; }
     public ICollection<Tag> Tags { get; } = [];
+
+    public void UpdateDetails(
+        Category category,
+        TransactionDirection direction,
+        decimal amount,
+        DateOnly occurredOn,
+        string? description,
+        Counterparty? counterparty,
+        IReadOnlyCollection<Tag>? tags,
+        DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(category);
+        if (category.User.PublicId != User.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and its category must have the same owner.",
+                nameof(category));
+        }
+
+        if (counterparty is not null && counterparty.User.PublicId != User.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and its counterparty must have the same owner.",
+                nameof(counterparty));
+        }
+
+        if (description?.Trim().Length > 500)
+        {
+            throw new ArgumentException(
+                "A description cannot exceed 500 characters.",
+                nameof(description));
+        }
+
+        var labels = tags?.DistinctBy(tag => tag.PublicId).ToArray() ?? [];
+        if (labels.Any(tag => tag.User.PublicId != User.PublicId))
+        {
+            throw new ArgumentException(
+                "The transaction and its tags must have the same owner.",
+                nameof(tags));
+        }
+
+        if (!Enum.IsDefined(direction))
+        {
+            throw new ArgumentOutOfRangeException(nameof(direction));
+        }
+
+        if (amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(amount),
+                "A transaction amount must be greater than zero.");
+        }
+
+        Category = category;
+        CategoryId = category.Id;
+        Counterparty = counterparty;
+        CounterpartyId = counterparty?.Id;
+        Direction = direction;
+        Amount = amount;
+        OccurredOn = occurredOn;
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        Tags.Clear();
+        foreach (var tag in labels)
+        {
+            Tags.Add(tag);
+        }
+
+        if (SourceType != TransactionSourceType.Manual)
+        {
+            IsManuallyCorrected = true;
+        }
+
+        MarkUpdated(updatedAt);
+    }
 
     public void RecordForeignCurrencyDetails(
         decimal originalAmount,
