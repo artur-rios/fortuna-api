@@ -1439,6 +1439,16 @@
         "format": "int32",
         "type": "integer"
       },
+      "InvestmentMovementType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
       "InvestmentType": {
         "enum": [
           1,
@@ -1608,6 +1618,138 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/RecordCardChargeCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordInvestmentMovementCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "financialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "movementType": {
+            "$ref": "#/components/schemas/InvestmentMovementType"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordInvestmentMovementCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "financialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "fundingAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "fundingCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "investmentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "movementType": {
+            "$ref": "#/components/schemas/InvestmentMovementType"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "outboundTransactionId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "position": {
+            "format": "double",
+            "type": "number"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "transferId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordInvestmentMovementCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutput"
           },
           "errors": {
             "items": {
@@ -3505,6 +3647,65 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateInvestmentCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Investments"
+        ]
+      }
+    },
+    "/api/investments/{id}/movements": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInvestmentMovementCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInvestmentMovementCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInvestmentMovementCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutputDataOutput"
                 }
               }
             },
