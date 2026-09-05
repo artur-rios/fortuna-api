@@ -1776,6 +1776,109 @@
         },
         "type": "object"
       },
+      "RecordInvestmentValuationCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "value": {
+            "format": "double",
+            "type": "number"
+          },
+          "valuedOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordInvestmentValuationCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "investmentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isIndependentlyValued": {
+            "type": "boolean"
+          },
+          "latestValuationDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "latestValuationValue": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "position": {
+            "format": "double",
+            "type": "number"
+          },
+          "replacedExisting": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "value": {
+            "format": "double",
+            "type": "number"
+          },
+          "valuedOn": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordInvestmentValuationCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RecordManualExchangeRateCommand": {
         "additionalProperties": false,
         "properties": {
@@ -3706,6 +3809,65 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Investments"
+        ]
+      }
+    },
+    "/api/investments/{id}/valuations": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInvestmentValuationCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInvestmentValuationCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInvestmentValuationCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutputDataOutput"
                 }
               }
             },
