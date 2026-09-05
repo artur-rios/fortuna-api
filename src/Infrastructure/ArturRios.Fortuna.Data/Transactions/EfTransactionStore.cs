@@ -260,6 +260,14 @@ public sealed class EfTransactionStore(AppDbContext context)
             return UpdateResult(TransactionUpdateOutcome.TransferFieldsRestricted);
         }
 
+        if (transaction.InstallmentPlanId.HasValue && (
+            transaction.Amount != update.Amount ||
+            transaction.Direction != update.Direction ||
+            transaction.OccurredOn != update.OccurredOn))
+        {
+            return UpdateResult(TransactionUpdateOutcome.InstallmentFieldsRestricted);
+        }
+
         var oldAmount = transaction.Amount;
         var oldDirection = transaction.Direction;
         var oldOccurredOn = transaction.OccurredOn;
@@ -393,13 +401,16 @@ public sealed class EfTransactionStore(AppDbContext context)
         }
 
         var transfer = await FindTransferAsync(transaction.Id, cancellationToken);
-        var transactionLegs = TransactionLegs(transaction, transfer);
+        var installmentPlan = transfer is null
+            ? await FindInstallmentPlanAsync(transaction.Id, cancellationToken)
+            : null;
+        var transactionLegs = TransactionLegs(transaction, transfer, installmentPlan);
         if (await HasSettledStatementAsync(transactionLegs, cancellationToken))
         {
             return LifecycleResult(TransactionLifecycleOutcome.SettledStatementFrozen);
         }
 
-        if (transfer is null)
+        if (transfer is null && installmentPlan is null)
         {
             var deletion = transaction.SoftDelete(changedAt);
             if (deletion.Changed)
@@ -407,7 +418,7 @@ public sealed class EfTransactionStore(AppDbContext context)
                 AdjustStatementTotal(transaction, deleting: true, changedAt);
             }
         }
-        else
+        else if (transfer is not null)
         {
             var cascadeId = transfer.SoftDelete(changedAt).CascadeId;
             foreach (var leg in transactionLegs)
@@ -424,6 +435,17 @@ public sealed class EfTransactionStore(AppDbContext context)
                     transfer.InboundInvestmentMovement,
                     cascadeId,
                     changedAt);
+            }
+        }
+        else
+        {
+            var cascadeId = installmentPlan!.SoftDelete(changedAt).CascadeId;
+            foreach (var leg in transactionLegs)
+            {
+                if (SoftDeleteToCascade(leg, cascadeId, changedAt))
+                {
+                    AdjustStatementTotal(leg, deleting: true, changedAt);
+                }
             }
         }
 
@@ -452,18 +474,21 @@ public sealed class EfTransactionStore(AppDbContext context)
         }
 
         var transfer = await FindTransferAsync(transaction.Id, cancellationToken);
-        var transactionLegs = TransactionLegs(transaction, transfer);
+        var installmentPlan = transfer is null
+            ? await FindInstallmentPlanAsync(transaction.Id, cancellationToken)
+            : null;
+        var transactionLegs = TransactionLegs(transaction, transfer, installmentPlan);
         if (await HasSettledStatementAsync(transactionLegs, cancellationToken))
         {
             return LifecycleResult(TransactionLifecycleOutcome.SettledStatementFrozen);
         }
 
-        if (transfer is null)
+        if (transfer is null && installmentPlan is null)
         {
             transaction.Restore(changedAt);
             AdjustStatementTotal(transaction, deleting: false, changedAt);
         }
-        else
+        else if (transfer is not null)
         {
             if (transfer.IsDeleted)
             {
@@ -481,6 +506,21 @@ public sealed class EfTransactionStore(AppDbContext context)
             if (transfer.InboundInvestmentMovement is not null)
             {
                 RestoreIfDeleted(transfer.InboundInvestmentMovement, changedAt);
+            }
+        }
+        else
+        {
+            if (installmentPlan!.IsDeleted)
+            {
+                installmentPlan.Restore(changedAt);
+            }
+
+            foreach (var leg in transactionLegs)
+            {
+                if (RestoreIfDeleted(leg, changedAt))
+                {
+                    AdjustStatementTotal(leg, deleting: false, changedAt);
+                }
             }
         }
 
@@ -503,9 +543,13 @@ public sealed class EfTransactionStore(AppDbContext context)
         }
 
         var transfer = await FindTransferAsync(transaction.Id, cancellationToken);
-        var transactionLegs = TransactionLegs(transaction, transfer);
+        var installmentPlan = transfer is null
+            ? await FindInstallmentPlanAsync(transaction.Id, cancellationToken)
+            : null;
+        var transactionLegs = TransactionLegs(transaction, transfer, installmentPlan);
         var allDeleted = transactionLegs.All(leg => leg.IsDeleted) &&
             (transfer is null || transfer.IsDeleted) &&
+            (installmentPlan is null || installmentPlan.IsDeleted) &&
             (transfer?.InboundInvestmentMovement is null ||
                 transfer.InboundInvestmentMovement.IsDeleted);
         if (!allDeleted)
@@ -525,6 +569,11 @@ public sealed class EfTransactionStore(AppDbContext context)
             {
                 context.InvestmentMovements.Remove(transfer.InboundInvestmentMovement);
             }
+        }
+
+        if (installmentPlan is not null)
+        {
+            context.InstallmentPlans.Remove(installmentPlan);
         }
 
         context.FinancialTransactions.RemoveRange(transactionLegs);
@@ -580,6 +629,15 @@ public sealed class EfTransactionStore(AppDbContext context)
         .SingleOrDefaultAsync(item =>
             item.OutboundTransactionId == transactionId ||
             item.InboundTransactionId == transactionId,
+            cancellationToken);
+
+    private Task<InstallmentPlan?> FindInstallmentPlanAsync(
+        long transactionId,
+        CancellationToken cancellationToken) => context.InstallmentPlans
+        .Include(item => item.Installments)
+            .ThenInclude(item => item.Statement)
+        .SingleOrDefaultAsync(item =>
+            item.Installments.Any(transaction => transaction.Id == transactionId),
             cancellationToken);
 
     private async Task<bool> HasSettledStatementAsync(
@@ -727,6 +785,10 @@ public sealed class EfTransactionStore(AppDbContext context)
             IsTransfer = context.Transfers.Any(transfer =>
                 transfer.OutboundTransactionId == transaction.Id ||
                 transfer.InboundTransactionId == transaction.Id),
+            InstallmentPlanId = transaction.InstallmentPlan == null
+                ? null
+                : transaction.InstallmentPlan.PublicId,
+            InstallmentNumber = transaction.InstallmentNumber,
             StatementId = transaction.Statement == null
                 ? null
                 : transaction.Statement.PublicId,
@@ -940,9 +1002,18 @@ public sealed class EfTransactionStore(AppDbContext context)
 
     private static IReadOnlyCollection<FinancialTransaction> TransactionLegs(
         FinancialTransaction transaction,
-        Transfer? transfer) => transfer?.InboundTransaction is null
-        ? [transfer?.OutboundTransaction ?? transaction]
-        : [transfer.OutboundTransaction, transfer.InboundTransaction];
+        Transfer? transfer,
+        InstallmentPlan? installmentPlan)
+    {
+        if (installmentPlan is not null)
+        {
+            return installmentPlan.Installments.ToArray();
+        }
+
+        return transfer?.InboundTransaction is null
+            ? [transfer?.OutboundTransaction ?? transaction]
+            : [transfer.OutboundTransaction, transfer.InboundTransaction];
+    }
 
     private static bool SoftDeleteToCascade(
         RecordLifecycleEntity entity,

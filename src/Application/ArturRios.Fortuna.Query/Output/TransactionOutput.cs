@@ -27,6 +27,8 @@ public sealed class TransactionOutput : QueryOutput
     public bool IsReconciled { get; set; }
     public bool IsManuallyCorrected { get; set; }
     public bool IsTransfer { get; set; }
+    public Guid? InstallmentPlanId { get; set; }
+    public short? InstallmentNumber { get; set; }
     public Guid? StatementId { get; set; }
     public bool IsLateArriving { get; set; }
     public IReadOnlyCollection<TransactionLabelOutput> Tags { get; set; } = [];

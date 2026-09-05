@@ -45,6 +45,8 @@ public static class TransactionMessages
         "The transaction belongs to a settled statement whose composition is frozen.";
     public const string TransferFieldsRestricted =
         "A transfer leg permits changes only to Description, CategoryId, and Tags.";
+    public const string InstallmentFieldsRestricted =
+        "An installment permits changes only to Description, CategoryId, Counterparty, and Tags.";
     public const string RestoreRequiresSoftDeletion =
         "Transaction must be soft-deleted before it can be restored.";
     public const string HardDeleteRequiresSoftDeletion =
