@@ -181,7 +181,7 @@ pull request.
 | [#27](https://github.com/artur-rios/fortuna-api/issues/27) | ✅ UC-26: Record an Investment Valuation | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#28](https://github.com/artur-rios/fortuna-api/issues/28) | ✅ UC-27: View Investments and Positions | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#29](https://github.com/artur-rios/fortuna-api/issues/29) | ✅ UC-28: Update an Investment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#30](https://github.com/artur-rios/fortuna-api/issues/30) | UC-29: Delete an Investment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#30](https://github.com/artur-rios/fortuna-api/issues/30) | ✅ UC-29: Delete an Investment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ### M-04 — Money movement
 

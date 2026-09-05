@@ -30,6 +30,41 @@ public interface IInvestmentUpdater
         CancellationToken cancellationToken);
 }
 
+public interface IInvestmentLifecycleStore
+{
+    Task<InvestmentLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<InvestmentLifecycleResult> RestoreAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<InvestmentLifecycleResult> HardDeleteAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken);
+}
+
+public enum InvestmentLifecycleOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    RestoreRequiresSoftDeletion = 3,
+    HardDeleteRequiresSoftDeletion = 4,
+    HardDeleteHasLiveGoal = 5,
+    DuplicateInstrument = 6
+}
+
+public sealed record InvestmentLifecycleResult(
+    Guid? Id,
+    InvestmentLifecycleOutcome Outcome,
+    string? ReferencingGoal = null);
+
 public sealed record InvestmentCreation(
     Guid UserId,
     string Instrument,

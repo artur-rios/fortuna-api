@@ -49,6 +49,9 @@ public sealed class InvestmentsController(
             [InvestmentMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [InvestmentMessages.DuplicateInstrument] = StatusCodes.Status409Conflict,
             [InvestmentMessages.CurrencyImmutable] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
+            [InvestmentMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
+            [InvestmentMessages.HardDeleteHasLiveGoal] = StatusCodes.Status409Conflict,
             [InvestmentMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [InvestmentMessages.InstrumentRequired] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.InstrumentTooLong] = StatusCodes.Status400BadRequest,
@@ -157,6 +160,36 @@ public sealed class InvestmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateInvestmentCommand,
             UpdateInvestmentCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<InvestmentLifecycleCommandOutput?>>> Delete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            DeleteInvestmentCommand,
+            InvestmentLifecycleCommandOutput>(new DeleteInvestmentCommand { Id = id });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/restore")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<InvestmentLifecycleCommandOutput?>>> Restore(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            RestoreInvestmentCommand,
+            InvestmentLifecycleCommandOutput>(new RestoreInvestmentCommand { Id = id });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}/hard")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<InvestmentLifecycleCommandOutput?>>> HardDelete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            HardDeleteInvestmentCommand,
+            InvestmentLifecycleCommandOutput>(new HardDeleteInvestmentCommand { Id = id });
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
