@@ -9,6 +9,7 @@ public static class InvestmentMessages
         "Investment valuation recorded successfully.";
     public const string ValuationReplacedSuccessfully =
         "Investment valuation replaced successfully.";
+    public const string UpdatedSuccessfully = "Investment updated successfully.";
     public const string RetrievedSuccessfully = "Investment retrieved successfully.";
     public const string ListedSuccessfully = "Investments listed successfully.";
     public const string ValuationHistoryRetrievedSuccessfully =
@@ -26,6 +27,8 @@ public static class InvestmentMessages
     public const string CurrencyRequired = "CurrencyCode is required.";
     public const string CurrencyInvalid = "CurrencyCode must be a three-letter ISO 4217 code.";
     public const string CurrencyNotSupported = "CurrencyCode is not supported.";
+    public const string CurrencyImmutable =
+        "CurrencyCode cannot be changed after investment creation.";
     public const string InvestmentIdRequired = "InvestmentId is required.";
     public const string MovementTypeInvalid =
         "MovementType must be Contribution, Withdrawal, Yield or Fee.";

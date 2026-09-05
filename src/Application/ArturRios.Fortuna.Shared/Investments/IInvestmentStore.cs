@@ -23,6 +23,13 @@ public interface IInvestmentReader
         Guid investmentId);
 }
 
+public interface IInvestmentUpdater
+{
+    Task<InvestmentUpdateResult> UpdateAsync(
+        InvestmentUpdate update,
+        CancellationToken cancellationToken);
+}
+
 public sealed record InvestmentCreation(
     Guid UserId,
     string Instrument,
@@ -32,6 +39,18 @@ public sealed record InvestmentCreation(
     DateTimeOffset CreatedAt);
 
 public sealed record InvestmentCreationResult(
+    InvestmentSnapshot? Investment,
+    bool DuplicateInstrument);
+
+public sealed record InvestmentUpdate(
+    Guid UserId,
+    Guid Id,
+    string Instrument,
+    string? Institution,
+    InvestmentType InvestmentType,
+    DateTimeOffset UpdatedAt);
+
+public sealed record InvestmentUpdateResult(
     InvestmentSnapshot? Investment,
     bool DuplicateInstrument);
 

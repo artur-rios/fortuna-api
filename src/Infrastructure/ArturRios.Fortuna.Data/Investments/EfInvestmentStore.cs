@@ -7,7 +7,8 @@ using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Investments;
 
-public sealed class EfInvestmentStore(AppDbContext context) : IInvestmentStore, IInvestmentReader
+public sealed class EfInvestmentStore(AppDbContext context)
+    : IInvestmentStore, IInvestmentReader, IInvestmentUpdater
 {
     public IQueryable<InvestmentPositionSnapshot> QueryPositions()
     {
@@ -127,6 +128,58 @@ public sealed class EfInvestmentStore(AppDbContext context) : IInvestmentStore, 
         }
 
         return new InvestmentCreationResult(
+            new InvestmentSnapshot(
+                investment.PublicId,
+                investment.User.PublicId,
+                investment.Instrument,
+                investment.Institution,
+                investment.InvestmentType,
+                investment.Currency.Code,
+                investment.IsDeleted,
+                investment.CreatedAt,
+                investment.UpdatedAt),
+            DuplicateInstrument: false);
+    }
+
+    public async Task<InvestmentUpdateResult> UpdateAsync(
+        InvestmentUpdate update,
+        CancellationToken cancellationToken)
+    {
+        var investment = await context.Investments
+            .Include(item => item.User)
+            .Include(item => item.Currency)
+            .SingleOrDefaultAsync(item =>
+                item.User.PublicId == update.UserId &&
+                item.PublicId == update.Id &&
+                !item.IsDeleted,
+                cancellationToken);
+        if (investment is null)
+        {
+            return new InvestmentUpdateResult(null, DuplicateInstrument: false);
+        }
+
+        investment.UpdateDetails(
+            update.Instrument,
+            update.Institution,
+            update.InvestmentType,
+            update.UpdatedAt);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: InvestmentMap.LiveInstrumentIndex
+            })
+        {
+            context.Entry(investment).State = EntityState.Detached;
+            return new InvestmentUpdateResult(null, DuplicateInstrument: true);
+        }
+
+        return new InvestmentUpdateResult(
             new InvestmentSnapshot(
                 investment.PublicId,
                 investment.User.PublicId,

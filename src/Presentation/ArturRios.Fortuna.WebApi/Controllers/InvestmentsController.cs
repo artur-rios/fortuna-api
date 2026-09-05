@@ -48,6 +48,7 @@ public sealed class InvestmentsController(
         {
             [InvestmentMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [InvestmentMessages.DuplicateInstrument] = StatusCodes.Status409Conflict,
+            [InvestmentMessages.CurrencyImmutable] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [InvestmentMessages.InstrumentRequired] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.InstrumentTooLong] = StatusCodes.Status400BadRequest,
@@ -143,6 +144,19 @@ public sealed class InvestmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             CreateInvestmentCommand,
             CreateInvestmentCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPut("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<UpdateInvestmentCommandOutput?>>> Update(
+        Guid id,
+        [FromBody] UpdateInvestmentCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            UpdateInvestmentCommand,
+            UpdateInvestmentCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 

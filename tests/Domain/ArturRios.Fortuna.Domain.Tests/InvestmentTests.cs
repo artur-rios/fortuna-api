@@ -101,6 +101,58 @@ public sealed class InvestmentTests
             user, "Instrument", null, InvestmentType.Other, null!, Now));
     }
 
+    [UnitFact]
+    public void GivenValidDetails_WhenUpdated_ThenEditableFieldsAreNormalized()
+    {
+        var (user, currency) = Owner();
+        var investment = new Investment(
+            user, "Before", "Old Broker", InvestmentType.Fund, currency, Now);
+        var updatedAt = Now.AddHours(1);
+
+        investment.UpdateDetails(
+            "  After  ",
+            "  New Broker  ",
+            InvestmentType.Equity,
+            updatedAt);
+
+        Assert.Equal("After", investment.Instrument);
+        Assert.Equal("AFTER", investment.NormalizedInstrument);
+        Assert.Equal("New Broker", investment.Institution);
+        Assert.Equal(InvestmentType.Equity, investment.InvestmentType);
+        Assert.Equal(currency, investment.Currency);
+        Assert.Equal(user, investment.User);
+        Assert.Equal(updatedAt, investment.UpdatedAt);
+    }
+
+    [UnitFact]
+    public void GivenWhitespaceInstitution_WhenUpdated_ThenInstitutionIsCleared()
+    {
+        var (user, currency) = Owner();
+        var investment = new Investment(
+            user, "Fund", "Broker", InvestmentType.Fund, currency, Now);
+
+        investment.UpdateDetails("Fund", "   ", InvestmentType.Fund, Now.AddHours(1));
+
+        Assert.Null(investment.Institution);
+    }
+
+    [UnitFact]
+    public void GivenInvalidDetails_WhenUpdated_ThenTheyAreRejected()
+    {
+        var (user, currency) = Owner();
+        var investment = new Investment(
+            user, "Fund", "Broker", InvestmentType.Fund, currency, Now);
+
+        Assert.Throws<ArgumentException>(() => investment.UpdateDetails(
+            " ", null, InvestmentType.Fund, Now));
+        Assert.Throws<ArgumentException>(() => investment.UpdateDetails(
+            new string('i', 201), null, InvestmentType.Fund, Now));
+        Assert.Throws<ArgumentException>(() => investment.UpdateDetails(
+            "Fund", new string('i', 201), InvestmentType.Fund, Now));
+        Assert.Throws<ArgumentOutOfRangeException>(() => investment.UpdateDetails(
+            "Fund", null, (InvestmentType)99, Now));
+    }
+
     private static (UserProfile User, Currency Currency) Owner()
     {
         var currency = new Currency("BRL", "Brazilian real", 2);
