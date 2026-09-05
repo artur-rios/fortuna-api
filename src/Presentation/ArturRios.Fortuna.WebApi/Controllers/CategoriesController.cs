@@ -23,6 +23,7 @@ public sealed class CategoriesController(
         new Dictionary<string, int>
         {
             [CategoryMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
+            [CategoryMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
             [CategoryMessages.NotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.ParentNotFound] = StatusCodes.Status404NotFound,
@@ -41,6 +42,20 @@ public sealed class CategoriesController(
         var result = await commandMediator.ExecuteCommandAsync<
             CreateCategoryCommand,
             CreateCategoryCommandOutput>(command);
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPut("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<UpdateCategoryCommandOutput?>>> Update(
+        Guid id,
+        [FromBody] UpdateCategoryCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            UpdateCategoryCommand,
+            UpdateCategoryCommandOutput>(command);
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
