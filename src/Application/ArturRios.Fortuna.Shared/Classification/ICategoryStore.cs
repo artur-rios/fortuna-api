@@ -16,6 +16,13 @@ public interface ICategoryReader
         CancellationToken cancellationToken);
 }
 
+public interface ICategoryUpdater
+{
+    Task<CategoryUpdateResult> UpdateAsync(
+        CategoryUpdate update,
+        CancellationToken cancellationToken);
+}
+
 public enum CategoryCreationOutcome
 {
     Succeeded = 1,
@@ -33,6 +40,26 @@ public sealed record CategoryCreation(
 public sealed record CategoryCreationResult(
     CategorySnapshot? Category,
     CategoryCreationOutcome Outcome);
+
+public enum CategoryUpdateOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    ParentNotFound = 3,
+    DuplicateSiblingName = 4,
+    CycleDetected = 5
+}
+
+public sealed record CategoryUpdate(
+    Guid UserId,
+    Guid Id,
+    string Name,
+    Guid? ParentId,
+    DateTimeOffset UpdatedAt);
+
+public sealed record CategoryUpdateResult(
+    CategorySnapshot? Category,
+    CategoryUpdateOutcome Outcome);
 
 public sealed record CategorySnapshot(
     Guid Id,

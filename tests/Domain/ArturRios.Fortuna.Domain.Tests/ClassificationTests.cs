@@ -39,6 +39,53 @@ public sealed class ClassificationTests
         Assert.Equal("parent", exception.ParamName);
     }
 
+    [UnitFact]
+    public void GivenNewDetails_WhenCategoryUpdated_ThenNameParentAndTimestampChange()
+    {
+        var user = User();
+        var originalParent = new Category(user, "Original", Now);
+        var newParent = new Category(user, "New", Now);
+        var category = new Category(user, "Before", Now, originalParent);
+        var updatedAt = Now.AddHours(1);
+
+        category.UpdateDetails("  After  ", newParent, updatedAt);
+
+        Assert.Equal("After", category.Name);
+        Assert.Equal("AFTER", category.NormalizedName);
+        Assert.Equal(newParent, category.Parent);
+        Assert.Equal(newParent.Id, category.ParentId);
+        Assert.Equal(Now, category.CreatedAt);
+        Assert.Equal(updatedAt, category.UpdatedAt);
+    }
+
+    [UnitFact]
+    public void GivenNullParent_WhenCategoryUpdated_ThenItMovesToRoot()
+    {
+        var user = User();
+        var category = new Category(user, "Child", Now, new Category(user, "Root", Now));
+
+        category.UpdateDetails("Child", null, Now.AddMinutes(1));
+
+        Assert.Null(category.Parent);
+        Assert.Null(category.ParentId);
+    }
+
+    [UnitFact]
+    public void GivenInvalidDetails_WhenCategoryUpdated_ThenTheyAreRejected()
+    {
+        var user = User();
+        var category = new Category(user, "Category", Now);
+
+        Assert.Throws<ArgumentException>(() =>
+            category.UpdateDetails(" ", null, Now));
+        Assert.Throws<ArgumentException>(() =>
+            category.UpdateDetails(new string('n', 201), null, Now));
+        Assert.Throws<ArgumentException>(() =>
+            category.UpdateDetails("Category", new Category(User(), "Foreign", Now), Now));
+        Assert.Throws<ArgumentException>(() =>
+            category.UpdateDetails("Category", category, Now));
+    }
+
     [UnitTheory]
     [InlineData("")]
     [InlineData("   ")]

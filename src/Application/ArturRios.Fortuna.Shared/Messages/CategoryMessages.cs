@@ -3,6 +3,7 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class CategoryMessages
 {
     public const string CreatedSuccessfully = "Category created successfully.";
+    public const string UpdatedSuccessfully = "Category updated successfully.";
     public const string TreeRetrievedSuccessfully = "Category tree retrieved successfully.";
     public const string RetrievedSuccessfully = "Category retrieved successfully.";
     public const string NotFound = "Category not found.";

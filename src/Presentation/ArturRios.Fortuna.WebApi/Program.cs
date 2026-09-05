@@ -122,6 +122,8 @@ try
         provider.GetRequiredService<EfCategoryStore>());
     builder.Services.AddScoped<ICategoryReader>(provider =>
         provider.GetRequiredService<EfCategoryStore>());
+    builder.Services.AddScoped<ICategoryUpdater>(provider =>
+        provider.GetRequiredService<EfCategoryStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -254,6 +256,9 @@ try
     builder.Services.AddScoped<IValidator<CreateCategoryCommand>, CreateCategoryCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateCategoryCommand,
         CreateCategoryCommandOutput, CreateCategoryCommandHandler>();
+    builder.Services.AddScoped<IValidator<UpdateCategoryCommand>, UpdateCategoryCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<UpdateCategoryCommand,
+        UpdateCategoryCommandOutput, UpdateCategoryCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
