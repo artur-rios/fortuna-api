@@ -3,7 +3,10 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class TransactionMessages
 {
     public const string RecordedSuccessfully = "Transaction recorded successfully.";
+    public const string RetrievedSuccessfully = "Transaction retrieved successfully.";
+    public const string ListedSuccessfully = "Transactions retrieved successfully.";
     public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string NotFound = "Transaction not found.";
     public const string CreditCardNotFound = "Credit card not found.";
     public const string FinancialAccountNotFound = "Financial account not found.";
     public const string CategoryNotFound = "Category not found.";
@@ -29,4 +32,25 @@ public static class TransactionMessages
     public const string TagRequired = "Tag names cannot be empty.";
     public const string TagTooLong = "Tag names cannot exceed 200 characters.";
     public const string OwnerImmutable = "OwnerId cannot be supplied; ownership is fixed.";
+    public const string TransactionIdRequired = "Transaction id is required.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
+    public const string DateRangeInvalid = "From cannot be later than To.";
+    public const string FinancialAccountIdInvalid = "FinancialAccountId cannot be empty.";
+    public const string CreditCardIdInvalid = "CreditCardId cannot be empty.";
+    public const string CategoryFilterIdInvalid = "CategoryId cannot be empty.";
+    public const string TagIdInvalid = "TagId cannot be empty.";
+    public const string CounterpartyIdInvalid = "CounterpartyId cannot be empty.";
+    public const string MinimumAmountInvalid = "MinimumAmount cannot be negative.";
+    public const string MaximumAmountInvalid = "MaximumAmount cannot be negative.";
+    public const string AmountRangeInvalid =
+        "MinimumAmount cannot be greater than MaximumAmount.";
+    public const string SearchTextTooLong = "Text cannot exceed 500 characters.";
+    public const string DisplayCurrencyInvalid =
+        "DisplayCurrencyCode must contain three characters.";
+    public const string SortByUnsupported = "SortBy is not supported.";
+
+    public static string UnsupportedFilter(string filter) => $"Filter '{filter}' is not supported.";
+
+    public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
 }

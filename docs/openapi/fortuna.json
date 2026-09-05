@@ -2675,10 +2675,306 @@
         },
         "type": "object"
       },
+      "TransactionCurrencyTotalOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "displayCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "displayEarning": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "displayExpense": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "displayNet": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "earning": {
+            "format": "double",
+            "type": "number"
+          },
+          "expense": {
+            "format": "double",
+            "type": "number"
+          },
+          "net": {
+            "format": "double",
+            "readOnly": true,
+            "type": "number"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "rateSource": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          },
+          "unconvertedReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "TransactionDirection": {
         "enum": [
           1,
           2
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "TransactionLabelOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "categoryName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "counterpartyId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "counterpartyName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "creditCardId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "creditCardName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/TransactionDirection"
+          },
+          "financialAccountId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "financialAccountName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isDeleted": {
+            "type": "boolean"
+          },
+          "isLateArriving": {
+            "type": "boolean"
+          },
+          "isReconciled": {
+            "type": "boolean"
+          },
+          "isTransfer": {
+            "type": "boolean"
+          },
+          "occurredOn": {
+            "format": "date",
+            "type": "string"
+          },
+          "originalAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "originalCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "sourceType": {
+            "$ref": "#/components/schemas/TransactionSourceType"
+          },
+          "statementId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionLabelOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TransactionOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionSearchOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalItems": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "readOnly": true,
+            "type": "integer"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/TransactionTotalsOutput"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionSearchOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TransactionSearchOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionSourceType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
         ],
         "format": "int32",
         "type": "integer"
@@ -2693,6 +2989,38 @@
           "name": {
             "nullable": true,
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionTotalsOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "byCurrency": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionCurrencyTotalOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "displayCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "displayEarning": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "displayExpense": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "displayNet": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
           }
         },
         "type": "object"
@@ -5197,6 +5525,173 @@
       }
     },
     "/api/transactions": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "From",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "To",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "FinancialAccountId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "CreditCardId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "CategoryId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "TagId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "CounterpartyId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Direction",
+            "schema": {
+              "$ref": "#/components/schemas/TransactionDirection"
+            }
+          },
+          {
+            "in": "query",
+            "name": "MinimumAmount",
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "MaximumAmount",
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Text",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "IncludeDeleted",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "DisplayCurrencyCode",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "FigureDate",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "SortBy",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Descending",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionSearchOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionSearchOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionSearchOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Transactions"
+        ]
+      },
       "post": {
         "requestBody": {
           "content": {
@@ -5233,6 +5728,54 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordTransactionCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/transactions/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeDeleted",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOutputDataOutput"
                 }
               }
             },

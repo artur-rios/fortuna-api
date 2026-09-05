@@ -10,8 +10,56 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Transactions;
 
-public sealed class EfTransactionStore(AppDbContext context) : ITransactionStore
+public sealed class EfTransactionStore(AppDbContext context) : ITransactionStore, ITransactionReader
 {
+    public IQueryable<TransactionReadSnapshot> Query(TransactionSearchCriteria criteria) =>
+        Project(Filter(criteria));
+
+    public Task<TransactionReadSnapshot?> FindByIdAsync(
+        Guid userId,
+        Guid id,
+        bool includeDeleted,
+        CancellationToken cancellationToken) => Project(Filter(new TransactionSearchCriteria
+        {
+            UserId = userId,
+            IncludeDeleted = includeDeleted
+        })).SingleOrDefaultAsync(transaction => transaction.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyCollection<TransactionCurrencyTotalSnapshot>> SummarizeAsync(
+        TransactionSearchCriteria criteria,
+        CancellationToken cancellationToken)
+    {
+        var grouped = await Filter(criteria)
+            .Where(transaction =>
+                !transaction.IsDeleted &&
+                !context.Transfers.Any(transfer =>
+                    transfer.OutboundTransactionId == transaction.Id ||
+                    transfer.InboundTransactionId == transaction.Id))
+            .GroupBy(transaction => new
+            {
+                transaction.Currency.Code,
+                transaction.Direction
+            })
+            .Select(group => new
+            {
+                CurrencyCode = group.Key.Code,
+                group.Key.Direction,
+                Amount = group.Sum(transaction => transaction.Amount)
+            })
+            .ToListAsync(cancellationToken);
+
+        return grouped
+            .GroupBy(total => total.CurrencyCode)
+            .OrderBy(group => group.Key)
+            .Select(group => new TransactionCurrencyTotalSnapshot(
+                group.Key,
+                group.SingleOrDefault(total =>
+                    total.Direction == TransactionDirection.Expense)?.Amount ?? 0m,
+                group.SingleOrDefault(total =>
+                    total.Direction == TransactionDirection.Earning)?.Amount ?? 0m))
+            .ToArray();
+    }
+
     public async Task<TransactionRecordResult> RecordAsync(
         TransactionRecord record,
         CancellationToken cancellationToken)
@@ -194,6 +242,146 @@ public sealed class EfTransactionStore(AppDbContext context) : ITransactionStore
                 !item.IsDeleted,
                 cancellationToken)
         : Task.FromResult<CreditCard?>(null);
+
+    private IQueryable<FinancialTransaction> Filter(TransactionSearchCriteria criteria)
+    {
+        var transactions = context.FinancialTransactions
+            .AsNoTracking()
+            .Where(transaction => transaction.User.PublicId == criteria.UserId);
+        if (!criteria.IncludeDeleted)
+        {
+            transactions = transactions.Where(transaction => !transaction.IsDeleted);
+        }
+
+        if (criteria.From.HasValue)
+        {
+            transactions = transactions.Where(transaction =>
+                transaction.OccurredOn >= criteria.From.Value);
+        }
+
+        if (criteria.To.HasValue)
+        {
+            transactions = transactions.Where(transaction =>
+                transaction.OccurredOn <= criteria.To.Value);
+        }
+
+        if (criteria.FinancialAccountId.HasValue)
+        {
+            transactions = transactions.Where(transaction =>
+                transaction.FinancialAccount != null &&
+                transaction.FinancialAccount.PublicId == criteria.FinancialAccountId.Value);
+        }
+
+        if (criteria.CreditCardId.HasValue)
+        {
+            transactions = transactions.Where(transaction =>
+                transaction.CreditCard != null &&
+                transaction.CreditCard.PublicId == criteria.CreditCardId.Value);
+        }
+
+        if (criteria.CategoryId.HasValue)
+        {
+            transactions = transactions.Where(transaction =>
+                transaction.Category.PublicId == criteria.CategoryId.Value);
+        }
+
+        if (criteria.TagId.HasValue)
+        {
+            transactions = transactions.Where(transaction => transaction.Tags.Any(tag =>
+                tag.PublicId == criteria.TagId.Value));
+        }
+
+        if (criteria.CounterpartyId.HasValue)
+        {
+            transactions = transactions.Where(transaction =>
+                transaction.Counterparty != null &&
+                transaction.Counterparty.PublicId == criteria.CounterpartyId.Value);
+        }
+
+        if (criteria.Direction.HasValue)
+        {
+            transactions = transactions.Where(transaction =>
+                transaction.Direction == criteria.Direction.Value);
+        }
+
+        if (criteria.MinimumAmount.HasValue)
+        {
+            transactions = transactions.Where(transaction =>
+                transaction.Amount >= criteria.MinimumAmount.Value);
+        }
+
+        if (criteria.MaximumAmount.HasValue)
+        {
+            transactions = transactions.Where(transaction =>
+                transaction.Amount <= criteria.MaximumAmount.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(criteria.Text))
+        {
+            var text = criteria.Text.Trim().ToLowerInvariant();
+            transactions = transactions.Where(transaction =>
+                transaction.Description != null &&
+                transaction.Description.ToLower().Contains(text));
+        }
+
+        return transactions;
+    }
+
+    private IQueryable<TransactionReadSnapshot> Project(
+        IQueryable<FinancialTransaction> transactions) => transactions.Select(transaction =>
+        new TransactionReadSnapshot
+        {
+            Id = transaction.PublicId,
+            UserId = transaction.User.PublicId,
+            FinancialAccountId = transaction.FinancialAccount == null
+                ? null
+                : transaction.FinancialAccount.PublicId,
+            FinancialAccountName = transaction.FinancialAccount == null
+                ? null
+                : transaction.FinancialAccount.Name,
+            CreditCardId = transaction.CreditCard == null
+                ? null
+                : transaction.CreditCard.PublicId,
+            CreditCardName = transaction.CreditCard == null
+                ? null
+                : transaction.CreditCard.Name,
+            CategoryId = transaction.Category.PublicId,
+            CategoryName = transaction.Category.Name,
+            CounterpartyId = transaction.Counterparty == null
+                ? null
+                : transaction.Counterparty.PublicId,
+            CounterpartyName = transaction.Counterparty == null
+                ? null
+                : transaction.Counterparty.Name,
+            Direction = transaction.Direction,
+            Amount = transaction.Amount,
+            CurrencyCode = transaction.Currency.Code,
+            OriginalAmount = transaction.OriginalAmount,
+            OriginalCurrencyCode = transaction.OriginalCurrency == null
+                ? null
+                : transaction.OriginalCurrency.Code,
+            AppliedRate = transaction.AppliedRate,
+            RateDate = transaction.RateDate,
+            OccurredOn = transaction.OccurredOn,
+            Description = transaction.Description,
+            SourceType = transaction.SourceType,
+            IsReconciled = transaction.IsReconciled,
+            IsTransfer = context.Transfers.Any(transfer =>
+                transfer.OutboundTransactionId == transaction.Id ||
+                transfer.InboundTransactionId == transaction.Id),
+            StatementId = transaction.Statement == null
+                ? null
+                : transaction.Statement.PublicId,
+            IsLateArriving = transaction.IsLateArriving,
+            Tags = transaction.Tags
+                .OrderBy(tag => tag.Name)
+                .ThenBy(tag => tag.PublicId)
+                .Select(tag => new TransactionReadTagSnapshot(tag.PublicId, tag.Name))
+                .ToArray(),
+            IsDeleted = transaction.IsDeleted,
+            CreatedAt = transaction.CreatedAt,
+            UpdatedAt = transaction.UpdatedAt
+        });
 
     private async Task<Counterparty?> ResolveCounterpartyAsync(
         UserProfile user,
