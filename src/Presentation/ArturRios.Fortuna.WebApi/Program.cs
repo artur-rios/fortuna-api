@@ -104,7 +104,11 @@ try
         provider.GetRequiredService<EfCreditCardStatementStore>());
     builder.Services.AddScoped<ICreditCardStatementSettlementStore>(provider =>
         provider.GetRequiredService<EfCreditCardStatementStore>());
-    builder.Services.AddScoped<ITransactionStore, EfTransactionStore>();
+    builder.Services.AddScoped<EfTransactionStore>();
+    builder.Services.AddScoped<ITransactionStore>(provider =>
+        provider.GetRequiredService<EfTransactionStore>());
+    builder.Services.AddScoped<ITransactionReader>(provider =>
+        provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<EfInvestmentStore>();
     builder.Services.AddScoped<IInvestmentStore>(provider =>
         provider.GetRequiredService<EfInvestmentStore>());
@@ -266,6 +270,14 @@ try
         ListInvestmentValuationsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListInvestmentValuationsQuery,
         InvestmentValuationOutput>, ListInvestmentValuationsQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetTransactionByIdQuery>,
+        GetTransactionByIdQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetTransactionByIdQuery, TransactionOutput>,
+        GetTransactionByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<SearchTransactionsQuery>,
+        SearchTransactionsQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<SearchTransactionsQuery, TransactionSearchOutput>,
+        SearchTransactionsQueryHandler>();
 
     builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();

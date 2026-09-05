@@ -9,6 +9,77 @@ public interface ITransactionStore
         CancellationToken cancellationToken);
 }
 
+public interface ITransactionReader
+{
+    IQueryable<TransactionReadSnapshot> Query(TransactionSearchCriteria criteria);
+
+    Task<TransactionReadSnapshot?> FindByIdAsync(
+        Guid userId,
+        Guid id,
+        bool includeDeleted,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<TransactionCurrencyTotalSnapshot>> SummarizeAsync(
+        TransactionSearchCriteria criteria,
+        CancellationToken cancellationToken);
+}
+
+public sealed class TransactionSearchCriteria
+{
+    public Guid UserId { get; init; }
+    public DateOnly? From { get; init; }
+    public DateOnly? To { get; init; }
+    public Guid? FinancialAccountId { get; init; }
+    public Guid? CreditCardId { get; init; }
+    public Guid? CategoryId { get; init; }
+    public Guid? TagId { get; init; }
+    public Guid? CounterpartyId { get; init; }
+    public TransactionDirection? Direction { get; init; }
+    public decimal? MinimumAmount { get; init; }
+    public decimal? MaximumAmount { get; init; }
+    public string? Text { get; init; }
+    public bool IncludeDeleted { get; init; }
+}
+
+public sealed class TransactionReadSnapshot
+{
+    public Guid Id { get; init; }
+    public Guid UserId { get; init; }
+    public Guid? FinancialAccountId { get; init; }
+    public string? FinancialAccountName { get; init; }
+    public Guid? CreditCardId { get; init; }
+    public string? CreditCardName { get; init; }
+    public Guid CategoryId { get; init; }
+    public string CategoryName { get; init; } = string.Empty;
+    public Guid? CounterpartyId { get; init; }
+    public string? CounterpartyName { get; init; }
+    public TransactionDirection Direction { get; init; }
+    public decimal Amount { get; init; }
+    public string CurrencyCode { get; init; } = string.Empty;
+    public decimal? OriginalAmount { get; init; }
+    public string? OriginalCurrencyCode { get; init; }
+    public decimal? AppliedRate { get; init; }
+    public DateOnly? RateDate { get; init; }
+    public DateOnly OccurredOn { get; init; }
+    public string? Description { get; init; }
+    public TransactionSourceType SourceType { get; init; }
+    public bool IsReconciled { get; init; }
+    public bool IsTransfer { get; init; }
+    public Guid? StatementId { get; init; }
+    public bool IsLateArriving { get; init; }
+    public IReadOnlyCollection<TransactionReadTagSnapshot> Tags { get; init; } = [];
+    public bool IsDeleted { get; init; }
+    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset UpdatedAt { get; init; }
+}
+
+public sealed record TransactionReadTagSnapshot(Guid Id, string Name);
+
+public sealed record TransactionCurrencyTotalSnapshot(
+    string CurrencyCode,
+    decimal Expense,
+    decimal Earning);
+
 public sealed record TransactionRecord(
     Guid UserId,
     Guid? FinancialAccountId,
