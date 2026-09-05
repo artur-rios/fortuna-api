@@ -125,7 +125,7 @@ and the [project board](https://github.com/users/artur-rios/projects/12) are the
 |---|---|---|---|---|
 | [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 1 | 1 / 1 closed |
 | [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, the two-stage deletion lifecycle and the audit trail | M-01 | 12 | 12 / 12 closed |
-| [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 19 | 14 / 19 closed |
+| [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 19 | 15 / 19 closed |
 | [M-04 — Money movement](https://github.com/artur-rios/fortuna-api/milestone/4) | Transactions, transfers, installment plans, recurring commitments and reconciliation | M-03 | 11 | 0 / 11 closed |
 | [M-05 — Organization and planning](https://github.com/artur-rios/fortuna-api/milestone/5) | Categories, tags, counterparties, budgets and goals | M-04 | 11 | 0 / 11 closed |
 | [M-06 — Ingestion](https://github.com/artur-rios/fortuna-api/milestone/6) | The source contract, Pluggy connections and synchronization, Excel and Nubank PDF imports, and job monitoring | M-04 | 10 | 0 / 10 closed |
@@ -177,7 +177,7 @@ pull request.
 | [#23](https://github.com/artur-rios/fortuna-api/issues/23) | ✅ UC-22: View a Statement | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#24](https://github.com/artur-rios/fortuna-api/issues/24) | ✅ UC-23: Settle a Statement | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#25](https://github.com/artur-rios/fortuna-api/issues/25) | ✅ UC-24: Create an Investment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#26](https://github.com/artur-rios/fortuna-api/issues/26) | UC-25: Record an Investment Movement | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#26](https://github.com/artur-rios/fortuna-api/issues/26) | ✅ UC-25: Record an Investment Movement | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#27](https://github.com/artur-rios/fortuna-api/issues/27) | UC-26: Record an Investment Valuation | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#28](https://github.com/artur-rios/fortuna-api/issues/28) | UC-27: View Investments and Positions | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#29](https://github.com/artur-rios/fortuna-api/issues/29) | UC-28: Update an Investment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

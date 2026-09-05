@@ -12,7 +12,11 @@ public sealed class TransferMap : IEntityTypeConfiguration<Transfer>
         {
             table.HasCheckConstraint(
                 "ck_transfer_movements",
-                "outbound_transaction_id <> inbound_transaction_id");
+                "(inbound_transaction_id IS NOT NULL AND " +
+                "inbound_investment_movement_id IS NULL AND " +
+                "outbound_transaction_id <> inbound_transaction_id) OR " +
+                "(inbound_transaction_id IS NULL AND " +
+                "inbound_investment_movement_id IS NOT NULL)");
             table.HasCheckConstraint(
                 "ck_transfer_conversion",
                 "(applied_rate IS NULL AND rate_date IS NULL) OR " +
@@ -25,7 +29,8 @@ public sealed class TransferMap : IEntityTypeConfiguration<Transfer>
         builder.HasKey(transfer => transfer.Id);
         builder.Property(transfer => transfer.PublicId).IsRequired();
         builder.Property(transfer => transfer.OutboundTransactionId).IsRequired();
-        builder.Property(transfer => transfer.InboundTransactionId).IsRequired();
+        builder.Property(transfer => transfer.InboundTransactionId);
+        builder.Property(transfer => transfer.InboundInvestmentMovementId);
         builder.Property(transfer => transfer.AppliedRate).HasPrecision(19, 8);
         builder.Property(transfer => transfer.RateDate);
         builder.Property(transfer => transfer.IsDeleted).HasDefaultValue(false).IsRequired();
@@ -35,6 +40,7 @@ public sealed class TransferMap : IEntityTypeConfiguration<Transfer>
         builder.HasIndex(transfer => transfer.PublicId).IsUnique();
         builder.HasIndex(transfer => transfer.OutboundTransactionId).IsUnique();
         builder.HasIndex(transfer => transfer.InboundTransactionId).IsUnique();
+        builder.HasIndex(transfer => transfer.InboundInvestmentMovementId).IsUnique();
         builder.HasOne(transfer => transfer.OutboundTransaction)
             .WithMany()
             .HasForeignKey(transfer => transfer.OutboundTransactionId)
@@ -42,6 +48,10 @@ public sealed class TransferMap : IEntityTypeConfiguration<Transfer>
         builder.HasOne(transfer => transfer.InboundTransaction)
             .WithMany()
             .HasForeignKey(transfer => transfer.InboundTransactionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(transfer => transfer.InboundInvestmentMovement)
+            .WithMany()
+            .HasForeignKey(transfer => transfer.InboundInvestmentMovementId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

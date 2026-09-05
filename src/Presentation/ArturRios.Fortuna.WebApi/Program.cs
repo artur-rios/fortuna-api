@@ -106,6 +106,7 @@ try
         provider.GetRequiredService<EfCreditCardStatementStore>());
     builder.Services.AddScoped<ICardChargeStore, EfCardChargeStore>();
     builder.Services.AddScoped<IInvestmentStore, EfInvestmentStore>();
+    builder.Services.AddScoped<IInvestmentMovementStore, EfInvestmentMovementStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
@@ -196,6 +197,10 @@ try
         CreateInvestmentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateInvestmentCommand,
         CreateInvestmentCommandOutput, CreateInvestmentCommandHandler>();
+    builder.Services.AddScoped<IValidator<RecordInvestmentMovementCommand>,
+        RecordInvestmentMovementCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<RecordInvestmentMovementCommand,
+        RecordInvestmentMovementCommandOutput, RecordInvestmentMovementCommandHandler>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();

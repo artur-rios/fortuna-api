@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Util.Test.Attributes;
@@ -30,6 +31,50 @@ public sealed class TransferTests
         Assert.Equal(inbound, transfer.InboundTransaction);
         Assert.Equal(5m, transfer.AppliedRate);
         Assert.Equal(new DateOnly(2026, 9, 3), transfer.RateDate);
+    }
+
+    [UnitFact]
+    public void GivenFundedContribution_WhenCreated_ThenTransferRetainsInvestmentMovement()
+    {
+        var user = User();
+        var outbound = AccountMovement(user, TransactionDirection.Expense);
+        var movement = InvestmentMovement(user, InvestmentMovementType.Contribution);
+
+        var transfer = new Transfer(
+            outbound,
+            movement,
+            5m,
+            new DateOnly(2026, 9, 3),
+            Now);
+
+        Assert.Equal(outbound, transfer.OutboundTransaction);
+        Assert.Null(transfer.InboundTransaction);
+        Assert.Equal(movement, transfer.InboundInvestmentMovement);
+        Assert.Equal(5m, transfer.AppliedRate);
+    }
+
+    [UnitFact]
+    public void GivenFundedNonContribution_WhenCreated_ThenTransferIsRejected()
+    {
+        var user = User();
+
+        Assert.Throws<ArgumentException>(() => new Transfer(
+            AccountMovement(user, TransactionDirection.Expense),
+            InvestmentMovement(user, InvestmentMovementType.Yield),
+            null,
+            null,
+            Now));
+    }
+
+    [UnitFact]
+    public void GivenFundedContributionWithDifferentOwner_WhenCreated_ThenTransferIsRejected()
+    {
+        Assert.Throws<ArgumentException>(() => new Transfer(
+            AccountMovement(User(), TransactionDirection.Expense),
+            InvestmentMovement(User(), InvestmentMovementType.Contribution),
+            null,
+            null,
+            Now));
     }
 
     [UnitFact]
@@ -119,6 +164,21 @@ public sealed class TransferTests
             null,
             Now),
         direction,
+        10m,
+        new DateOnly(2026, 9, 4),
+        Now);
+
+    private static InvestmentMovement InvestmentMovement(
+        UserProfile user,
+        InvestmentMovementType movementType) => new(
+        new Investment(
+            user,
+            "Fund",
+            null,
+            InvestmentType.Fund,
+            user.DisplayCurrency,
+            Now),
+        movementType,
         10m,
         new DateOnly(2026, 9, 4),
         Now);

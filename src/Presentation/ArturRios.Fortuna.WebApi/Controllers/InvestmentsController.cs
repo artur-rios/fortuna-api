@@ -26,7 +26,19 @@ public sealed class InvestmentsController(CommandMediator commandMediator) : Con
             [InvestmentMessages.InvestmentTypeInvalid] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.CurrencyRequired] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.CurrencyInvalid] = StatusCodes.Status400BadRequest,
-            [InvestmentMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest
+            [InvestmentMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.NotFound] = StatusCodes.Status404NotFound,
+            [InvestmentMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
+            [InvestmentMessages.InvestmentIdRequired] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.MovementTypeInvalid] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.MovementAmountPositive] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.MovementAmountPrecisionInvalid] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.OccurredOnRequired] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.OccurredOnTooFarInFuture] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.FinancialAccountIdInvalid] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.FundingRequiresContribution] = StatusCodes.Status400BadRequest,
+            [InvestmentMessages.ExchangeRateUnavailable] = StatusCodes.Status409Conflict,
+            [InvestmentMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest
         };
 
     [HttpPost]
@@ -37,6 +49,19 @@ public sealed class InvestmentsController(CommandMediator commandMediator) : Con
         var result = await commandMediator.ExecuteCommandAsync<
             CreateInvestmentCommand,
             CreateInvestmentCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/movements")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<RecordInvestmentMovementCommandOutput?>>> RecordMovement(
+        Guid id,
+        [FromBody] RecordInvestmentMovementCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            RecordInvestmentMovementCommand,
+            RecordInvestmentMovementCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }
