@@ -25,6 +25,8 @@ public sealed class RecurringTransactionsController(
             [RecurringTransactionMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [RecurringTransactionMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
             [RecurringTransactionMessages.MaterializedSuccessfully] = StatusCodes.Status200OK,
+            [RecurringTransactionMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
+            [RecurringTransactionMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [RecurringTransactionMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [RecurringTransactionMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
             [RecurringTransactionMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
@@ -62,6 +64,29 @@ public sealed class RecurringTransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DefineRecurringTransactionCommand,
             DefineRecurringTransactionCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPut("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<UpdateRecurringTransactionCommandOutput?>>> Update(
+        Guid id,
+        [FromBody] UpdateRecurringTransactionCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            UpdateRecurringTransactionCommand,
+            UpdateRecurringTransactionCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<RecurringTransactionLifecycleCommandOutput?>>> Delete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            DeleteRecurringTransactionCommand,
+            RecurringTransactionLifecycleCommandOutput>(new DeleteRecurringTransactionCommand { Id = id });
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 

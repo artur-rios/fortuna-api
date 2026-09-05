@@ -17,6 +17,22 @@ public interface IRecurringTransactionReader
         CancellationToken cancellationToken);
 }
 
+public interface IRecurringTransactionUpdater
+{
+    Task<RecurringTransactionUpdateResult> UpdateAsync(
+        RecurringTransactionUpdate update,
+        CancellationToken cancellationToken);
+}
+
+public interface IRecurringTransactionLifecycleStore
+{
+    Task<RecurringTransactionLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+}
+
 public interface IRecurringTransactionMaterializer
 {
     Task<RecurringMaterializationResult> MaterializeAsync(
@@ -50,6 +66,45 @@ public enum RecurringTransactionRecordOutcome
 public sealed record RecurringTransactionRecordResult(
     RecurringTransactionSnapshot? Rule,
     RecurringTransactionRecordOutcome Outcome);
+
+public sealed record RecurringTransactionUpdate(
+    Guid UserId,
+    Guid Id,
+    Guid? FinancialAccountId,
+    Guid? CreditCardId,
+    Guid CategoryId,
+    TransactionDirection Direction,
+    decimal Amount,
+    RecurrenceFrequency Frequency,
+    DateOnly StartsOn,
+    DateOnly? EndsOn,
+    string? Description,
+    string? Counterparty,
+    DateOnly PreviewFrom,
+    DateTimeOffset UpdatedAt);
+
+public enum RecurringTransactionUpdateOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    FinancialAccountNotFound = 3,
+    CreditCardNotFound = 4,
+    CategoryNotFound = 5
+}
+
+public sealed record RecurringTransactionUpdateResult(
+    RecurringTransactionSnapshot? Rule,
+    RecurringTransactionUpdateOutcome Outcome);
+
+public enum RecurringTransactionLifecycleOutcome
+{
+    Succeeded = 1,
+    NotFound = 2
+}
+
+public sealed record RecurringTransactionLifecycleResult(
+    Guid? Id,
+    RecurringTransactionLifecycleOutcome Outcome);
 
 public sealed record RecurringMaterializationRun(
     Guid UserId,
