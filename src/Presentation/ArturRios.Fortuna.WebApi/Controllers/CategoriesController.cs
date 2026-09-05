@@ -24,6 +24,7 @@ public sealed class CategoriesController(
         {
             [CategoryMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [CategoryMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
+            [CategoryMessages.TransactionsReassignedSuccessfully] = StatusCodes.Status200OK,
             [CategoryMessages.NotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.ParentNotFound] = StatusCodes.Status404NotFound,
@@ -31,7 +32,9 @@ public sealed class CategoriesController(
             [CategoryMessages.CycleDetected] = StatusCodes.Status400BadRequest,
             [CategoryMessages.NameRequired] = StatusCodes.Status400BadRequest,
             [CategoryMessages.NameTooLong] = StatusCodes.Status400BadRequest,
-            [CategoryMessages.ParentIdInvalid] = StatusCodes.Status400BadRequest
+            [CategoryMessages.ParentIdInvalid] = StatusCodes.Status400BadRequest,
+            [CategoryMessages.TargetCategoryIdInvalid] = StatusCodes.Status400BadRequest,
+            [CategoryMessages.SourceAndTargetMustDiffer] = StatusCodes.Status400BadRequest
         };
 
     [HttpPost]
@@ -56,6 +59,20 @@ public sealed class CategoriesController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateCategoryCommand,
             UpdateCategoryCommandOutput>(command);
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/reassign")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<ReassignCategoryTransactionsCommandOutput?>>> Reassign(
+        Guid id,
+        [FromBody] ReassignCategoryTransactionsCommand command)
+    {
+        command.Id = id;
+        var result = await commandMediator.ExecuteCommandAsync<
+            ReassignCategoryTransactionsCommand,
+            ReassignCategoryTransactionsCommandOutput>(command);
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

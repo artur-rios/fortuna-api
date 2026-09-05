@@ -23,6 +23,13 @@ public interface ICategoryUpdater
         CancellationToken cancellationToken);
 }
 
+public interface ICategoryTransactionReassigner
+{
+    Task<CategoryTransactionReassignmentResult> ReassignAsync(
+        CategoryTransactionReassignment reassignment,
+        CancellationToken cancellationToken);
+}
+
 public enum CategoryCreationOutcome
 {
     Succeeded = 1,
@@ -60,6 +67,24 @@ public sealed record CategoryUpdate(
 public sealed record CategoryUpdateResult(
     CategorySnapshot? Category,
     CategoryUpdateOutcome Outcome);
+
+public enum CategoryTransactionReassignmentOutcome
+{
+    Succeeded = 1,
+    CategoryNotFound = 2,
+    SameCategory = 3
+}
+
+public sealed record CategoryTransactionReassignment(
+    Guid UserId,
+    Guid SourceCategoryId,
+    Guid TargetCategoryId,
+    bool IncludeDescendants,
+    DateTimeOffset ChangedAt);
+
+public sealed record CategoryTransactionReassignmentResult(
+    int ReassignedCount,
+    CategoryTransactionReassignmentOutcome Outcome);
 
 public sealed record CategorySnapshot(
     Guid Id,

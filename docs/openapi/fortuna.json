@@ -2491,6 +2491,71 @@
         },
         "type": "object"
       },
+      "ReassignCategoryTransactionsCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "includeDescendants": {
+            "type": "boolean"
+          },
+          "targetCategoryId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ReassignCategoryTransactionsCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "includeDescendants": {
+            "type": "boolean"
+          },
+          "reassignedCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "targetCategoryId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ReassignCategoryTransactionsCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ReconcileTransactionCommand": {
         "additionalProperties": false,
         "properties": {
@@ -6058,6 +6123,65 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateCategoryCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
+    "/api/categories/{id}/reassign": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignCategoryTransactionsCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignCategoryTransactionsCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignCategoryTransactionsCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutputDataOutput"
                 }
               }
             },
