@@ -7,6 +7,15 @@ public interface ICategoryStore
         CancellationToken cancellationToken);
 }
 
+public interface ICategoryReader
+{
+    Task<IReadOnlyCollection<CategoryReadSnapshot>> ListAsync(
+        Guid userId,
+        bool includeDeleted,
+        bool includeUsageCounts,
+        CancellationToken cancellationToken);
+}
+
 public enum CategoryCreationOutcome
 {
     Succeeded = 1,
@@ -31,5 +40,14 @@ public sealed record CategorySnapshot(
     string Name,
     Guid? ParentId,
     bool IsDeleted,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+public sealed record CategoryReadSnapshot(
+    Guid Id,
+    string Name,
+    Guid? ParentId,
+    bool IsDeleted,
+    int DirectUsageCount,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
