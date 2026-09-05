@@ -112,6 +112,8 @@ try
         provider.GetRequiredService<EfInvestmentStore>());
     builder.Services.AddScoped<IInvestmentUpdater>(provider =>
         provider.GetRequiredService<EfInvestmentStore>());
+    builder.Services.AddScoped<IInvestmentLifecycleStore>(provider =>
+        provider.GetRequiredService<EfInvestmentStore>());
     builder.Services.AddScoped<IInvestmentMovementStore, EfInvestmentMovementStore>();
     builder.Services.AddScoped<IInvestmentValuationStore, EfInvestmentValuationStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
@@ -208,6 +210,12 @@ try
         UpdateInvestmentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateInvestmentCommand,
         UpdateInvestmentCommandOutput, UpdateInvestmentCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteInvestmentCommand,
+        InvestmentLifecycleCommandOutput, DeleteInvestmentCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RestoreInvestmentCommand,
+        InvestmentLifecycleCommandOutput, RestoreInvestmentCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<HardDeleteInvestmentCommand,
+        InvestmentLifecycleCommandOutput, HardDeleteInvestmentCommandHandler>();
     builder.Services.AddScoped<IValidator<RecordInvestmentMovementCommand>,
         RecordInvestmentMovementCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordInvestmentMovementCommand,

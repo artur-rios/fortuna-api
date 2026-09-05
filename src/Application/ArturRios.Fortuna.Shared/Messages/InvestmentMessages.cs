@@ -10,6 +10,10 @@ public static class InvestmentMessages
     public const string ValuationReplacedSuccessfully =
         "Investment valuation replaced successfully.";
     public const string UpdatedSuccessfully = "Investment updated successfully.";
+    public const string DeletedSuccessfully = "Investment deleted successfully.";
+    public const string RestoredSuccessfully = "Investment restored successfully.";
+    public const string HardDeletedSuccessfully =
+        "Investment permanently deleted successfully.";
     public const string RetrievedSuccessfully = "Investment retrieved successfully.";
     public const string ListedSuccessfully = "Investments listed successfully.";
     public const string ValuationHistoryRetrievedSuccessfully =
@@ -29,6 +33,12 @@ public static class InvestmentMessages
     public const string CurrencyNotSupported = "CurrencyCode is not supported.";
     public const string CurrencyImmutable =
         "CurrencyCode cannot be changed after investment creation.";
+    public const string RestoreRequiresSoftDeletion =
+        "Investment must be soft-deleted before it can be restored.";
+    public const string HardDeleteRequiresSoftDeletion =
+        "Investment must be soft-deleted before permanent deletion.";
+    public const string HardDeleteHasLiveGoal =
+        "Investment cannot be permanently deleted while a live goal references it.";
     public const string InvestmentIdRequired = "InvestmentId is required.";
     public const string MovementTypeInvalid =
         "MovementType must be Contribution, Withdrawal, Yield or Fee.";
@@ -62,6 +72,8 @@ public static class InvestmentMessages
     public const string ValuationPeriodInvalid = "From must be earlier than or equal to To.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
+    public static string ReferencingGoal(string name) =>
+        $"The investment is referenced by the live goal '{name}'.";
     public static string UnsupportedFilter(string name) =>
         $"Unsupported investment filter '{name}'.";
 }
