@@ -225,17 +225,21 @@ try
     builder.Services.AddScoped<IConnectionRevocationStore>(provider =>
         provider.GetRequiredService<EfConnectionStore>());
     builder.Services.AddScoped<IPluggySynchronizationStore, EfPluggySynchronizationStore>();
+    builder.Services.AddScoped<IExcelImportStore, EfExcelImportStore>();
+    builder.Services.AddSingleton<IExcelWorkbookParser, ExcelWorkbookParser>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
         options.ReconciliationDateToleranceDays));
     builder.Services.AddSingleton(new TagOptions(options.TransactionMaximumTags));
+    builder.Services.AddSingleton(new ExcelImportOptions(options.ExcelImportMaximumFileBytes));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddScoped<BackgroundJobProcessor>();
     builder.Services.AddScoped<IBackgroundJobHandler, RecurringMaterializationJobHandler>();
     builder.Services.AddScoped<IBackgroundJobHandler, PluggySynchronizationJobHandler>();
+    builder.Services.AddScoped<IBackgroundJobHandler, ExcelImportJobHandler>();
     builder.Services.AddHostedService<DatabaseInitializationHostedService>();
     builder.Services.AddHostedService<BackgroundJobHostedService>();
     builder.Services.AddHostedService<ExchangeRateSyncHostedService>();
@@ -285,6 +289,10 @@ try
         RecordManualExchangeRateCommandOutput, RecordManualExchangeRateCommandHandler>();
     builder.Services.AddScoped<IValidator<CreateFinancialAccountCommand>,
         CreateFinancialAccountCommandValidator>();
+    builder.Services.AddScoped<IValidator<ImportExcelWorkbookCommand>,
+        ImportExcelWorkbookCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<ImportExcelWorkbookCommand,
+        ImportExcelWorkbookCommandOutput, ImportExcelWorkbookCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CreateFinancialAccountCommand,
         CreateFinancialAccountCommandOutput, CreateFinancialAccountCommandHandler>();
     builder.Services.AddScoped<IValidator<UpdateFinancialAccountCommand>,

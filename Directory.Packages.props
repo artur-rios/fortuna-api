@@ -10,6 +10,7 @@
     <PackageVersion Include="ArturRios.Util" Version="1.5.0" />
     <PackageVersion Include="ArturRios.Util.Test" Version="2.2.0" />
     <PackageVersion Include="ArturRios.Util.WebApi" Version="3.2.0" />
+    <PackageVersion Include="ClosedXML" Version="0.105.1" />
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
