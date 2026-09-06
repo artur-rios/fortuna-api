@@ -457,6 +457,46 @@ public sealed class FinancialTransactionTests
             Now.AddHours(1)));
     }
 
+    [UnitFact]
+    public void GivenOwnedTag_WhenAttachedAndDetached_ThenAssignmentIsIdempotent()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now);
+        var tag = new Tag(user, "Food", Now);
+
+        Assert.True(transaction.AttachTag(tag, Now.AddMinutes(1)));
+        Assert.False(transaction.AttachTag(tag, Now.AddMinutes(2)));
+        Assert.Single(transaction.Tags);
+        Assert.True(transaction.DetachTag(tag, Now.AddMinutes(3)));
+        Assert.False(transaction.DetachTag(tag, Now.AddMinutes(4)));
+        Assert.Empty(transaction.Tags);
+        Assert.Equal(Now.AddMinutes(3), transaction.UpdatedAt);
+    }
+
+    [UnitFact]
+    public void GivenForeignTag_WhenAttached_ThenItIsRejected()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now);
+
+        Assert.Throws<ArgumentException>(() =>
+            transaction.AttachTag(new Tag(User(), "Foreign", Now), Now));
+    }
+
     private static UserProfile User() => new(
         Guid.NewGuid(),
         "Account Owner",

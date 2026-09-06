@@ -36,6 +36,7 @@ public sealed class FoundationApiTests
         Assert.NotNull(options.StoragePath);
         Assert.Equal(256, options.JobQueueCapacity);
         Assert.Equal(100, options.PageSizeMaximum);
+        Assert.Equal(50, options.TransactionMaximumTags);
         Assert.False(options.RunMigrations);
         Assert.Equal("BRL", options.DefaultDisplayCurrency);
         Assert.Equal("pt-BR", options.Locale);
@@ -195,6 +196,21 @@ public sealed class FoundationApiTests
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_PAGE_SIZE_MAX", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("0")]
+    [InlineData("not-a-number")]
+    public void GivenInvalidMaximumTagCount_WhenConfigurationLoads_ThenStartupIsRejected(
+        string value)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_TRANSACTION_MAX_TAGS"] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_TRANSACTION_MAX_TAGS", exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]

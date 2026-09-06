@@ -15,6 +15,7 @@ public sealed record FortunaOptions
     public required string LogDirectory { get; init; }
     public int JobQueueCapacity { get; init; }
     public int PageSizeMaximum { get; init; }
+    public int TransactionMaximumTags { get; init; }
     public bool RunMigrations { get; init; }
     public required string AuthTokenSecret { get; init; }
     public string? AuthPreviousTokenSecret { get; init; }
@@ -47,6 +48,10 @@ public sealed record FortunaOptions
             LogDirectory = Required(read, "FORTUNA_LOG_DIRECTORY"),
             JobQueueCapacity = PositiveInteger(read("FORTUNA_JOB_QUEUE_CAPACITY"), "FORTUNA_JOB_QUEUE_CAPACITY", 256),
             PageSizeMaximum = PositiveInteger(read("FORTUNA_PAGE_SIZE_MAX"), "FORTUNA_PAGE_SIZE_MAX", 100),
+            TransactionMaximumTags = PositiveInteger(
+                read("FORTUNA_TRANSACTION_MAX_TAGS"),
+                "FORTUNA_TRANSACTION_MAX_TAGS",
+                50),
             RunMigrations = Boolean(read("FORTUNA_RUN_MIGRATIONS"), "FORTUNA_RUN_MIGRATIONS", false),
             AuthTokenSecret = Required(read, "FORTUNA_AUTH_TOKEN_SECRET"),
             AuthPreviousTokenSecret = read("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),

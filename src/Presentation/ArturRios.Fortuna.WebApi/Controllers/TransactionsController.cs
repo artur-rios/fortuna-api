@@ -98,7 +98,16 @@ public sealed class TransactionsController(
             [TransactionMessages.AmountRangeInvalid] = StatusCodes.Status400BadRequest,
             [TransactionMessages.SearchTextTooLong] = StatusCodes.Status400BadRequest,
             [TransactionMessages.DisplayCurrencyInvalid] = StatusCodes.Status400BadRequest,
-            [TransactionMessages.SortByUnsupported] = StatusCodes.Status400BadRequest
+            [TransactionMessages.SortByUnsupported] = StatusCodes.Status400BadRequest,
+            [TagMessages.AttachedSuccessfully] = StatusCodes.Status200OK,
+            [TagMessages.AlreadyAttached] = StatusCodes.Status200OK,
+            [TagMessages.DetachedSuccessfully] = StatusCodes.Status200OK,
+            [TagMessages.AlreadyDetached] = StatusCodes.Status200OK,
+            [TagMessages.AssignmentNotFound] = StatusCodes.Status404NotFound,
+            [TagMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
+            [TagMessages.TransactionIdInvalid] = StatusCodes.Status400BadRequest,
+            [TagMessages.TagIdInvalid] = StatusCodes.Status400BadRequest,
+            [TagMessages.MaximumExceeded] = StatusCodes.Status400BadRequest
         };
 
     [HttpGet]
@@ -157,6 +166,38 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateTransactionCommand,
             UpdateTransactionCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/tags/{tagId:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<TransactionTagCommandOutput?>>> AttachTag(
+        Guid id,
+        Guid tagId)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            AttachTransactionTagCommand,
+            TransactionTagCommandOutput>(new AttachTransactionTagCommand
+            {
+                Id = id,
+                TagId = tagId
+            });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}/tags/{tagId:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<TransactionTagCommandOutput?>>> DetachTag(
+        Guid id,
+        Guid tagId)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            DetachTransactionTagCommand,
+            TransactionTagCommandOutput>(new DetachTransactionTagCommand
+            {
+                Id = id,
+                TagId = tagId
+            });
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 

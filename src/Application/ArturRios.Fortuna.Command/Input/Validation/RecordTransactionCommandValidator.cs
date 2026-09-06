@@ -1,12 +1,16 @@
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Classification;
 using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Input.Validation;
 
 public sealed class RecordTransactionCommandValidator : AbstractValidator<RecordTransactionCommand>
 {
-    public RecordTransactionCommandValidator(TimeProvider timeProvider)
+    public RecordTransactionCommandValidator(
+        TimeProvider timeProvider,
+        TagOptions? tagOptions = null)
     {
+        var maximumTags = tagOptions?.MaximumPerTransaction ?? 50;
         var maximumDate = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime).AddDays(1);
 
         RuleFor(command => command.OccurredOn)
@@ -44,8 +48,11 @@ public sealed class RecordTransactionCommandValidator : AbstractValidator<Record
             .MaximumLength(200)
             .WithMessage(TransactionMessages.CounterpartyTooLong);
         RuleFor(command => command.Tags)
-            .Must(tags => tags is null || tags.Count <= 50)
+            .Must(tags => WithinTagLimit(tags, maximumTags))
             .WithMessage(TransactionMessages.TooManyTags);
+        RuleFor(command => command.Tags)
+            .Must(tags => WithinTagLimit(tags, maximumTags))
+            .WithMessage(TransactionMessages.MaximumTagsAllowed(maximumTags));
         RuleForEach(command => command.Tags)
             .NotEmpty()
             .WithMessage(TransactionMessages.TagRequired)
@@ -59,4 +66,12 @@ public sealed class RecordTransactionCommandValidator : AbstractValidator<Record
     private static bool MoneyFitsStorage(decimal amount) =>
         decimal.GetBits(amount)[3] >> 16 <= 4 &&
         Math.Abs(amount) < 1_000_000_000_000_000m;
+
+    private static bool WithinTagLimit(IReadOnlyCollection<string>? tags, int maximum) =>
+        tags is null || tags
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Select(tag => tag.Trim().ToUpperInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .Take(maximum + 1)
+            .Count() <= maximum;
 }

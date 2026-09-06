@@ -40,7 +40,8 @@ public static class TransactionMessages
         "The converted amount is too small for the target currency.";
     public const string DescriptionTooLong = "Description cannot exceed 500 characters.";
     public const string CounterpartyTooLong = "Counterparty cannot exceed 200 characters.";
-    public const string TooManyTags = "A transaction cannot contain more than 50 tags.";
+    public const string TooManyTags =
+        "The configured maximum number of tags per transaction was exceeded.";
     public const string TagRequired = "Tag names cannot be empty.";
     public const string TagTooLong = "Tag names cannot exceed 200 characters.";
     public const string OwnerImmutable = "OwnerId cannot be supplied; ownership is fixed.";
@@ -87,4 +88,7 @@ public static class TransactionMessages
 
     public static string ConflictingTransaction(Guid transactionId) =>
         $"Conflicting transaction: '{transactionId}'.";
+
+    public static string MaximumTagsAllowed(int maximum) =>
+        $"A transaction can have at most {maximum} tags.";
 }
