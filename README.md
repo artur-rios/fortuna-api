@@ -212,7 +212,7 @@ pull request.
 | [#48](https://github.com/artur-rios/fortuna-api/issues/48) | ✅ UC-47: Manage Counterparties | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#49](https://github.com/artur-rios/fortuna-api/issues/49) | ✅ UC-48: Define a Budget | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#50](https://github.com/artur-rios/fortuna-api/issues/50) | ✅ UC-49: Track Budget Consumption | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#51](https://github.com/artur-rios/fortuna-api/issues/51) | UC-50: Define a Goal | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#51](https://github.com/artur-rios/fortuna-api/issues/51) | ✅ UC-50: Define a Goal | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#52](https://github.com/artur-rios/fortuna-api/issues/52) | UC-51: Track Goal Progress | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ### M-06 — Ingestion

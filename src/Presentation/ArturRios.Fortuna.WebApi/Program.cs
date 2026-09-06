@@ -162,6 +162,15 @@ try
         provider.GetRequiredService<EfBudgetStore>());
     builder.Services.AddScoped<IBudgetConsumptionReader>(provider =>
         provider.GetRequiredService<EfBudgetStore>());
+    builder.Services.AddScoped<EfGoalStore>();
+    builder.Services.AddScoped<IGoalStore>(provider =>
+        provider.GetRequiredService<EfGoalStore>());
+    builder.Services.AddScoped<IGoalReader>(provider =>
+        provider.GetRequiredService<EfGoalStore>());
+    builder.Services.AddScoped<IGoalUpdater>(provider =>
+        provider.GetRequiredService<EfGoalStore>());
+    builder.Services.AddScoped<IGoalLifecycleStore>(provider =>
+        provider.GetRequiredService<EfGoalStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -347,6 +356,14 @@ try
         BudgetCommandOutput, UpdateBudgetCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteBudgetCommand,
         BudgetCommandOutput, DeleteBudgetCommandHandler>();
+    builder.Services.AddScoped<IValidator<CreateGoalCommand>, CreateGoalCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<CreateGoalCommand,
+        GoalCommandOutput, CreateGoalCommandHandler>();
+    builder.Services.AddScoped<IValidator<UpdateGoalCommand>, UpdateGoalCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<UpdateGoalCommand,
+        GoalCommandOutput, UpdateGoalCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteGoalCommand,
+        GoalCommandOutput, DeleteGoalCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
@@ -430,6 +447,10 @@ try
         GetBudgetByIdQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetBudgetConsumptionQuery,
         BudgetConsumptionDetailOutput>, GetBudgetConsumptionQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<ListGoalsQuery, GoalListOutput>,
+        ListGoalsQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetGoalByIdQuery, GoalOutput>,
+        GetGoalByIdQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,

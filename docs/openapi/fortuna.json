@@ -1518,6 +1518,44 @@
         },
         "type": "object"
       },
+      "CreateGoalCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "accountIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "investmentIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "targetAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "targetDate": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "CreateInvestmentCommand": {
         "additionalProperties": false,
         "properties": {
@@ -2565,6 +2603,304 @@
         ],
         "format": "int32",
         "type": "integer"
+      },
+      "GoalCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/GoalResourceCommandOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "currentProgress": {
+            "$ref": "#/components/schemas/GoalProgressCommandOutput"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "investments": {
+            "items": {
+              "$ref": "#/components/schemas/GoalResourceCommandOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "isDeleted": {
+            "type": "boolean"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "targetAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "targetDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GoalCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GoalCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GoalListOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/GoalOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "GoalListOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GoalListOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GoalOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/GoalResourceOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "currentProgress": {
+            "$ref": "#/components/schemas/GoalProgressOutput"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "investments": {
+            "items": {
+              "$ref": "#/components/schemas/GoalResourceOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "isDeleted": {
+            "type": "boolean"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "targetAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "targetDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GoalOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GoalOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GoalProgressCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "currentAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "isReached": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "proportionReached": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "remaining": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "GoalProgressOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "currentAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "isReached": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "proportionReached": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "remaining": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "GoalResourceCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GoalResourceOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
       },
       "InstallmentCommandOutput": {
         "additionalProperties": false,
@@ -5884,6 +6220,44 @@
         },
         "type": "object"
       },
+      "UpdateGoalCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "accountIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "investmentIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "targetAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "targetDate": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UpdateInvestmentCommand": {
         "additionalProperties": false,
         "properties": {
@@ -8538,6 +8912,234 @@
         ]
       }
     },
+    "/api/goals": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "includeDeleted",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalListOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalListOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalListOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Goals"
+        ]
+      },
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoalCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoalCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoalCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Goals"
+        ]
+      }
+    },
+    "/api/goals/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Goals"
+        ]
+      },
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeDeleted",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Goals"
+        ]
+      },
+      "put": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGoalCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGoalCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGoalCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Goals"
+        ]
+      }
+    },
     "/api/installment-plans": {
       "post": {
         "requestBody": {
@@ -10911,6 +11513,9 @@
     },
     {
       "name": "ExchangeRates"
+    },
+    {
+      "name": "Goals"
     },
     {
       "name": "HealthCheck"

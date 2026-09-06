@@ -39,6 +39,7 @@ public sealed class AppDbContext(
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<Counterparty> Counterparties => Set<Counterparty>();
     public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<Goal> Goals => Set<Goal>();
     public DbSet<Investment> Investments => Set<Investment>();
     public DbSet<InvestmentMovement> InvestmentMovements => Set<InvestmentMovement>();
     public DbSet<InvestmentValuation> InvestmentValuations => Set<InvestmentValuation>();
