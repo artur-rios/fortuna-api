@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Integration.Ingestion;
+using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Integration.Tests;
@@ -25,11 +26,30 @@ public sealed class IngestionSourceRegistryTests
         Assert.Contains("duplicate", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [UnitFact]
+    public void GivenNewRegisteredSource_WhenListed_ThenItAppearsWithoutCatalogChanges()
+    {
+        var registry = new IngestionSourceRegistry([
+            new StubSource("later"),
+            new StubSource("earlier")]);
+
+        var sources = registry.List();
+
+        Assert.Equal(["earlier", "later"], sources.Select(item => item.Name));
+    }
+
     private sealed class StubSource(string name) : IIngestionSource
     {
         public string Name { get; } = name;
-        public bool IsAvailable => true;
-        public Task<IngestionPayload> ReadAsync(Stream content, CancellationToken cancellationToken) =>
-            Task.FromResult(new IngestionPayload(Name, []));
+        public DataSourceSnapshot Describe() => new(
+            Name,
+            DataSourceKind.File,
+            Name,
+            false,
+            true,
+            null,
+            [],
+            [],
+            []);
     }
 }

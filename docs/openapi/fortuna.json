@@ -2200,6 +2200,106 @@
         },
         "type": "object"
       },
+      "DataSourceKind": {
+        "enum": [
+          1,
+          2
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "DataSourceListOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/DataSourceOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "DataSourceListOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DataSourceListOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DataSourceOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "displayName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "isNetworkBacked": {
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DataSourceKind"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "requiredInputs": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "supportedFormats": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "supportedLayouts": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "unavailableReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "DefineRecurringTransactionCommand": {
         "additionalProperties": false,
         "properties": {
@@ -8925,6 +9025,35 @@
         ]
       }
     },
+    "/api/data-sources": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceListOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceListOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceListOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "DataSources"
+        ]
+      }
+    },
     "/api/exchange-rates": {
       "post": {
         "requestBody": {
@@ -11707,6 +11836,9 @@
     },
     {
       "name": "Currencies"
+    },
+    {
+      "name": "DataSources"
     },
     {
       "name": "ExchangeRates"

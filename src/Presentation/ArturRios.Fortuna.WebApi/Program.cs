@@ -23,6 +23,7 @@ using ArturRios.Fortuna.Integration.Rates;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Investments;
+using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Cards;
@@ -513,9 +514,20 @@ try
         GetRecurringTransactionByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetRecurringTransactionByIdQuery,
         RecurringTransactionOutput>, GetRecurringTransactionByIdQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<ListDataSourcesQuery, DataSourceListOutput>,
+        ListDataSourcesQueryHandler>();
 
-    builder.Services.AddSingleton<IIngestionSource, FileUploadIngestionSource>();
+    builder.Services.AddSingleton(new PluggySourceOptions(
+        options.PluggyClientId,
+        options.PluggyClientSecret,
+        options.PluggyBaseUri,
+        !options.LocalAuthEnabled));
+    builder.Services.AddSingleton<IIngestionSource, PluggyIngestionSource>();
+    builder.Services.AddSingleton<IIngestionSource, ExcelWorkbookIngestionSource>();
+    builder.Services.AddSingleton<IIngestionSource, NubankInvoiceIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();
+    builder.Services.AddSingleton<IDataSourceCatalog>(provider =>
+        provider.GetRequiredService<IngestionSourceRegistry>());
     RegisterAttachmentStore(builder.Services, options);
 
     builder.Services.AddControllers();
