@@ -150,7 +150,12 @@ public sealed class ListImportedRecordsQueryHandler(
                 Outcome = record.Outcome,
                 RejectionReason = record.RejectionReason,
                 Amount = record.Amount,
-                OccurredOn = record.OccurredOn
+                OccurredOn = record.OccurredOn,
+                TransactionId = record.Transaction == null
+                    ? null
+                    : record.Transaction.PublicId,
+                HasLiveTransaction = record.Transaction != null &&
+                    !record.Transaction.IsDeleted
             });
         var result = await projected.PaginateAsync(
             query.PageNumber,

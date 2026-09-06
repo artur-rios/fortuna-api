@@ -3625,6 +3625,9 @@
             "nullable": true,
             "type": "string"
           },
+          "hasLiveTransaction": {
+            "type": "boolean"
+          },
           "occurredOn": {
             "format": "date",
             "nullable": true,
@@ -3638,6 +3641,11 @@
             "type": "string"
           },
           "rejectionReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "transactionId": {
+            "format": "uuid",
             "nullable": true,
             "type": "string"
           }

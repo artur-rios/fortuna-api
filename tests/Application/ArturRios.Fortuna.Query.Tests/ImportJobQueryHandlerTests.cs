@@ -129,7 +129,8 @@ public sealed class ImportJobQueryHandlerTests
         Assert.True(result.Success);
         Assert.Equal(2, result.TotalItems);
         Assert.Contains(result.Data!, item => item.Outcome == ImportedRecordOutcome.Imported &&
-            item.RawPayload == "{\"row\":1}");
+            item.RawPayload == "{\"row\":1}" && item.TransactionId == null &&
+            !item.HasLiveTransaction);
         Assert.Contains(result.Data!, item => item.Outcome == ImportedRecordOutcome.Rejected &&
             item.RejectionReason == ExcelImportMessages.RowDateInvalid);
     }
