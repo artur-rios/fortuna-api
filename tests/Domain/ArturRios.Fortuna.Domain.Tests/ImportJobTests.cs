@@ -112,6 +112,21 @@ public sealed class ImportJobTests
     }
 
     [UnitFact]
+    public void GivenParsedFileImport_WhenPeriodSet_ThenJobReportsInvoicePeriod()
+    {
+        var job = new ImportJob(User(), TransactionSourceType.Pdf, Now);
+        var start = new DateOnly(2026, 7, 14);
+        var end = new DateOnly(2026, 8, 12);
+        job.Start(Now.AddMinutes(1));
+
+        job.SetPeriod(start, end, Now.AddMinutes(2));
+
+        Assert.Equal(start, job.PeriodStart);
+        Assert.Equal(end, job.PeriodEnd);
+        Assert.Equal(Now.AddMinutes(2), job.UpdatedAt);
+    }
+
+    [UnitFact]
     public void GivenReauthenticationFailure_WhenConnectionMarked_ThenStatusChanges()
     {
         var connection = new Connection(

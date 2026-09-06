@@ -3410,6 +3410,50 @@
         "format": "int32",
         "type": "integer"
       },
+      "ImportPdfInvoiceCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "importJobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportJobStatus"
+          }
+        },
+        "type": "object"
+      },
+      "ImportPdfInvoiceCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ImportTargetType": {
         "enum": [
           1,
@@ -10346,6 +10390,62 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Imports"
+        ]
+      }
+    },
+    "/api/imports/pdf": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "encoding": {
+                "CreditCardId": {
+                  "style": "form"
+                },
+                "File": {
+                  "style": "form"
+                }
+              },
+              "schema": {
+                "properties": {
+                  "CreditCardId": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "File": {
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutputDataOutput"
                 }
               }
             },

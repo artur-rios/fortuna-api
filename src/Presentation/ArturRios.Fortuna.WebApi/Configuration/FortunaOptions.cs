@@ -17,6 +17,7 @@ public sealed record FortunaOptions
     public int PageSizeMaximum { get; init; }
     public int TransactionMaximumTags { get; init; }
     public int ExcelImportMaximumFileBytes { get; init; }
+    public int PdfInvoiceImportMaximumFileBytes { get; init; }
     public bool RunMigrations { get; init; }
     public required string AuthTokenSecret { get; init; }
     public string? AuthPreviousTokenSecret { get; init; }
@@ -60,6 +61,10 @@ public sealed record FortunaOptions
                 read("FORTUNA_EXCEL_IMPORT_MAX_BYTES"),
                 "FORTUNA_EXCEL_IMPORT_MAX_BYTES",
                 10 * 1024 * 1024),
+            PdfInvoiceImportMaximumFileBytes = PositiveInteger(
+                read("FORTUNA_PDF_IMPORT_MAX_BYTES"),
+                "FORTUNA_PDF_IMPORT_MAX_BYTES",
+                20 * 1024 * 1024),
             RunMigrations = Boolean(read("FORTUNA_RUN_MIGRATIONS"), "FORTUNA_RUN_MIGRATIONS", false),
             AuthTokenSecret = Required(read, "FORTUNA_AUTH_TOKEN_SECRET"),
             AuthPreviousTokenSecret = read("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),

@@ -112,6 +112,23 @@ public sealed class ImportJob
         UpdatedAt = updatedAt;
     }
 
+    public void SetPeriod(DateOnly periodStart, DateOnly periodEnd, DateTimeOffset updatedAt)
+    {
+        if (Status is not (ImportJobStatus.Pending or ImportJobStatus.Running))
+        {
+            throw new InvalidOperationException("Only an unfinished import job can receive a period.");
+        }
+
+        if (periodStart > periodEnd)
+        {
+            throw new ArgumentException("The period start cannot follow its end.", nameof(periodStart));
+        }
+
+        PeriodStart = periodStart;
+        PeriodEnd = periodEnd;
+        UpdatedAt = updatedAt;
+    }
+
     public void Complete(
         int importedCount,
         int duplicateCount,

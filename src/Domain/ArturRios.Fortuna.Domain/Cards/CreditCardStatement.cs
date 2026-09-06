@@ -133,6 +133,43 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
         MarkUpdated(updatedAt);
     }
 
+    public void ApplyImportedSummary(
+        decimal previousBalance,
+        decimal paymentsReceived,
+        decimal purchaseTotal,
+        decimal foreignTaxTotal,
+        decimal otherEntries,
+        decimal amountDue,
+        DateTimeOffset updatedAt)
+    {
+        if (Status == CreditCardStatementStatus.Settled)
+        {
+            throw new InvalidOperationException("A settled statement's composition is frozen.");
+        }
+
+        if (paymentsReceived < 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(paymentsReceived));
+        }
+
+        var calculatedAmountDue = previousBalance - paymentsReceived + purchaseTotal +
+            foreignTaxTotal + otherEntries;
+        if (Math.Abs(calculatedAmountDue - amountDue) > 0.01m)
+        {
+            throw new ArgumentException(
+                "The imported statement summary does not reconcile.",
+                nameof(amountDue));
+        }
+
+        PreviousBalance = previousBalance;
+        PaymentsReceived = paymentsReceived;
+        PurchaseTotal = purchaseTotal;
+        ForeignTaxTotal = foreignTaxTotal;
+        OtherEntries = otherEntries;
+        AmountDue = amountDue;
+        MarkUpdated(updatedAt);
+    }
+
     public void Settle(FinancialTransaction settlementTransaction, DateTimeOffset updatedAt)
     {
         if (Status != CreditCardStatementStatus.Closed)
