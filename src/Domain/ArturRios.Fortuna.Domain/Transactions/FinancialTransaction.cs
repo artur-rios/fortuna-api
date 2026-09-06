@@ -211,6 +211,40 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public bool IsPossibleDuplicate { get; private set; }
     public ICollection<Tag> Tags { get; } = [];
 
+    public bool AttachTag(Tag tag, DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(tag);
+        if (tag.User.PublicId != User.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and its tag must have the same owner.",
+                nameof(tag));
+        }
+
+        if (Tags.Any(item => item.PublicId == tag.PublicId))
+        {
+            return false;
+        }
+
+        Tags.Add(tag);
+        MarkUpdated(updatedAt);
+        return true;
+    }
+
+    public bool DetachTag(Tag tag, DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(tag);
+        var attached = Tags.SingleOrDefault(item => item.PublicId == tag.PublicId);
+        if (attached is null)
+        {
+            return false;
+        }
+
+        Tags.Remove(attached);
+        MarkUpdated(updatedAt);
+        return true;
+    }
+
     public void Reconcile(ImportedRecord importedRecord, DateTimeOffset updatedAt)
     {
         ArgumentNullException.ThrowIfNull(importedRecord);

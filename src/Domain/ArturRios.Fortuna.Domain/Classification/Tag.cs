@@ -29,4 +29,18 @@ public sealed class Tag : RecordLifecycleEntity
     public UserProfile User { get; private set; } = null!;
     public string Name { get; private set; } = string.Empty;
     public string NormalizedName { get; private set; } = string.Empty;
+
+    public void Rename(string name, DateTimeOffset updatedAt)
+    {
+        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
+        {
+            throw new ArgumentException(
+                "A tag name between 1 and 200 characters is required.",
+                nameof(name));
+        }
+
+        Name = name.Trim();
+        NormalizedName = Name.ToUpperInvariant();
+        MarkUpdated(updatedAt);
+    }
 }

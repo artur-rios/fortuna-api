@@ -86,6 +86,30 @@ public sealed class ClassificationTests
             category.UpdateDetails("Category", category, Now));
     }
 
+    [UnitFact]
+    public void GivenNewTagName_WhenRenamed_ThenNameAndTimestampChange()
+    {
+        var tag = new Tag(User(), "Before", Now);
+        var updatedAt = Now.AddHours(1);
+
+        tag.Rename("  After  ", updatedAt);
+
+        Assert.Equal("After", tag.Name);
+        Assert.Equal("AFTER", tag.NormalizedName);
+        Assert.Equal(updatedAt, tag.UpdatedAt);
+    }
+
+    [UnitTheory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GivenInvalidTagName_WhenRenamed_ThenItIsRejected(string name)
+    {
+        var tag = new Tag(User(), "Tag", Now);
+
+        Assert.Throws<ArgumentException>(() => tag.Rename(name, Now));
+        Assert.Throws<ArgumentException>(() => tag.Rename(new string('t', 201), Now));
+    }
+
     [UnitTheory]
     [InlineData("")]
     [InlineData("   ")]

@@ -128,6 +128,14 @@ try
         provider.GetRequiredService<EfCategoryStore>());
     builder.Services.AddScoped<ICategoryLifecycleStore>(provider =>
         provider.GetRequiredService<EfCategoryStore>());
+    builder.Services.AddScoped<EfTagStore>();
+    builder.Services.AddScoped<ITagStore>(provider => provider.GetRequiredService<EfTagStore>());
+    builder.Services.AddScoped<ITagReader>(provider => provider.GetRequiredService<EfTagStore>());
+    builder.Services.AddScoped<ITagUpdater>(provider => provider.GetRequiredService<EfTagStore>());
+    builder.Services.AddScoped<ITagLifecycleStore>(provider =>
+        provider.GetRequiredService<EfTagStore>());
+    builder.Services.AddScoped<ITransactionTagStore>(provider =>
+        provider.GetRequiredService<EfTagStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -168,6 +176,7 @@ try
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
         options.ReconciliationDateToleranceDays));
+    builder.Services.AddSingleton(new TagOptions(options.TransactionMaximumTags));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
@@ -274,6 +283,22 @@ try
         CategoryLifecycleCommandOutput, RestoreCategoryCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteCategoryCommand,
         CategoryLifecycleCommandOutput, HardDeleteCategoryCommandHandler>();
+    builder.Services.AddScoped<IValidator<CreateTagCommand>, CreateTagCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<CreateTagCommand,
+        TagCommandOutput, CreateTagCommandHandler>();
+    builder.Services.AddScoped<IValidator<UpdateTagCommand>, UpdateTagCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<UpdateTagCommand,
+        TagCommandOutput, UpdateTagCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteTagCommand,
+        TagCommandOutput, DeleteTagCommandHandler>();
+    builder.Services.AddScoped<IValidator<AttachTransactionTagCommand>,
+        AttachTransactionTagCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<AttachTransactionTagCommand,
+        TransactionTagCommandOutput, AttachTransactionTagCommandHandler>();
+    builder.Services.AddScoped<IValidator<DetachTransactionTagCommand>,
+        DetachTransactionTagCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<DetachTransactionTagCommand,
+        TransactionTagCommandOutput, DetachTransactionTagCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
@@ -345,6 +370,8 @@ try
         GetCategoryTreeQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCategoryByIdQuery, CategoryOutput>,
         GetCategoryByIdQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<ListTagsQuery, TagListOutput>,
+        ListTagsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,
