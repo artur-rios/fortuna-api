@@ -223,7 +223,7 @@ pull request.
 | [#56](https://github.com/artur-rios/fortuna-api/issues/56) | ✅ UC-55: Connect an Institution through Pluggy | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#57](https://github.com/artur-rios/fortuna-api/issues/57) | ✅ UC-56: Synchronize from a Connection | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#58](https://github.com/artur-rios/fortuna-api/issues/58) | ✅ UC-57: Reauthenticate a Connection | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#59](https://github.com/artur-rios/fortuna-api/issues/59) | UC-58: Revoke a Connection | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#59](https://github.com/artur-rios/fortuna-api/issues/59) | ✅ UC-58: Revoke a Connection | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#60](https://github.com/artur-rios/fortuna-api/issues/60) | UC-59: Import Transactions from an Excel Workbook | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#61](https://github.com/artur-rios/fortuna-api/issues/61) | UC-60: Import a Nubank Credit Card Invoice PDF | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#62](https://github.com/artur-rios/fortuna-api/issues/62) | UC-61: Monitor an Import Job | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

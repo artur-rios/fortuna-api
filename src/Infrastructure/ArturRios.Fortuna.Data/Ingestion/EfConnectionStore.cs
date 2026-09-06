@@ -2,13 +2,15 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Ingestion;
+using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Ingestion;
 
 public sealed class EfConnectionStore(AppDbContext context)
-    : IConnectionStore, IConnectionReader, IConnectionReauthenticationStore
+    : IConnectionStore, IConnectionReader, IConnectionReauthenticationStore,
+        IConnectionRevocationStore
 {
     public async Task<ConnectionMutationResult> CreateAsync(
         ConnectionCreation creation,
@@ -79,9 +81,11 @@ public sealed class EfConnectionStore(AppDbContext context)
         ConnectionReauthentication reauthentication,
         CancellationToken cancellationToken)
     {
-        var connection = await Connections().SingleOrDefaultAsync(item =>
-            item.User.PublicId == reauthentication.UserId &&
-            item.PublicId == reauthentication.ConnectionId,
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var connection = await ConnectionRowLock.FindOwnedAsync(
+            context,
+            reauthentication.UserId,
+            reauthentication.ConnectionId,
             cancellationToken);
         if (connection is null)
         {
@@ -105,6 +109,7 @@ public sealed class EfConnectionStore(AppDbContext context)
         try
         {
             await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
             exception.InnerException is PostgresException
@@ -113,11 +118,56 @@ public sealed class EfConnectionStore(AppDbContext context)
                 ConstraintName: "ix_connection_user_id_data_source_type_external_reference"
             })
         {
+            await transaction.RollbackAsync(cancellationToken);
             context.Entry(connection).State = EntityState.Detached;
             return ReauthenticationResult(ConnectionReauthenticationOutcome.DuplicateReference);
         }
 
         return ReauthenticationResult(ConnectionReauthenticationOutcome.Succeeded, connection);
+    }
+
+    public async Task<ConnectionRevocationResult> RevokeAsync(
+        ConnectionRevocation revocation,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var connection = await ConnectionRowLock.FindOwnedAsync(
+            context,
+            revocation.UserId,
+            revocation.ConnectionId,
+            cancellationToken);
+        if (connection is null)
+        {
+            return new ConnectionRevocationResult(
+                null, 0, ConnectionRevocationOutcome.NotFound);
+        }
+
+        var changed = connection.Revoke(revocation.UpdatedAt);
+        var stopped = 0;
+        if (changed)
+        {
+            var jobs = await context.ImportJobs.Where(job =>
+                job.ConnectionId == connection.Id &&
+                (job.Status == ImportJobStatus.Pending ||
+                    job.Status == ImportJobStatus.Running))
+                .ToArrayAsync(cancellationToken);
+            foreach (var job in jobs)
+            {
+                job.Fail(ConnectionMessages.SynchronizationStoppedByRevocation,
+                    revocation.UpdatedAt);
+            }
+
+            stopped = jobs.Length;
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return new ConnectionRevocationResult(
+            Snapshot(connection),
+            stopped,
+            changed
+                ? ConnectionRevocationOutcome.Succeeded
+                : ConnectionRevocationOutcome.AlreadyRevoked);
     }
 
     private IQueryable<Connection> Connections() => context.Connections.Include(item => item.User);

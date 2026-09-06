@@ -18,6 +18,13 @@ public interface IConnectionReauthenticationStore
         CancellationToken cancellationToken);
 }
 
+public interface IConnectionRevocationStore
+{
+    Task<ConnectionRevocationResult> RevokeAsync(
+        ConnectionRevocation revocation,
+        CancellationToken cancellationToken);
+}
+
 public interface IConnectionReader
 {
     IQueryable<Connection> Query();
@@ -64,6 +71,23 @@ public enum ConnectionReauthenticationOutcome
 public sealed record ConnectionReauthenticationResult(
     ConnectionSnapshot? Connection,
     ConnectionReauthenticationOutcome Outcome);
+
+public sealed record ConnectionRevocation(
+    Guid UserId,
+    Guid ConnectionId,
+    DateTimeOffset UpdatedAt);
+
+public enum ConnectionRevocationOutcome
+{
+    Succeeded = 1,
+    AlreadyRevoked = 2,
+    NotFound = 3
+}
+
+public sealed record ConnectionRevocationResult(
+    ConnectionSnapshot? Connection,
+    int StoppedSynchronizations,
+    ConnectionRevocationOutcome Outcome);
 
 public sealed record ConnectionSnapshot(
     Guid Id,

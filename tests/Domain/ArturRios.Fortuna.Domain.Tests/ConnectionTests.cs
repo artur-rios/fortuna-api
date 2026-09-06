@@ -76,6 +76,35 @@ public sealed class ConnectionTests
             "new-item", [2], Now.AddMinutes(1)));
     }
 
+    [UnitFact]
+    public void GivenActiveConnection_WhenRevoked_ThenTokenIsDiscardedAndStateIsTerminal()
+    {
+        var connection = new Connection(
+            User(), TransactionSourceType.Pluggy, "item", [1, 2], Now);
+
+        var changed = connection.Revoke(Now.AddMinutes(1));
+
+        Assert.True(changed);
+        Assert.Equal(ConnectionStatus.Revoked, connection.Status);
+        Assert.Empty(connection.AccessTokenCipher);
+        Assert.Equal(Now.AddMinutes(1), connection.UpdatedAt);
+    }
+
+    [UnitFact]
+    public void GivenRevokedConnection_WhenRevokedAgain_ThenStateRemainsUnchanged()
+    {
+        var connection = new Connection(
+            User(), TransactionSourceType.Pluggy, "item", [1], Now);
+        connection.Revoke(Now.AddMinutes(1));
+
+        var changed = connection.Revoke(Now.AddMinutes(2));
+
+        Assert.False(changed);
+        Assert.Equal(ConnectionStatus.Revoked, connection.Status);
+        Assert.Empty(connection.AccessTokenCipher);
+        Assert.Equal(Now.AddMinutes(1), connection.UpdatedAt);
+    }
+
     private static UserProfile User() => new(
         Guid.NewGuid(), "Owner", new Currency("BRL", "Brazilian real", 2), Now);
 }

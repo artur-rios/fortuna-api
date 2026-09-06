@@ -103,4 +103,17 @@ public sealed class Connection
         Status = ConnectionStatus.Active;
         UpdatedAt = updatedAt;
     }
+
+    public bool Revoke(DateTimeOffset updatedAt)
+    {
+        if (Status == ConnectionStatus.Revoked)
+        {
+            return false;
+        }
+
+        AccessTokenCipher = [];
+        Status = ConnectionStatus.Revoked;
+        UpdatedAt = updatedAt;
+        return true;
+    }
 }

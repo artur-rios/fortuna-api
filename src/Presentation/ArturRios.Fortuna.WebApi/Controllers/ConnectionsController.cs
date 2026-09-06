@@ -78,6 +78,16 @@ public sealed class ConnectionsController(
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
+    [HttpPost("{id:guid}/revoke")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<RevokeConnectionCommandOutput?>>> Revoke(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            RevokeConnectionCommand,
+            RevokeConnectionCommandOutput>(new RevokeConnectionCommand { Id = id });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
     [HttpGet("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<ConnectionOutput?>>> GetById(Guid id)
