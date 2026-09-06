@@ -840,6 +840,15 @@
         },
         "type": "object"
       },
+      "ConnectionStatus": {
+        "enum": [
+          1,
+          2,
+          3
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
       "ConvertFigureQuery": {
         "additionalProperties": false,
         "properties": {
@@ -1278,6 +1287,83 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/CreateCategoryCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateConnectionCommand": {
+        "additionalProperties": {},
+        "properties": {
+          "dataSource": {
+            "nullable": true,
+            "type": "string"
+          },
+          "externalReference": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateConnectionCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "dataSourceType": {
+            "$ref": "#/components/schemas/TransactionSourceType"
+          },
+          "externalReference": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "institution": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConnectionStatus"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateConnectionCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CreateConnectionCommandOutput"
           },
           "errors": {
             "items": {
@@ -8240,6 +8326,54 @@
         ]
       }
     },
+    "/api/connections": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateConnectionCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateConnectionCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateConnectionCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Connections"
+        ]
+      }
+    },
     "/api/counterparties": {
       "get": {
         "parameters": [
@@ -11827,6 +11961,9 @@
     },
     {
       "name": "Categories"
+    },
+    {
+      "name": "Connections"
     },
     {
       "name": "Counterparties"

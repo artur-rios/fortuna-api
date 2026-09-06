@@ -220,7 +220,7 @@ pull request.
 | Issue | Work | Spec |
 |---|---|---|
 | [#55](https://github.com/artur-rios/fortuna-api/issues/55) | ✅ UC-54: Discover Available Data Sources | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#56](https://github.com/artur-rios/fortuna-api/issues/56) | UC-55: Connect an Institution through Pluggy | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#56](https://github.com/artur-rios/fortuna-api/issues/56) | ✅ UC-55: Connect an Institution through Pluggy | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#57](https://github.com/artur-rios/fortuna-api/issues/57) | UC-56: Synchronize from a Connection | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#58](https://github.com/artur-rios/fortuna-api/issues/58) | UC-57: Reauthenticate a Connection | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#59](https://github.com/artur-rios/fortuna-api/issues/59) | UC-58: Revoke a Connection | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

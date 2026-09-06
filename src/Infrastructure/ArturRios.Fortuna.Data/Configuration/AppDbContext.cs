@@ -10,6 +10,7 @@ using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Data.Configuration;
@@ -17,7 +18,7 @@ namespace ArturRios.Fortuna.Data.Configuration;
 public sealed class AppDbContext(
     DbContextOptions<AppDbContext> options,
     ILoggerFactory loggerFactory,
-    DatabaseDiagnosticsOptions diagnostics) : DbContext(options)
+    DatabaseDiagnosticsOptions diagnostics) : DbContext(options), IDataProtectionKeyContext
 {
     public const string Schema = "fortuna";
 
@@ -45,6 +46,8 @@ public sealed class AppDbContext(
     public DbSet<InvestmentValuation> InvestmentValuations => Set<InvestmentValuation>();
     public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
     public DbSet<ImportedRecord> ImportedRecords => Set<ImportedRecord>();
+    public DbSet<Connection> Connections => Set<Connection>();
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
