@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Classification;
+using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Classification;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -7,7 +8,11 @@ using Npgsql;
 namespace ArturRios.Fortuna.Data.Classification;
 
 public sealed class EfCategoryStore(AppDbContext context)
-    : ICategoryStore, ICategoryReader, ICategoryUpdater, ICategoryTransactionReassigner
+    : ICategoryStore,
+        ICategoryReader,
+        ICategoryUpdater,
+        ICategoryTransactionReassigner,
+        ICategoryLifecycleStore
 {
     private const string RootSiblingNameIndex = "ix_category_user_id_normalized_name";
     private const string NestedSiblingNameIndex =
@@ -259,6 +264,135 @@ public sealed class EfCategoryStore(AppDbContext context)
             CategoryTransactionReassignmentOutcome.Succeeded);
     }
 
+    public async Task<CategoryLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        var category = await FindTrackedAsync(userId, id, cancellationToken);
+        if (category is null)
+        {
+            return LifecycleResult(CategoryLifecycleOutcome.NotFound);
+        }
+
+        var subtree = await CategorySubtreeAsync(category, cancellationToken);
+        var deletion = category.SoftDelete(changedAt);
+        foreach (var descendant in subtree.Where(item => item.Id != category.Id))
+        {
+            descendant.SoftDeleteFromCascade(deletion.CascadeId, changedAt);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        return LifecycleResult(CategoryLifecycleOutcome.Succeeded, category.PublicId);
+    }
+
+    public async Task<CategoryLifecycleResult> RestoreAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        var category = await FindTrackedAsync(userId, id, cancellationToken);
+        if (category is null)
+        {
+            return LifecycleResult(CategoryLifecycleOutcome.NotFound);
+        }
+
+        if (!category.IsDeleted)
+        {
+            return LifecycleResult(CategoryLifecycleOutcome.RestoreRequiresSoftDeletion);
+        }
+
+        var subtree = await CategorySubtreeAsync(category, cancellationToken);
+        var cascadeId = category.Restore(changedAt);
+        foreach (var descendant in subtree.Where(item => item.Id != category.Id))
+        {
+            descendant.RestoreFromCascade(cascadeId, changedAt);
+        }
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: RootSiblingNameIndex or NestedSiblingNameIndex
+            })
+        {
+            foreach (var item in subtree)
+            {
+                context.Entry(item).State = EntityState.Detached;
+            }
+
+            return LifecycleResult(CategoryLifecycleOutcome.DuplicateSiblingName);
+        }
+
+        return LifecycleResult(CategoryLifecycleOutcome.Succeeded, category.PublicId);
+    }
+
+    public async Task<CategoryLifecycleResult> HardDeleteAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var category = await FindTrackedAsync(userId, id, cancellationToken);
+        if (category is null)
+        {
+            return LifecycleResult(CategoryLifecycleOutcome.NotFound);
+        }
+
+        var subtree = await CategorySubtreeAsync(category, cancellationToken);
+        var categoryIds = subtree.Select(item => item.Id).ToArray();
+        var recurringTransactions = await context.RecurringTransactions
+            .Where(item => categoryIds.Contains(item.CategoryId))
+            .ToListAsync(cancellationToken);
+        var recurringTransactionIds = recurringTransactions.Select(item => item.Id).ToArray();
+        var transactions = await context.FinancialTransactions
+            .Where(item =>
+                categoryIds.Contains(item.CategoryId) ||
+                (item.RecurringTransactionId.HasValue &&
+                    recurringTransactionIds.Contains(item.RecurringTransactionId.Value)))
+            .ToListAsync(cancellationToken);
+        var liveTransactionCount =
+            transactions.Count(item => !item.IsDeleted) +
+            recurringTransactions.Count(item => !item.IsDeleted);
+        try
+        {
+            foreach (var item in subtree)
+            {
+                item.EnsureHardDeletionAllowed(
+                    item.Id == category.Id && liveTransactionCount > 0
+                        ? ["transactions"]
+                        : []);
+            }
+        }
+        catch (RecordLifecycleConflictException exception)
+        {
+            return exception.Conflict switch
+            {
+                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion => LifecycleResult(
+                    CategoryLifecycleOutcome.HardDeleteRequiresSoftDeletion),
+                RecordLifecycleConflict.HardDeleteHasLiveReferences => LifecycleResult(
+                    CategoryLifecycleOutcome.HardDeleteHasLiveTransactions,
+                    category.PublicId,
+                    liveTransactionCount),
+                _ => throw new InvalidOperationException(
+                    "An unexpected lifecycle conflict prevented hard deletion.",
+                    exception)
+            };
+        }
+
+        context.FinancialTransactions.RemoveRange(transactions);
+        context.RecurringTransactions.RemoveRange(recurringTransactions);
+        context.Categories.RemoveRange(subtree);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return LifecycleResult(CategoryLifecycleOutcome.Succeeded, category.PublicId);
+    }
+
     private async Task<bool> ParentChainHasCycleAsync(
         long userId,
         long parentId,
@@ -324,6 +458,50 @@ public sealed class EfCategoryStore(AppDbContext context)
 
     private static CategoryTransactionReassignmentResult ReassignmentResult(
         CategoryTransactionReassignmentOutcome outcome) => new(0, outcome);
+
+    private Task<Category?> FindTrackedAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken) => context.Categories
+        .SingleOrDefaultAsync(item =>
+            item.User.PublicId == userId &&
+            item.PublicId == id,
+            cancellationToken);
+
+    private async Task<IReadOnlyCollection<Category>> CategorySubtreeAsync(
+        Category root,
+        CancellationToken cancellationToken)
+    {
+        var categories = await context.Categories
+            .Where(item => item.UserId == root.UserId)
+            .ToListAsync(cancellationToken);
+        var children = categories.ToLookup(item => item.ParentId);
+        var subtree = new List<Category>();
+        var visited = new HashSet<long>();
+        var pending = new Queue<Category>();
+        pending.Enqueue(root);
+
+        while (pending.TryDequeue(out var category))
+        {
+            if (!visited.Add(category.Id))
+            {
+                continue;
+            }
+
+            subtree.Add(category);
+            foreach (var child in children[category.Id])
+            {
+                pending.Enqueue(child);
+            }
+        }
+
+        return subtree;
+    }
+
+    private static CategoryLifecycleResult LifecycleResult(
+        CategoryLifecycleOutcome outcome,
+        Guid? id = null,
+        int liveTransactionCount = 0) => new(id, outcome, liveTransactionCount);
 
     private sealed record CategoryIdentity(long Id, long UserId, Guid PublicId);
     private sealed record CategoryParent(long Id, long? ParentId);

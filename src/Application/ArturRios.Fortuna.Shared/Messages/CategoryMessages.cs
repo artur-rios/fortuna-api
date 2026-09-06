@@ -6,6 +6,10 @@ public static class CategoryMessages
     public const string UpdatedSuccessfully = "Category updated successfully.";
     public const string TransactionsReassignedSuccessfully =
         "Category transactions reassigned successfully.";
+    public const string DeletedSuccessfully = "Category deleted successfully.";
+    public const string RestoredSuccessfully = "Category restored successfully.";
+    public const string HardDeletedSuccessfully =
+        "Category permanently deleted successfully.";
     public const string TreeRetrievedSuccessfully = "Category tree retrieved successfully.";
     public const string RetrievedSuccessfully = "Category retrieved successfully.";
     public const string NotFound = "Category not found.";
@@ -23,4 +27,11 @@ public static class CategoryMessages
     public const string TargetCategoryIdInvalid = "TargetCategoryId cannot be empty.";
     public const string SourceAndTargetMustDiffer =
         "Source and target categories must be different.";
+    public const string RestoreRequiresSoftDeletion =
+        "Only a soft-deleted category can be restored.";
+    public const string HardDeleteRequiresSoftDeletion =
+        "A category must be soft-deleted before it can be permanently deleted.";
+    public const string HardDeleteHasLiveTransactions =
+        "The category cannot be permanently deleted while live transactions reference it. " +
+        "Reassign them first.";
 }

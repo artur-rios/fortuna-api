@@ -30,6 +30,26 @@ public interface ICategoryTransactionReassigner
         CancellationToken cancellationToken);
 }
 
+public interface ICategoryLifecycleStore
+{
+    Task<CategoryLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<CategoryLifecycleResult> RestoreAsync(
+        Guid userId,
+        Guid id,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<CategoryLifecycleResult> HardDeleteAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken);
+}
+
 public enum CategoryCreationOutcome
 {
     Succeeded = 1,
@@ -85,6 +105,21 @@ public sealed record CategoryTransactionReassignment(
 public sealed record CategoryTransactionReassignmentResult(
     int ReassignedCount,
     CategoryTransactionReassignmentOutcome Outcome);
+
+public enum CategoryLifecycleOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    RestoreRequiresSoftDeletion = 3,
+    HardDeleteRequiresSoftDeletion = 4,
+    HardDeleteHasLiveTransactions = 5,
+    DuplicateSiblingName = 6
+}
+
+public sealed record CategoryLifecycleResult(
+    Guid? Id,
+    CategoryLifecycleOutcome Outcome,
+    int LiveTransactionCount = 0);
 
 public sealed record CategorySnapshot(
     Guid Id,

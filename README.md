@@ -207,7 +207,7 @@ pull request.
 | [#43](https://github.com/artur-rios/fortuna-api/issues/43) | ✅ UC-42: View the Category Tree | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#44](https://github.com/artur-rios/fortuna-api/issues/44) | ✅ UC-43: Update a Category | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#45](https://github.com/artur-rios/fortuna-api/issues/45) | ✅ UC-44: Reassign Transactions Between Categories | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#46](https://github.com/artur-rios/fortuna-api/issues/46) | UC-45: Delete a Category | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#46](https://github.com/artur-rios/fortuna-api/issues/46) | ✅ UC-45: Delete a Category | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#47](https://github.com/artur-rios/fortuna-api/issues/47) | UC-46: Manage Tags | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#48](https://github.com/artur-rios/fortuna-api/issues/48) | UC-47: Manage Counterparties | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#49](https://github.com/artur-rios/fortuna-api/issues/49) | UC-48: Define a Budget | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

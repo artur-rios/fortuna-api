@@ -126,6 +126,8 @@ try
         provider.GetRequiredService<EfCategoryStore>());
     builder.Services.AddScoped<ICategoryTransactionReassigner>(provider =>
         provider.GetRequiredService<EfCategoryStore>());
+    builder.Services.AddScoped<ICategoryLifecycleStore>(provider =>
+        provider.GetRequiredService<EfCategoryStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -266,6 +268,12 @@ try
     builder.Services.AddAuditedCommandHandler<ReassignCategoryTransactionsCommand,
         ReassignCategoryTransactionsCommandOutput,
         ReassignCategoryTransactionsCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteCategoryCommand,
+        CategoryLifecycleCommandOutput, DeleteCategoryCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RestoreCategoryCommand,
+        CategoryLifecycleCommandOutput, RestoreCategoryCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<HardDeleteCategoryCommand,
+        CategoryLifecycleCommandOutput, HardDeleteCategoryCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
