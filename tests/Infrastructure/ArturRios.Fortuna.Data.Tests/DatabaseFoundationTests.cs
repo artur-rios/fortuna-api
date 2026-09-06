@@ -358,7 +358,10 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         var running = BackgroundJob.Create("import", "{}", Guid.NewGuid().ToString(), null, DateTimeOffset.UtcNow);
         running.Start(DateTimeOffset.UtcNow);
         var pending = BackgroundJob.Create("export", "{}", Guid.NewGuid().ToString(), null, DateTimeOffset.UtcNow);
-        context.BackgroundJobs.AddRange(running, pending);
+        var failed = BackgroundJob.Create("failed", "{}", Guid.NewGuid().ToString(), null, DateTimeOffset.UtcNow);
+        failed.Start(DateTimeOffset.UtcNow);
+        failed.Fail("still failed", DateTimeOffset.UtcNow);
+        context.BackgroundJobs.AddRange(running, pending, failed);
         await context.SaveChangesAsync(CancellationToken.None);
         var store = new EfBackgroundJobStore(context);
 
@@ -366,6 +369,8 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
 
         Assert.Contains(recovered, x => x.Id == running.Id && x.State == BackgroundJobState.Pending);
         Assert.Contains(recovered, x => x.Id == pending.Id && x.State == BackgroundJobState.Pending);
+        Assert.DoesNotContain(recovered, x => x.Id == failed.Id);
+        Assert.Equal(BackgroundJobState.Failed, failed.State);
     }
 
     [FunctionalFact]

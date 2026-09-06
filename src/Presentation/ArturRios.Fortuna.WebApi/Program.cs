@@ -230,6 +230,7 @@ try
     builder.Services.AddScoped<IPdfInvoiceImportStore, EfPdfInvoiceImportStore>();
     builder.Services.AddSingleton<IPdfInvoiceParser, NubankPdfInvoiceParser>();
     builder.Services.AddScoped<IImportJobReader, EfImportJobReader>();
+    builder.Services.AddScoped<IImportJobRetryStore, EfImportJobRetryStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
@@ -416,6 +417,8 @@ try
         SynchronizeConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<SynchronizeConnectionCommand,
         SynchronizeConnectionCommandOutput, SynchronizeConnectionCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RetryImportJobCommand,
+        RetryImportJobCommandOutput, RetryImportJobCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,

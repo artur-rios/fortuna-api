@@ -82,6 +82,19 @@ public sealed class BackgroundJob
         FailureReason = null;
     }
 
+    public void Retry()
+    {
+        if (State != BackgroundJobState.Failed)
+        {
+            throw new InvalidOperationException($"A {State} job cannot be retried.");
+        }
+
+        State = BackgroundJobState.Pending;
+        StartedAt = null;
+        CompletedAt = null;
+        FailureReason = null;
+    }
+
     private void EnsureState(BackgroundJobState expected)
     {
         if (State != expected)

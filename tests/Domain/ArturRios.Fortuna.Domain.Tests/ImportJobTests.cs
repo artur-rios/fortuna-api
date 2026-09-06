@@ -127,6 +127,28 @@ public sealed class ImportJobTests
     }
 
     [UnitFact]
+    public void GivenFailedImportJob_WhenRetried_ThenAttemptReturnsToPending()
+    {
+        var job = new ImportJob(User(), TransactionSourceType.Excel, Now);
+        job.Start(Now.AddMinutes(1));
+        job.Complete(3, 2, 1, Now.AddMinutes(2));
+
+        Assert.Throws<InvalidOperationException>(() => job.Retry(Now.AddMinutes(3)));
+
+        var failed = new ImportJob(User(), TransactionSourceType.Excel, Now);
+        failed.Start(Now.AddMinutes(1));
+        failed.Fail("temporary failure", Now.AddMinutes(2));
+
+        failed.Retry(Now.AddMinutes(3));
+
+        Assert.Equal(ImportJobStatus.Pending, failed.Status);
+        Assert.Equal((0, 0, 0),
+            (failed.ImportedCount, failed.DuplicateCount, failed.RejectedCount));
+        Assert.Null(failed.FailureReason);
+        Assert.Equal(Now.AddMinutes(3), failed.UpdatedAt);
+    }
+
+    [UnitFact]
     public void GivenReauthenticationFailure_WhenConnectionMarked_ThenStatusChanges()
     {
         var connection = new Connection(
