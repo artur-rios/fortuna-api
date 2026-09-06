@@ -29,4 +29,6 @@ public sealed class ImportedRecordOutput : QueryOutput
     public string? RejectionReason { get; set; }
     public decimal? Amount { get; set; }
     public DateOnly? OccurredOn { get; set; }
+    public Guid? TransactionId { get; set; }
+    public bool HasLiveTransaction { get; set; }
 }

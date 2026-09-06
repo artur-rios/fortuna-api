@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
+using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Security;
@@ -60,8 +62,8 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
         Assert.Equal(1, list?.TotalItems);
         var completed = Assert.Single(list!.Data!);
         Assert.Equal(seeded.CompletedId, completed.Id);
-        Assert.Equal(3, completed.ProcessedCount);
-        Assert.Equal((1, 1, 1),
+        Assert.Equal(4, completed.ProcessedCount);
+        Assert.Equal((2, 1, 1),
             (completed.ImportedCount, completed.DuplicateCount, completed.RejectedCount));
 
         Assert.Equal(HttpStatusCode.OK, runningResponse.StatusCode);
@@ -72,15 +74,42 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
         Assert.Equal(PdfInvoiceImportMessages.UnsupportedLayout, failed?.Data?.FailureReason);
 
         Assert.Equal(HttpStatusCode.OK, recordsResponse.StatusCode);
-        Assert.Equal(3, records?.TotalItems);
+        Assert.Equal(4, records?.TotalItems);
         Assert.Contains(records!.Data!, record =>
             record.Outcome == ImportedRecordOutcome.Imported &&
-            JsonDocument.Parse(record.RawPayload).RootElement.GetProperty("row").GetInt32() == 1);
+            JsonDocument.Parse(record.RawPayload).RootElement.GetProperty("row").GetInt32() == 1 &&
+            record.TransactionId == seeded.LiveTransactionId &&
+            record.HasLiveTransaction);
         Assert.Contains(records.Data!, record =>
-            record.Outcome == ImportedRecordOutcome.Duplicate);
+            record.Outcome == ImportedRecordOutcome.Imported &&
+            JsonDocument.Parse(record.RawPayload).RootElement.GetProperty("row").GetInt32() == 4 &&
+            record.TransactionId == seeded.DeletedTransactionId &&
+            !record.HasLiveTransaction);
+        Assert.Contains(records.Data!, record =>
+            record.Outcome == ImportedRecordOutcome.Duplicate &&
+            record.TransactionId == null && !record.HasLiveTransaction);
         Assert.Contains(records.Data!, record =>
             record.Outcome == ImportedRecordOutcome.Rejected &&
             record.RejectionReason == ExcelImportMessages.RowDateInvalid);
+    }
+
+    [FunctionalFact]
+    public async Task GivenImportedRecords_WhenMutationAttempted_ThenMethodIsNotAllowed()
+    {
+        var subject = Guid.NewGuid();
+        var seeded = await SeedJobsAsync(subject);
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+
+        var delete = await client.DeleteAsync(
+            $"/api/import-jobs/{seeded.CompletedId}/records");
+        var put = await client.PutAsJsonAsync(
+            $"/api/import-jobs/{seeded.CompletedId}/records",
+            new { RawPayload = "{}" });
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, delete.StatusCode);
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, put.StatusCode);
     }
 
     [FunctionalFact]
@@ -199,19 +228,72 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
             new DateOnly(2026, 8, 31),
             Now.AddMinutes(-1));
         var imported = Record(completed, "{\"row\":1}", ImportedRecordOutcome.Imported);
+        var importedDeleted = new ImportedRecord(
+            completed,
+            "{\"row\":4}",
+            ImportedRecordOutcome.Imported,
+            11m,
+            new DateOnly(2026, 8, 2));
         var duplicate = Record(completed, "{\"row\":2}", ImportedRecordOutcome.Duplicate);
         var rejected = Record(
             completed,
             "{\"row\":3}",
             ImportedRecordOutcome.Rejected,
             ExcelImportMessages.RowDateInvalid);
-        completed.Complete(1, 1, 1, Now);
+        completed.Complete(2, 1, 1, Now);
+        var account = new FinancialAccount(
+            user,
+            "Imported account",
+            "Bank",
+            FinancialAccountType.Checking,
+            currency,
+            0,
+            Now);
+        var category = new Category(user, "Imported", Now);
+        var liveTransaction = new FinancialTransaction(
+            user,
+            account,
+            category,
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 8, 1),
+            Now);
+        liveTransaction.MarkAsImported(imported, TransactionSourceType.Excel, Now);
+        var deletedTransaction = new FinancialTransaction(
+            user,
+            account,
+            category,
+            TransactionDirection.Expense,
+            11m,
+            new DateOnly(2026, 8, 2),
+            Now);
+        deletedTransaction.MarkAsImported(importedDeleted, TransactionSourceType.Excel, Now);
+        deletedTransaction.SoftDelete(Now.AddMinutes(1));
         var failed = new ImportJob(user, TransactionSourceType.Pdf, Now.AddMinutes(-1));
         failed.Start(Now.AddMinutes(-1));
         failed.Fail(PdfInvoiceImportMessages.UnsupportedLayout, Now);
-        context.AddRange(user, pending, running, completed, failed, imported, duplicate, rejected);
+        context.AddRange(
+            user,
+            account,
+            category,
+            pending,
+            running,
+            completed,
+            failed,
+            imported,
+            importedDeleted,
+            duplicate,
+            rejected,
+            liveTransaction,
+            deletedTransaction);
         await context.SaveChangesAsync();
-        return new SeededJobs(pending.PublicId, running.PublicId, completed.PublicId, failed.PublicId);
+        return new SeededJobs(
+            pending.PublicId,
+            running.PublicId,
+            completed.PublicId,
+            failed.PublicId,
+            liveTransaction.PublicId,
+            deletedTransaction.PublicId);
     }
 
     private static ImportedRecord Record(
@@ -272,7 +354,9 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
         Guid PendingId,
         Guid RunningId,
         Guid CompletedId,
-        Guid FailedId);
+        Guid FailedId,
+        Guid LiveTransactionId,
+        Guid DeletedTransactionId);
 
     private sealed record JobListEnvelope(IReadOnlyList<JobData>? Data, int TotalItems);
     private sealed record JobEnvelope(JobData? Data);
@@ -289,6 +373,8 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
     private sealed record RecordData(
         string RawPayload,
         ImportedRecordOutcome Outcome,
-        string? RejectionReason);
+        string? RejectionReason,
+        Guid? TransactionId,
+        bool HasLiveTransaction);
     private sealed record ErrorEnvelope(IReadOnlyList<string> Errors);
 }
