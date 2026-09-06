@@ -85,6 +85,10 @@ public sealed class SynchronizeConnectionCommandHandler(
                 PluggySynchronizationMessages.ConnectionInactive),
             QueueSynchronizationOutcome.AlreadyRunning => output.WithError(
                 PluggySynchronizationMessages.AlreadyRunning),
+            QueueSynchronizationOutcome.ConnectionRequiresReauthentication => output.WithError(
+                ConnectionMessages.RequiresReauthentication),
+            QueueSynchronizationOutcome.ConnectionRevoked => output.WithError(
+                ConnectionMessages.Revoked),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
     }

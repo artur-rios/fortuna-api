@@ -22,7 +22,9 @@ public sealed class ConnectionSynchronizationController(CommandMediator commandM
             [PluggySynchronizationMessages.ConnectionInactive] = StatusCodes.Status409Conflict,
             [PluggySynchronizationMessages.AlreadyRunning] = StatusCodes.Status409Conflict,
             [PluggySynchronizationMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
-            [PluggySynchronizationMessages.PeriodInvalid] = StatusCodes.Status400BadRequest
+            [PluggySynchronizationMessages.PeriodInvalid] = StatusCodes.Status400BadRequest,
+            [ConnectionMessages.RequiresReauthentication] = StatusCodes.Status409Conflict,
+            [ConnectionMessages.Revoked] = StatusCodes.Status409Conflict
         };
 
     [HttpPost("{id:guid}/sync")]

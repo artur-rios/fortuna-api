@@ -215,7 +215,13 @@ try
         provider.GetRequiredService<EfInvestmentStore>());
     builder.Services.AddScoped<IInvestmentMovementStore, EfInvestmentMovementStore>();
     builder.Services.AddScoped<IInvestmentValuationStore, EfInvestmentValuationStore>();
-    builder.Services.AddScoped<IConnectionStore, EfConnectionStore>();
+    builder.Services.AddScoped<EfConnectionStore>();
+    builder.Services.AddScoped<IConnectionStore>(provider =>
+        provider.GetRequiredService<EfConnectionStore>());
+    builder.Services.AddScoped<IConnectionReader>(provider =>
+        provider.GetRequiredService<EfConnectionStore>());
+    builder.Services.AddScoped<IConnectionReauthenticationStore>(provider =>
+        provider.GetRequiredService<EfConnectionStore>());
     builder.Services.AddScoped<IPluggySynchronizationStore, EfPluggySynchronizationStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new ReconciliationOptions(
@@ -380,6 +386,10 @@ try
         CreateConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateConnectionCommand,
         CreateConnectionCommandOutput, CreateConnectionCommandHandler>();
+    builder.Services.AddScoped<IValidator<ReauthenticateConnectionCommand>,
+        ReauthenticateConnectionCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<ReauthenticateConnectionCommand,
+        ReauthenticateConnectionCommandOutput, ReauthenticateConnectionCommandHandler>();
     builder.Services.AddScoped<IValidator<SynchronizeConnectionCommand>,
         SynchronizeConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<SynchronizeConnectionCommand,
@@ -533,6 +543,11 @@ try
         RecurringTransactionOutput>, GetRecurringTransactionByIdQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListDataSourcesQuery, DataSourceListOutput>,
         ListDataSourcesQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetConnectionByIdQuery, ConnectionOutput>,
+        GetConnectionByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListConnectionsQuery>, ListConnectionsQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListConnectionsQuery, ConnectionOutput>,
+        ListConnectionsQueryHandler>();
 
     builder.Services.AddSingleton(new PluggySourceOptions(
         options.PluggyClientId,

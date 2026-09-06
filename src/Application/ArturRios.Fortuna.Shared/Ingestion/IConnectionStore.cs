@@ -8,6 +8,24 @@ public interface IConnectionStore
     Task<ConnectionMutationResult> CreateAsync(
         ConnectionCreation creation,
         CancellationToken cancellationToken);
+
+}
+
+public interface IConnectionReauthenticationStore
+{
+    Task<ConnectionReauthenticationResult> ReauthenticateAsync(
+        ConnectionReauthentication reauthentication,
+        CancellationToken cancellationToken);
+}
+
+public interface IConnectionReader
+{
+    IQueryable<Connection> Query();
+
+    Task<ConnectionSnapshot?> FindByIdAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken);
 }
 
 public enum ConnectionMutationOutcome
@@ -26,6 +44,26 @@ public sealed record ConnectionCreation(
 public sealed record ConnectionMutationResult(
     ConnectionSnapshot Connection,
     ConnectionMutationOutcome Outcome);
+
+public sealed record ConnectionReauthentication(
+    Guid UserId,
+    Guid ConnectionId,
+    string ExternalReference,
+    byte[] AccessTokenCipher,
+    DateTimeOffset UpdatedAt);
+
+public enum ConnectionReauthenticationOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    NotRequired = 3,
+    Revoked = 4,
+    DuplicateReference = 5
+}
+
+public sealed record ConnectionReauthenticationResult(
+    ConnectionSnapshot? Connection,
+    ConnectionReauthenticationOutcome Outcome);
 
 public sealed record ConnectionSnapshot(
     Guid Id,
