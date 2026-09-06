@@ -3356,12 +3356,64 @@
         "format": "int32",
         "type": "integer"
       },
+      "ImportExcelWorkbookCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "importJobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportJobStatus"
+          }
+        },
+        "type": "object"
+      },
+      "ImportExcelWorkbookCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ImportJobStatus": {
         "enum": [
           1,
           2,
           3,
           4
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "ImportTargetType": {
+        "enum": [
+          1,
+          2
         ],
         "format": "int32",
         "type": "integer"
@@ -10201,6 +10253,110 @@
         ]
       }
     },
+    "/api/imports/excel": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "encoding": {
+                "AmountColumn": {
+                  "style": "form"
+                },
+                "CategoryColumn": {
+                  "style": "form"
+                },
+                "CreateMissingCategories": {
+                  "style": "form"
+                },
+                "DateColumn": {
+                  "style": "form"
+                },
+                "DescriptionColumn": {
+                  "style": "form"
+                },
+                "DirectionColumn": {
+                  "style": "form"
+                },
+                "ExternalIdColumn": {
+                  "style": "form"
+                },
+                "File": {
+                  "style": "form"
+                },
+                "TargetId": {
+                  "style": "form"
+                },
+                "TargetType": {
+                  "style": "form"
+                }
+              },
+              "schema": {
+                "properties": {
+                  "AmountColumn": {
+                    "type": "string"
+                  },
+                  "CategoryColumn": {
+                    "type": "string"
+                  },
+                  "CreateMissingCategories": {
+                    "type": "boolean"
+                  },
+                  "DateColumn": {
+                    "type": "string"
+                  },
+                  "DescriptionColumn": {
+                    "type": "string"
+                  },
+                  "DirectionColumn": {
+                    "type": "string"
+                  },
+                  "ExternalIdColumn": {
+                    "type": "string"
+                  },
+                  "File": {
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "TargetId": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "TargetType": {
+                    "$ref": "#/components/schemas/ImportTargetType"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Imports"
+        ]
+      }
+    },
     "/api/installment-plans": {
       "post": {
         "requestBody": {
@@ -12589,6 +12745,9 @@
     },
     {
       "name": "HealthCheck"
+    },
+    {
+      "name": "Imports"
     },
     {
       "name": "InstallmentPlans"

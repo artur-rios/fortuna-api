@@ -16,6 +16,7 @@ public sealed record FortunaOptions
     public int JobQueueCapacity { get; init; }
     public int PageSizeMaximum { get; init; }
     public int TransactionMaximumTags { get; init; }
+    public int ExcelImportMaximumFileBytes { get; init; }
     public bool RunMigrations { get; init; }
     public required string AuthTokenSecret { get; init; }
     public string? AuthPreviousTokenSecret { get; init; }
@@ -55,6 +56,10 @@ public sealed record FortunaOptions
                 read("FORTUNA_TRANSACTION_MAX_TAGS"),
                 "FORTUNA_TRANSACTION_MAX_TAGS",
                 50),
+            ExcelImportMaximumFileBytes = PositiveInteger(
+                read("FORTUNA_EXCEL_IMPORT_MAX_BYTES"),
+                "FORTUNA_EXCEL_IMPORT_MAX_BYTES",
+                10 * 1024 * 1024),
             RunMigrations = Boolean(read("FORTUNA_RUN_MIGRATIONS"), "FORTUNA_RUN_MIGRATIONS", false),
             AuthTokenSecret = Required(read, "FORTUNA_AUTH_TOKEN_SECRET"),
             AuthPreviousTokenSecret = read("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),
