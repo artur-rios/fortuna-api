@@ -6,6 +6,7 @@ using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Ingestion;
+using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,7 @@ public sealed class AppDbContext(
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<Counterparty> Counterparties => Set<Counterparty>();
+    public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<Investment> Investments => Set<Investment>();
     public DbSet<InvestmentMovement> InvestmentMovements => Set<InvestmentMovement>();
     public DbSet<InvestmentValuation> InvestmentValuations => Set<InvestmentValuation>();

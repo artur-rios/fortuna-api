@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Investments;
+using ArturRios.Fortuna.Data.Planning;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Data.Transactions;
@@ -31,6 +32,7 @@ using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Pagination;
+using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Services;
@@ -149,6 +151,15 @@ try
         provider.GetRequiredService<EfCounterpartyStore>());
     builder.Services.AddScoped<ICounterpartyCategorySuggester>(provider =>
         provider.GetRequiredService<EfCounterpartyStore>());
+    builder.Services.AddScoped<EfBudgetStore>();
+    builder.Services.AddScoped<IBudgetStore>(provider =>
+        provider.GetRequiredService<EfBudgetStore>());
+    builder.Services.AddScoped<IBudgetReader>(provider =>
+        provider.GetRequiredService<EfBudgetStore>());
+    builder.Services.AddScoped<IBudgetUpdater>(provider =>
+        provider.GetRequiredService<EfBudgetStore>());
+    builder.Services.AddScoped<IBudgetLifecycleStore>(provider =>
+        provider.GetRequiredService<EfBudgetStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -326,6 +337,14 @@ try
         MergeCounterpartiesCommandValidator>();
     builder.Services.AddAuditedCommandHandler<MergeCounterpartiesCommand,
         CounterpartyMergeCommandOutput, MergeCounterpartiesCommandHandler>();
+    builder.Services.AddScoped<IValidator<CreateBudgetCommand>, CreateBudgetCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<CreateBudgetCommand,
+        BudgetCommandOutput, CreateBudgetCommandHandler>();
+    builder.Services.AddScoped<IValidator<UpdateBudgetCommand>, UpdateBudgetCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<UpdateBudgetCommand,
+        BudgetCommandOutput, UpdateBudgetCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteBudgetCommand,
+        BudgetCommandOutput, DeleteBudgetCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
@@ -403,6 +422,10 @@ try
         CounterpartyListOutput>, ListCounterpartiesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<SuggestCounterpartyCategoryQuery,
         CounterpartyCategorySuggestionOutput>, SuggestCounterpartyCategoryQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<ListBudgetsQuery, BudgetListOutput>,
+        ListBudgetsQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetBudgetByIdQuery, BudgetOutput>,
+        GetBudgetByIdQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,
