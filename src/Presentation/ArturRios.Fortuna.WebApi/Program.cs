@@ -227,12 +227,16 @@ try
     builder.Services.AddScoped<IPluggySynchronizationStore, EfPluggySynchronizationStore>();
     builder.Services.AddScoped<IExcelImportStore, EfExcelImportStore>();
     builder.Services.AddSingleton<IExcelWorkbookParser, ExcelWorkbookParser>();
+    builder.Services.AddScoped<IPdfInvoiceImportStore, EfPdfInvoiceImportStore>();
+    builder.Services.AddSingleton<IPdfInvoiceParser, NubankPdfInvoiceParser>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
         options.ReconciliationDateToleranceDays));
     builder.Services.AddSingleton(new TagOptions(options.TransactionMaximumTags));
     builder.Services.AddSingleton(new ExcelImportOptions(options.ExcelImportMaximumFileBytes));
+    builder.Services.AddSingleton(new PdfInvoiceImportOptions(
+        options.PdfInvoiceImportMaximumFileBytes));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
@@ -240,6 +244,7 @@ try
     builder.Services.AddScoped<IBackgroundJobHandler, RecurringMaterializationJobHandler>();
     builder.Services.AddScoped<IBackgroundJobHandler, PluggySynchronizationJobHandler>();
     builder.Services.AddScoped<IBackgroundJobHandler, ExcelImportJobHandler>();
+    builder.Services.AddScoped<IBackgroundJobHandler, PdfInvoiceImportJobHandler>();
     builder.Services.AddHostedService<DatabaseInitializationHostedService>();
     builder.Services.AddHostedService<BackgroundJobHostedService>();
     builder.Services.AddHostedService<ExchangeRateSyncHostedService>();
@@ -293,6 +298,10 @@ try
         ImportExcelWorkbookCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ImportExcelWorkbookCommand,
         ImportExcelWorkbookCommandOutput, ImportExcelWorkbookCommandHandler>();
+    builder.Services.AddScoped<IValidator<ImportPdfInvoiceCommand>,
+        ImportPdfInvoiceCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<ImportPdfInvoiceCommand,
+        ImportPdfInvoiceCommandOutput, ImportPdfInvoiceCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CreateFinancialAccountCommand,
         CreateFinancialAccountCommandOutput, CreateFinancialAccountCommandHandler>();
     builder.Services.AddScoped<IValidator<UpdateFinancialAccountCommand>,

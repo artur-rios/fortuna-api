@@ -135,6 +135,39 @@ public sealed class CreditCardStatementTests
     }
 
     [UnitFact]
+    public void GivenReconciledInvoiceSummary_WhenApplied_ThenAllStatementFiguresAreRetained()
+    {
+        var statement = Statement(Card());
+
+        statement.ApplyImportedSummary(
+            100m,
+            100m,
+            165m,
+            5m,
+            -10m,
+            160m,
+            Now.AddMinutes(1));
+
+        Assert.Equal(100m, statement.PreviousBalance);
+        Assert.Equal(100m, statement.PaymentsReceived);
+        Assert.Equal(165m, statement.PurchaseTotal);
+        Assert.Equal(5m, statement.ForeignTaxTotal);
+        Assert.Equal(-10m, statement.OtherEntries);
+        Assert.Equal(160m, statement.AmountDue);
+    }
+
+    [UnitFact]
+    public void GivenNonReconcilingInvoiceSummary_WhenApplied_ThenItIsRejected()
+    {
+        var statement = Statement(Card());
+
+        var exception = Assert.Throws<ArgumentException>(() =>
+            statement.ApplyImportedSummary(100m, 100m, 165m, 5m, -10m, 161m, Now));
+
+        Assert.Contains("does not reconcile", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
     public void GivenOutboundMovement_WhenStatementSettled_ThenItIsRejected()
     {
         var card = Card();
