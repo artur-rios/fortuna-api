@@ -160,6 +160,8 @@ try
         provider.GetRequiredService<EfBudgetStore>());
     builder.Services.AddScoped<IBudgetLifecycleStore>(provider =>
         provider.GetRequiredService<EfBudgetStore>());
+    builder.Services.AddScoped<IBudgetConsumptionReader>(provider =>
+        provider.GetRequiredService<EfBudgetStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -426,6 +428,8 @@ try
         ListBudgetsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetBudgetByIdQuery, BudgetOutput>,
         GetBudgetByIdQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetBudgetConsumptionQuery,
+        BudgetConsumptionDetailOutput>, GetBudgetConsumptionQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,

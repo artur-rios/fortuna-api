@@ -1,14 +1,20 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Classification;
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Planning;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Planning;
 
 public sealed class EfBudgetStore(AppDbContext context)
-    : IBudgetStore, IBudgetReader, IBudgetUpdater, IBudgetLifecycleStore
+    : IBudgetStore,
+        IBudgetReader,
+        IBudgetUpdater,
+        IBudgetLifecycleStore,
+        IBudgetConsumptionReader
 {
     public async Task<BudgetMutationResult> CreateAsync(
         BudgetCreation creation,
@@ -88,6 +94,64 @@ public sealed class EfBudgetStore(AppDbContext context)
             (includeDeleted || !item.IsDeleted),
             cancellationToken);
         return budget is null ? null : await SnapshotAsync(budget, asOf, cancellationToken);
+    }
+
+    public async Task<BudgetConsumptionResult> GetConsumptionAsync(
+        Guid userId,
+        Guid id,
+        DateOnly periodDate,
+        CancellationToken cancellationToken)
+    {
+        var budget = await BudgetQuery().SingleOrDefaultAsync(item =>
+            item.User.PublicId == userId &&
+            item.PublicId == id &&
+            !item.IsDeleted,
+            cancellationToken);
+        if (budget is null)
+        {
+            return new BudgetConsumptionResult(null, BudgetConsumptionOutcome.NotFound);
+        }
+
+        if (periodDate < budget.PeriodStart)
+        {
+            return new BudgetConsumptionResult(
+                new BudgetConsumptionDetailSnapshot(
+                    budget.PublicId,
+                    budget.Amount,
+                    budget.Currency.Code,
+                    periodDate,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    false,
+                    true,
+                    []),
+                BudgetConsumptionOutcome.PeriodPrecedesBudget);
+        }
+
+        var calculation = await CalculateConsumptionAsync(
+            budget,
+            periodDate,
+            cancellationToken);
+        return new BudgetConsumptionResult(
+            new BudgetConsumptionDetailSnapshot(
+                budget.PublicId,
+                budget.Amount,
+                budget.Currency.Code,
+                periodDate,
+                calculation.PeriodStart,
+                calculation.PeriodEnd,
+                calculation.Spent,
+                calculation.Remaining,
+                calculation.IsExceeded,
+                calculation.Overage,
+                true,
+                calculation.IsFullyConverted,
+                calculation.Conversions),
+            BudgetConsumptionOutcome.Succeeded);
     }
 
     public async Task<BudgetMutationResult> UpdateAsync(
@@ -186,7 +250,39 @@ public sealed class EfBudgetStore(AppDbContext context)
         DateOnly asOf,
         CancellationToken cancellationToken)
     {
-        var period = PeriodContaining(budget.PeriodStart, budget.PeriodType, asOf);
+        var calculation = await CalculateConsumptionAsync(budget, asOf, cancellationToken);
+        var consumption = new BudgetConsumptionSnapshot(
+            calculation.PeriodStart,
+            calculation.PeriodEnd,
+            calculation.Spent,
+            calculation.Remaining,
+            calculation.IsExceeded,
+            calculation.Overage,
+            calculation.IsFullyConverted);
+        return new BudgetSnapshot(
+            budget.PublicId,
+            budget.Amount,
+            budget.Currency.Code,
+            budget.PeriodType,
+            budget.PeriodStart,
+            budget.IncludeDescendants,
+            budget.Categories
+                .OrderBy(item => item.Name)
+                .ThenBy(item => item.PublicId)
+                .Select(item => new BudgetCategorySnapshot(item.PublicId, item.Name))
+                .ToArray(),
+            consumption,
+            budget.IsDeleted,
+            budget.CreatedAt,
+            budget.UpdatedAt);
+    }
+
+    private async Task<ConsumptionCalculation> CalculateConsumptionAsync(
+        Budget budget,
+        DateOnly periodDate,
+        CancellationToken cancellationToken)
+    {
+        var period = PeriodContaining(budget.PeriodStart, budget.PeriodType, periodDate);
         var categoryIds = await CoveredCategoryIdsAsync(budget, cancellationToken);
         var transactions = await context.FinancialTransactions
             .AsNoTracking()
@@ -206,13 +302,24 @@ public sealed class EfBudgetStore(AppDbContext context)
                 item.OccurredOn))
             .ToArrayAsync(cancellationToken);
 
-        var spent = 0m;
-        var fullyConverted = true;
-        foreach (var figure in transactions)
+        var figures = new List<ConvertedFigure>(transactions.Length);
+        foreach (var figure in transactions
+            .GroupBy(item => new { item.CurrencyCode, item.OccurredOn })
+            .Select(group => new TransactionFigure(
+                group.Sum(item => item.Amount),
+                group.Key.CurrencyCode,
+                group.Key.OccurredOn)))
         {
             if (figure.CurrencyCode == budget.Currency.Code)
             {
-                spent += figure.Amount;
+                figures.Add(new ConvertedFigure(
+                    figure.CurrencyCode,
+                    figure.Amount,
+                    figure.Amount,
+                    null,
+                    null,
+                    null,
+                    null));
                 continue;
             }
 
@@ -224,44 +331,69 @@ public sealed class EfBudgetStore(AppDbContext context)
                     item.RateDate <= figure.OccurredOn)
                 .OrderByDescending(item => item.RateDate)
                 .ThenByDescending(item => item.Source)
-                .Select(item => (decimal?)item.Rate)
+                .Select(item => new AppliedRate(
+                    item.Rate,
+                    item.RateDate,
+                    item.Source))
                 .FirstOrDefaultAsync(cancellationToken);
-            if (!rate.HasValue)
+            if (rate is null)
             {
-                fullyConverted = false;
+                figures.Add(new ConvertedFigure(
+                    figure.CurrencyCode,
+                    figure.Amount,
+                    null,
+                    null,
+                    null,
+                    null,
+                    FigureConversionMessages.RateUnavailable));
                 continue;
             }
 
-            spent += figure.Amount * rate.Value;
+            figures.Add(new ConvertedFigure(
+                figure.CurrencyCode,
+                figure.Amount,
+                figure.Amount * rate.Rate,
+                rate.Rate,
+                rate.RateDate,
+                rate.Source,
+                null));
         }
 
+        var conversions = figures
+            .GroupBy(item => new
+            {
+                item.SourceCurrencyCode,
+                item.AppliedRate,
+                item.RateDate,
+                item.RateSource,
+                item.UnconvertedReason
+            })
+            .OrderBy(group => group.Key.SourceCurrencyCode)
+            .ThenBy(group => group.Key.RateDate)
+            .Select(group => new BudgetConversionSnapshot(
+                group.Key.SourceCurrencyCode,
+                group.Sum(item => item.SourceAmount),
+                group.All(item => item.ConvertedAmount.HasValue)
+                    ? Round(group.Sum(item => item.ConvertedAmount!.Value), budget)
+                    : null,
+                group.Key.AppliedRate,
+                group.Key.RateDate,
+                group.Key.RateSource,
+                group.Key.UnconvertedReason))
+            .ToArray();
+        var fullyConverted = figures.All(item => item.ConvertedAmount.HasValue);
         decimal? roundedSpent = fullyConverted
-            ? decimal.Round(spent, budget.Currency.MinorUnitDigits, MidpointRounding.AwayFromZero)
+            ? Round(figures.Sum(item => item.ConvertedAmount!.Value), budget)
             : null;
-        var consumption = new BudgetConsumptionSnapshot(
+        return new ConsumptionCalculation(
             period.Start,
             period.End,
             roundedSpent,
             roundedSpent.HasValue ? decimal.Max(budget.Amount - roundedSpent.Value, 0m) : null,
             roundedSpent.HasValue ? roundedSpent.Value > budget.Amount : null,
             roundedSpent.HasValue ? decimal.Max(roundedSpent.Value - budget.Amount, 0m) : null,
-            fullyConverted);
-        return new BudgetSnapshot(
-            budget.PublicId,
-            budget.Amount,
-            budget.Currency.Code,
-            budget.PeriodType,
-            budget.PeriodStart,
-            budget.IncludeDescendants,
-            budget.Categories
-                .OrderBy(item => item.Name)
-                .ThenBy(item => item.PublicId)
-                .Select(item => new BudgetCategorySnapshot(item.PublicId, item.Name))
-                .ToArray(),
-            consumption,
-            budget.IsDeleted,
-            budget.CreatedAt,
-            budget.UpdatedAt);
+            fullyConverted,
+            conversions);
     }
 
     private async Task<HashSet<long>> CoveredCategoryIdsAsync(
@@ -320,6 +452,32 @@ public sealed class EfBudgetStore(AppDbContext context)
 
     private static BudgetMutationResult Result(BudgetMutationOutcome outcome) => new(null, outcome);
 
+    private static decimal Round(decimal amount, Budget budget) => decimal.Round(
+        amount,
+        budget.Currency.MinorUnitDigits,
+        MidpointRounding.AwayFromZero);
+
     private sealed record CategoryParent(long Id, long? ParentId);
     private sealed record TransactionFigure(decimal Amount, string CurrencyCode, DateOnly OccurredOn);
+    private sealed record AppliedRate(
+        decimal Rate,
+        DateOnly RateDate,
+        ExchangeRateSource Source);
+    private sealed record ConvertedFigure(
+        string SourceCurrencyCode,
+        decimal SourceAmount,
+        decimal? ConvertedAmount,
+        decimal? AppliedRate,
+        DateOnly? RateDate,
+        ExchangeRateSource? RateSource,
+        string? UnconvertedReason);
+    private sealed record ConsumptionCalculation(
+        DateOnly PeriodStart,
+        DateOnly PeriodEnd,
+        decimal? Spent,
+        decimal? Remaining,
+        bool? IsExceeded,
+        decimal? Overage,
+        bool IsFullyConverted,
+        IReadOnlyCollection<BudgetConversionSnapshot> Conversions);
 }

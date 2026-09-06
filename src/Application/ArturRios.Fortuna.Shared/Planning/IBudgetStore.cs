@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Planning;
 
 namespace ArturRios.Fortuna.Shared.Planning;
@@ -42,12 +43,28 @@ public interface IBudgetLifecycleStore
         CancellationToken cancellationToken);
 }
 
+public interface IBudgetConsumptionReader
+{
+    Task<BudgetConsumptionResult> GetConsumptionAsync(
+        Guid userId,
+        Guid id,
+        DateOnly periodDate,
+        CancellationToken cancellationToken);
+}
+
 public enum BudgetMutationOutcome
 {
     Succeeded = 1,
     NotFound = 2,
     CategoryNotFound = 3,
     CurrencyNotFound = 4
+}
+
+public enum BudgetConsumptionOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    PeriodPrecedesBudget = 3
 }
 
 public sealed record BudgetCreation(
@@ -98,3 +115,31 @@ public sealed record BudgetConsumptionSnapshot(
     bool? IsExceeded,
     decimal? Overage,
     bool IsFullyConverted);
+
+public sealed record BudgetConsumptionResult(
+    BudgetConsumptionDetailSnapshot? Consumption,
+    BudgetConsumptionOutcome Outcome);
+
+public sealed record BudgetConsumptionDetailSnapshot(
+    Guid BudgetId,
+    decimal BudgetAmount,
+    string CurrencyCode,
+    DateOnly RequestedDate,
+    DateOnly? PeriodStart,
+    DateOnly? PeriodEnd,
+    decimal? Spent,
+    decimal? Remaining,
+    bool? IsExceeded,
+    decimal? Overage,
+    bool IsCovered,
+    bool IsFullyConverted,
+    IReadOnlyCollection<BudgetConversionSnapshot> Conversions);
+
+public sealed record BudgetConversionSnapshot(
+    string SourceCurrencyCode,
+    decimal SourceAmount,
+    decimal? ConvertedAmount,
+    decimal? AppliedRate,
+    DateOnly? RateDate,
+    ExchangeRateSource? RateSource,
+    string? UnconvertedReason);
