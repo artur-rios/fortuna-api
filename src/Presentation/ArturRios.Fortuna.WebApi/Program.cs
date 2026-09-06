@@ -229,6 +229,7 @@ try
     builder.Services.AddSingleton<IExcelWorkbookParser, ExcelWorkbookParser>();
     builder.Services.AddScoped<IPdfInvoiceImportStore, EfPdfInvoiceImportStore>();
     builder.Services.AddSingleton<IPdfInvoiceParser, NubankPdfInvoiceParser>();
+    builder.Services.AddScoped<IImportJobReader, EfImportJobReader>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
@@ -569,6 +570,15 @@ try
     builder.Services.AddScoped<IValidator<ListConnectionsQuery>, ListConnectionsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListConnectionsQuery, ConnectionOutput>,
         ListConnectionsQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetImportJobByIdQuery, ImportJobOutput>,
+        GetImportJobByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListImportJobsQuery>, ListImportJobsQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListImportJobsQuery, ImportJobOutput>,
+        ListImportJobsQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListImportedRecordsQuery>,
+        ListImportedRecordsQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListImportedRecordsQuery,
+        ImportedRecordOutput>, ListImportedRecordsQueryHandler>();
 
     builder.Services.AddSingleton(new PluggySourceOptions(
         options.PluggyClientId,

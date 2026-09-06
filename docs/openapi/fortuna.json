@@ -3400,6 +3400,148 @@
         },
         "type": "object"
       },
+      "ImportJobOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "connectionId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "duplicateCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "failureReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "importedCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "periodEnd": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "periodStart": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "processedCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "rejectedCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "sourceType": {
+            "$ref": "#/components/schemas/TransactionSourceType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportJobStatus"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ImportJobOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ImportJobOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ImportJobOutputPaginatedOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ImportJobOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "totalItems": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "readOnly": true,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "ImportJobStatus": {
         "enum": [
           1,
@@ -3461,6 +3603,98 @@
         ],
         "format": "int32",
         "type": "integer"
+      },
+      "ImportedRecordOutcome": {
+        "enum": [
+          1,
+          2,
+          3
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "ImportedRecordOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "externalId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "occurredOn": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/ImportedRecordOutcome"
+          },
+          "rawPayload": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rejectionReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ImportedRecordOutputPaginatedOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedRecordOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "totalItems": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "readOnly": true,
+            "type": "integer"
+          }
+        },
+        "type": "object"
       },
       "InstallmentCommandOutput": {
         "additionalProperties": false,
@@ -10297,6 +10531,185 @@
         ]
       }
     },
+    "/api/import-jobs": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "SourceType",
+            "schema": {
+              "$ref": "#/components/schemas/TransactionSourceType"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Status",
+            "schema": {
+              "$ref": "#/components/schemas/ImportJobStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "SortBy",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Descending",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobOutputPaginatedOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobOutputPaginatedOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobOutputPaginatedOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "ImportJobs"
+        ]
+      }
+    },
+    "/api/import-jobs/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "ImportJobs"
+        ]
+      }
+    },
+    "/api/import-jobs/{id}/records": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ImportJobId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportedRecordOutputPaginatedOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportedRecordOutputPaginatedOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportedRecordOutputPaginatedOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "ImportJobs"
+        ]
+      }
+    },
     "/api/imports/excel": {
       "post": {
         "requestBody": {
@@ -12845,6 +13258,9 @@
     },
     {
       "name": "HealthCheck"
+    },
+    {
+      "name": "ImportJobs"
     },
     {
       "name": "Imports"

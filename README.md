@@ -226,7 +226,7 @@ pull request.
 | [#59](https://github.com/artur-rios/fortuna-api/issues/59) | ✅ UC-58: Revoke a Connection | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#60](https://github.com/artur-rios/fortuna-api/issues/60) | ✅ UC-59: Import Transactions from an Excel Workbook | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#61](https://github.com/artur-rios/fortuna-api/issues/61) | ✅ UC-60: Import a Nubank Credit Card Invoice PDF | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#62](https://github.com/artur-rios/fortuna-api/issues/62) | UC-61: Monitor an Import Job | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#62](https://github.com/artur-rios/fortuna-api/issues/62) | ✅ UC-61: Monitor an Import Job | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#63](https://github.com/artur-rios/fortuna-api/issues/63) | UC-62: Retry a Failed Import Job | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#64](https://github.com/artur-rios/fortuna-api/issues/64) | UC-63: Review Imported Records | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
