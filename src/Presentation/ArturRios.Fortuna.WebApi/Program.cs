@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Investments;
+using ArturRios.Fortuna.Data.Ingestion;
 using ArturRios.Fortuna.Data.Planning;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
@@ -49,6 +50,7 @@ using ArturRios.Mediator.Query.Interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -71,6 +73,9 @@ try
     builder.Services.AddDbContext<AppDbContext>((services, database) => database.UseNpgsql(
         options.DataConnectionString,
         postgres => postgres.MigrationsHistoryTable("__ef_migrations_history", AppDbContext.Schema)));
+    builder.Services.AddDataProtection()
+        .PersistKeysToDbContext<AppDbContext>()
+        .SetApplicationName("Fortuna");
     builder.Services.AddScoped<DatabaseSeeder>();
     builder.Services.AddScoped<ICurrencyReader, EfCurrencyReader>();
     builder.Services.AddScoped<EfExchangeRateStore>();
@@ -210,6 +215,7 @@ try
         provider.GetRequiredService<EfInvestmentStore>());
     builder.Services.AddScoped<IInvestmentMovementStore, EfInvestmentMovementStore>();
     builder.Services.AddScoped<IInvestmentValuationStore, EfInvestmentValuationStore>();
+    builder.Services.AddScoped<IConnectionStore, EfConnectionStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
@@ -249,6 +255,7 @@ try
     builder.Services.AddScoped<ILocalAccountStore, EfLocalAccountStore>();
     builder.Services.AddSingleton<ILocalCredentialStoreAvailability, LocalCredentialStoreAvailability>();
     builder.Services.AddSingleton<ILocalRecoveryCodeGenerator, LocalRecoveryCodeGenerator>();
+    builder.Services.AddScoped<IConnectionAccessTokenProtector, ConnectionAccessTokenProtector>();
     builder.Services.AddScoped<CommandMediator>();
     builder.Services.AddScoped<IValidator<CreateLocalAccountCommand>, CreateLocalAccountCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateLocalAccountCommand,
@@ -367,6 +374,10 @@ try
         GoalCommandOutput, UpdateGoalCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteGoalCommand,
         GoalCommandOutput, DeleteGoalCommandHandler>();
+    builder.Services.AddScoped<IValidator<CreateConnectionCommand>,
+        CreateConnectionCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<CreateConnectionCommand,
+        CreateConnectionCommandOutput, CreateConnectionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
@@ -523,6 +534,8 @@ try
         options.PluggyBaseUri,
         !options.LocalAuthEnabled));
     builder.Services.AddSingleton<IIngestionSource, PluggyIngestionSource>();
+    builder.Services.AddHttpClient<IPluggyConnectionGateway, PluggyConnectionGateway>(client =>
+        client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/"));
     builder.Services.AddSingleton<IIngestionSource, ExcelWorkbookIngestionSource>();
     builder.Services.AddSingleton<IIngestionSource, NubankInvoiceIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();
