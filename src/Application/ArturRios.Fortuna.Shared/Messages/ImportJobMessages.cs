@@ -7,6 +7,10 @@ public static class ImportJobMessages
     public const string RetrievedSuccessfully = "Import job retrieved successfully.";
     public const string ListedSuccessfully = "Import jobs listed successfully.";
     public const string RecordsListedSuccessfully = "Import job records listed successfully.";
+    public const string RetryAccepted = "Import job retry queued successfully.";
+    public const string RetryRequiresFailedJob = "Only a failed import job can be retried.";
+    public const string SourceFileNotRetained =
+        "The source file is no longer retained. Upload the file again to create a new import job.";
     public const string InvalidPageNumber = "PageNumber must be greater than or equal to 1.";
     public const string InvalidPageSize = "PageSize must be greater than or equal to 1.";
     public const string SourceTypeInvalid = "SourceType is invalid.";

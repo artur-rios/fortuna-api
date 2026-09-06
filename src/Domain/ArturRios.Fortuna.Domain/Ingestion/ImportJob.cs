@@ -171,6 +171,21 @@ public sealed class ImportJob
         Status = ImportJobStatus.Failed;
         UpdatedAt = updatedAt;
     }
+
+    public void Retry(DateTimeOffset updatedAt)
+    {
+        if (Status != ImportJobStatus.Failed)
+        {
+            throw new InvalidOperationException("Only a failed import job can be retried.");
+        }
+
+        Status = ImportJobStatus.Pending;
+        ImportedCount = 0;
+        DuplicateCount = 0;
+        RejectedCount = 0;
+        FailureReason = null;
+        UpdatedAt = updatedAt;
+    }
 }
 
 public sealed class ConnectionResource

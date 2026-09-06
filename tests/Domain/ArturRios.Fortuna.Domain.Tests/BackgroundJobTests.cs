@@ -91,6 +91,23 @@ public sealed class BackgroundJobTests
     }
 
     [UnitFact]
+    public void GivenFailedJob_WhenRetried_ThenAttemptReturnsToPending()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var job = BackgroundJob.Create("import", "{}", "request-42", null, now);
+        job.Start(now.AddMinutes(1));
+        job.Fail("temporary failure", now.AddMinutes(2));
+
+        job.Retry();
+
+        Assert.Equal(BackgroundJobState.Pending, job.State);
+        Assert.Null(job.StartedAt);
+        Assert.Null(job.CompletedAt);
+        Assert.Null(job.FailureReason);
+        Assert.Throws<InvalidOperationException>(job.Retry);
+    }
+
+    [UnitFact]
     public void GivenPendingJob_WhenSucceededWithoutStarting_ThenInvalidOperationExceptionIsThrown()
     {
         var job = BackgroundJob.Create("import", "{}", "request-42", null, DateTimeOffset.UtcNow);
