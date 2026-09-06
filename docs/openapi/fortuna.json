@@ -3245,6 +3245,16 @@
         "format": "int32",
         "type": "integer"
       },
+      "ImportJobStatus": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
       "InstallmentCommandOutput": {
         "additionalProperties": false,
         "properties": {
@@ -5343,6 +5353,76 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SynchronizeConnectionCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "periodEnd": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "periodStart": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SynchronizeConnectionCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "importJobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "periodEnd": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "periodStart": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ImportJobStatus"
+          }
+        },
+        "type": "object"
+      },
+      "SynchronizeConnectionCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SynchronizeConnectionCommandOutput"
           },
           "errors": {
             "items": {
@@ -8371,6 +8451,65 @@
         },
         "tags": [
           "Connections"
+        ]
+      }
+    },
+    "/api/connections/{id}/sync": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynchronizeConnectionCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynchronizeConnectionCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynchronizeConnectionCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SynchronizeConnectionCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SynchronizeConnectionCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SynchronizeConnectionCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "ConnectionSynchronization"
         ]
       }
     },
@@ -11964,6 +12103,9 @@
     },
     {
       "name": "Connections"
+    },
+    {
+      "name": "ConnectionSynchronization"
     },
     {
       "name": "Counterparties"

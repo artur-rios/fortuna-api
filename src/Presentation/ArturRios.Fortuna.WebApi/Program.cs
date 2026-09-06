@@ -216,6 +216,7 @@ try
     builder.Services.AddScoped<IInvestmentMovementStore, EfInvestmentMovementStore>();
     builder.Services.AddScoped<IInvestmentValuationStore, EfInvestmentValuationStore>();
     builder.Services.AddScoped<IConnectionStore, EfConnectionStore>();
+    builder.Services.AddScoped<IPluggySynchronizationStore, EfPluggySynchronizationStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
@@ -226,6 +227,7 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddScoped<BackgroundJobProcessor>();
     builder.Services.AddScoped<IBackgroundJobHandler, RecurringMaterializationJobHandler>();
+    builder.Services.AddScoped<IBackgroundJobHandler, PluggySynchronizationJobHandler>();
     builder.Services.AddHostedService<DatabaseInitializationHostedService>();
     builder.Services.AddHostedService<BackgroundJobHostedService>();
     builder.Services.AddHostedService<ExchangeRateSyncHostedService>();
@@ -378,6 +380,10 @@ try
         CreateConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateConnectionCommand,
         CreateConnectionCommandOutput, CreateConnectionCommandHandler>();
+    builder.Services.AddScoped<IValidator<SynchronizeConnectionCommand>,
+        SynchronizeConnectionCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<SynchronizeConnectionCommand,
+        SynchronizeConnectionCommandOutput, SynchronizeConnectionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
@@ -535,6 +541,8 @@ try
         !options.LocalAuthEnabled));
     builder.Services.AddSingleton<IIngestionSource, PluggyIngestionSource>();
     builder.Services.AddHttpClient<IPluggyConnectionGateway, PluggyConnectionGateway>(client =>
+        client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/"));
+    builder.Services.AddHttpClient<IPluggySynchronizationGateway, PluggySynchronizationGateway>(client =>
         client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/"));
     builder.Services.AddSingleton<IIngestionSource, ExcelWorkbookIngestionSource>();
     builder.Services.AddSingleton<IIngestionSource, NubankInvoiceIngestionSource>();

@@ -62,4 +62,33 @@ public sealed class Connection
     public ConnectionStatus Status { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
+
+    public void MarkRequiresReauthentication(DateTimeOffset updatedAt)
+    {
+        if (Status == ConnectionStatus.Revoked)
+        {
+            throw new InvalidOperationException("A revoked connection cannot be reauthenticated.");
+        }
+
+        Status = ConnectionStatus.RequiresReauthentication;
+        UpdatedAt = updatedAt;
+    }
+
+    public void RefreshAccessToken(byte[] accessTokenCipher, DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(accessTokenCipher);
+        if (accessTokenCipher.Length == 0)
+        {
+            throw new ArgumentException("An encrypted access token is required.", nameof(accessTokenCipher));
+        }
+
+        if (Status == ConnectionStatus.Revoked)
+        {
+            throw new InvalidOperationException("A revoked connection cannot be reauthenticated.");
+        }
+
+        AccessTokenCipher = accessTokenCipher.ToArray();
+        Status = ConnectionStatus.Active;
+        UpdatedAt = updatedAt;
+    }
 }

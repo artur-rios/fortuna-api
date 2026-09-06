@@ -88,6 +88,41 @@ public sealed class ImportJobTests
             new DateOnly(2026, 9, 4)));
     }
 
+    [UnitFact]
+    public void GivenConnectedImport_WhenCompleted_ThenOutcomeCountsAreRecorded()
+    {
+        var user = User();
+        var connection = new Connection(
+            user, TransactionSourceType.Pluggy, "item-1", [1, 2, 3], Now);
+        var job = new ImportJob(
+            user,
+            connection,
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 31),
+            Now);
+
+        job.Start(Now.AddMinutes(1));
+        job.Complete(4, 2, 1, Now.AddMinutes(2));
+
+        Assert.Equal(connection, job.Connection);
+        Assert.Equal(ImportJobStatus.Completed, job.Status);
+        Assert.Equal(4, job.ImportedCount);
+        Assert.Equal(2, job.DuplicateCount);
+        Assert.Equal(1, job.RejectedCount);
+    }
+
+    [UnitFact]
+    public void GivenReauthenticationFailure_WhenConnectionMarked_ThenStatusChanges()
+    {
+        var connection = new Connection(
+            User(), TransactionSourceType.Pluggy, "item-1", [1, 2, 3], Now);
+
+        connection.MarkRequiresReauthentication(Now.AddMinutes(1));
+
+        Assert.Equal(ConnectionStatus.RequiresReauthentication, connection.Status);
+        Assert.Equal(Now.AddMinutes(1), connection.UpdatedAt);
+    }
+
     private static UserProfile User() => new(
         Guid.NewGuid(),
         "Owner",

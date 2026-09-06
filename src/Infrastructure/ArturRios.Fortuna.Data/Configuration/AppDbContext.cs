@@ -47,6 +47,7 @@ public sealed class AppDbContext(
     public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
     public DbSet<ImportedRecord> ImportedRecords => Set<ImportedRecord>();
     public DbSet<Connection> Connections => Set<Connection>();
+    public DbSet<ConnectionResource> ConnectionResources => Set<ConnectionResource>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
