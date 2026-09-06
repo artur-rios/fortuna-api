@@ -2846,6 +2846,100 @@
         },
         "type": "object"
       },
+      "GoalProgressDetailOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "asOf": {
+            "format": "date",
+            "type": "string"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "currentAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "daysRemaining": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "goalId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "isPastDue": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "isReached": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "proportionReached": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "resources": {
+            "items": {
+              "$ref": "#/components/schemas/GoalResourceProgressOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "shortfall": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "targetAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "targetDate": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GoalProgressDetailOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GoalProgressDetailOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "GoalProgressOutput": {
         "additionalProperties": false,
         "properties": {
@@ -2901,6 +2995,69 @@
           }
         },
         "type": "object"
+      },
+      "GoalResourceProgressOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "convertedAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "exclusionReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isIncluded": {
+            "type": "boolean"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "rateSource": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          },
+          "resourceType": {
+            "$ref": "#/components/schemas/GoalResourceType"
+          },
+          "sourceAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "sourceCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "unconvertedReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "GoalResourceType": {
+        "enum": [
+          1,
+          2
+        ],
+        "format": "int32",
+        "type": "integer"
       },
       "InstallmentCommandOutput": {
         "additionalProperties": false,
@@ -9129,6 +9286,46 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Goals"
+        ]
+      }
+    },
+    "/api/goals/{id}/progress": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalProgressDetailOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalProgressDetailOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalProgressDetailOutputDataOutput"
                 }
               }
             },

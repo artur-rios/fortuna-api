@@ -78,6 +78,87 @@ public sealed class GoalQueryHandlerTests
         Assert.Contains(GoalMessages.ProfileNotFound, result.Errors);
     }
 
+    [UnitFact]
+    public async Task GivenGoal_WhenProgressRequested_ThenDetailedFiguresAreReturned()
+    {
+        var profile = Profile();
+        var progress = Progress();
+        var store = new StubProgressReader(new GoalProgressResult(
+            progress, GoalProgressOutcome.Succeeded));
+        var handler = new GetGoalProgressQueryHandler(
+            Actor(profile), new StubProfileReader(profile), store, new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(new GetGoalProgressQuery
+        {
+            Id = progress.GoalId
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal(250m, result.Data?.CurrentAmount);
+        Assert.Equal(117, result.Data?.DaysRemaining);
+        Assert.Equal("Savings", result.Data?.Resources.Single().Name);
+        Assert.Equal(profile.Id, store.UserId);
+        Assert.Equal(new DateOnly(2026, 9, 6), store.AsOf);
+        Assert.Contains(GoalMessages.ProgressRetrievedSuccessfully, result.Messages);
+    }
+
+    [UnitFact]
+    public async Task GivenMissingGoal_WhenProgressRequested_ThenNotFoundIsReturned()
+    {
+        var profile = Profile();
+        var handler = new GetGoalProgressQueryHandler(
+            Actor(profile),
+            new StubProfileReader(profile),
+            new StubProgressReader(new GoalProgressResult(null, GoalProgressOutcome.NotFound)),
+            new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(new GetGoalProgressQuery { Id = Guid.NewGuid() });
+
+        Assert.False(result.Success);
+        Assert.Contains(GoalMessages.NotFound, result.Errors);
+    }
+
+    [UnitFact]
+    public async Task GivenUnavailableRate_WhenProgressRequested_ThenPartialMessageIsReturned()
+    {
+        var profile = Profile();
+        var progress = Progress() with
+        {
+            CurrentAmount = null,
+            Shortfall = null,
+            ProportionReached = null,
+            IsReached = null,
+            IsPastDue = null,
+            IsFullyConverted = false
+        };
+        var handler = new GetGoalProgressQueryHandler(
+            Actor(profile),
+            new StubProfileReader(profile),
+            new StubProgressReader(new GoalProgressResult(
+                progress, GoalProgressOutcome.Succeeded)),
+            new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(new GetGoalProgressQuery());
+
+        Assert.True(result.Success);
+        Assert.Contains(FigureConversionMessages.PartiallyConverted, result.Messages);
+    }
+
+    [UnitFact]
+    public async Task GivenMissingProfile_WhenProgressRequested_ThenStoreIsNotCalled()
+    {
+        var store = new StubProgressReader(new GoalProgressResult(
+            Progress(), GoalProgressOutcome.Succeeded));
+        var handler = new GetGoalProgressQueryHandler(
+            Actor(null), new StubProfileReader(null), store, new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(new GetGoalProgressQuery());
+
+        Assert.False(result.Success);
+        Assert.Null(store.UserId);
+        Assert.Contains(GoalMessages.ProfileNotFound, result.Errors);
+    }
+
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));
 
@@ -89,6 +170,33 @@ public sealed class GoalQueryHandlerTests
         [new GoalResourceSnapshot(Guid.NewGuid(), "Savings")], [],
         new GoalProgressSnapshot(250m, 250m, 0.5m, false, true),
         false, Now, Now);
+
+    private static GoalProgressDetailSnapshot Progress() => new(
+        Guid.NewGuid(),
+        500m,
+        "BRL",
+        new DateOnly(2027, 1, 1),
+        new DateOnly(2026, 9, 6),
+        250m,
+        250m,
+        0.5m,
+        false,
+        117,
+        false,
+        true,
+        [new GoalResourceProgressSnapshot(
+            Guid.NewGuid(),
+            "Savings",
+            GoalResourceType.Account,
+            "BRL",
+            250m,
+            250m,
+            null,
+            null,
+            null,
+            true,
+            null,
+            null)]);
 
     private sealed class StubGoalReader(
         IReadOnlyCollection<GoalSnapshot> goals,
@@ -118,6 +226,23 @@ public sealed class GoalQueryHandlerTests
             IncludeDeleted = includeDeleted;
             AsOf = asOf;
             return Task.FromResult(goal);
+        }
+    }
+
+    private sealed class StubProgressReader(GoalProgressResult result) : IGoalProgressReader
+    {
+        public Guid? UserId { get; private set; }
+        public DateOnly? AsOf { get; private set; }
+
+        public Task<GoalProgressResult> GetProgressAsync(
+            Guid userId,
+            Guid id,
+            DateOnly asOf,
+            CancellationToken cancellationToken)
+        {
+            UserId = userId;
+            AsOf = asOf;
+            return Task.FromResult(result);
         }
     }
 

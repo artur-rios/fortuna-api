@@ -63,6 +63,69 @@ public sealed class GetGoalByIdQueryHandler(
     }
 }
 
+public sealed class GetGoalProgressQueryHandler(
+    IRequestActorAccessor actorAccessor,
+    IUserProfileReader profiles,
+    IGoalProgressReader goals,
+    TimeProvider timeProvider) : IQueryHandlerAsync<GetGoalProgressQuery, GoalProgressDetailOutput>
+{
+    public async Task<DataOutput<GoalProgressDetailOutput?>> HandleAsync(
+        GetGoalProgressQuery query)
+    {
+        var output = DataOutput<GoalProgressDetailOutput?>.New;
+        var profile = await GoalQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        if (profile is null)
+        {
+            return output.WithError(GoalMessages.ProfileNotFound);
+        }
+
+        var result = await goals.GetProgressAsync(
+            profile.Id,
+            query.Id,
+            DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
+            CancellationToken.None);
+        if (result.Outcome == GoalProgressOutcome.NotFound)
+        {
+            return output.WithError(GoalMessages.NotFound);
+        }
+
+        var progress = result.Progress!;
+        var response = output.WithData(new GoalProgressDetailOutput
+        {
+            GoalId = progress.GoalId,
+            TargetAmount = progress.TargetAmount,
+            CurrencyCode = progress.CurrencyCode,
+            TargetDate = progress.TargetDate,
+            AsOf = progress.AsOf,
+            CurrentAmount = progress.CurrentAmount,
+            Shortfall = progress.Shortfall,
+            ProportionReached = progress.ProportionReached,
+            IsReached = progress.IsReached,
+            DaysRemaining = progress.DaysRemaining,
+            IsPastDue = progress.IsPastDue,
+            IsFullyConverted = progress.IsFullyConverted,
+            Resources = progress.Resources.Select(item => new GoalResourceProgressOutput
+            {
+                Id = item.Id,
+                Name = item.Name,
+                ResourceType = item.ResourceType,
+                SourceCurrencyCode = item.SourceCurrencyCode,
+                SourceAmount = item.SourceAmount,
+                ConvertedAmount = item.ConvertedAmount,
+                AppliedRate = item.AppliedRate,
+                RateDate = item.RateDate,
+                RateSource = item.RateSource,
+                IsIncluded = item.IsIncluded,
+                ExclusionReason = item.ExclusionReason,
+                UnconvertedReason = item.UnconvertedReason
+            }).ToArray()
+        }).WithMessage(GoalMessages.ProgressRetrievedSuccessfully);
+        return progress.IsFullyConverted
+            ? response
+            : response.WithMessage(FigureConversionMessages.PartiallyConverted);
+    }
+}
+
 internal static class GoalQueryHandler
 {
     public static async Task<UserProfileSnapshot?> ResolveProfileAsync(

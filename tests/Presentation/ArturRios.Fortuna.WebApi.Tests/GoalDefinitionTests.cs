@@ -4,9 +4,11 @@ using System.Net.Http.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Jwt;
 using ArturRios.Util.Test.Attributes;
@@ -145,13 +147,143 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
 
         var foreignGet = await other.GetAsync($"/api/goals/{goal.Id}");
         var foreignDelete = await other.DeleteAsync($"/api/goals/{goal.Id}");
+        var foreignProgress = await other.GetAsync($"/api/goals/{goal.Id}/progress");
         var unauthorized = await anonymous.GetAsync("/api/goals");
+        var unauthorizedProgress = await anonymous.GetAsync($"/api/goals/{goal.Id}/progress");
         var forbidden = await administrator.GetAsync("/api/goals");
+        var forbiddenProgress = await administrator.GetAsync($"/api/goals/{goal.Id}/progress");
 
         Assert.Equal(HttpStatusCode.NotFound, foreignGet.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, foreignDelete.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, foreignProgress.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorizedProgress.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, forbiddenProgress.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAccountsAndInvestment_WhenProgressRequested_ThenFiguresAndRatesReturn()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var brlAccount = await CreateAccountAsync(client, 100m);
+        var usdAccount = await CreateAccountAsync(client, 20m, "USD");
+        var investment = await CreateInvestmentAsync(client);
+        var valuation = await client.PostAsJsonAsync(
+            $"/api/investments/{investment}/valuations",
+            new { Value = 300m, ValuedOn = new DateOnly(2026, 9, 5) });
+        valuation.EnsureSuccessStatusCode();
+        await SeedRateAsync("USD", "BRL", 5m, new DateOnly(2026, 9, 5));
+        var create = await CreateGoalAsync(
+            client, 1_000m, [brlAccount, usdAccount], [investment]);
+        var goal = (await create.Content.ReadFromJsonAsync<GoalEnvelope>())!.Data!;
+
+        var response = await client.GetAsync($"/api/goals/{goal.Id}/progress");
+        var progress = (await response.Content
+            .ReadFromJsonAsync<GoalProgressEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(500m, progress.CurrentAmount);
+        Assert.Equal(500m, progress.Shortfall);
+        Assert.Equal(0.5m, progress.ProportionReached);
+        Assert.Equal(117, progress.DaysRemaining);
+        Assert.False(progress.IsPastDue);
+        Assert.True(progress.IsFullyConverted);
+        Assert.Equal(3, progress.Resources.Count);
+        var converted = Assert.Single(progress.Resources, item =>
+            item.SourceCurrencyCode == "USD");
+        Assert.Equal(20m, converted.SourceAmount);
+        Assert.Equal(100m, converted.ConvertedAmount);
+        Assert.Equal(5m, converted.AppliedRate);
+        Assert.Equal(new DateOnly(2026, 9, 5), converted.RateDate);
+        Assert.Equal(ExchangeRateSource.Manual, converted.RateSource);
+    }
+
+    [FunctionalFact]
+    public async Task GivenReachedAndNegativeGoals_WhenProgressRequested_ThenProportionsAreBounded()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var positive = await CreateAccountAsync(client, 600m);
+        var negative = await CreateAccountAsync(client, -50m);
+        var reachedGoal = await GoalFromResponseAsync(
+            await CreateGoalAsync(client, 500m, [positive], []));
+        var negativeGoal = await GoalFromResponseAsync(
+            await CreateGoalAsync(client, 500m, [negative], []));
+
+        var reached = await GetProgressAsync(client, reachedGoal.Id);
+        var belowZero = await GetProgressAsync(client, negativeGoal.Id);
+
+        Assert.Equal(600m, reached.CurrentAmount);
+        Assert.Equal(1.2m, reached.ProportionReached);
+        Assert.True(reached.IsReached);
+        Assert.Equal(0m, reached.Shortfall);
+        Assert.Equal(-50m, belowZero.CurrentAmount);
+        Assert.Equal(0m, belowZero.ProportionReached);
+        Assert.False(belowZero.IsReached);
+        Assert.Equal(550m, belowZero.Shortfall);
+    }
+
+    [FunctionalFact]
+    public async Task GivenElapsedTargetAndDeletedAccount_WhenProgressRequested_ThenBothAreReported()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, 100m);
+        var elapsedGoal = await GoalFromResponseAsync(
+            await CreateGoalAsync(client, 500m, [account], []));
+        var excludedAccount = await CreateAccountAsync(client, 200m);
+        var excludedGoal = await GoalFromResponseAsync(
+            await CreateGoalAsync(client, 500m, [excludedAccount], []));
+        (await client.DeleteAsync($"/api/accounts/{excludedAccount}"))
+            .EnsureSuccessStatusCode();
+
+        var excluded = await GetProgressAsync(client, excludedGoal.Id);
+        await using var laterFactory = CreateFactory(
+            new DateTimeOffset(2027, 2, 1, 3, 0, 0, TimeSpan.Zero));
+        using var later = laterFactory.CreateClient();
+        Authorize(later, subject, HeimdallRoles.User);
+        var elapsed = await GetProgressAsync(later, elapsedGoal.Id);
+
+        Assert.Equal(0m, excluded.CurrentAmount);
+        var excludedResource = Assert.Single(excluded.Resources);
+        Assert.False(excludedResource.IsIncluded);
+        Assert.Null(excludedResource.SourceAmount);
+        Assert.Equal(GoalMessages.ResourceDeleted, excludedResource.ExclusionReason);
+        Assert.Equal(new DateOnly(2027, 1, 1), elapsed.TargetDate);
+        Assert.Equal(-31, elapsed.DaysRemaining);
+        Assert.True(elapsed.IsPastDue);
+        Assert.Equal(400m, elapsed.Shortfall);
+    }
+
+    [FunctionalFact]
+    public async Task GivenUnavailableRate_WhenProgressRequested_ThenPartialResultExplainsIt()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, 20m, "CHF");
+        var goal = await GoalFromResponseAsync(
+            await CreateGoalAsync(client, 500m, [account], []));
+
+        var response = await client.GetAsync($"/api/goals/{goal.Id}/progress");
+        var progress = (await response.Content
+            .ReadFromJsonAsync<GoalProgressEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(progress.IsFullyConverted);
+        Assert.Null(progress.CurrentAmount);
+        Assert.Null(progress.ProportionReached);
+        Assert.Null(progress.IsReached);
+        Assert.Equal(FigureConversionMessages.RateUnavailable,
+            Assert.Single(progress.Resources).UnconvertedReason);
+        Assert.Contains(FigureConversionMessages.PartiallyConverted,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     public async Task InitializeAsync()
@@ -164,7 +296,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await database.DisposeAsync();
 
-    private WebApplicationFactory<Program> CreateFactory()
+    private WebApplicationFactory<Program> CreateFactory(DateTimeOffset? now = null)
     {
         foreach (var setting in ValidSettings())
         {
@@ -180,7 +312,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
                 services.RemoveAll<AppDbContext>();
                 services.RemoveAll<DbContextOptions<AppDbContext>>();
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(Now));
+                services.AddSingleton<TimeProvider>(new FixedTimeProvider(now ?? Now));
                 services.AddDbContext<AppDbContext>(options =>
                     options.UseNpgsql(database.GetConnectionString()));
             });
@@ -213,13 +345,16 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
             InvestmentIds = investmentIds
         });
 
-    private static async Task<Guid> CreateAccountAsync(HttpClient client, decimal openingBalance)
+    private static async Task<Guid> CreateAccountAsync(
+        HttpClient client,
+        decimal openingBalance,
+        string currencyCode = "BRL")
     {
         var response = await client.PostAsJsonAsync("/api/accounts", new
         {
             Name = $"Account {Guid.NewGuid():N}",
             AccountType = FinancialAccountType.Savings,
-            CurrencyCode = "BRL",
+            CurrencyCode = currencyCode,
             OpeningBalance = openingBalance
         });
         response.EnsureSuccessStatusCode();
@@ -236,6 +371,37 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
         });
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
+    }
+
+    private async Task SeedRateAsync(
+        string baseCode,
+        string quoteCode,
+        decimal rate,
+        DateOnly rateDate)
+    {
+        await using var context = CreateContext();
+        var baseCurrency = await context.Currencies.SingleAsync(item => item.Code == baseCode);
+        var quoteCurrency = await context.Currencies.SingleAsync(item => item.Code == quoteCode);
+        context.ExchangeRates.Add(new ExchangeRate(
+            baseCurrency.Id,
+            quoteCurrency.Id,
+            rate,
+            rateDate,
+            ExchangeRateSource.Manual));
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task<GoalData> GoalFromResponseAsync(HttpResponseMessage response)
+    {
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<GoalEnvelope>())!.Data!;
+    }
+
+    private static async Task<GoalProgressData> GetProgressAsync(HttpClient client, Guid goalId)
+    {
+        var response = await client.GetAsync($"/api/goals/{goalId}/progress");
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<GoalProgressEnvelope>())!.Data!;
     }
 
     private static void Authorize(HttpClient client, Guid subject, HeimdallRoles role)
@@ -272,6 +438,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
     private sealed record IdEnvelope(IdData? Data);
     private sealed record IdData(Guid Id);
     private sealed record GoalEnvelope(GoalData? Data);
+    private sealed record GoalProgressEnvelope(GoalProgressData? Data);
     private sealed record GoalListEnvelope(GoalListData? Data);
     private sealed record GoalListData(IReadOnlyList<GoalData> Goals);
     private sealed record GoalData(
@@ -282,15 +449,42 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
         DateOnly TargetDate,
         IReadOnlyList<GoalResourceData> Accounts,
         IReadOnlyList<GoalResourceData> Investments,
-        GoalProgressData CurrentProgress,
+        GoalCurrentProgressData CurrentProgress,
         bool IsDeleted);
     private sealed record GoalResourceData(Guid Id, string Name);
-    private sealed record GoalProgressData(
+    private sealed record GoalCurrentProgressData(
         decimal? CurrentAmount,
         decimal? Remaining,
         decimal? ProportionReached,
         bool? IsReached,
         bool IsFullyConverted);
+    private sealed record GoalProgressData(
+        Guid GoalId,
+        decimal TargetAmount,
+        string CurrencyCode,
+        DateOnly TargetDate,
+        DateOnly AsOf,
+        decimal? CurrentAmount,
+        decimal? Shortfall,
+        decimal? ProportionReached,
+        bool? IsReached,
+        int DaysRemaining,
+        bool? IsPastDue,
+        bool IsFullyConverted,
+        IReadOnlyList<GoalResourceProgressData> Resources);
+    private sealed record GoalResourceProgressData(
+        Guid Id,
+        string Name,
+        GoalResourceType ResourceType,
+        string SourceCurrencyCode,
+        decimal? SourceAmount,
+        decimal? ConvertedAmount,
+        decimal? AppliedRate,
+        DateOnly? RateDate,
+        ExchangeRateSource? RateSource,
+        bool IsIncluded,
+        string? ExclusionReason,
+        string? UnconvertedReason);
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {

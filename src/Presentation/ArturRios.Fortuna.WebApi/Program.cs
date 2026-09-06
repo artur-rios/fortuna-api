@@ -171,6 +171,8 @@ try
         provider.GetRequiredService<EfGoalStore>());
     builder.Services.AddScoped<IGoalLifecycleStore>(provider =>
         provider.GetRequiredService<EfGoalStore>());
+    builder.Services.AddScoped<IGoalProgressReader>(provider =>
+        provider.GetRequiredService<EfGoalStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -451,6 +453,8 @@ try
         ListGoalsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetGoalByIdQuery, GoalOutput>,
         GetGoalByIdQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetGoalProgressQuery,
+        GoalProgressDetailOutput>, GetGoalProgressQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,
