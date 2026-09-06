@@ -1,6 +1,8 @@
+using ArturRios.Fortuna.Shared.Ingestion;
+
 namespace ArturRios.Fortuna.Integration.Ingestion;
 
-public sealed class IngestionSourceRegistry
+public sealed class IngestionSourceRegistry : IDataSourceCatalog
 {
     private readonly IReadOnlyDictionary<string, IIngestionSource> sources;
 
@@ -19,6 +21,12 @@ public sealed class IngestionSourceRegistry
     }
 
     public IReadOnlyCollection<IIngestionSource> All => sources.Values.ToArray();
+
+    public IReadOnlyCollection<DataSourceSnapshot> List() => sources.Values
+        .Select(source => source.Describe())
+        .OrderBy(source => source.DisplayName)
+        .ThenBy(source => source.Name)
+        .ToArray();
 
     public IIngestionSource Get(string name) => sources.TryGetValue(name, out var source)
         ? source

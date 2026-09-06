@@ -26,6 +26,9 @@ public sealed record FortunaOptions
     public required string Locale { get; init; }
     public bool LocalAuthEnabled { get; init; }
     public int LocalAuthRecoveryCodeCount { get; init; }
+    public string? PluggyClientId { get; init; }
+    public string? PluggyClientSecret { get; init; }
+    public Uri? PluggyBaseUri { get; init; }
     public Uri? RatesSourceBaseUri { get; init; }
     public string? RatesSyncCron { get; init; }
     public IReadOnlyCollection<string> RatesCurrencies { get; init; } = [];
@@ -68,6 +71,11 @@ public sealed record FortunaOptions
                 read("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"),
                 "FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT",
                 10),
+            PluggyClientId = read("FORTUNA_PLUGGY_CLIENT_ID"),
+            PluggyClientSecret = read("FORTUNA_PLUGGY_CLIENT_SECRET"),
+            PluggyBaseUri = OptionalAbsoluteUri(
+                read("FORTUNA_PLUGGY_BASE_URL"),
+                "FORTUNA_PLUGGY_BASE_URL"),
             RatesSourceBaseUri = OptionalAbsoluteUri(
                 read("FORTUNA_RATES_SOURCE_BASE_URL"),
                 "FORTUNA_RATES_SOURCE_BASE_URL"),
