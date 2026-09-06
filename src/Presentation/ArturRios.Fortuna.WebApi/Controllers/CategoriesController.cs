@@ -25,6 +25,9 @@ public sealed class CategoriesController(
             [CategoryMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [CategoryMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
             [CategoryMessages.TransactionsReassignedSuccessfully] = StatusCodes.Status200OK,
+            [CategoryMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
+            [CategoryMessages.RestoredSuccessfully] = StatusCodes.Status200OK,
+            [CategoryMessages.HardDeletedSuccessfully] = StatusCodes.Status200OK,
             [CategoryMessages.NotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.ParentNotFound] = StatusCodes.Status404NotFound,
@@ -34,7 +37,10 @@ public sealed class CategoriesController(
             [CategoryMessages.NameTooLong] = StatusCodes.Status400BadRequest,
             [CategoryMessages.ParentIdInvalid] = StatusCodes.Status400BadRequest,
             [CategoryMessages.TargetCategoryIdInvalid] = StatusCodes.Status400BadRequest,
-            [CategoryMessages.SourceAndTargetMustDiffer] = StatusCodes.Status400BadRequest
+            [CategoryMessages.SourceAndTargetMustDiffer] = StatusCodes.Status400BadRequest,
+            [CategoryMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
+            [CategoryMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
+            [CategoryMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict
         };
 
     [HttpPost]
@@ -73,6 +79,39 @@ public sealed class CategoriesController(
         var result = await commandMediator.ExecuteCommandAsync<
             ReassignCategoryTransactionsCommand,
             ReassignCategoryTransactionsCommandOutput>(command);
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<CategoryLifecycleCommandOutput?>>> Delete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            DeleteCategoryCommand,
+            CategoryLifecycleCommandOutput>(new DeleteCategoryCommand { Id = id });
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/restore")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<CategoryLifecycleCommandOutput?>>> Restore(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            RestoreCategoryCommand,
+            CategoryLifecycleCommandOutput>(new RestoreCategoryCommand { Id = id });
+
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("{id:guid}/hard")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<CategoryLifecycleCommandOutput?>>> HardDelete(Guid id)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            HardDeleteCategoryCommand,
+            CategoryLifecycleCommandOutput>(new HardDeleteCategoryCommand { Id = id });
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
