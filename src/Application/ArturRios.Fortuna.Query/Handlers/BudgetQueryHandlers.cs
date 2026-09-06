@@ -66,6 +66,53 @@ public sealed class GetBudgetByIdQueryHandler(
     }
 }
 
+public sealed class GetBudgetConsumptionQueryHandler(
+    IRequestActorAccessor actorAccessor,
+    IUserProfileReader profiles,
+    IBudgetConsumptionReader budgets,
+    TimeProvider timeProvider)
+    : IQueryHandlerAsync<GetBudgetConsumptionQuery, BudgetConsumptionDetailOutput>
+{
+    public async Task<DataOutput<BudgetConsumptionDetailOutput?>> HandleAsync(
+        GetBudgetConsumptionQuery query)
+    {
+        var output = DataOutput<BudgetConsumptionDetailOutput?>.New;
+        var profile = await BudgetQueryHandler.ResolveProfileAsync(
+            actorAccessor.Actor,
+            profiles);
+        if (profile is null)
+        {
+            return output.WithError(BudgetMessages.ProfileNotFound);
+        }
+
+        var periodDate = query.PeriodStart ??
+            DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+        var result = await budgets.GetConsumptionAsync(
+            profile.Id,
+            query.Id,
+            periodDate,
+            CancellationToken.None);
+        if (result.Outcome == BudgetConsumptionOutcome.NotFound)
+        {
+            return output.WithError(BudgetMessages.NotFound);
+        }
+
+        var consumption = result.Consumption!;
+        var response = output
+            .WithData(BudgetQueryHandler.ToOutput(
+                consumption,
+                result.Outcome == BudgetConsumptionOutcome.PeriodPrecedesBudget
+                    ? BudgetMessages.PeriodPrecedesBudget
+                    : null))
+            .WithMessage(result.Outcome == BudgetConsumptionOutcome.PeriodPrecedesBudget
+                ? BudgetMessages.PeriodPrecedesBudget
+                : BudgetMessages.ConsumptionRetrievedSuccessfully);
+        return consumption.IsFullyConverted
+            ? response
+            : response.WithMessage(FigureConversionMessages.PartiallyConverted);
+    }
+}
+
 internal static class BudgetQueryHandler
 {
     public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
@@ -103,4 +150,33 @@ internal static class BudgetQueryHandler
         CreatedAt = budget.CreatedAt,
         UpdatedAt = budget.UpdatedAt
     };
+
+    public static BudgetConsumptionDetailOutput ToOutput(
+        BudgetConsumptionDetailSnapshot consumption,
+        string? reason) => new()
+        {
+            BudgetId = consumption.BudgetId,
+            BudgetAmount = consumption.BudgetAmount,
+            CurrencyCode = consumption.CurrencyCode,
+            RequestedDate = consumption.RequestedDate,
+            PeriodStart = consumption.PeriodStart,
+            PeriodEnd = consumption.PeriodEnd,
+            Spent = consumption.Spent,
+            Remaining = consumption.Remaining,
+            IsExceeded = consumption.IsExceeded,
+            Overage = consumption.Overage,
+            IsCovered = consumption.IsCovered,
+            IsFullyConverted = consumption.IsFullyConverted,
+            Reason = reason,
+            Conversions = consumption.Conversions.Select(item => new BudgetConversionOutput
+            {
+                SourceCurrencyCode = item.SourceCurrencyCode,
+                SourceAmount = item.SourceAmount,
+                ConvertedAmount = item.ConvertedAmount,
+                AppliedRate = item.AppliedRate,
+                RateDate = item.RateDate,
+                RateSource = item.RateSource,
+                UnconvertedReason = item.UnconvertedReason
+            }).ToArray()
+        };
 }

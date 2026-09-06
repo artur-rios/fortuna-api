@@ -298,6 +298,105 @@
         },
         "type": "object"
       },
+      "BudgetConsumptionDetailOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "budgetAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "budgetId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "conversions": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetConversionOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isCovered": {
+            "type": "boolean"
+          },
+          "isExceeded": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "overage": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "periodEnd": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "periodStart": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "remaining": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "requestedDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "spent": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "BudgetConsumptionDetailOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BudgetConsumptionDetailOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "BudgetConsumptionOutput": {
         "additionalProperties": false,
         "properties": {
@@ -330,6 +429,42 @@
             "format": "double",
             "nullable": true,
             "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "BudgetConversionOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "convertedAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "rateSource": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          },
+          "sourceAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "sourceCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "unconvertedReason": {
+            "nullable": true,
+            "type": "string"
           }
         },
         "type": "object"
@@ -7032,6 +7167,54 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Budgets"
+        ]
+      }
+    },
+    "/api/budgets/{id}/consumption": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periodStart",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetConsumptionDetailOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetConsumptionDetailOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetConsumptionDetailOutputDataOutput"
                 }
               }
             },

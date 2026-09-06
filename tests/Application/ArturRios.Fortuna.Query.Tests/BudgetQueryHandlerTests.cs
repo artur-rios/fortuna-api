@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
@@ -99,6 +100,112 @@ public sealed class BudgetQueryHandlerTests
         Assert.Contains(BudgetMessages.ProfileNotFound, result.Errors);
     }
 
+    [UnitFact]
+    public async Task GivenBudgetPeriod_WhenConsumptionRequested_ThenConversionIsReturned()
+    {
+        var profile = Profile();
+        var consumption = Consumption();
+        var store = new StubBudgetReader([])
+        {
+            ConsumptionResult = new BudgetConsumptionResult(
+                consumption,
+                BudgetConsumptionOutcome.Succeeded)
+        };
+        var handler = new GetBudgetConsumptionQueryHandler(
+            Actor(profile),
+            new StubProfileReader(profile),
+            store,
+            new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
+        {
+            Id = consumption.BudgetId,
+            PeriodStart = new DateOnly(2026, 8, 1)
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal(250m, result.Data?.Spent);
+        var conversion = Assert.Single(result.Data!.Conversions);
+        Assert.Equal(5m, conversion.AppliedRate);
+        Assert.Equal(ExchangeRateSource.Manual, conversion.RateSource);
+        Assert.Equal(new DateOnly(2026, 8, 1), store.AsOf);
+        Assert.Contains(BudgetMessages.ConsumptionRetrievedSuccessfully, result.Messages);
+    }
+
+    [UnitFact]
+    public async Task GivenDateBeforeBudget_WhenConsumptionRequested_ThenEmptyReasonIsReturned()
+    {
+        var profile = Profile();
+        var consumption = Consumption(isCovered: false);
+        var store = new StubBudgetReader([])
+        {
+            ConsumptionResult = new BudgetConsumptionResult(
+                consumption,
+                BudgetConsumptionOutcome.PeriodPrecedesBudget)
+        };
+        var handler = new GetBudgetConsumptionQueryHandler(
+            Actor(profile),
+            new StubProfileReader(profile),
+            store,
+            new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
+        {
+            Id = consumption.BudgetId
+        });
+
+        Assert.True(result.Success);
+        Assert.False(result.Data?.IsCovered);
+        Assert.Equal(BudgetMessages.PeriodPrecedesBudget, result.Data?.Reason);
+        Assert.Equal(new DateOnly(2026, 9, 6), store.AsOf);
+        Assert.Contains(BudgetMessages.PeriodPrecedesBudget, result.Messages);
+    }
+
+    [UnitFact]
+    public async Task GivenMissingBudget_WhenConsumptionRequested_ThenNotFoundIsReturned()
+    {
+        var profile = Profile();
+        var store = new StubBudgetReader([])
+        {
+            ConsumptionResult = new BudgetConsumptionResult(
+                null,
+                BudgetConsumptionOutcome.NotFound)
+        };
+        var handler = new GetBudgetConsumptionQueryHandler(
+            Actor(profile),
+            new StubProfileReader(profile),
+            store,
+            new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
+        {
+            Id = Guid.NewGuid()
+        });
+
+        Assert.False(result.Success);
+        Assert.Contains(BudgetMessages.NotFound, result.Errors);
+    }
+
+    [UnitFact]
+    public async Task GivenMissingProfile_WhenConsumptionRequested_ThenStoreIsNotCalled()
+    {
+        var store = new StubBudgetReader([]);
+        var handler = new GetBudgetConsumptionQueryHandler(
+            Actor(null),
+            new StubProfileReader(null),
+            store,
+            new FixedTimeProvider(Now));
+
+        var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
+        {
+            Id = Guid.NewGuid()
+        });
+
+        Assert.False(result.Success);
+        Assert.Null(store.UserId);
+        Assert.Contains(BudgetMessages.ProfileNotFound, result.Errors);
+    }
+
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));
 
@@ -125,10 +232,37 @@ public sealed class BudgetQueryHandlerTests
         Now,
         Now);
 
+    private static BudgetConsumptionDetailSnapshot Consumption(bool isCovered = true) => new(
+        Guid.NewGuid(),
+        500m,
+        "BRL",
+        new DateOnly(2026, 8, 1),
+        isCovered ? new DateOnly(2026, 8, 1) : null,
+        isCovered ? new DateOnly(2026, 8, 31) : null,
+        isCovered ? 250m : null,
+        isCovered ? 250m : null,
+        isCovered ? false : null,
+        isCovered ? 0m : null,
+        isCovered,
+        true,
+        isCovered
+            ? [new BudgetConversionSnapshot(
+                "USD",
+                50m,
+                250m,
+                5m,
+                new DateOnly(2026, 8, 1),
+                ExchangeRateSource.Manual,
+                null)]
+            : []);
+
     private sealed class StubBudgetReader(
         IReadOnlyCollection<BudgetSnapshot> budgets,
-        BudgetSnapshot? budget = null) : IBudgetReader
+        BudgetSnapshot? budget = null) : IBudgetReader, IBudgetConsumptionReader
     {
+        public BudgetConsumptionResult ConsumptionResult { get; init; } = new(
+            Consumption(),
+            BudgetConsumptionOutcome.Succeeded);
         public Guid? UserId { get; private set; }
         public Guid? BudgetId { get; private set; }
         public bool IncludeDeleted { get; private set; }
@@ -158,6 +292,18 @@ public sealed class BudgetQueryHandlerTests
             IncludeDeleted = includeDeleted;
             AsOf = asOf;
             return Task.FromResult(budget);
+        }
+
+        public Task<BudgetConsumptionResult> GetConsumptionAsync(
+            Guid userId,
+            Guid id,
+            DateOnly periodDate,
+            CancellationToken cancellationToken)
+        {
+            UserId = userId;
+            BudgetId = id;
+            AsOf = periodDate;
+            return Task.FromResult(ConsumptionResult);
         }
     }
 

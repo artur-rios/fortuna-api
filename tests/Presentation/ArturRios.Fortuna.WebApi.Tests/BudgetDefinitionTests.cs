@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -169,6 +170,250 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorList.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenPastPeriods_WhenConsumptionRequested_ThenEmptyAndOverageAreReported()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var categoryId = await CreateCategoryAsync(client, "Past spending");
+        var accountId = await CreateAccountAsync(client);
+        await CreateTransactionAsync(
+            client,
+            accountId,
+            categoryId,
+            60m,
+            "August expense",
+            new DateOnly(2026, 8, 10));
+        var create = await CreateBudgetAsync(
+            client,
+            50m,
+            [categoryId],
+            periodStart: new DateOnly(2026, 7, 1));
+        var budget = (await create.Content.ReadFromJsonAsync<BudgetEnvelope>())!.Data!;
+
+        var july = await GetConsumptionAsync(client, budget.Id, new DateOnly(2026, 7, 1));
+        var august = await GetConsumptionAsync(client, budget.Id, new DateOnly(2026, 8, 1));
+
+        Assert.Equal(0m, july.Spent);
+        Assert.Equal(50m, july.Remaining);
+        Assert.False(july.IsExceeded);
+        Assert.Equal(60m, august.Spent);
+        Assert.Equal(0m, august.Remaining);
+        Assert.True(august.IsExceeded);
+        Assert.Equal(10m, august.Overage);
+    }
+
+    [FunctionalFact]
+    public async Task GivenSeveralCurrencies_WhenConsumptionRequested_ThenRatesAreReported()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var categoryId = await CreateCategoryAsync(client, "Travel");
+        var brlAccount = await CreateAccountAsync(client);
+        var usdAccount = await CreateAccountAsync(client, "USD");
+        await CreateTransactionAsync(
+            client, brlAccount, categoryId, 10m, "Local", new DateOnly(2026, 8, 10));
+        await CreateTransactionAsync(
+            client, usdAccount, categoryId, 20m, "Foreign", new DateOnly(2026, 8, 10));
+        await SeedRateAsync("USD", "BRL", 5m, new DateOnly(2026, 8, 9));
+        var create = await CreateBudgetAsync(
+            client,
+            200m,
+            [categoryId],
+            periodStart: new DateOnly(2026, 8, 1));
+        var budget = (await create.Content.ReadFromJsonAsync<BudgetEnvelope>())!.Data!;
+
+        var consumption = await GetConsumptionAsync(
+            client,
+            budget.Id,
+            new DateOnly(2026, 8, 1));
+
+        Assert.Equal(110m, consumption.Spent);
+        Assert.True(consumption.IsFullyConverted);
+        Assert.Collection(
+            consumption.Conversions.OrderBy(item => item.SourceCurrencyCode),
+            brl =>
+            {
+                Assert.Equal("BRL", brl.SourceCurrencyCode);
+                Assert.Equal(10m, brl.ConvertedAmount);
+                Assert.Null(brl.AppliedRate);
+            },
+            usd =>
+            {
+                Assert.Equal("USD", usd.SourceCurrencyCode);
+                Assert.Equal(20m, usd.SourceAmount);
+                Assert.Equal(100m, usd.ConvertedAmount);
+                Assert.Equal(5m, usd.AppliedRate);
+                Assert.Equal(new DateOnly(2026, 8, 9), usd.RateDate);
+                Assert.Equal(ExchangeRateSource.Manual, usd.RateSource);
+            });
+    }
+
+    [FunctionalFact]
+    public async Task GivenUnavailableRate_WhenConsumed_ThenPartialResultExplainsMissingRate()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var categoryId = await CreateCategoryAsync(client, "Swiss expense");
+        var accountId = await CreateAccountAsync(client, "CHF");
+        await CreateTransactionAsync(
+            client,
+            accountId,
+            categoryId,
+            20m,
+            "Unconverted",
+            new DateOnly(2026, 8, 10));
+        var create = await CreateBudgetAsync(
+            client,
+            200m,
+            [categoryId],
+            periodStart: new DateOnly(2026, 8, 1));
+        var budget = (await create.Content.ReadFromJsonAsync<BudgetEnvelope>())!.Data!;
+
+        var response = await client.GetAsync(
+            $"/api/budgets/{budget.Id}/consumption?periodStart=2026-08-01");
+        var consumption = (await response.Content
+            .ReadFromJsonAsync<BudgetConsumptionEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(consumption.IsFullyConverted);
+        Assert.Null(consumption.Spent);
+        var conversion = Assert.Single(consumption.Conversions);
+        Assert.Equal("CHF", conversion.SourceCurrencyCode);
+        Assert.Null(conversion.ConvertedAmount);
+        Assert.Equal(FigureConversionMessages.RateUnavailable, conversion.UnconvertedReason);
+        Assert.Contains(
+            FigureConversionMessages.PartiallyConverted,
+            await response.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenDateBeforeBudget_WhenConsumptionRequested_ThenReasonedEmptyResultReturns()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var categoryId = await CreateCategoryAsync(client, "Future budget");
+        var create = await CreateBudgetAsync(client, 100m, [categoryId]);
+        var budget = (await create.Content.ReadFromJsonAsync<BudgetEnvelope>())!.Data!;
+
+        var response = await client.GetAsync(
+            $"/api/budgets/{budget.Id}/consumption?periodStart=2026-08-01");
+        var consumption = (await response.Content
+            .ReadFromJsonAsync<BudgetConsumptionEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(consumption.IsCovered);
+        Assert.Null(consumption.PeriodStart);
+        Assert.Null(consumption.Spent);
+        Assert.Empty(consumption.Conversions);
+        Assert.Equal(BudgetMessages.PeriodPrecedesBudget, consumption.Reason);
+    }
+
+    [FunctionalFact]
+    public async Task GivenTransferAndDeletedExpense_WhenConsumed_ThenBothAreExcluded()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var categoryId = await CreateCategoryAsync(client, "Deleted expense");
+        var origin = await CreateAccountAsync(client);
+        var destination = await CreateAccountAsync(client);
+        var transactionId = await CreateTransactionAsync(
+            client, origin, categoryId, 25m, "Deleted", new DateOnly(2026, 9, 5));
+        (await client.DeleteAsync($"/api/transactions/{transactionId}"))
+            .EnsureSuccessStatusCode();
+        var transferResponse = await client.PostAsJsonAsync("/api/transfers", new
+        {
+            OriginFinancialAccountId = origin,
+            DestinationFinancialAccountId = destination,
+            Amount = 30m,
+            OccurredOn = new DateOnly(2026, 9, 5)
+        });
+        transferResponse.EnsureSuccessStatusCode();
+        var transferId = (await transferResponse.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
+        Guid transferCategoryId;
+        await using (var context = CreateContext())
+        {
+            transferCategoryId = await context.Transfers
+                .Where(item => item.PublicId == transferId)
+                .Select(item => item.OutboundTransaction.Category.PublicId)
+                .SingleAsync();
+        }
+
+        var create = await CreateBudgetAsync(
+            client, 100m, [categoryId, transferCategoryId]);
+        var budget = (await create.Content.ReadFromJsonAsync<BudgetEnvelope>())!.Data!;
+        var consumption = await GetConsumptionAsync(
+            client,
+            budget.Id,
+            new DateOnly(2026, 9, 1));
+
+        Assert.Equal(0m, consumption.Spent);
+        Assert.Equal(100m, consumption.Remaining);
+    }
+
+    [FunctionalFact]
+    public async Task GivenInstallmentPlan_WhenPeriodConsumed_ThenOnlyThatInstallmentCounts()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var categoryId = await CreateCategoryAsync(client, "Installments");
+        var cardId = await CreateCardAsync(client);
+        var planResponse = await client.PostAsJsonAsync("/api/installment-plans", new
+        {
+            CreditCardId = cardId,
+            CategoryId = categoryId,
+            TotalAmount = 90m,
+            InstallmentCount = 3,
+            PurchasedOn = new DateOnly(2026, 8, 6)
+        });
+        planResponse.EnsureSuccessStatusCode();
+        var create = await CreateBudgetAsync(
+            client,
+            100m,
+            [categoryId],
+            periodStart: new DateOnly(2026, 8, 1));
+        var budget = (await create.Content.ReadFromJsonAsync<BudgetEnvelope>())!.Data!;
+
+        var consumption = await GetConsumptionAsync(
+            client,
+            budget.Id,
+            new DateOnly(2026, 9, 1));
+
+        Assert.Equal(30m, consumption.Spent);
+        Assert.Equal(70m, consumption.Remaining);
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignOrUnauthorizedConsumption_WhenRequested_ThenAccessIsDenied()
+    {
+        await using var factory = CreateFactory();
+        using var owner = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        var categoryId = await CreateCategoryAsync(owner, "Private consumption");
+        var create = await CreateBudgetAsync(owner, 100m, [categoryId]);
+        var budget = (await create.Content.ReadFromJsonAsync<BudgetEnvelope>())!.Data!;
+        using var other = factory.CreateClient();
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+
+        var foreign = await other.GetAsync($"/api/budgets/{budget.Id}/consumption");
+        var unauthorized = await anonymous.GetAsync($"/api/budgets/{budget.Id}/consumption");
+        var forbidden = await administrator.GetAsync($"/api/budgets/{budget.Id}/consumption");
+
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -217,12 +462,13 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
         HttpClient client,
         decimal amount,
         IReadOnlyCollection<Guid> categoryIds,
-        bool includeDescendants = true) => client.PostAsJsonAsync("/api/budgets", new
+        bool includeDescendants = true,
+        DateOnly? periodStart = null) => client.PostAsJsonAsync("/api/budgets", new
         {
             Amount = amount,
             CurrencyCode = "BRL",
             PeriodType = BudgetPeriodType.Monthly,
-            PeriodStart = new DateOnly(2026, 9, 1),
+            PeriodStart = periodStart ?? new DateOnly(2026, 9, 1),
             CategoryIds = categoryIds,
             IncludeDescendants = includeDescendants
         });
@@ -241,29 +487,32 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
-    private static async Task<Guid> CreateAccountAsync(HttpClient client)
+    private static async Task<Guid> CreateAccountAsync(
+        HttpClient client,
+        string currencyCode = "BRL")
     {
         var response = await client.PostAsJsonAsync("/api/accounts", new
         {
             Name = $"Account {Guid.NewGuid():N}",
             AccountType = FinancialAccountType.Checking,
-            CurrencyCode = "BRL",
-            OpeningBalance = 0m
+            CurrencyCode = currencyCode,
+            OpeningBalance = 1000m
         });
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
-    private static async Task CreateTransactionAsync(
+    private static async Task<Guid> CreateTransactionAsync(
         HttpClient client,
         Guid accountId,
         Guid categoryId,
         decimal amount,
-        string description)
+        string description,
+        DateOnly? occurredOn = null)
     {
         var response = await client.PostAsJsonAsync("/api/transactions", new
         {
-            OccurredOn = new DateOnly(2026, 9, 6),
+            OccurredOn = occurredOn ?? new DateOnly(2026, 9, 6),
             Amount = amount,
             Direction = TransactionDirection.Expense,
             FinancialAccountId = accountId,
@@ -272,6 +521,53 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
             Description = description
         });
         response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
+    }
+
+    private static async Task<Guid> CreateCardAsync(HttpClient client)
+    {
+        var response = await client.PostAsJsonAsync("/api/credit-cards", new
+        {
+            Name = $"Card {Guid.NewGuid():N}",
+            Issuer = "Example Bank",
+            CurrencyCode = "BRL",
+            CreditLimit = 1000m,
+            ClosingDay = 20,
+            DueDay = 25,
+            LastFourDigits = "1234"
+        });
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
+    }
+
+    private async Task SeedRateAsync(
+        string baseCode,
+        string quoteCode,
+        decimal rate,
+        DateOnly rateDate)
+    {
+        await using var context = CreateContext();
+        var baseCurrency = await context.Currencies.SingleAsync(item => item.Code == baseCode);
+        var quoteCurrency = await context.Currencies.SingleAsync(item => item.Code == quoteCode);
+        context.ExchangeRates.Add(new ExchangeRate(
+            baseCurrency.Id,
+            quoteCurrency.Id,
+            rate,
+            rateDate,
+            ExchangeRateSource.Manual));
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task<BudgetConsumptionDetailData> GetConsumptionAsync(
+        HttpClient client,
+        Guid budgetId,
+        DateOnly periodStart)
+    {
+        var response = await client.GetAsync(
+            $"/api/budgets/{budgetId}/consumption?periodStart={periodStart:yyyy-MM-dd}");
+        response.EnsureSuccessStatusCode();
+        return (await response.Content
+            .ReadFromJsonAsync<BudgetConsumptionEnvelope>())!.Data!;
     }
 
     private static void Authorize(HttpClient client, Guid subject, HeimdallRoles role)
@@ -312,6 +608,7 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
     private sealed record IdEnvelope(IdData? Data);
     private sealed record IdData(Guid Id);
     private sealed record BudgetEnvelope(BudgetData? Data);
+    private sealed record BudgetConsumptionEnvelope(BudgetConsumptionDetailData? Data);
     private sealed record BudgetListEnvelope(BudgetListData? Data);
     private sealed record BudgetListData(IReadOnlyList<BudgetData> Budgets);
     private sealed record BudgetData(
@@ -333,6 +630,29 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
         bool? IsExceeded,
         decimal? Overage,
         bool IsFullyConverted);
+    private sealed record BudgetConsumptionDetailData(
+        Guid BudgetId,
+        decimal BudgetAmount,
+        string CurrencyCode,
+        DateOnly RequestedDate,
+        DateOnly? PeriodStart,
+        DateOnly? PeriodEnd,
+        decimal? Spent,
+        decimal? Remaining,
+        bool? IsExceeded,
+        decimal? Overage,
+        bool IsCovered,
+        bool IsFullyConverted,
+        string? Reason,
+        IReadOnlyList<BudgetConversionData> Conversions);
+    private sealed record BudgetConversionData(
+        string SourceCurrencyCode,
+        decimal SourceAmount,
+        decimal? ConvertedAmount,
+        decimal? AppliedRate,
+        DateOnly? RateDate,
+        ExchangeRateSource? RateSource,
+        string? UnconvertedReason);
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {

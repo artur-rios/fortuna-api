@@ -27,6 +27,8 @@ public sealed class BudgetsController(
             [BudgetMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [BudgetMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
             [BudgetMessages.ListedSuccessfully] = StatusCodes.Status200OK,
+            [BudgetMessages.ConsumptionRetrievedSuccessfully] = StatusCodes.Status200OK,
+            [BudgetMessages.PeriodPrecedesBudget] = StatusCodes.Status200OK,
             [BudgetMessages.NotFound] = StatusCodes.Status404NotFound,
             [BudgetMessages.CategoryNotFound] = StatusCodes.Status404NotFound,
             [BudgetMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
@@ -74,6 +76,22 @@ public sealed class BudgetsController(
             {
                 Id = id,
                 IncludeDeleted = includeDeleted
+            });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpGet("{id:guid}/consumption")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<BudgetConsumptionDetailOutput?>>> GetConsumption(
+        Guid id,
+        [FromQuery] DateOnly? periodStart = null)
+    {
+        var result = await queryMediator.ExecuteQueryAsync<
+            GetBudgetConsumptionQuery,
+            BudgetConsumptionDetailOutput>(new GetBudgetConsumptionQuery
+            {
+                Id = id,
+                PeriodStart = periodStart
             });
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
