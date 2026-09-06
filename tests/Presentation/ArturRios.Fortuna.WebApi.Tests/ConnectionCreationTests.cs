@@ -3,6 +3,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
+using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Auditing;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -244,7 +247,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
             $"/api/connections/{connection.Id}/sync", new { });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Contains(PluggySynchronizationMessages.ConnectionInactive,
+        Assert.Contains(ConnectionMessages.RequiresReauthentication,
             await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
@@ -291,6 +294,245 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenExpiredConnection_WhenReauthenticated_ThenDataRemainsAndStateIsActive()
+    {
+        var gateway = Gateway(PluggyConnectionValidationOutcome.Succeeded);
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        long recordId;
+        long transactionId;
+        await using (var context = CreateContext())
+        {
+            var stored = await context.Connections
+                .Include(item => item.User)
+                .SingleAsync(item => item.PublicId == connection.Id);
+            var currency = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+            var account = new FinancialAccount(
+                stored.User, $"Imported {Guid.NewGuid():N}", "Nubank",
+                FinancialAccountType.Checking, currency, 0, Now);
+            var category = new Category(stored.User, $"Food {Guid.NewGuid():N}", Now);
+            var job = new ImportJob(stored.User, stored, null, null, Now);
+            job.Start(Now.AddMinutes(1));
+            var record = new ImportedRecord(
+                job, "{\"id\":\"preserved-row\"}", ImportedRecordOutcome.Imported,
+                25m, new DateOnly(2026, 9, 1), "preserved-row");
+            var transaction = new FinancialTransaction(
+                stored.User, account, category, TransactionDirection.Expense,
+                25m, new DateOnly(2026, 9, 1), Now, "Preserved purchase");
+            transaction.MarkAsImported(record, TransactionSourceType.Pluggy, Now);
+            job.Complete(1, 0, 0, Now.AddMinutes(2));
+            stored.MarkRequiresReauthentication(Now.AddMinutes(3));
+            context.AddRange(account, category, job, record, transaction);
+            await context.SaveChangesAsync();
+            recordId = record.Id;
+            transactionId = transaction.Id;
+        }
+
+        var newReference = Guid.NewGuid();
+        var response = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/reauthenticate",
+            new { ExternalReference = newReference });
+        var body = (await response.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(newReference.ToString(), body.ExternalReference);
+        Assert.Equal(ConnectionStatus.Active, body.Status);
+        Assert.Equal("Nubank", body.Institution);
+        await using var assertionContext = CreateContext();
+        var updated = await assertionContext.Connections.SingleAsync(
+            item => item.PublicId == connection.Id);
+        Assert.Equal(newReference.ToString(), updated.ExternalReference);
+        Assert.Equal(ConnectionStatus.Active, updated.Status);
+        Assert.True(await assertionContext.ImportedRecords.AnyAsync(item => item.Id == recordId));
+        Assert.True(await assertionContext.FinancialTransactions.AnyAsync(
+            item => item.Id == transactionId && item.ImportedRecordId == recordId));
+        var audit = await assertionContext.AuditEntries.SingleAsync(item =>
+            item.Operation == "ReauthenticateConnectionCommand" &&
+            item.EntityPublicId == connection.Id);
+        Assert.Equal(AuditOutcome.Succeeded, audit.Outcome);
+        Assert.Equal("Connection", audit.EntityType);
+    }
+
+    [FunctionalFact]
+    public async Task GivenInvalidNewReference_WhenReauthenticated_ThenExpiredStateIsPreserved()
+    {
+        var gateway = new SequencedPluggyGateway(
+            new(PluggyConnectionValidationOutcome.Succeeded, "Nubank", AccessToken),
+            new(PluggyConnectionValidationOutcome.InvalidReference));
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        await MarkRequiresReauthenticationAsync(connection.Id);
+        await using var beforeContext = CreateContext();
+        var auditCount = await beforeContext.AuditEntries.CountAsync(item =>
+            item.Operation == "ReauthenticateConnectionCommand");
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/reauthenticate",
+            new { ExternalReference = Guid.NewGuid() });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await using var context = CreateContext();
+        Assert.Equal(ConnectionStatus.RequiresReauthentication,
+            await context.Connections.Where(item => item.PublicId == connection.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal(auditCount + 1, await context.AuditEntries.CountAsync(item =>
+            item.Operation == "ReauthenticateConnectionCommand"));
+        Assert.Contains(await context.AuditEntries.ToArrayAsync(), item =>
+            item.Operation == "ReauthenticateConnectionCommand" &&
+            item.Outcome == AuditOutcome.Refused);
+    }
+
+    [FunctionalFact]
+    public async Task GivenRevokedConnection_WhenReauthenticated_ThenConflictDoesNotCallPluggy()
+    {
+        var gateway = Gateway(PluggyConnectionValidationOutcome.Succeeded);
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        await using (var context = CreateContext())
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE fortuna.connection SET status = 3 WHERE public_id = {connection.Id}");
+        }
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/reauthenticate",
+            new { ExternalReference = Guid.NewGuid() });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains(ConnectionMessages.Revoked,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(1, gateway.CallCount);
+    }
+
+    [FunctionalFact]
+    public async Task GivenOwnedConnections_WhenViewed_ThenCurrentStatusesAreSurfaced()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var owner = factory.CreateClient();
+        using var other = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+        var expiredResponse = await ConnectAsync(owner);
+        var activeResponse = await ConnectAsync(owner);
+        await ConnectAsync(other);
+        var expired = (await expiredResponse.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        var active = (await activeResponse.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        await MarkRequiresReauthenticationAsync(expired.Id);
+
+        var detail = await owner.GetFromJsonAsync<ConnectionQueryEnvelope>(
+            $"/api/connections/{expired.Id}");
+        var page = await owner.GetFromJsonAsync<ConnectionPage>(
+            $"/api/connections?Status={(int)ConnectionStatus.RequiresReauthentication}");
+
+        Assert.Equal(ConnectionStatus.RequiresReauthentication, detail?.Data?.Status);
+        Assert.Equal(1, page?.TotalItems);
+        Assert.Equal(expired.Id, page?.Data.Single().Id);
+        Assert.DoesNotContain(page!.Data, item => item.Id == active.Id);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAnotherOwnersConnection_WhenViewedOrReauthenticated_ThenItIsNotFound()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var owner = factory.CreateClient();
+        using var other = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(owner);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        await MarkRequiresReauthenticationAsync(connection.Id);
+
+        var foreignRead = await other.GetAsync($"/api/connections/{connection.Id}");
+        var missingRead = await other.GetAsync($"/api/connections/{Guid.NewGuid()}");
+        var foreignWrite = await other.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/reauthenticate",
+            new { ExternalReference = Guid.NewGuid() });
+
+        Assert.Equal(HttpStatusCode.NotFound, foreignRead.StatusCode);
+        var missingError = await missingRead.Content.ReadFromJsonAsync<ConnectionErrorEnvelope>();
+        var foreignError = await foreignRead.Content.ReadFromJsonAsync<ConnectionErrorEnvelope>();
+        Assert.Equal(missingError?.Errors, foreignError?.Errors);
+        Assert.Equal(HttpStatusCode.NotFound, foreignWrite.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenUnauthorizedActor_WhenManagingConnectionState_ThenAccessIsDenied()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+        var id = Guid.NewGuid();
+
+        var anonymousList = await anonymous.GetAsync("/api/connections");
+        var anonymousRead = await anonymous.GetAsync($"/api/connections/{id}");
+        var anonymousWrite = await anonymous.PostAsJsonAsync(
+            $"/api/connections/{id}/reauthenticate",
+            new { ExternalReference = Guid.NewGuid() });
+        var forbiddenWrite = await administrator.PostAsJsonAsync(
+            $"/api/connections/{id}/reauthenticate",
+            new { ExternalReference = Guid.NewGuid() });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousList.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousRead.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousWrite.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, forbiddenWrite.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenInvalidReauthenticationBody_WhenSubmitted_ThenFieldsAreRejected()
+    {
+        var gateway = Gateway(PluggyConnectionValidationOutcome.Succeeded);
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        await MarkRequiresReauthenticationAsync(connection.Id);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/reauthenticate",
+            new { ExternalReference = "not-an-item", Password = "bank-secret" });
+        var text = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(ConnectionMessages.ExternalReferenceInvalid, text, StringComparison.Ordinal);
+        Assert.Contains(ConnectionMessages.BankCredentialRejected, text, StringComparison.Ordinal);
+        Assert.Equal(1, gateway.CallCount);
+    }
+
+    [FunctionalFact]
+    public async Task GivenInvalidConnectionListQuery_WhenViewed_ThenNamedErrorIsReturned()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+
+        var invalidPage = await client.GetAsync("/api/connections?PageNumber=0");
+        var unsupported = await client.GetAsync("/api/connections?Institution=Bank");
+
+        Assert.Equal(HttpStatusCode.BadRequest, invalidPage.StatusCode);
+        Assert.Contains(ConnectionMessages.InvalidPageNumber,
+            await invalidPage.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.BadRequest, unsupported.StatusCode);
+        Assert.Contains(ConnectionMessages.UnsupportedFilter("Institution"),
+            await unsupported.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -301,7 +543,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await database.DisposeAsync();
 
-    private WebApplicationFactory<Program> CreateFactory(StubPluggyGateway gateway)
+    private WebApplicationFactory<Program> CreateFactory(IPluggyConnectionGateway gateway)
     {
         foreach (var setting in ValidSettings())
         {
@@ -335,6 +577,15 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
             DatabaseDiagnosticsOptions.Disabled);
+    }
+
+    private async Task MarkRequiresReauthenticationAsync(Guid connectionId)
+    {
+        await using var context = CreateContext();
+        var connection = await context.Connections.SingleAsync(
+            item => item.PublicId == connectionId);
+        connection.MarkRequiresReauthentication(Now.AddMinutes(1));
+        await context.SaveChangesAsync();
     }
 
     private static Task<HttpResponseMessage> ConnectAsync(
@@ -386,12 +637,24 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
 
     private sealed record ConnectionEnvelope(ConnectionData? Data);
     private sealed record SynchronizationEnvelope(SynchronizationData? Data);
+    private sealed record ConnectionQueryEnvelope(ConnectionQueryData? Data);
+    private sealed record ConnectionErrorEnvelope(IReadOnlyList<string> Errors);
+    private sealed record ConnectionPage(
+        IReadOnlyList<ConnectionQueryData> Data,
+        int TotalItems);
     private sealed record ConnectionData(
         Guid Id,
         TransactionSourceType DataSourceType,
         string ExternalReference,
         string Institution,
         ConnectionStatus Status);
+    private sealed record ConnectionQueryData(
+        Guid Id,
+        TransactionSourceType DataSourceType,
+        string ExternalReference,
+        ConnectionStatus Status,
+        DateTimeOffset CreatedAt,
+        DateTimeOffset UpdatedAt);
     private sealed record SynchronizationData(
         Guid ImportJobId,
         ImportJobStatus Status,
@@ -410,6 +673,16 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
             CallCount++;
             return Task.FromResult(result);
         }
+    }
+
+    private sealed class SequencedPluggyGateway(params PluggyConnectionValidation[] results)
+        : IPluggyConnectionGateway
+    {
+        private readonly Queue<PluggyConnectionValidation> queue = new(results);
+
+        public Task<PluggyConnectionValidation> ValidateAsync(
+            string externalReference,
+            CancellationToken cancellationToken) => Task.FromResult(queue.Dequeue());
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider

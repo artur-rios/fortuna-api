@@ -14,4 +14,21 @@ public static class ConnectionMessages
     public const string ExternalReferenceInvalid = "ExternalReference must be a Pluggy item identifier.";
     public const string BankCredentialRejected =
         "Bank credentials and additional request fields are not accepted.";
+    public const string RetrievedSuccessfully = "Connection retrieved successfully.";
+    public const string ListedSuccessfully = "Connections listed successfully.";
+    public const string ReauthenticatedSuccessfully = "Connection reauthenticated successfully.";
+    public const string NotFound = "The connection was not found.";
+    public const string ReauthenticationNotRequired =
+        "The connection does not require reauthentication.";
+    public const string RequiresReauthentication = "The connection requires reauthentication.";
+    public const string Revoked = "A revoked connection cannot be reauthenticated.";
+    public const string DuplicateReference =
+        "Another connection already uses this reference.";
+    public const string InvalidPageNumber = "PageNumber must be greater than or equal to 1.";
+    public const string InvalidPageSize = "PageSize must be greater than or equal to 1.";
+    public const string SortByUnsupported = "SortBy is not supported.";
+    public const string DataSourceTypeInvalid = "DataSourceType is invalid.";
+    public const string StatusInvalid = "Status is invalid.";
+    public static string UnsupportedFilter(string field) =>
+        $"Query parameter '{field}' is not supported.";
 }

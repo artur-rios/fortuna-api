@@ -36,6 +36,16 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
             return Result(QueueSynchronizationOutcome.ConnectionNotFound);
         }
 
+        if (connection.Status == ConnectionStatus.RequiresReauthentication)
+        {
+            return Result(QueueSynchronizationOutcome.ConnectionRequiresReauthentication);
+        }
+
+        if (connection.Status == ConnectionStatus.Revoked)
+        {
+            return Result(QueueSynchronizationOutcome.ConnectionRevoked);
+        }
+
         if (connection.Status != ConnectionStatus.Active)
         {
             return Result(QueueSynchronizationOutcome.ConnectionInactive);

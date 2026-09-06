@@ -7,7 +7,8 @@ using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Ingestion;
 
-public sealed class EfConnectionStore(AppDbContext context) : IConnectionStore
+public sealed class EfConnectionStore(AppDbContext context)
+    : IConnectionStore, IConnectionReader, IConnectionReauthenticationStore
 {
     public async Task<ConnectionMutationResult> CreateAsync(
         ConnectionCreation creation,
@@ -61,7 +62,65 @@ public sealed class EfConnectionStore(AppDbContext context) : IConnectionStore
             ConnectionMutationOutcome.Succeeded);
     }
 
-    private IQueryable<Connection> Query() => context.Connections.Include(item => item.User);
+    public IQueryable<Connection> Query() => context.Connections.AsNoTracking();
+
+    public async Task<ConnectionSnapshot?> FindByIdAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var connection = await Connections().SingleOrDefaultAsync(item =>
+            item.User.PublicId == userId && item.PublicId == id,
+            cancellationToken);
+        return connection is null ? null : Snapshot(connection);
+    }
+
+    public async Task<ConnectionReauthenticationResult> ReauthenticateAsync(
+        ConnectionReauthentication reauthentication,
+        CancellationToken cancellationToken)
+    {
+        var connection = await Connections().SingleOrDefaultAsync(item =>
+            item.User.PublicId == reauthentication.UserId &&
+            item.PublicId == reauthentication.ConnectionId,
+            cancellationToken);
+        if (connection is null)
+        {
+            return ReauthenticationResult(ConnectionReauthenticationOutcome.NotFound);
+        }
+
+        if (connection.Status == ConnectionStatus.Revoked)
+        {
+            return ReauthenticationResult(ConnectionReauthenticationOutcome.Revoked, connection);
+        }
+
+        if (connection.Status != ConnectionStatus.RequiresReauthentication)
+        {
+            return ReauthenticationResult(ConnectionReauthenticationOutcome.NotRequired, connection);
+        }
+
+        connection.Reauthenticate(
+            reauthentication.ExternalReference,
+            reauthentication.AccessTokenCipher,
+            reauthentication.UpdatedAt);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (
+            exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation,
+                ConstraintName: "ix_connection_user_id_data_source_type_external_reference"
+            })
+        {
+            context.Entry(connection).State = EntityState.Detached;
+            return ReauthenticationResult(ConnectionReauthenticationOutcome.DuplicateReference);
+        }
+
+        return ReauthenticationResult(ConnectionReauthenticationOutcome.Succeeded, connection);
+    }
+
+    private IQueryable<Connection> Connections() => context.Connections.Include(item => item.User);
 
     private static ConnectionSnapshot Snapshot(Connection connection) => new(
         connection.PublicId,
@@ -77,11 +136,17 @@ public sealed class EfConnectionStore(AppDbContext context) : IConnectionStore
         string externalReference,
         CancellationToken cancellationToken)
     {
-        var connection = await Query().SingleOrDefaultAsync(item =>
+        var connection = await Connections().SingleOrDefaultAsync(item =>
             item.User.PublicId == userId &&
             item.DataSourceType == dataSourceType &&
             item.ExternalReference == externalReference,
             cancellationToken);
         return connection is null ? null : Snapshot(connection);
     }
+
+    private static ConnectionReauthenticationResult ReauthenticationResult(
+        ConnectionReauthenticationOutcome outcome,
+        Connection? connection = null) => new(
+        connection is null ? null : Snapshot(connection),
+        outcome);
 }

@@ -38,7 +38,9 @@ public enum QueueSynchronizationOutcome
     Succeeded = 1,
     ConnectionNotFound = 2,
     ConnectionInactive = 3,
-    AlreadyRunning = 4
+    AlreadyRunning = 4,
+    ConnectionRequiresReauthentication = 5,
+    ConnectionRevoked = 6
 }
 
 public sealed record QueueSynchronizationResult(

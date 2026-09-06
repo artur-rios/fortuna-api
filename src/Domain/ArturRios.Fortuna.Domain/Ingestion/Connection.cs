@@ -74,19 +74,31 @@ public sealed class Connection
         UpdatedAt = updatedAt;
     }
 
-    public void RefreshAccessToken(byte[] accessTokenCipher, DateTimeOffset updatedAt)
+    public void Reauthenticate(
+        string externalReference,
+        byte[] accessTokenCipher,
+        DateTimeOffset updatedAt)
     {
+        if (string.IsNullOrWhiteSpace(externalReference) || externalReference.Trim().Length > 200)
+        {
+            throw new ArgumentException(
+                "An external reference between 1 and 200 characters is required.",
+                nameof(externalReference));
+        }
+
+        if (Status != ConnectionStatus.RequiresReauthentication)
+        {
+            throw new InvalidOperationException(
+                "Only a connection requiring reauthentication can be reauthenticated.");
+        }
+
         ArgumentNullException.ThrowIfNull(accessTokenCipher);
         if (accessTokenCipher.Length == 0)
         {
             throw new ArgumentException("An encrypted access token is required.", nameof(accessTokenCipher));
         }
 
-        if (Status == ConnectionStatus.Revoked)
-        {
-            throw new InvalidOperationException("A revoked connection cannot be reauthenticated.");
-        }
-
+        ExternalReference = externalReference.Trim();
         AccessTokenCipher = accessTokenCipher.ToArray();
         Status = ConnectionStatus.Active;
         UpdatedAt = updatedAt;

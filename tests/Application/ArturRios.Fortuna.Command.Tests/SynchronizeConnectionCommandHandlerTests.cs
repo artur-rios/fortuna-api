@@ -64,6 +64,10 @@ public sealed class SynchronizeConnectionCommandHandlerTests
         PluggySynchronizationMessages.ConnectionNotFound)]
     [InlineData(QueueSynchronizationOutcome.ConnectionInactive,
         PluggySynchronizationMessages.ConnectionInactive)]
+    [InlineData(QueueSynchronizationOutcome.ConnectionRequiresReauthentication,
+        ConnectionMessages.RequiresReauthentication)]
+    [InlineData(QueueSynchronizationOutcome.ConnectionRevoked,
+        ConnectionMessages.Revoked)]
     public async Task GivenUnavailableConnection_WhenRequested_ThenExpectedErrorIsReturned(
         QueueSynchronizationOutcome outcome,
         string expected)
