@@ -17,11 +17,17 @@ public static class ConnectionMessages
     public const string RetrievedSuccessfully = "Connection retrieved successfully.";
     public const string ListedSuccessfully = "Connections listed successfully.";
     public const string ReauthenticatedSuccessfully = "Connection reauthenticated successfully.";
+    public const string RevokedSuccessfully =
+        "Connection revoked successfully. Imported data was retained; use the relevant deletion operations to remove it.";
+    public const string AlreadyRevoked =
+        "The connection was already revoked. Imported data remains available; use the relevant deletion operations to remove it.";
     public const string NotFound = "The connection was not found.";
     public const string ReauthenticationNotRequired =
         "The connection does not require reauthentication.";
     public const string RequiresReauthentication = "The connection requires reauthentication.";
-    public const string Revoked = "A revoked connection cannot be reauthenticated.";
+    public const string Revoked = "The connection is revoked.";
+    public const string SynchronizationStoppedByRevocation =
+        "Synchronization stopped because the connection was revoked.";
     public const string DuplicateReference =
         "Another connection already uses this reference.";
     public const string InvalidPageNumber = "PageNumber must be greater than or equal to 1.";

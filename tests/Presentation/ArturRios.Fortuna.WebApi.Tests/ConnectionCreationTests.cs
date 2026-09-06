@@ -533,6 +533,202 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
             await unsupported.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
+    [FunctionalFact]
+    public async Task GivenImportedHistory_WhenConnectionIsRevoked_ThenTokenIsDiscardedAndDataRemains()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        long recordId;
+        long transactionId;
+        await using (var context = CreateContext())
+        {
+            var stored = await context.Connections.Include(item => item.User)
+                .SingleAsync(item => item.PublicId == connection.Id);
+            var currency = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+            var account = new FinancialAccount(
+                stored.User, $"Revoked {Guid.NewGuid():N}", "Nubank",
+                FinancialAccountType.Checking, currency, 0, Now);
+            var category = new Category(stored.User, $"History {Guid.NewGuid():N}", Now);
+            var job = new ImportJob(stored.User, stored, null, null, Now);
+            job.Start(Now.AddMinutes(1));
+            var record = new ImportedRecord(
+                job, "{\"id\":\"retained\"}", ImportedRecordOutcome.Imported,
+                40m, new DateOnly(2026, 9, 1), "retained");
+            var imported = new FinancialTransaction(
+                stored.User, account, category, TransactionDirection.Expense,
+                40m, new DateOnly(2026, 9, 1), Now, "Retained history");
+            imported.MarkAsImported(record, TransactionSourceType.Pluggy, Now);
+            job.Complete(1, 0, 0, Now.AddMinutes(2));
+            context.AddRange(account, category, job, record, imported);
+            await context.SaveChangesAsync();
+            recordId = record.Id;
+            transactionId = imported.Id;
+        }
+
+        var response = await client.PostAsync(
+            $"/api/connections/{connection.Id}/revoke", null);
+        var body = (await response.Content.ReadFromJsonAsync<RevocationEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(ConnectionStatus.Revoked, body.Status);
+        Assert.True(body.ImportedDataRetained);
+        Assert.Contains(ConnectionMessages.RevokedSuccessfully,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        await using var assertionContext = CreateContext();
+        var revoked = await assertionContext.Connections.SingleAsync(
+            item => item.PublicId == connection.Id);
+        Assert.Empty(revoked.AccessTokenCipher);
+        Assert.True(await assertionContext.ImportedRecords.AnyAsync(item => item.Id == recordId));
+        Assert.True(await assertionContext.FinancialTransactions.AnyAsync(
+            item => item.Id == transactionId && item.ImportedRecordId == recordId));
+        var audit = await assertionContext.AuditEntries.SingleAsync(item =>
+            item.Operation == "RevokeConnectionCommand" &&
+            item.EntityPublicId == connection.Id);
+        Assert.Equal(AuditOutcome.Succeeded, audit.Outcome);
+        Assert.Equal("Connection", audit.EntityType);
+    }
+
+    [FunctionalFact]
+    public async Task GivenRunningSynchronization_WhenRevoked_ThenJobStopsAndCannotImportLater()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        var queued = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/sync", new { });
+        var importJobId = (await queued.Content
+            .ReadFromJsonAsync<SynchronizationEnvelope>())!.Data!.ImportJobId;
+        await using (var context = CreateContext())
+        {
+            var job = await context.ImportJobs.SingleAsync(item => item.PublicId == importJobId);
+            job.Start(Now.AddMinutes(1));
+            await context.SaveChangesAsync();
+        }
+
+        var revokedResponse = await client.PostAsync(
+            $"/api/connections/{connection.Id}/revoke", null);
+        var revoked = (await revokedResponse.Content
+            .ReadFromJsonAsync<RevocationEnvelope>())!.Data!;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var store = scope.ServiceProvider.GetRequiredService<IPluggySynchronizationStore>();
+            await store.CompleteAsync(
+                importJobId,
+                new PluggySynchronizationBatch([],
+                [
+                    new PluggyTransactionRecord(
+                        "{\"id\":\"too-late\"}", "missing", "too-late",
+                        TransactionDirection.Expense, 10m, new DateOnly(2026, 9, 2),
+                        "Too late", "Ignored")
+                ]),
+                Now.AddMinutes(3),
+                CancellationToken.None);
+        }
+
+        Assert.Equal(HttpStatusCode.OK, revokedResponse.StatusCode);
+        Assert.Equal(1, revoked.StoppedSynchronizations);
+        await using var assertionContext = CreateContext();
+        var jobState = await assertionContext.ImportJobs.SingleAsync(
+            item => item.PublicId == importJobId);
+        Assert.Equal(ImportJobStatus.Failed, jobState.Status);
+        Assert.Equal(ConnectionMessages.SynchronizationStoppedByRevocation,
+            jobState.FailureReason);
+        Assert.False(await assertionContext.ImportedRecords.AnyAsync(
+            item => item.ImportJobId == jobState.Id));
+    }
+
+    [FunctionalFact]
+    public async Task GivenRevokedConnection_WhenSynchronizationIsRequested_ThenConflictIsReturned()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        await client.PostAsync($"/api/connections/{connection.Id}/revoke", null);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/sync", new { });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains(ConnectionMessages.Revoked,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAlreadyRevokedConnection_WhenRevokedAgain_ThenRequestIsIdempotent()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+
+        var first = await client.PostAsync(
+            $"/api/connections/{connection.Id}/revoke", null);
+        var second = await client.PostAsync(
+            $"/api/connections/{connection.Id}/revoke", null);
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Contains(ConnectionMessages.AlreadyRevoked,
+            await second.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAnotherOwnersConnection_WhenRevoked_ThenNotFoundMatchesMissingRecord()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var owner = factory.CreateClient();
+        using var other = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(owner);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+
+        var foreign = await other.PostAsync(
+            $"/api/connections/{connection.Id}/revoke", null);
+        var missing = await other.PostAsync(
+            $"/api/connections/{Guid.NewGuid()}/revoke", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal(
+            (await missing.Content.ReadFromJsonAsync<ConnectionErrorEnvelope>())?.Errors,
+            (await foreign.Content.ReadFromJsonAsync<ConnectionErrorEnvelope>())?.Errors);
+        await using var context = CreateContext();
+        Assert.Equal(ConnectionStatus.Active, await context.Connections
+            .Where(item => item.PublicId == connection.Id)
+            .Select(item => item.Status).SingleAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenUnauthorizedActor_WhenRevokingConnection_ThenAccessIsDenied()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+        var id = Guid.NewGuid();
+
+        var unauthorized = await anonymous.PostAsync($"/api/connections/{id}/revoke", null);
+        var forbidden = await administrator.PostAsync($"/api/connections/{id}/revoke", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -638,6 +834,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
     private sealed record ConnectionEnvelope(ConnectionData? Data);
     private sealed record SynchronizationEnvelope(SynchronizationData? Data);
     private sealed record ConnectionQueryEnvelope(ConnectionQueryData? Data);
+    private sealed record RevocationEnvelope(RevocationData? Data);
     private sealed record ConnectionErrorEnvelope(IReadOnlyList<string> Errors);
     private sealed record ConnectionPage(
         IReadOnlyList<ConnectionQueryData> Data,
@@ -655,6 +852,11 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         ConnectionStatus Status,
         DateTimeOffset CreatedAt,
         DateTimeOffset UpdatedAt);
+    private sealed record RevocationData(
+        Guid Id,
+        ConnectionStatus Status,
+        bool ImportedDataRetained,
+        int StoppedSynchronizations);
     private sealed record SynchronizationData(
         Guid ImportJobId,
         ImportJobStatus Status,

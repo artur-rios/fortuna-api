@@ -222,6 +222,8 @@ try
         provider.GetRequiredService<EfConnectionStore>());
     builder.Services.AddScoped<IConnectionReauthenticationStore>(provider =>
         provider.GetRequiredService<EfConnectionStore>());
+    builder.Services.AddScoped<IConnectionRevocationStore>(provider =>
+        provider.GetRequiredService<EfConnectionStore>());
     builder.Services.AddScoped<IPluggySynchronizationStore, EfPluggySynchronizationStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new ReconciliationOptions(
@@ -390,6 +392,8 @@ try
         ReauthenticateConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ReauthenticateConnectionCommand,
         ReauthenticateConnectionCommandOutput, ReauthenticateConnectionCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RevokeConnectionCommand,
+        RevokeConnectionCommandOutput, RevokeConnectionCommandHandler>();
     builder.Services.AddScoped<IValidator<SynchronizeConnectionCommand>,
         SynchronizeConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<SynchronizeConnectionCommand,

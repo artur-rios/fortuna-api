@@ -63,5 +63,6 @@ public sealed class AuditingCommandHandler<TCommand, TOutput>(
         .Replace("Delete", string.Empty, StringComparison.Ordinal)
         .Replace("Restore", string.Empty, StringComparison.Ordinal)
         .Replace("Reauthenticate", string.Empty, StringComparison.Ordinal)
+        .Replace("Revoke", string.Empty, StringComparison.Ordinal)
         .Replace("Regenerate", string.Empty, StringComparison.Ordinal);
 }
