@@ -12,3 +12,8 @@ public sealed class GetGoalByIdQuery : BaseQuery
     public Guid Id { get; set; }
     public bool IncludeDeleted { get; set; }
 }
+
+public sealed class GetGoalProgressQuery : BaseQuery
+{
+    public Guid Id { get; set; }
+}

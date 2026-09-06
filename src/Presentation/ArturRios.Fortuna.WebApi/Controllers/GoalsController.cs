@@ -26,6 +26,7 @@ public sealed class GoalsController(
             [GoalMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
             [GoalMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [GoalMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
+            [GoalMessages.ProgressRetrievedSuccessfully] = StatusCodes.Status200OK,
             [GoalMessages.ListedSuccessfully] = StatusCodes.Status200OK,
             [GoalMessages.NotFound] = StatusCodes.Status404NotFound,
             [GoalMessages.ResourceNotFound] = StatusCodes.Status404NotFound,
@@ -84,6 +85,16 @@ public sealed class GoalsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateGoalCommand,
             GoalCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpGet("{id:guid}/progress")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<GoalProgressDetailOutput?>>> GetProgress(Guid id)
+    {
+        var result = await queryMediator.ExecuteQueryAsync<
+            GetGoalProgressQuery,
+            GoalProgressDetailOutput>(new GetGoalProgressQuery { Id = id });
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 

@@ -6,6 +6,8 @@ public static class GoalMessages
     public const string UpdatedSuccessfully = "Goal updated successfully.";
     public const string DeletedSuccessfully = "Goal deleted successfully.";
     public const string RetrievedSuccessfully = "Goal retrieved successfully.";
+    public const string ProgressRetrievedSuccessfully =
+        "Goal progress retrieved successfully.";
     public const string ListedSuccessfully = "Goals retrieved successfully.";
     public const string NotFound = "Goal not found.";
     public const string ResourceNotFound =
@@ -23,4 +25,5 @@ public static class GoalMessages
     public const string ResourcesRequired =
         "At least one account or investment is required.";
     public const string ResourceIdInvalid = "Linked identifiers cannot be empty.";
+    public const string ResourceDeleted = "The linked resource is soft-deleted.";
 }

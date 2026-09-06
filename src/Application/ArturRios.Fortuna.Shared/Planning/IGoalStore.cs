@@ -40,6 +40,15 @@ public interface IGoalLifecycleStore
         CancellationToken cancellationToken);
 }
 
+public interface IGoalProgressReader
+{
+    Task<GoalProgressResult> GetProgressAsync(
+        Guid userId,
+        Guid id,
+        DateOnly asOf,
+        CancellationToken cancellationToken);
+}
+
 public enum GoalMutationOutcome
 {
     Succeeded = 1,
@@ -92,3 +101,48 @@ public sealed record GoalProgressSnapshot(
     decimal? ProportionReached,
     bool? IsReached,
     bool IsFullyConverted);
+
+public enum GoalProgressOutcome
+{
+    Succeeded = 1,
+    NotFound = 2
+}
+
+public enum GoalResourceType
+{
+    Account = 1,
+    Investment = 2
+}
+
+public sealed record GoalProgressResult(
+    GoalProgressDetailSnapshot? Progress,
+    GoalProgressOutcome Outcome);
+
+public sealed record GoalProgressDetailSnapshot(
+    Guid GoalId,
+    decimal TargetAmount,
+    string CurrencyCode,
+    DateOnly TargetDate,
+    DateOnly AsOf,
+    decimal? CurrentAmount,
+    decimal? Shortfall,
+    decimal? ProportionReached,
+    bool? IsReached,
+    int DaysRemaining,
+    bool? IsPastDue,
+    bool IsFullyConverted,
+    IReadOnlyCollection<GoalResourceProgressSnapshot> Resources);
+
+public sealed record GoalResourceProgressSnapshot(
+    Guid Id,
+    string Name,
+    GoalResourceType ResourceType,
+    string SourceCurrencyCode,
+    decimal? SourceAmount,
+    decimal? ConvertedAmount,
+    decimal? AppliedRate,
+    DateOnly? RateDate,
+    Domain.Currencies.ExchangeRateSource? RateSource,
+    bool IsIncluded,
+    string? ExclusionReason,
+    string? UnconvertedReason);

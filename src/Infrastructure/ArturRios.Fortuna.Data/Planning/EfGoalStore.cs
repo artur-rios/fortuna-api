@@ -1,14 +1,17 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Planning;
+using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Planning;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Planning;
 
 public sealed class EfGoalStore(AppDbContext context)
-    : IGoalStore, IGoalReader, IGoalUpdater, IGoalLifecycleStore
+    : IGoalStore, IGoalReader, IGoalUpdater, IGoalLifecycleStore, IGoalProgressReader
 {
     public async Task<GoalMutationResult> CreateAsync(
         GoalCreation creation,
@@ -138,6 +141,24 @@ public sealed class EfGoalStore(AppDbContext context)
             GoalMutationOutcome.Succeeded);
     }
 
+    public async Task<GoalProgressResult> GetProgressAsync(
+        Guid userId,
+        Guid id,
+        DateOnly asOf,
+        CancellationToken cancellationToken)
+    {
+        var goal = await GoalQuery().SingleOrDefaultAsync(item =>
+            item.User.PublicId == userId &&
+            item.PublicId == id &&
+            !item.IsDeleted,
+            cancellationToken);
+        return goal is null
+            ? new GoalProgressResult(null, GoalProgressOutcome.NotFound)
+            : new GoalProgressResult(
+                await CalculateProgressAsync(goal, asOf, cancellationToken),
+                GoalProgressOutcome.Succeeded);
+    }
+
     public async Task<GoalMutationResult> SoftDeleteAsync(
         Guid userId,
         Guid id,
@@ -202,26 +223,80 @@ public sealed class EfGoalStore(AppDbContext context)
         DateOnly asOf,
         CancellationToken cancellationToken)
     {
-        var figures = new List<ResourceFigure>();
-        foreach (var account in goal.Accounts.Where(item => !item.IsDeleted))
+        var detail = await CalculateProgressAsync(goal, asOf, cancellationToken);
+        var progress = new GoalProgressSnapshot(
+            detail.CurrentAmount,
+            detail.Shortfall,
+            detail.ProportionReached,
+            detail.IsReached,
+            detail.IsFullyConverted);
+        return new GoalSnapshot(
+            goal.PublicId,
+            goal.Name,
+            goal.TargetAmount,
+            goal.Currency.Code,
+            goal.TargetDate,
+            goal.Accounts.OrderBy(item => item.Name)
+                .Select(item => new GoalResourceSnapshot(item.PublicId, item.Name)).ToArray(),
+            goal.Investments.OrderBy(item => item.Instrument)
+                .Select(item => new GoalResourceSnapshot(item.PublicId, item.Instrument)).ToArray(),
+            progress,
+            goal.IsDeleted,
+            goal.CreatedAt,
+            goal.UpdatedAt);
+    }
+
+    private async Task<GoalProgressDetailSnapshot> CalculateProgressAsync(
+        Goal goal,
+        DateOnly asOf,
+        CancellationToken cancellationToken)
+    {
+        var resources = new List<GoalResourceProgressSnapshot>();
+        foreach (var account in goal.Accounts.OrderBy(item => item.Name))
         {
+            if (account.IsDeleted)
+            {
+                resources.Add(ExcludedResource(
+                    account.PublicId,
+                    account.Name,
+                    GoalResourceType.Account,
+                    account.Currency.Code));
+                continue;
+            }
+
             var movements = await context.FinancialTransactions.AsNoTracking()
                 .Where(item =>
                     item.FinancialAccountId == account.Id &&
                     !item.IsDeleted &&
                     item.OccurredOn <= asOf)
                 .Select(item => (decimal?)(item.Direction ==
-                    Domain.Transactions.TransactionDirection.Earning
+                    TransactionDirection.Earning
                         ? item.Amount
                         : -item.Amount))
                 .SumAsync(cancellationToken) ?? 0m;
-            figures.Add(new ResourceFigure(
+            resources.Add(await ConvertResourceAsync(
+                account.PublicId,
+                account.Name,
+                GoalResourceType.Account,
                 account.OpeningBalance + movements,
-                account.Currency.Code));
+                account.Currency.Code,
+                goal,
+                asOf,
+                cancellationToken));
         }
 
-        foreach (var investment in goal.Investments.Where(item => !item.IsDeleted))
+        foreach (var investment in goal.Investments.OrderBy(item => item.Instrument))
         {
+            if (investment.IsDeleted)
+            {
+                resources.Add(ExcludedResource(
+                    investment.PublicId,
+                    investment.Instrument,
+                    GoalResourceType.Investment,
+                    investment.Currency.Code));
+                continue;
+            }
+
             var latest = await context.InvestmentValuations.AsNoTracking()
                 .Where(item =>
                     item.InvestmentId == investment.Id &&
@@ -243,65 +318,119 @@ public sealed class EfGoalStore(AppDbContext context)
                         ? item.Amount
                         : -item.Amount))
                 .SumAsync(cancellationToken) ?? 0m;
-            figures.Add(new ResourceFigure(position, investment.Currency.Code));
+            resources.Add(await ConvertResourceAsync(
+                investment.PublicId,
+                investment.Instrument,
+                GoalResourceType.Investment,
+                position,
+                investment.Currency.Code,
+                goal,
+                asOf,
+                cancellationToken));
         }
 
-        var total = 0m;
-        var fullyConverted = true;
-        foreach (var figure in figures)
-        {
-            if (figure.CurrencyCode == goal.Currency.Code)
-            {
-                total += figure.Amount;
-                continue;
-            }
-
-            var rate = await context.ExchangeRates.AsNoTracking()
-                .Where(item =>
-                    item.BaseCurrency.Code == figure.CurrencyCode &&
-                    item.QuoteCurrency.Code == goal.Currency.Code &&
-                    item.RateDate <= asOf)
-                .OrderByDescending(item => item.RateDate)
-                .ThenByDescending(item => item.Source)
-                .Select(item => (decimal?)item.Rate)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (!rate.HasValue)
-            {
-                fullyConverted = false;
-                continue;
-            }
-
-            total += figure.Amount * rate.Value;
-        }
-
+        var included = resources.Where(item => item.IsIncluded).ToArray();
+        var fullyConverted = included.All(item => item.ConvertedAmount.HasValue);
         decimal? current = fullyConverted
-            ? decimal.Round(total, goal.Currency.MinorUnitDigits, MidpointRounding.AwayFromZero)
+            ? Round(included.Sum(item => item.ConvertedAmount!.Value), goal)
             : null;
-        var progress = new GoalProgressSnapshot(
+        var daysRemaining = goal.TargetDate.DayNumber - asOf.DayNumber;
+        return new GoalProgressDetailSnapshot(
+            goal.PublicId,
+            goal.TargetAmount,
+            goal.Currency.Code,
+            goal.TargetDate,
+            asOf,
             current,
             current.HasValue ? decimal.Max(goal.TargetAmount - current.Value, 0m) : null,
             current.HasValue
                 ? decimal.Round(decimal.Max(current.Value, 0m) / goal.TargetAmount, 4)
                 : null,
             current.HasValue ? current.Value >= goal.TargetAmount : null,
-            fullyConverted);
-        return new GoalSnapshot(
-            goal.PublicId,
-            goal.Name,
-            goal.TargetAmount,
-            goal.Currency.Code,
-            goal.TargetDate,
-            goal.Accounts.OrderBy(item => item.Name)
-                .Select(item => new GoalResourceSnapshot(item.PublicId, item.Name)).ToArray(),
-            goal.Investments.OrderBy(item => item.Instrument)
-                .Select(item => new GoalResourceSnapshot(item.PublicId, item.Instrument)).ToArray(),
-            progress,
-            goal.IsDeleted,
-            goal.CreatedAt,
-            goal.UpdatedAt);
+            daysRemaining,
+            current.HasValue ? daysRemaining < 0 && current.Value < goal.TargetAmount : null,
+            fullyConverted,
+            resources);
+    }
+
+    private async Task<GoalResourceProgressSnapshot> ConvertResourceAsync(
+        Guid id,
+        string name,
+        GoalResourceType resourceType,
+        decimal amount,
+        string sourceCurrencyCode,
+        Goal goal,
+        DateOnly asOf,
+        CancellationToken cancellationToken)
+    {
+        if (sourceCurrencyCode == goal.Currency.Code)
+        {
+            return new GoalResourceProgressSnapshot(
+                id,
+                name,
+                resourceType,
+                sourceCurrencyCode,
+                amount,
+                Round(amount, goal),
+                null,
+                null,
+                null,
+                true,
+                null,
+                null);
+        }
+
+        var rate = await context.ExchangeRates.AsNoTracking()
+            .Where(item =>
+                item.BaseCurrency.Code == sourceCurrencyCode &&
+                item.QuoteCurrency.Code == goal.Currency.Code &&
+                item.RateDate <= asOf)
+            .OrderByDescending(item => item.RateDate)
+            .ThenByDescending(item => item.Source)
+            .Select(item => new AppliedRate(item.Rate, item.RateDate, item.Source))
+            .FirstOrDefaultAsync(cancellationToken);
+        return new GoalResourceProgressSnapshot(
+            id,
+            name,
+            resourceType,
+            sourceCurrencyCode,
+            amount,
+            rate is null ? null : Round(amount * rate.Rate, goal),
+            rate?.Rate,
+            rate?.RateDate,
+            rate?.Source,
+            true,
+            null,
+            rate is null ? FigureConversionMessages.RateUnavailable : null);
     }
 
     private static GoalMutationResult Result(GoalMutationOutcome outcome) => new(null, outcome);
 
-    private sealed record ResourceFigure(decimal Amount, string CurrencyCode);
+    private static GoalResourceProgressSnapshot ExcludedResource(
+        Guid id,
+        string name,
+        GoalResourceType resourceType,
+        string currencyCode) => new(
+            id,
+            name,
+            resourceType,
+            currencyCode,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            GoalMessages.ResourceDeleted,
+            null);
+
+    private static decimal Round(decimal amount, Goal goal) => decimal.Round(
+        amount,
+        goal.Currency.MinorUnitDigits,
+        MidpointRounding.AwayFromZero);
+
+    private sealed record AppliedRate(
+        decimal Rate,
+        DateOnly RateDate,
+        ExchangeRateSource Source);
 }
