@@ -110,6 +110,31 @@ public sealed class ClassificationTests
         Assert.Throws<ArgumentException>(() => tag.Rename(new string('t', 201), Now));
     }
 
+    [UnitFact]
+    public void GivenNewCounterpartyName_WhenRenamed_ThenNameAndTimestampChange()
+    {
+        var counterparty = new Counterparty(User(), "Before", Now);
+        var updatedAt = Now.AddHours(1);
+
+        counterparty.Rename("  After  ", updatedAt);
+
+        Assert.Equal("After", counterparty.Name);
+        Assert.Equal("AFTER", counterparty.NormalizedName);
+        Assert.Equal(updatedAt, counterparty.UpdatedAt);
+    }
+
+    [UnitTheory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GivenInvalidCounterpartyName_WhenRenamed_ThenItIsRejected(string name)
+    {
+        var counterparty = new Counterparty(User(), "Counterparty", Now);
+
+        Assert.Throws<ArgumentException>(() => counterparty.Rename(name, Now));
+        Assert.Throws<ArgumentException>(() =>
+            counterparty.Rename(new string('c', 201), Now));
+    }
+
     [UnitTheory]
     [InlineData("")]
     [InlineData("   ")]

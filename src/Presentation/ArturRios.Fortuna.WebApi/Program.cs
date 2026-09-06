@@ -136,6 +136,19 @@ try
         provider.GetRequiredService<EfTagStore>());
     builder.Services.AddScoped<ITransactionTagStore>(provider =>
         provider.GetRequiredService<EfTagStore>());
+    builder.Services.AddScoped<EfCounterpartyStore>();
+    builder.Services.AddScoped<ICounterpartyStore>(provider =>
+        provider.GetRequiredService<EfCounterpartyStore>());
+    builder.Services.AddScoped<ICounterpartyReader>(provider =>
+        provider.GetRequiredService<EfCounterpartyStore>());
+    builder.Services.AddScoped<ICounterpartyUpdater>(provider =>
+        provider.GetRequiredService<EfCounterpartyStore>());
+    builder.Services.AddScoped<ICounterpartyLifecycleStore>(provider =>
+        provider.GetRequiredService<EfCounterpartyStore>());
+    builder.Services.AddScoped<ICounterpartyMerger>(provider =>
+        provider.GetRequiredService<EfCounterpartyStore>());
+    builder.Services.AddScoped<ICounterpartyCategorySuggester>(provider =>
+        provider.GetRequiredService<EfCounterpartyStore>());
     builder.Services.AddScoped<EfTransferStore>();
     builder.Services.AddScoped<ITransferStore>(provider =>
         provider.GetRequiredService<EfTransferStore>());
@@ -299,6 +312,20 @@ try
         DetachTransactionTagCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DetachTransactionTagCommand,
         TransactionTagCommandOutput, DetachTransactionTagCommandHandler>();
+    builder.Services.AddScoped<IValidator<CreateCounterpartyCommand>,
+        CreateCounterpartyCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<CreateCounterpartyCommand,
+        CounterpartyCommandOutput, CreateCounterpartyCommandHandler>();
+    builder.Services.AddScoped<IValidator<UpdateCounterpartyCommand>,
+        UpdateCounterpartyCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<UpdateCounterpartyCommand,
+        CounterpartyCommandOutput, UpdateCounterpartyCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteCounterpartyCommand,
+        CounterpartyCommandOutput, DeleteCounterpartyCommandHandler>();
+    builder.Services.AddScoped<IValidator<MergeCounterpartiesCommand>,
+        MergeCounterpartiesCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<MergeCounterpartiesCommand,
+        CounterpartyMergeCommandOutput, MergeCounterpartiesCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
         TransactionLifecycleCommandOutput, DeleteTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransactionCommand,
@@ -372,6 +399,10 @@ try
         GetCategoryByIdQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListTagsQuery, TagListOutput>,
         ListTagsQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<ListCounterpartiesQuery,
+        CounterpartyListOutput>, ListCounterpartiesQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<SuggestCounterpartyCategoryQuery,
+        CounterpartyCategorySuggestionOutput>, SuggestCounterpartyCategoryQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,
