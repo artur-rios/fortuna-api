@@ -151,6 +151,146 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenOwnedConnection_WhenSynchronized_ThenPendingImportJobIsReturned()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+
+        var response = await client.PostAsJsonAsync($"/api/connections/{connection.Id}/sync", new
+        {
+            PeriodStart = new DateOnly(2026, 8, 1),
+            PeriodEnd = new DateOnly(2026, 8, 31)
+        });
+        var body = (await response.Content.ReadFromJsonAsync<SynchronizationEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.NotEqual(Guid.Empty, body.ImportJobId);
+        Assert.Equal(ImportJobStatus.Pending, body.Status);
+        Assert.Equal(new DateOnly(2026, 8, 1), body.PeriodStart);
+        await using var context = CreateContext();
+        Assert.Equal(1, await context.ImportJobs.CountAsync(
+            item => item.PublicId == body.ImportJobId));
+        Assert.True(await context.BackgroundJobs.AnyAsync(
+            item => item.Type == PluggySynchronizationJob.Type));
+    }
+
+    [FunctionalFact]
+    public async Task GivenRunningSynchronization_WhenRequestedAgain_ThenExistingJobConflicts()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+
+        var first = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/sync", new { });
+        var duplicate = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/sync", new { });
+        var firstJob = (await first.Content.ReadFromJsonAsync<SynchronizationEnvelope>())!.Data!;
+        var existing = (await duplicate.Content.ReadFromJsonAsync<SynchronizationEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.Accepted, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        Assert.Equal(firstJob.ImportJobId, existing.ImportJobId);
+        Assert.Contains(PluggySynchronizationMessages.AlreadyRunning,
+            await duplicate.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAnotherOwnersConnection_WhenSynchronized_ThenItIsNotFound()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var owner = factory.CreateClient();
+        using var other = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(owner);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+
+        var response = await other.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/sync", new { });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Contains(PluggySynchronizationMessages.ConnectionNotFound,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenInactiveConnection_WhenSynchronized_ThenConflictExplainsState()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        await using (var context = CreateContext())
+        {
+            var stored = await context.Connections.SingleAsync(
+                item => item.PublicId == connection.Id);
+            stored.MarkRequiresReauthentication(Now.AddMinutes(1));
+            await context.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/sync", new { });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains(PluggySynchronizationMessages.ConnectionInactive,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenInvalidSynchronizationPeriod_WhenRequested_ThenItIsRejected()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+
+        var response = await client.PostAsJsonAsync($"/api/connections/{connection.Id}/sync", new
+        {
+            PeriodStart = new DateOnly(2026, 9, 2),
+            PeriodEnd = new DateOnly(2026, 9, 1)
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(PluggySynchronizationMessages.PeriodInvalid,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        await using var context = CreateContext();
+        Assert.False(await context.ImportJobs.AnyAsync(
+            item => item.Connection!.PublicId == connection.Id));
+    }
+
+    [FunctionalFact]
+    public async Task GivenUnauthorizedActor_WhenSynchronizing_ThenAccessIsDenied()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+        var id = Guid.NewGuid();
+
+        var unauthorized = await anonymous.PostAsJsonAsync(
+            $"/api/connections/{id}/sync", new { });
+        var forbidden = await administrator.PostAsJsonAsync(
+            $"/api/connections/{id}/sync", new { });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -245,12 +385,18 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
     };
 
     private sealed record ConnectionEnvelope(ConnectionData? Data);
+    private sealed record SynchronizationEnvelope(SynchronizationData? Data);
     private sealed record ConnectionData(
         Guid Id,
         TransactionSourceType DataSourceType,
         string ExternalReference,
         string Institution,
         ConnectionStatus Status);
+    private sealed record SynchronizationData(
+        Guid ImportJobId,
+        ImportJobStatus Status,
+        DateOnly? PeriodStart,
+        DateOnly? PeriodEnd);
 
     private sealed class StubPluggyGateway(PluggyConnectionValidation result)
         : IPluggyConnectionGateway

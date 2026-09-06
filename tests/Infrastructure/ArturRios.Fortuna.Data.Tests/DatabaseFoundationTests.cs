@@ -1,15 +1,20 @@
+using System.Text.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Jobs;
+using ArturRios.Fortuna.Data.Ingestion;
 using ArturRios.Fortuna.Data.Lifecycle;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Ingestion;
+using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -543,6 +548,116 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
             CancellationToken.None);
 
         Assert.Null(rate);
+    }
+
+    [FunctionalFact]
+    public async Task GivenPluggyBatch_WhenCompleted_ThenRowsAreImportedAndClassified()
+    {
+        await using var context = CreateContext();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        var currency = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+        var now = DateTimeOffset.UtcNow;
+        var user = new UserProfile(Guid.NewGuid(), $"Import {Guid.NewGuid():N}", currency, now);
+        var connection = new Connection(
+            user, TransactionSourceType.Pluggy, $"item-{Guid.NewGuid():N}", [1, 2, 3], now);
+        context.UserProfiles.Add(user);
+        context.Connections.Add(connection);
+        await context.SaveChangesAsync();
+        var store = new EfPluggySynchronizationStore(context);
+
+        var queued = await store.QueueAsync(
+            user.PublicId,
+            connection.PublicId,
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 31),
+            "request-1",
+            now,
+            CancellationToken.None);
+        var concurrent = await store.QueueAsync(
+            user.PublicId,
+            connection.PublicId,
+            null,
+            null,
+            null,
+            now,
+            CancellationToken.None);
+        await store.BeginAsync(queued.Job!.Id, now.AddMinutes(1), CancellationToken.None);
+        const string imported = "{\"id\":\"tx-1\",\"amount\":25}";
+        const string rejected = "{\"id\":\"tx-2\",\"amount\":0}";
+        await store.CompleteAsync(
+            queued.Job.Id,
+            new PluggySynchronizationBatch(
+                [new PluggyResourceRecord(
+                    "account-1", PluggyResourceKind.Account, "Daily", "Bank", "BRL",
+                    100m, null, null, null, null)],
+                [
+                    new PluggyTransactionRecord(
+                        imported, "account-1", "tx-1", TransactionDirection.Expense,
+                        25m, new DateOnly(2026, 8, 10), "Lunch", "Food"),
+                    new PluggyTransactionRecord(
+                        imported, "account-1", "tx-1", TransactionDirection.Expense,
+                        25m, new DateOnly(2026, 8, 10), "Lunch", "Food"),
+                    new PluggyTransactionRecord(
+                        rejected, "missing-account", "tx-2", null,
+                        null, null, null, null)
+                ]),
+            now.AddMinutes(2),
+            CancellationToken.None);
+        context.ChangeTracker.Clear();
+
+        var job = await context.ImportJobs.SingleAsync(item => item.PublicId == queued.Job.Id);
+        Assert.Equal(QueueSynchronizationOutcome.AlreadyRunning, concurrent.Outcome);
+        Assert.Equal(queued.Job.Id, concurrent.Job?.Id);
+        Assert.Equal(ImportJobStatus.Completed, job.Status);
+        Assert.Equal(1, job.ImportedCount);
+        Assert.Equal(1, job.DuplicateCount);
+        Assert.Equal(1, job.RejectedCount);
+        Assert.Equal(3, await context.ImportedRecords.CountAsync(
+            item => item.ImportJobId == job.Id));
+        var transaction = await context.FinancialTransactions
+            .Include(item => item.ImportedRecord)
+            .SingleAsync(item => item.UserId == user.Id && item.SourceType == TransactionSourceType.Pluggy);
+        Assert.True(transaction.IsReconciled);
+        using var expectedPayload = JsonDocument.Parse(imported);
+        using var actualPayload = JsonDocument.Parse(transaction.ImportedRecord!.RawPayload);
+        Assert.True(JsonElement.DeepEquals(
+            expectedPayload.RootElement,
+            actualPayload.RootElement));
+        Assert.Equal(1, await context.ConnectionResources.CountAsync(
+            item => item.ConnectionId == connection.Id));
+        var createdAccount = await context.FinancialAccounts.SingleAsync(
+            item => item.UserId == user.Id && item.Name.StartsWith("Daily"));
+        Assert.Equal("Bank", createdAccount.Institution);
+        Assert.Equal(100m, createdAccount.OpeningBalance);
+    }
+
+    [FunctionalFact]
+    public async Task GivenExpiredPluggySession_WhenJobFails_ThenConnectionRequiresReauthentication()
+    {
+        await using var context = CreateContext();
+        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        var currency = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+        var now = DateTimeOffset.UtcNow;
+        var user = new UserProfile(Guid.NewGuid(), $"Expired {Guid.NewGuid():N}", currency, now);
+        var connection = new Connection(
+            user, TransactionSourceType.Pluggy, $"item-{Guid.NewGuid():N}", [1], now);
+        context.AddRange(user, connection);
+        await context.SaveChangesAsync();
+        var store = new EfPluggySynchronizationStore(context);
+        var queued = await store.QueueAsync(
+            user.PublicId, connection.PublicId, null, null, null, now, CancellationToken.None);
+
+        await store.BeginAsync(queued.Job!.Id, now.AddMinutes(1), CancellationToken.None);
+        await store.FailAsync(
+            queued.Job.Id, "Reauthentication required.", true,
+            now.AddMinutes(2), CancellationToken.None);
+
+        Assert.Equal(ImportJobStatus.Failed,
+            await context.ImportJobs.Where(item => item.PublicId == queued.Job.Id)
+                .Select(item => item.Status).SingleAsync());
+        Assert.Equal(ConnectionStatus.RequiresReauthentication,
+            await context.Connections.Where(item => item.PublicId == connection.PublicId)
+                .Select(item => item.Status).SingleAsync());
     }
 
     [FunctionalTheory]

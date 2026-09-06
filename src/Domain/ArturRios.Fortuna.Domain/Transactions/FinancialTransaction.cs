@@ -266,6 +266,31 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         MarkUpdated(updatedAt);
     }
 
+    public void MarkAsImported(
+        ImportedRecord importedRecord,
+        TransactionSourceType sourceType,
+        DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(importedRecord);
+        if (sourceType == TransactionSourceType.Manual || !Enum.IsDefined(sourceType))
+        {
+            throw new ArgumentOutOfRangeException(nameof(sourceType));
+        }
+
+        if (ImportedRecordId.HasValue || importedRecord.ImportJob.User.PublicId != User.PublicId)
+        {
+            throw new ArgumentException(
+                "The imported record must be unused and belong to the transaction owner.",
+                nameof(importedRecord));
+        }
+
+        ImportedRecord = importedRecord;
+        ImportedRecordId = importedRecord.Id;
+        SourceType = sourceType;
+        IsReconciled = true;
+        MarkUpdated(updatedAt);
+    }
+
     public void Unreconcile(DateTimeOffset updatedAt)
     {
         if (!IsReconciled)

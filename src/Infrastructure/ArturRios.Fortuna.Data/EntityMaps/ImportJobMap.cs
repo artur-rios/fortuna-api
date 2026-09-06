@@ -20,15 +20,61 @@ public sealed class ImportJobMap : IEntityTypeConfiguration<ImportJob>
         builder.HasKey(job => job.Id);
         builder.Property(job => job.PublicId).IsRequired();
         builder.Property(job => job.UserId).IsRequired();
+        builder.Property(job => job.ConnectionId);
         builder.Property(job => job.SourceType).IsRequired();
         builder.Property(job => job.Status).IsRequired();
+        builder.Property(job => job.PeriodStart);
+        builder.Property(job => job.PeriodEnd);
+        builder.Property(job => job.ImportedCount).HasDefaultValue(0).IsRequired();
+        builder.Property(job => job.DuplicateCount).HasDefaultValue(0).IsRequired();
+        builder.Property(job => job.RejectedCount).HasDefaultValue(0).IsRequired();
+        builder.Property(job => job.FailureReason).HasMaxLength(1000);
         builder.Property(job => job.CreatedAt).IsRequired();
         builder.Property(job => job.UpdatedAt).IsRequired();
         builder.HasIndex(job => job.PublicId).IsUnique();
         builder.HasIndex(job => new { job.UserId, job.Status });
+        builder.HasIndex(job => new { job.ConnectionId, job.Status });
+        builder.HasIndex(job => job.ConnectionId)
+            .HasDatabaseName("ux_import_job_connection_unfinished")
+            .HasFilter("connection_id IS NOT NULL AND status IN (1, 2)")
+            .IsUnique();
         builder.HasOne(job => job.User)
             .WithMany()
             .HasForeignKey(job => job.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(job => job.Connection)
+            .WithMany()
+            .HasForeignKey(job => job.ConnectionId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class ConnectionResourceMap : IEntityTypeConfiguration<ConnectionResource>
+{
+    public void Configure(EntityTypeBuilder<ConnectionResource> builder)
+    {
+        builder.ToTable("connection_resource", table => table.HasCheckConstraint(
+            "ck_connection_resource_target",
+            "(financial_account_id IS NULL) <> (credit_card_id IS NULL)"));
+        builder.HasKey(resource => resource.Id);
+        builder.Property(resource => resource.ConnectionId).IsRequired();
+        builder.Property(resource => resource.ExternalReference).HasMaxLength(200).IsRequired();
+        builder.HasIndex(resource => new
+        {
+            resource.ConnectionId,
+            resource.ExternalReference
+        }).IsUnique();
+        builder.HasOne(resource => resource.Connection)
+            .WithMany()
+            .HasForeignKey(resource => resource.ConnectionId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(resource => resource.FinancialAccount)
+            .WithMany()
+            .HasForeignKey(resource => resource.FinancialAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(resource => resource.CreditCard)
+            .WithMany()
+            .HasForeignKey(resource => resource.CreditCardId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
