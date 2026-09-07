@@ -815,6 +815,7 @@ every endpoint is scoped to the acting user (FR-ID-07).
 | POST | `/api/transactions/{id}/attachments` | Attach a file | FR-AT-01 |
 | GET | `/api/attachments/{id}` | Download an attachment | FR-AT-08 |
 | DELETE | `/api/attachments/{id}` · `/hard` | Lifecycle | FR-AT-09 |
+| POST | `/api/reports/table` | Query an owner-scoped record set as a typed table | FR-RP-01 |
 | GET | `/api/reports/aggregate` | Aggregate by period, category, account, card, counterparty or tag | FR-RP-02 … FR-RP-04 |
 | GET | `/api/reports/drill-down` | Resolve a drill-down key one level finer | FR-RP-06 |
 | GET | `/api/reports/net-position` | Net position in a display currency | FR-RP-10 |
