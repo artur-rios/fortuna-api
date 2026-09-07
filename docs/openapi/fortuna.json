@@ -6879,6 +6879,92 @@
         "format": "int32",
         "type": "integer"
       },
+      "TransactionDrillDownOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionAggregationBucketOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "dimension": {
+            "nullable": true,
+            "type": "string"
+          },
+          "mayDifferFromChart": {
+            "type": "boolean"
+          },
+          "mode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "sourceDimension": {
+            "nullable": true,
+            "type": "string"
+          },
+          "totalItems": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "readOnly": true,
+            "type": "integer"
+          },
+          "transaction": {
+            "$ref": "#/components/schemas/TransactionOutput"
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionDrillDownOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TransactionDrillDownOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "TransactionLabelOutput": {
         "additionalProperties": false,
         "properties": {
@@ -13000,6 +13086,67 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionAggregationOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/reports/drill-down": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "Key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Dimension",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionDrillDownOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionDrillDownOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionDrillDownOutputDataOutput"
                 }
               }
             },

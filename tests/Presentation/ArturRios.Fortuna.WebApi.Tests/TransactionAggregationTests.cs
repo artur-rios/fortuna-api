@@ -29,6 +29,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateOnly Start = new(2026, 9, 1);
+    private static readonly DateTimeOffset Now = new(2026, 9, 7, 12, 0, 0, TimeSpan.Zero);
     private readonly PostgreSqlContainer database =
         new PostgreSqlBuilder("postgres:17-alpine").Build();
 
@@ -130,6 +131,10 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             $"&counterpartyId={classification.Counterparty.PublicId:D}");
         var amountFiltered = await AggregateAsync(client, "category",
             "&minimumAmount=10&maximumAmount=15");
+        var rolledDrill = await DrillAsync(client,
+            Assert.Single(rolled.Data!.Buckets).DrillDownKey);
+        var tagDrill = await DrillAsync(client,
+            Assert.Single(tags.Data!.Buckets).DrillDownKey);
 
         var root = Assert.Single(rolled.Data!.Buckets);
         Assert.Equal("Root", root.Label);
@@ -150,6 +155,9 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         Assert.Equal("Child", Assert.Single(tagFiltered.Data!.Buckets).Label);
         Assert.Equal("Child", Assert.Single(counterpartyFiltered.Data!.Buckets).Label);
         Assert.Equal("Child", Assert.Single(amountFiltered.Data!.Buckets).Label);
+        Assert.Equal("transactions", rolledDrill.Data!.Mode);
+        Assert.Equal(2, rolledDrill.Data.TotalItems);
+        Assert.Equal("transaction", tagDrill.Data!.Mode);
     }
 
     [FunctionalFact]
@@ -220,6 +228,139 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, (await administrator.GetAsync(valid)).StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenPeriodBucket_WhenDrilled_ThenFinerBucketsAndDirectTransactionReturn()
+    {
+        var subject = Guid.NewGuid();
+        var clock = new MutableTimeProvider(Now);
+        await using var factory = CreateFactory(timeProvider: clock);
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Drill account", "BRL");
+        var category = await SeedCategoryAsync(subject, "Drill category");
+        var firstId = await SeedTransactionAsync(account, category.Id,
+            TransactionDirection.Expense, 10m, Start, "first drill record");
+        await SeedTransactionAsync(account, category.Id, TransactionDirection.Expense, 20m,
+            Start.AddDays(1), "second drill record");
+
+        var aggregate = await AggregateAsync(
+            client,
+            "period",
+            "&granularity=month",
+            Start.AddDays(1));
+        var month = Assert.Single(aggregate.Data!.Buckets);
+        var finer = await DrillAsync(client, month.DrillDownKey);
+
+        Assert.Equal("aggregation", finer.Data!.Mode);
+        Assert.Equal("period", finer.Data.Dimension);
+        Assert.Equal(2, finer.Data.Buckets.Count);
+        Assert.All(finer.Data.Buckets, bucket =>
+            Assert.False(string.IsNullOrWhiteSpace(bucket.DrillDownKey)));
+
+        var direct = await DrillAsync(client, finer.Data.Buckets
+            .Single(bucket => bucket.PeriodStart == Start).DrillDownKey);
+
+        Assert.Equal("transaction", direct.Data!.Mode);
+        Assert.Equal(firstId, direct.Data.Transaction!.Id);
+        Assert.Equal(1, direct.Data.TotalItems);
+    }
+
+    [FunctionalFact]
+    public async Task GivenBucketAndOptionalDimension_WhenDrilled_ThenNestedAndPagedResultsReturn()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var firstAccount = await CreateAccountAsync(client, "First drill", "BRL");
+        var secondAccount = await CreateAccountAsync(client, "Second drill", "BRL");
+        var category = await SeedCategoryAsync(subject, "Shared drill category");
+        await SeedTransactionAsync(firstAccount, category.Id, TransactionDirection.Expense, 1m,
+            Start, "one");
+        await SeedTransactionAsync(firstAccount, category.Id, TransactionDirection.Expense, 2m,
+            Start, "two");
+        await SeedTransactionAsync(secondAccount, category.Id, TransactionDirection.Expense, 3m,
+            Start, "three");
+
+        var categoryAggregate = await AggregateAsync(client, "category");
+        var key = Assert.Single(categoryAggregate.Data!.Buckets).DrillDownKey;
+        var nested = await DrillAsync(client, key, "&dimension=account");
+        var page = await DrillAsync(client, key, "&pageNumber=2&pageSize=1");
+
+        Assert.Equal("aggregation", nested.Data!.Mode);
+        Assert.Equal("account", nested.Data.Dimension);
+        Assert.Equal(2, nested.Data.Buckets.Count);
+        Assert.Equal("transactions", page.Data!.Mode);
+        Assert.Single(page.Data.Transactions);
+        Assert.Equal(2, page.Data.PageNumber);
+        Assert.Equal(1, page.Data.PageSize);
+        Assert.Equal(3, page.Data.TotalItems);
+        Assert.Equal(3, page.Data.TotalPages);
+    }
+
+    [FunctionalFact]
+    public async Task GivenMalformedExpiredForeignOrUnauthorizedDrill_WhenRequested_ThenRejected()
+    {
+        var ownerSubject = Guid.NewGuid();
+        var clock = new MutableTimeProvider(Now);
+        await using var factory = CreateFactory(timeProvider: clock);
+        using var owner = factory.CreateClient();
+        Authorize(owner, ownerSubject, HeimdallRoles.User);
+        var account = await CreateAccountAsync(owner, "Protected drill", "BRL");
+        var category = await SeedCategoryAsync(ownerSubject, "Protected category");
+        await SeedTransactionAsync(account, category.Id, TransactionDirection.Expense, 1m,
+            Start, "protected");
+        var aggregate = await AggregateAsync(owner, "category");
+        var key = Assert.Single(aggregate.Data!.Buckets).DrillDownKey;
+
+        var malformed = await owner.GetAsync("/api/reports/drill-down?key=not-a-key");
+        using var foreign = factory.CreateClient();
+        Authorize(foreign, Guid.NewGuid(), HeimdallRoles.User);
+        var foreignResponse = await foreign.GetAsync(DrillUrl(key));
+        clock.Now = Now.AddMinutes(16);
+        var expired = await owner.GetAsync(DrillUrl(key));
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+
+        Assert.Equal(HttpStatusCode.BadRequest, malformed.StatusCode);
+        Assert.Contains("malformed or expired", await malformed.Content.ReadAsStringAsync(),
+            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(HttpStatusCode.NotFound, foreignResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, expired.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anonymous.GetAsync(DrillUrl(key))).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await administrator.GetAsync(DrillUrl(key))).StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenRecordsChangedAfterAggregation_WhenDrilled_ThenCurrentDataWarningReturns()
+    {
+        var subject = Guid.NewGuid();
+        var clock = new MutableTimeProvider(Now);
+        await using var factory = CreateFactory(timeProvider: clock);
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Changing drill", "BRL");
+        var category = await SeedCategoryAsync(subject, "Changing category");
+        await SeedTransactionAsync(account, category.Id, TransactionDirection.Expense, 1m,
+            Start, "before");
+        await SeedTransactionAsync(account, category.Id, TransactionDirection.Expense, 2m,
+            Start, "also before");
+        var aggregate = await AggregateAsync(client, "category");
+        var key = Assert.Single(aggregate.Data!.Buckets).DrillDownKey;
+        await SeedTransactionAsync(account, category.Id, TransactionDirection.Expense, 3m,
+            Start, "after");
+
+        var drill = await DrillAsync(client, key);
+
+        Assert.True(drill.Data!.MayDifferFromChart);
+        Assert.Equal(3, drill.Data.TotalItems);
+        Assert.Contains(drill.Messages,
+            message => message.Contains("totals may differ", StringComparison.OrdinalIgnoreCase));
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -233,14 +374,28 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
     private async Task<AggregationEnvelope> AggregateAsync(
         HttpClient client,
         string dimension,
-        string suffix = "")
+        string suffix = "",
+        DateOnly? to = null)
     {
         var response = await client.GetAsync(
             $"/api/reports/aggregate?dimension={dimension}&from={Start:yyyy-MM-dd}" +
-            $"&to={Start:yyyy-MM-dd}{suffix}");
+            $"&to={to ?? Start:yyyy-MM-dd}{suffix}");
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<AggregationEnvelope>())!;
     }
+
+    private static async Task<DrillEnvelope> DrillAsync(
+        HttpClient client,
+        string key,
+        string suffix = "")
+    {
+        var response = await client.GetAsync(DrillUrl(key, suffix));
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<DrillEnvelope>())!;
+    }
+
+    private static string DrillUrl(string key, string suffix = "") =>
+        $"/api/reports/drill-down?key={Uri.EscapeDataString(key)}{suffix}";
 
     private async Task<Category> SeedCategoryAsync(Guid subject, string name)
     {
@@ -441,7 +596,9 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
-    private WebApplicationFactory<Program> CreateFactory(int maximumSpanDays = 366)
+    private WebApplicationFactory<Program> CreateFactory(
+        int maximumSpanDays = 366,
+        TimeProvider? timeProvider = null)
     {
         foreach (var setting in ValidSettings())
         {
@@ -458,6 +615,11 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
                 services.RemoveAll<DbContextOptions<AppDbContext>>();
                 services.RemoveAll<TransactionAggregationOptions>();
                 services.AddSingleton(new TransactionAggregationOptions(maximumSpanDays));
+                if (timeProvider is not null)
+                {
+                    services.RemoveAll<TimeProvider>();
+                    services.AddSingleton(timeProvider);
+                }
                 services.AddDbContext<AppDbContext>(options =>
                     options.UseNpgsql(database.GetConnectionString()));
             });
@@ -502,6 +664,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
         ["FORTUNA_REPORT_MAX_RANGE_DAYS"] = "366",
+        ["FORTUNA_REPORT_KEY_TTL_MINUTES"] = "15",
         ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
@@ -547,4 +710,28 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         DateOnly? RateDate,
         ExchangeRateSource? RateSource,
         string? UnconvertedReason);
+    private sealed record DrillEnvelope(
+        DrillData? Data,
+        IReadOnlyCollection<string> Messages,
+        IReadOnlyCollection<string>? Errors);
+    private sealed record DrillData(
+        string Mode,
+        string SourceDimension,
+        string? Dimension,
+        bool MayDifferFromChart,
+        IReadOnlyCollection<BucketData> Buckets,
+        TransactionData? Transaction,
+        IReadOnlyCollection<TransactionData> Transactions,
+        int PageNumber,
+        int PageSize,
+        int TotalItems,
+        int TotalPages);
+    private sealed record TransactionData(Guid Id, string? Description);
+
+    private sealed class MutableTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
 }

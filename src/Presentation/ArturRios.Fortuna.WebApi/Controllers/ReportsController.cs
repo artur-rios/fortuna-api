@@ -69,4 +69,29 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
             [TransactionAggregationMessages.ProfileNotFound] = StatusCodes.Status404NotFound
         });
     }
+
+    [HttpGet("drill-down")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<TransactionDrillDownOutput?>>> DrillDown(
+        [FromQuery] DrillIntoAggregationQuery query)
+    {
+        var result = await queryMediator.ExecuteQueryAsync<
+            DrillIntoAggregationQuery,
+            TransactionDrillDownOutput>(query);
+        if (result.Errors?.Count > 0 &&
+            !result.Errors.Contains(TransactionDrillDownMessages.ProfileNotFound) &&
+            !result.Errors.Contains(TransactionDrillDownMessages.BucketNotFound))
+        {
+            return BadRequest(result);
+        }
+
+        return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
+        {
+            [TransactionDrillDownMessages.AggregationRetrieved] = StatusCodes.Status200OK,
+            [TransactionDrillDownMessages.TransactionsRetrieved] = StatusCodes.Status200OK,
+            [TransactionDrillDownMessages.TransactionRetrieved] = StatusCodes.Status200OK,
+            [TransactionDrillDownMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
+            [TransactionDrillDownMessages.BucketNotFound] = StatusCodes.Status404NotFound
+        });
+    }
 }
