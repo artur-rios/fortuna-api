@@ -14,6 +14,11 @@ public static class AttachmentMessages
     public const string AttachmentNotFound = "The attachment was not found.";
     public const string StoredObjectNotFound =
         "The stored object for the attachment was not found.";
+    public const string DeletedSuccessfully = "Attachment deleted successfully.";
+    public const string HardDeletedSuccessfully =
+        "Attachment permanently deleted successfully.";
+    public const string HardDeleteRequiresSoftDeletion =
+        "The attachment must be soft-deleted before it can be permanently deleted.";
 
     public static string FileTooLarge(int maximumBytes) =>
         $"The document exceeds the configured maximum of {maximumBytes} bytes.";

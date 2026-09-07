@@ -3,12 +3,15 @@ using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Accounts;
+using ArturRios.Fortuna.Shared.Attachments;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Accounts;
 
-public sealed class EfFinancialAccountStore(AppDbContext context)
+public sealed class EfFinancialAccountStore(
+    AppDbContext context,
+    IAttachmentLifecycleStore attachments)
     : IFinancialAccountStore, IFinancialAccountReader, IFinancialAccountUpdater,
         IFinancialAccountLifecycleStore
 {
@@ -275,9 +278,19 @@ public sealed class EfFinancialAccountStore(AppDbContext context)
             };
         }
 
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        if (!await attachments.HardDeleteForTransactionsAsync(
+                transactions.Select(transaction => transaction.Id).ToArray(),
+                cancellationToken))
+        {
+            return LifecycleResult(FinancialAccountLifecycleOutcome.AttachmentStorageUnavailable);
+        }
+
         context.FinancialTransactions.RemoveRange(transactions);
         context.FinancialAccounts.Remove(account);
         await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
 
         return LifecycleResult(FinancialAccountLifecycleOutcome.Succeeded, account.PublicId);
     }

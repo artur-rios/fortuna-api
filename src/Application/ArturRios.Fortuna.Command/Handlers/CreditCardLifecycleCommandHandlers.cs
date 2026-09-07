@@ -126,6 +126,8 @@ internal static class CreditCardLifecycleHandler
                 .WithError(CreditCardMessages.HardDeleteHasLiveTransactions),
             CreditCardLifecycleOutcome.DuplicateName => output
                 .WithError(CreditCardMessages.DuplicateName),
+            CreditCardLifecycleOutcome.AttachmentStorageUnavailable => output
+                .WithError(AttachmentMessages.StorageUnavailable),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
     }

@@ -20,6 +20,34 @@ public interface IAttachmentMetadataReader
         CancellationToken cancellationToken);
 }
 
+public interface IAttachmentLifecycleStore
+{
+    Task<AttachmentLifecycleResult> SoftDeleteAsync(
+        Guid userId,
+        Guid attachmentId,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<AttachmentLifecycleResult> HardDeleteAsync(
+        Guid userId,
+        Guid attachmentId,
+        CancellationToken cancellationToken);
+
+    Task SoftDeleteForTransactionsAsync(
+        IReadOnlyDictionary<long, Guid> transactionCascadeIds,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task RestoreForTransactionsAsync(
+        IReadOnlyDictionary<long, Guid> transactionCascadeIds,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken);
+
+    Task<bool> HardDeleteForTransactionsAsync(
+        IReadOnlyCollection<long> transactionIds,
+        CancellationToken cancellationToken);
+}
+
 public sealed record AttachmentMetadataWrite(
     Guid UserId,
     Guid TransactionId,
@@ -53,6 +81,19 @@ public sealed record AttachmentReadSnapshot(
     string ContentType,
     long SizeInBytes,
     string StorageKey);
+
+public enum AttachmentLifecycleOutcome
+{
+    Succeeded = 1,
+    NotFound = 2,
+    HardDeleteRequiresSoftDeletion = 3,
+    StorageUnavailable = 4
+}
+
+public sealed record AttachmentLifecycleResult(
+    AttachmentLifecycleOutcome Outcome,
+    Guid? Id = null,
+    bool? IsDeleted = null);
 
 public sealed record AttachmentOptions(
     int MaximumBytes,

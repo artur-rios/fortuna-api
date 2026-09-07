@@ -61,6 +61,7 @@ public sealed class CreditCardsController(
             [CreditCardMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [CreditCardMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [CreditCardMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict,
+            [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable,
             [CreditCardMessages.CreditLimitPositive] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.CreditLimitPrecisionInvalid] = StatusCodes.Status400BadRequest,
             [CreditCardMessages.ClosingDayInvalid] = StatusCodes.Status400BadRequest,

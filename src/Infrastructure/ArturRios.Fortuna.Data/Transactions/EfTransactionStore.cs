@@ -8,11 +8,14 @@ using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Transactions;
+using ArturRios.Fortuna.Shared.Attachments;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Transactions;
 
-public sealed class EfTransactionStore(AppDbContext context)
+public sealed class EfTransactionStore(
+    AppDbContext context,
+    IAttachmentLifecycleStore attachments)
     : ITransactionStore,
         ITransactionReader,
         ITransactionUpdater,
@@ -530,6 +533,11 @@ public sealed class EfTransactionStore(AppDbContext context)
             }
         }
 
+        await attachments.SoftDeleteForTransactionsAsync(
+            DeletionCascades(transactionLegs),
+            changedAt,
+            cancellationToken);
+
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
         return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
@@ -563,6 +571,8 @@ public sealed class EfTransactionStore(AppDbContext context)
         {
             return LifecycleResult(TransactionLifecycleOutcome.SettledStatementFrozen);
         }
+
+        var attachmentCascades = DeletionCascades(transactionLegs);
 
         if (transfer is null && installmentPlan is null)
         {
@@ -605,6 +615,11 @@ public sealed class EfTransactionStore(AppDbContext context)
             }
         }
 
+        await attachments.RestoreForTransactionsAsync(
+            attachmentCascades,
+            changedAt,
+            cancellationToken);
+
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
         return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
@@ -641,6 +656,13 @@ public sealed class EfTransactionStore(AppDbContext context)
         if (await HasSettledStatementAsync(transactionLegs, cancellationToken))
         {
             return LifecycleResult(TransactionLifecycleOutcome.SettledStatementFrozen);
+        }
+
+        if (!await attachments.HardDeleteForTransactionsAsync(
+                transactionLegs.Select(leg => leg.Id).ToArray(),
+                cancellationToken))
+        {
+            return LifecycleResult(TransactionLifecycleOutcome.AttachmentStorageUnavailable);
         }
 
         if (transfer is not null)
@@ -1109,6 +1131,13 @@ public sealed class EfTransactionStore(AppDbContext context)
             ? [transfer?.OutboundTransaction ?? transaction]
             : [transfer.OutboundTransaction, transfer.InboundTransaction];
     }
+
+    private static IReadOnlyDictionary<long, Guid> DeletionCascades(
+        IReadOnlyCollection<FinancialTransaction> transactions) => transactions
+        .Where(transaction => transaction.IsDeleted && transaction.DeletionCascadeId.HasValue)
+        .ToDictionary(
+            transaction => transaction.Id,
+            transaction => transaction.DeletionCascadeId!.Value);
 
     private static bool SoftDeleteToCascade(
         RecordLifecycleEntity entity,
