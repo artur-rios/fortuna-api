@@ -4523,6 +4523,49 @@
         },
         "type": "object"
       },
+      "QueryRecordsAsTableQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "displayCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "filters": {
+            "items": {
+              "$ref": "#/components/schemas/TableFilterInput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "recordSet": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sorts": {
+            "items": {
+              "$ref": "#/components/schemas/TableSortInput"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
       "ReassignCategoryTransactionsCommand": {
         "additionalProperties": false,
         "properties": {
@@ -6275,6 +6318,216 @@
           "timestamp": {
             "format": "date-time",
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TableColumnOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "currencyColumn": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isNumeric": {
+            "type": "boolean"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TableColumnType"
+          }
+        },
+        "type": "object"
+      },
+      "TableColumnType": {
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "TableFilterInput": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "nullable": true,
+            "type": "string"
+          },
+          "operator": {
+            "nullable": true,
+            "type": "string"
+          },
+          "value": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TableReportOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/TableColumnOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "recordSet": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "totalCount": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totals": {
+            "items": {
+              "$ref": "#/components/schemas/TableTotalOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "TableReportOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TableReportOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TableSortInput": {
+        "additionalProperties": false,
+        "properties": {
+          "descending": {
+            "type": "boolean"
+          },
+          "field": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TableTotalConversionOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "convertedValue": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "figureDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "rateSource": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          },
+          "sourceCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sourceValue": {
+            "format": "double",
+            "type": "number"
+          },
+          "unconvertedReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TableTotalOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "nullable": true,
+            "type": "string"
+          },
+          "conversions": {
+            "items": {
+              "$ref": "#/components/schemas/TableTotalConversionOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "value": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
           }
         },
         "type": "object"
@@ -12446,6 +12699,54 @@
         ]
       }
     },
+    "/api/reports/table": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRecordsAsTableQuery"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRecordsAsTableQuery"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRecordsAsTableQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableReportOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableReportOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableReportOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
     "/api/statements/{id}": {
       "get": {
         "parameters": [
@@ -13673,6 +13974,9 @@
     },
     {
       "name": "RecurringTransactions"
+    },
+    {
+      "name": "Reports"
     },
     {
       "name": "Statements"

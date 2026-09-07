@@ -11,6 +11,7 @@ using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Investments;
 using ArturRios.Fortuna.Data.Ingestion;
 using ArturRios.Fortuna.Data.Planning;
+using ArturRios.Fortuna.Data.Reporting;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Data.Transactions;
@@ -37,6 +38,7 @@ using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
+using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Services;
@@ -238,6 +240,7 @@ try
     builder.Services.AddScoped<IPdfInvoiceImportStore, EfPdfInvoiceImportStore>();
     builder.Services.AddSingleton<IPdfInvoiceParser, NubankPdfInvoiceParser>();
     builder.Services.AddScoped<IImportJobReader, EfImportJobReader>();
+    builder.Services.AddScoped<ITableReportReader, EfTableReportReader>();
     builder.Services.AddScoped<IImportJobRetryStore, EfImportJobRetryStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new ReconciliationOptions(
@@ -605,6 +608,10 @@ try
         ListImportedRecordsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListImportedRecordsQuery,
         ImportedRecordOutput>, ListImportedRecordsQueryHandler>();
+    builder.Services.AddScoped<IValidator<QueryRecordsAsTableQuery>,
+        QueryRecordsAsTableQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<QueryRecordsAsTableQuery, TableReportOutput>,
+        QueryRecordsAsTableQueryHandler>();
 
     builder.Services.AddSingleton(new PluggySourceOptions(
         options.PluggyClientId,
