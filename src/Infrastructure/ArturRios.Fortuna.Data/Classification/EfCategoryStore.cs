@@ -2,12 +2,15 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Classification;
+using ArturRios.Fortuna.Shared.Attachments;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Classification;
 
-public sealed class EfCategoryStore(AppDbContext context)
+public sealed class EfCategoryStore(
+    AppDbContext context,
+    IAttachmentLifecycleStore attachments)
     : ICategoryStore,
         ICategoryReader,
         ICategoryUpdater,
@@ -385,10 +388,20 @@ public sealed class EfCategoryStore(AppDbContext context)
             };
         }
 
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        if (!await attachments.HardDeleteForTransactionsAsync(
+                transactions.Select(transaction => transaction.Id).ToArray(),
+                cancellationToken))
+        {
+            return LifecycleResult(CategoryLifecycleOutcome.AttachmentStorageUnavailable);
+        }
+
         context.FinancialTransactions.RemoveRange(transactions);
         context.RecurringTransactions.RemoveRange(recurringTransactions);
         context.Categories.RemoveRange(subtree);
         await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
 
         return LifecycleResult(CategoryLifecycleOutcome.Succeeded, category.PublicId);
     }

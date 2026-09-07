@@ -60,7 +60,8 @@ public enum FinancialAccountLifecycleOutcome
     RestoreRequiresSoftDeletion = 3,
     HardDeleteRequiresSoftDeletion = 4,
     HardDeleteHasLiveTransactions = 5,
-    DuplicateName = 6
+    DuplicateName = 6,
+    AttachmentStorageUnavailable = 7
 }
 
 public sealed record FinancialAccountLifecycleResult(

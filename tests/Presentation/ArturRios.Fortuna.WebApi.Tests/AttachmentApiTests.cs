@@ -293,6 +293,210 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorResponse.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenOwnedAttachment_WhenSoftThenHardDeleted_ThenObjectSurvivesOnlySoftDelete()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+        var attached = await AttachAsync(
+            client, transactionId, [1, 2, 3], "file.pdf", "application/pdf");
+        var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+        var objectPath = await AttachmentObjectPathAsync(attachmentId);
+
+        var softDelete = await client.DeleteAsync($"/api/attachments/{attachmentId}");
+
+        Assert.Equal(HttpStatusCode.OK, softDelete.StatusCode);
+        Assert.True(File.Exists(objectPath));
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/attachments/{attachmentId}")).StatusCode);
+        await using (var context = CreateContext())
+        {
+            Assert.True((await context.Attachments.SingleAsync(item =>
+                item.PublicId == attachmentId)).IsDeleted);
+        }
+
+        var hardDelete = await client.DeleteAsync($"/api/attachments/{attachmentId}/hard");
+
+        Assert.Equal(HttpStatusCode.OK, hardDelete.StatusCode);
+        Assert.False(File.Exists(objectPath));
+        await using var verification = CreateContext();
+        Assert.False(await verification.Attachments.AnyAsync(item =>
+            item.PublicId == attachmentId));
+        Assert.Contains(await verification.AuditEntries.ToArrayAsync(), entry =>
+            entry.Operation == "DeleteAttachmentCommand" &&
+            entry.EntityPublicId == attachmentId);
+        Assert.Contains(await verification.AuditEntries.ToArrayAsync(), entry =>
+            entry.Operation == "HardDeleteAttachmentCommand" &&
+            entry.EntityPublicId == attachmentId);
+    }
+
+    [FunctionalFact]
+    public async Task GivenLiveAttachment_WhenHardDeleted_ThenConflictLeavesRowAndObject()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+        var attached = await AttachAsync(
+            client, transactionId, [1], "file.pdf", "application/pdf");
+        var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+        var objectPath = await AttachmentObjectPathAsync(attachmentId);
+
+        var response = await client.DeleteAsync($"/api/attachments/{attachmentId}/hard");
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains(AttachmentMessages.HardDeleteRequiresSoftDeletion,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.True(File.Exists(objectPath));
+        await using var context = CreateContext();
+        Assert.True(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
+        Assert.Contains(await context.AuditEntries.ToArrayAsync(), entry =>
+            entry.Operation == "HardDeleteAttachmentCommand" &&
+            entry.EntityPublicId == null &&
+            entry.Reason == AttachmentMessages.HardDeleteRequiresSoftDeletion);
+    }
+
+    [FunctionalFact]
+    public async Task GivenObjectDeleteFailure_WhenHardDeleted_ThenRowAndObjectRemainTracked()
+    {
+        var subject = Guid.NewGuid();
+        Guid attachmentId;
+        string objectPath;
+        await using (var healthyFactory = CreateFactory())
+        {
+            using var client = healthyFactory.CreateClient();
+            Authorize(client, subject, HeimdallRoles.User);
+            (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+            var transactionId = await SeedTransactionAsync(subject);
+            var attached = await AttachAsync(
+                client, transactionId, [1], "file.pdf", "application/pdf");
+            attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+            objectPath = await AttachmentObjectPathAsync(attachmentId);
+            (await client.DeleteAsync($"/api/attachments/{attachmentId}"))
+                .EnsureSuccessStatusCode();
+        }
+
+        await using var failingFactory = CreateFactory(deleteFailure: true);
+        using var failing = failingFactory.CreateClient();
+        Authorize(failing, subject, HeimdallRoles.User);
+        var response = await failing.DeleteAsync($"/api/attachments/{attachmentId}/hard");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.True(File.Exists(objectPath));
+        await using var context = CreateContext();
+        Assert.True(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
+        Assert.Contains(await context.AuditEntries.ToArrayAsync(), entry =>
+            entry.Operation == "HardDeleteAttachmentCommand" &&
+            entry.EntityPublicId == null &&
+            entry.Reason == AttachmentMessages.StorageUnavailable);
+    }
+
+    [FunctionalFact]
+    public async Task GivenTransactionLifecycle_WhenChanged_ThenAttachmentCascadesWithItsObject()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+        var attached = await AttachAsync(
+            client, transactionId, [1], "file.pdf", "application/pdf");
+        var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+        var objectPath = await AttachmentObjectPathAsync(attachmentId);
+
+        (await client.DeleteAsync($"/api/transactions/{transactionId}"))
+            .EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/attachments/{attachmentId}")).StatusCode);
+        Assert.True(File.Exists(objectPath));
+        (await client.PostAsync($"/api/transactions/{transactionId}/restore", null))
+            .EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.OK,
+            (await client.GetAsync($"/api/attachments/{attachmentId}")).StatusCode);
+        (await client.DeleteAsync($"/api/transactions/{transactionId}"))
+            .EnsureSuccessStatusCode();
+
+        (await client.DeleteAsync($"/api/transactions/{transactionId}/hard"))
+            .EnsureSuccessStatusCode();
+
+        Assert.False(File.Exists(objectPath));
+        await using var context = CreateContext();
+        Assert.False(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
+    }
+
+    [FunctionalFact]
+    public async Task GivenAttachmentObjectDeleteFailure_WhenTransactionHardDeleted_ThenRowsRemain()
+    {
+        var subject = Guid.NewGuid();
+        Guid transactionId;
+        Guid attachmentId;
+        string objectPath;
+        await using (var healthyFactory = CreateFactory())
+        {
+            using var client = healthyFactory.CreateClient();
+            Authorize(client, subject, HeimdallRoles.User);
+            (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+            transactionId = await SeedTransactionAsync(subject);
+            var attached = await AttachAsync(
+                client, transactionId, [1], "file.pdf", "application/pdf");
+            attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+            objectPath = await AttachmentObjectPathAsync(attachmentId);
+            (await client.DeleteAsync($"/api/transactions/{transactionId}"))
+                .EnsureSuccessStatusCode();
+        }
+
+        await using var failingFactory = CreateFactory(deleteFailure: true);
+        using var failing = failingFactory.CreateClient();
+        Authorize(failing, subject, HeimdallRoles.User);
+        var response = await failing.DeleteAsync($"/api/transactions/{transactionId}/hard");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.True(File.Exists(objectPath));
+        await using var context = CreateContext();
+        Assert.True(await context.FinancialTransactions.AnyAsync(item =>
+            item.PublicId == transactionId));
+        Assert.True(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignOrUnauthenticatedActor_WhenAttachmentDeleted_ThenAccessIsRefused()
+    {
+        var ownerSubject = Guid.NewGuid();
+        var otherSubject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var owner = factory.CreateClient();
+        using var other = factory.CreateClient();
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(owner, ownerSubject, HeimdallRoles.User);
+        Authorize(other, otherSubject, HeimdallRoles.User);
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+        (await owner.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        (await other.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(ownerSubject);
+        var attached = await AttachAsync(
+            owner, transactionId, [1], "file.pdf", "application/pdf");
+        var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+
+        var foreign = await other.DeleteAsync($"/api/attachments/{attachmentId}");
+        var unauthenticated = await anonymous.DeleteAsync($"/api/attachments/{attachmentId}");
+        var forbidden = await administrator.DeleteAsync($"/api/attachments/{attachmentId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthenticated.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        await using var context = CreateContext();
+        Assert.False((await context.Attachments.SingleAsync(item =>
+            item.PublicId == attachmentId)).IsDeleted);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -312,7 +516,8 @@ public sealed class AttachmentApiTests : IAsyncLifetime
 
     private WebApplicationFactory<Program> CreateFactory(
         int maximumBytes = 10 * 1024 * 1024,
-        bool unavailableStorage = false)
+        bool unavailableStorage = false,
+        bool deleteFailure = false)
     {
         foreach (var setting in ValidSettings(maximumBytes))
         {
@@ -333,6 +538,12 @@ public sealed class AttachmentApiTests : IAsyncLifetime
                 {
                     services.RemoveAll<IAttachmentStore>();
                     services.AddSingleton<IAttachmentStore>(new UnavailableAttachmentStore());
+                }
+                else if (deleteFailure)
+                {
+                    services.RemoveAll<IAttachmentStore>();
+                    services.AddSingleton<IAttachmentStore>(
+                        new FailingDeleteAttachmentStore(storageRoot));
                 }
             });
         });
@@ -386,6 +597,16 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
             DatabaseDiagnosticsOptions.Disabled);
+    }
+
+    private async Task<string> AttachmentObjectPathAsync(Guid attachmentId)
+    {
+        await using var context = CreateContext();
+        var attachment = await context.Attachments.SingleAsync(item =>
+            item.PublicId == attachmentId);
+        return Path.Combine(
+            storageRoot,
+            attachment.StorageKey.Replace('/', Path.DirectorySeparatorChar));
     }
 
     private static async Task<HttpResponseMessage> AttachAsync(
@@ -450,6 +671,21 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             throw new NotSupportedException();
         public Task DeleteAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
+    }
+
+    private sealed class FailingDeleteAttachmentStore(string root) : IAttachmentStore
+    {
+        private readonly ArturRios.Fortuna.Integration.Storage.FilesystemAttachmentStore inner =
+            new(root);
+
+        public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) =>
+            inner.IsHealthyAsync(cancellationToken);
+        public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken) =>
+            inner.WriteAsync(key, content, cancellationToken);
+        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+            inner.OpenReadAsync(key, cancellationToken);
+        public Task DeleteAsync(string key, CancellationToken cancellationToken) =>
+            throw new IOException("delete unavailable");
     }
 
     private sealed record AttachmentEnvelope(AttachmentData? Data);

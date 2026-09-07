@@ -125,6 +125,8 @@ internal static class TransactionLifecycleHandler
                 .WithError(TransactionMessages.HardDeleteRequiresSoftDeletion),
             TransactionLifecycleOutcome.SettledStatementFrozen => output
                 .WithError(TransactionMessages.SettledStatementFrozen),
+            TransactionLifecycleOutcome.AttachmentStorageUnavailable => output
+                .WithError(AttachmentMessages.StorageUnavailable),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
     }

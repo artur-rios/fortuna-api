@@ -132,6 +132,7 @@ try
         provider.GetRequiredService<EfAttachmentMetadataStore>());
     builder.Services.AddScoped<IAttachmentMetadataReader>(provider =>
         provider.GetRequiredService<EfAttachmentMetadataStore>());
+    builder.Services.AddScoped<IAttachmentLifecycleStore, EfAttachmentLifecycleStore>();
     builder.Services.AddScoped<EfCategoryStore>();
     builder.Services.AddScoped<ICategoryStore>(provider =>
         provider.GetRequiredService<EfCategoryStore>());
@@ -346,6 +347,10 @@ try
         AttachDocumentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<AttachDocumentCommand,
         AttachDocumentCommandOutput, AttachDocumentCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<DeleteAttachmentCommand,
+        AttachmentLifecycleCommandOutput, DeleteAttachmentCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<HardDeleteAttachmentCommand,
+        AttachmentLifecycleCommandOutput, HardDeleteAttachmentCommandHandler>();
     builder.Services.AddScoped<IValidator<UpdateTransactionCommand>,
         UpdateTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateTransactionCommand,

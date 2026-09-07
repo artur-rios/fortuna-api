@@ -40,7 +40,8 @@ public sealed class CategoriesController(
             [CategoryMessages.SourceAndTargetMustDiffer] = StatusCodes.Status400BadRequest,
             [CategoryMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [CategoryMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
-            [CategoryMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict
+            [CategoryMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict,
+            [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable
         };
 
     [HttpPost]

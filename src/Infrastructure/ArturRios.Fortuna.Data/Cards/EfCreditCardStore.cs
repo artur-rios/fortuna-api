@@ -3,12 +3,15 @@ using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Cards;
+using ArturRios.Fortuna.Shared.Attachments;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Cards;
 
-public sealed class EfCreditCardStore(AppDbContext context)
+public sealed class EfCreditCardStore(
+    AppDbContext context,
+    IAttachmentLifecycleStore attachments)
     : ICreditCardStore, ICreditCardReader, ICreditCardUpdater, ICreditCardLifecycleStore
 {
     public IQueryable<CreditCardLimitSnapshot> QueryLimits() => context.CreditCards
@@ -291,10 +294,20 @@ public sealed class EfCreditCardStore(AppDbContext context)
 
         var outstandingAmount = CalculateOutstandingAmount(transactions);
         var currencyCode = card.Currency.Code;
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        if (!await attachments.HardDeleteForTransactionsAsync(
+                transactions.Select(transaction => transaction.Id).ToArray(),
+                cancellationToken))
+        {
+            return LifecycleResult(CreditCardLifecycleOutcome.AttachmentStorageUnavailable);
+        }
+
         context.FinancialTransactions.RemoveRange(transactions);
         context.CreditCardStatements.RemoveRange(statements);
         context.CreditCards.Remove(card);
         await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
 
         return LifecycleResult(
             CreditCardLifecycleOutcome.Succeeded,

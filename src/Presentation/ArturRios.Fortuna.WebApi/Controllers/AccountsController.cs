@@ -50,6 +50,7 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
             [FinancialAccountMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [FinancialAccountMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [FinancialAccountMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict,
+            [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable,
             [FinancialAccountMessages.NotFound] = StatusCodes.Status404NotFound,
             [FinancialAccountMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,

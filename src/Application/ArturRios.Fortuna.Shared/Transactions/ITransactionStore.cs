@@ -184,7 +184,8 @@ public enum TransactionLifecycleOutcome
     NotFound = 2,
     RestoreRequiresSoftDeletion = 3,
     HardDeleteRequiresSoftDeletion = 4,
-    SettledStatementFrozen = 5
+    SettledStatementFrozen = 5,
+    AttachmentStorageUnavailable = 6
 }
 
 public sealed record TransactionLifecycleResult(
