@@ -239,7 +239,7 @@ pull request.
 | [#67](https://github.com/artur-rios/fortuna-api/issues/67) | ✅ UC-66: Delete an Attachment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#68](https://github.com/artur-rios/fortuna-api/issues/68) | ✅ UC-67: Query Records as a Table | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#69](https://github.com/artur-rios/fortuna-api/issues/69) | ✅ UC-68: Aggregate Transactions for a Chart | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#70](https://github.com/artur-rios/fortuna-api/issues/70) | UC-69: Drill Into an Aggregation | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#70](https://github.com/artur-rios/fortuna-api/issues/70) | ✅ UC-69: Drill Into an Aggregation | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#71](https://github.com/artur-rios/fortuna-api/issues/71) | UC-70: View the Net Position | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#72](https://github.com/artur-rios/fortuna-api/issues/72) | UC-71: Project Cash Flow | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#73](https://github.com/artur-rios/fortuna-api/issues/73) | UC-72: View Committed Obligations | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

@@ -67,6 +67,7 @@ public sealed class TransactionSearchCriteria
     public Guid? CreditCardId { get; init; }
     public Guid? CategoryId { get; init; }
     public Guid? TagId { get; init; }
+    public IReadOnlyCollection<Guid> RequiredTagIds { get; init; } = [];
     public Guid? CounterpartyId { get; init; }
     public TransactionDirection? Direction { get; init; }
     public decimal? MinimumAmount { get; init; }

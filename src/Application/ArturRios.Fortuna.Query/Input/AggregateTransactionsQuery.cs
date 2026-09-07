@@ -1,5 +1,7 @@
 using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Mediator.Query;
+using System.Text.Json.Serialization;
 
 namespace ArturRios.Fortuna.Query.Input;
 
@@ -20,4 +22,7 @@ public sealed class AggregateTransactionsQuery : BaseQuery
     public decimal? MaximumAmount { get; set; }
     public string? Text { get; set; }
     public string? DisplayCurrencyCode { get; set; }
+
+    [JsonIgnore]
+    internal IReadOnlyCollection<TransactionAggregationSelection> Selections { get; set; } = [];
 }

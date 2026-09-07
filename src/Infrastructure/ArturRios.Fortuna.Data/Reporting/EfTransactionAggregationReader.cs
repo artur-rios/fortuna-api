@@ -24,7 +24,7 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
         try
         {
             await using var command = connection.CreateCommand();
-            command.CommandText = BuildSql(dimension);
+            command.CommandText = BuildSql(dimension, criteria.Selections);
             AddParameters(command, criteria);
             var figures = new List<TransactionAggregationFigureSnapshot>();
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -38,7 +38,8 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                         : reader.GetFieldValue<DateOnly>(2),
                     reader.GetString(3),
                     reader.GetFieldValue<DateOnly>(4),
-                    reader.GetDecimal(5)));
+                    reader.GetDecimal(5),
+                    reader.GetInt32(6)));
             }
 
             return figures;
@@ -109,11 +110,14 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
         return new DimensionSql($"({expression})::text", $"({expression})::text", expression);
     }
 
-    private static string BuildSql(DimensionSql dimension)
+    private static string BuildSql(
+        DimensionSql dimension,
+        IReadOnlyCollection<TransactionAggregationSelection> selections)
     {
         var extraWhere = string.IsNullOrWhiteSpace(dimension.Where)
             ? string.Empty
             : $"AND ({dimension.Where})";
+        var selectionWhere = BuildSelectionWhere(selections);
         return $"""
             WITH RECURSIVE category_roots AS (
                 SELECT item.id, item.id AS root_id
@@ -175,13 +179,15 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                   AND (@text::text IS NULL OR
                        item.description ILIKE '%' || @text || '%')
                   {extraWhere}
+                  {selectionWhere}
             )
             SELECT dimension_value,
                    label,
                    bucket_start,
                    currency_code,
                    figure_date,
-                   SUM(signed_amount) AS amount
+                   SUM(signed_amount) AS amount,
+                   COUNT(*)::int AS record_count
             FROM figures
             GROUP BY dimension_value, label, bucket_start, currency_code, figure_date
             ORDER BY bucket_start NULLS LAST, label, dimension_value, currency_code, figure_date
@@ -206,6 +212,56 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
         AddParameter(command, "minimumAmount", criteria.MinimumAmount);
         AddParameter(command, "maximumAmount", criteria.MaximumAmount);
         AddParameter(command, "text", criteria.Text);
+        var index = 0;
+        foreach (var selection in criteria.Selections)
+        {
+            if (selection.Dimension == "period")
+            {
+                AddParameter(command, $"selection{index}From", selection.From);
+                AddParameter(command, $"selection{index}To", selection.To);
+            }
+            else if (selection.Dimension != "counterparty" || selection.Value != "none")
+            {
+                AddParameter(command, $"selection{index}Value", Guid.Parse(selection.Value));
+            }
+
+            index++;
+        }
+    }
+
+    private static string BuildSelectionWhere(
+        IReadOnlyCollection<TransactionAggregationSelection> selections)
+    {
+        var clauses = new List<string>();
+        var index = 0;
+        foreach (var selection in selections)
+        {
+            var value = $"@selection{index}Value";
+            clauses.Add(selection.Dimension switch
+            {
+                "period" => $"item.occurred_on BETWEEN @selection{index}From AND @selection{index}To",
+                "category" when selection.RollupCategories =>
+                    $"category.id IN (SELECT root.id FROM category_roots root " +
+                    $"WHERE root.root_id = (SELECT id FROM fortuna.category " +
+                    $"WHERE public_id = {value}))",
+                "category" => $"category.public_id = {value}",
+                "account" => $"account.public_id = {value}",
+                "card" => $"card.public_id = {value}",
+                "counterparty" when selection.Value == "none" => "counterparty.id IS NULL",
+                "counterparty" => $"counterparty.public_id = {value}",
+                "tag" => $"EXISTS (SELECT 1 FROM fortuna.financial_transaction_tag key_link " +
+                    $"JOIN fortuna.tag key_tag ON key_tag.id = key_link.tag_id " +
+                    $"WHERE key_link.financial_transaction_id = item.id " +
+                    $"AND key_tag.public_id = {value} AND NOT key_tag.is_deleted)",
+                _ => throw new InvalidOperationException(
+                    "The drill-down selection dimension was not normalized.")
+            });
+            index++;
+        }
+
+        return clauses.Count == 0
+            ? string.Empty
+            : "AND " + string.Join(" AND ", clauses.Select(clause => $"({clause})"));
     }
 
     private static void AddParameter(DbCommand command, string name, object? value)

@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.Json;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Query.Handlers;
@@ -17,15 +15,17 @@ namespace ArturRios.Fortuna.Query.Tests;
 public sealed class AggregateTransactionsQueryHandlerTests
 {
     private static readonly DateOnly Start = new(2026, 9, 1);
+    private static readonly DateTimeOffset Now = new(2026, 9, 7, 12, 0, 0, TimeSpan.Zero);
 
     [UnitFact]
     public async Task GivenPeriodFigures_WhenHandled_ThenGapsConversionsSharesAndKeysReturn()
     {
         var reader = new StubAggregationReader([
-            new("2026-09-01", "2026-09-01", Start, "BRL", Start, -10m),
-            new("2026-09-03", "2026-09-03", Start.AddDays(2), "USD", Start.AddDays(2), -2m)
+            new("2026-09-01", "2026-09-01", Start, "BRL", Start, -10m, 1),
+            new("2026-09-03", "2026-09-03", Start.AddDays(2), "USD", Start.AddDays(2), -2m, 1)
         ]);
-        var handler = Handler(reader: reader, rate: new ExchangeRateSnapshot(
+        var codec = new StubKeyCodec();
+        var handler = Handler(reader: reader, codec: codec, rate: new ExchangeRateSnapshot(
             "USD", "BRL", 5m, Start.AddDays(2), ExchangeRateSource.Manual));
         var query = Valid();
         query.FinancialAccountId = Guid.Parse("30000000-0000-0000-0000-000000000003");
@@ -47,9 +47,12 @@ public sealed class AggregateTransactionsQueryHandlerTests
         Assert.Equal(0.5m, buckets[0].Share);
         Assert.Equal(0m, buckets[1].Share);
         Assert.Equal(5m, Assert.Single(buckets[2].Conversions).AppliedRate);
-        using var key = Decode(buckets[0].DrillDownKey);
-        Assert.Equal("period", key.RootElement.GetProperty("dimension").GetString());
-        Assert.Equal("2026-09-01", key.RootElement.GetProperty("bucket").GetString());
+        Assert.Equal("key-1", buckets[0].DrillDownKey);
+        var key = codec.Payloads[0];
+        Assert.Equal("period", key.Dimension);
+        Assert.Equal(Start, Assert.Single(key.Selections).From);
+        Assert.Equal(1, key.RecordCount);
+        Assert.Equal(Now.AddMinutes(15), key.ExpiresAt);
         Assert.Contains(TransactionAggregationMessages.RetrievedSuccessfully, result.Messages);
     }
 
@@ -57,7 +60,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
     public async Task GivenUnavailableRate_WhenHandled_ThenBucketAndSharesArePartial()
     {
         var handler = Handler(reader: new StubAggregationReader([
-            new("category", "Category", null, "USD", Start, -2m)
+            new("category", "Category", null, "USD", Start, -2m, 1)
         ]));
         var query = Valid();
         query.Dimension = "category";
@@ -115,6 +118,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
         bool missingProfile = false,
         StubProfileReader? profiles = null,
         RequestActor? actor = null,
+        StubKeyCodec? codec = null,
         ExchangeRateSnapshot? rate = null)
     {
         var resolved = missingProfile ? null : Profile();
@@ -125,7 +129,10 @@ public sealed class AggregateTransactionsQueryHandlerTests
             new StubCurrencyReader(),
             new StubRateReader(rate),
             new StubActor(actor ?? new RequestActor(
-                resolved?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])));
+                resolved?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            codec ?? new StubKeyCodec(),
+            new TransactionDrillDownOptions(TimeSpan.FromMinutes(15)),
+            new FixedTimeProvider(Now));
     }
 
     private static AggregateTransactionsQuery Valid() => new()
@@ -144,13 +151,6 @@ public sealed class AggregateTransactionsQueryHandlerTests
         false,
         DateTimeOffset.UtcNow,
         DateTimeOffset.UtcNow);
-
-    private static JsonDocument Decode(string value)
-    {
-        var normalized = value.Replace('-', '+').Replace('_', '/');
-        normalized = normalized.PadRight(normalized.Length + ((4 - normalized.Length % 4) % 4), '=');
-        return JsonDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(normalized)));
-    }
 
     private sealed class StubAggregationReader(
         IReadOnlyCollection<TransactionAggregationFigureSnapshot> figures)
@@ -208,5 +208,27 @@ public sealed class AggregateTransactionsQueryHandlerTests
     private sealed class StubActor(RequestActor? actor) : IRequestActorAccessor
     {
         public RequestActor? Actor => actor;
+    }
+
+    private sealed class StubKeyCodec : ITransactionDrillDownKeyCodec
+    {
+        public List<TransactionDrillDownKeyPayload> Payloads { get; } = [];
+
+        public string Encode(TransactionDrillDownKeyPayload payload)
+        {
+            Payloads.Add(payload);
+            return $"key-{Payloads.Count}";
+        }
+
+        public bool TryDecode(string key, out TransactionDrillDownKeyPayload? payload)
+        {
+            payload = null;
+            return false;
+        }
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 }

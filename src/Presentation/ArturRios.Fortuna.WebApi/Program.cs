@@ -242,10 +242,14 @@ try
     builder.Services.AddScoped<IImportJobReader, EfImportJobReader>();
     builder.Services.AddScoped<ITableReportReader, EfTableReportReader>();
     builder.Services.AddScoped<ITransactionAggregationReader, EfTransactionAggregationReader>();
+    builder.Services.AddSingleton<ITransactionDrillDownKeyCodec,
+        DataProtectionTransactionDrillDownKeyCodec>();
     builder.Services.AddScoped<IImportJobRetryStore, EfImportJobRetryStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
     builder.Services.AddSingleton(new TransactionAggregationOptions(
         options.ReportMaximumRangeDays));
+    builder.Services.AddSingleton(new TransactionDrillDownOptions(
+        TimeSpan.FromMinutes(options.ReportKeyLifetimeMinutes)));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
         options.ReconciliationDateToleranceDays));
@@ -619,6 +623,10 @@ try
         AggregateTransactionsQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<AggregateTransactionsQuery,
         TransactionAggregationOutput>, AggregateTransactionsQueryHandler>();
+    builder.Services.AddScoped<IValidator<DrillIntoAggregationQuery>,
+        DrillIntoAggregationQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<DrillIntoAggregationQuery,
+        TransactionDrillDownOutput>, DrillIntoAggregationQueryHandler>();
 
     builder.Services.AddSingleton(new PluggySourceOptions(
         options.PluggyClientId,

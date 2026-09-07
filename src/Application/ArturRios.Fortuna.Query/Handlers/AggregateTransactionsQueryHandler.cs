@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
@@ -18,11 +17,12 @@ public sealed class AggregateTransactionsQueryHandler(
     ITransactionAggregationReader aggregations,
     ICurrencyReader currencies,
     IExchangeRateReader rates,
-    IRequestActorAccessor actorAccessor)
+    IRequestActorAccessor actorAccessor,
+    ITransactionDrillDownKeyCodec keyCodec,
+    TransactionDrillDownOptions drillDownOptions,
+    TimeProvider timeProvider)
     : IQueryHandlerAsync<AggregateTransactionsQuery, TransactionAggregationOutput>
 {
-    private static readonly JsonSerializerOptions KeyJsonOptions = new(JsonSerializerDefaults.Web);
-
     public async Task<DataOutput<TransactionAggregationOutput?>> HandleAsync(
         AggregateTransactionsQuery query)
     {
@@ -58,6 +58,7 @@ public sealed class AggregateTransactionsQueryHandler(
             : query.Granularity.Trim().ToLowerInvariant();
         var from = query.From!.Value;
         var to = query.To!.Value;
+        var snapshotAt = timeProvider.GetUtcNow();
         var criteria = new TransactionAggregationCriteria(
             profile.Id,
             dimension,
@@ -73,13 +74,14 @@ public sealed class AggregateTransactionsQueryHandler(
             query.Direction,
             query.MinimumAmount,
             query.MaximumAmount,
-            string.IsNullOrWhiteSpace(query.Text) ? null : query.Text.Trim());
+            string.IsNullOrWhiteSpace(query.Text) ? null : query.Text.Trim(),
+            query.Selections);
         var figures = await aggregations.ReadAsync(criteria, CancellationToken.None);
         var buckets = await BuildBucketsAsync(
             figures,
             criteria,
             displayCurrency,
-            query);
+            snapshotAt);
         ApplyShares(buckets);
 
         return output
@@ -100,7 +102,7 @@ public sealed class AggregateTransactionsQueryHandler(
         IReadOnlyCollection<TransactionAggregationFigureSnapshot> figures,
         TransactionAggregationCriteria criteria,
         CurrencySnapshot displayCurrency,
-        AggregateTransactionsQuery query)
+        DateTimeOffset snapshotAt)
     {
         var source = figures
             .GroupBy(figure => new BucketIdentity(
@@ -174,8 +176,9 @@ public sealed class AggregateTransactionsQueryHandler(
                     : null,
                 PeriodStart = periodStart,
                 PeriodEnd = periodEnd,
-                DrillDownKey = EncodeKey(query, criteria, identity.DimensionValue,
-                    periodStart, periodEnd),
+                DrillDownKey = EncodeKey(criteria, identity.DimensionValue,
+                    periodStart, periodEnd, bucketFigures.Sum(item => item.RecordCount),
+                    snapshotAt, displayCurrency.Code),
                 IsFullyConverted = fullyConverted,
                 Conversions = conversions
             });
@@ -299,38 +302,43 @@ public sealed class AggregateTransactionsQueryHandler(
         _ => throw new InvalidOperationException("The aggregation granularity was not normalized.")
     };
 
-    private static string EncodeKey(
-        AggregateTransactionsQuery query,
+    private string EncodeKey(
         TransactionAggregationCriteria criteria,
         string dimensionValue,
         DateOnly? periodStart,
-        DateOnly? periodEnd)
+        DateOnly? periodEnd,
+        int recordCount,
+        DateTimeOffset snapshotAt,
+        string displayCurrencyCode)
     {
-        var payload = new DrillDownKeyPayload(
+        var selection = new TransactionAggregationSelection(
+            criteria.Dimension,
+            dimensionValue,
+            criteria.Dimension == "category" && criteria.RollupCategories,
+            periodStart,
+            periodEnd);
+        return keyCodec.Encode(new TransactionDrillDownKeyPayload(
             1,
+            criteria.UserId,
+            snapshotAt,
+            snapshotAt.Add(drillDownOptions.KeyLifetime),
             criteria.Dimension,
             criteria.Granularity,
+            displayCurrencyCode,
             criteria.From,
             criteria.To,
-            dimensionValue,
-            periodStart,
-            periodEnd,
-            criteria.RollupCategories,
-            new DrillDownFilters(
-                query.FinancialAccountId,
-                query.CreditCardId,
-                query.CategoryId,
-                query.TagId,
-                query.CounterpartyId,
-                query.Direction?.ToString(),
-                query.MinimumAmount,
-                query.MaximumAmount,
-                string.IsNullOrWhiteSpace(query.Text) ? null : query.Text.Trim()));
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, KeyJsonOptions);
-        return Convert.ToBase64String(bytes)
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
+            [.. criteria.Selections, selection],
+            recordCount,
+            new TransactionDrillDownFilters(
+                criteria.FinancialAccountId,
+                criteria.CreditCardId,
+                criteria.CategoryId,
+                criteria.TagId,
+                criteria.CounterpartyId,
+                criteria.Direction,
+                criteria.MinimumAmount,
+                criteria.MaximumAmount,
+                criteria.Text)));
     }
 
     private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
@@ -342,26 +350,4 @@ public sealed class AggregateTransactionsQueryHandler(
 
     private sealed record BucketIdentity(string DimensionValue, string Label, DateOnly? BucketStart);
 
-    private sealed record DrillDownKeyPayload(
-        int Version,
-        string Dimension,
-        string? Granularity,
-        DateOnly From,
-        DateOnly To,
-        string Bucket,
-        DateOnly? PeriodStart,
-        DateOnly? PeriodEnd,
-        bool RollupCategories,
-        DrillDownFilters Filters);
-
-    private sealed record DrillDownFilters(
-        Guid? FinancialAccountId,
-        Guid? CreditCardId,
-        Guid? CategoryId,
-        Guid? TagId,
-        Guid? CounterpartyId,
-        string? Direction,
-        decimal? MinimumAmount,
-        decimal? MaximumAmount,
-        string? Text);
 }

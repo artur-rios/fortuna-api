@@ -809,6 +809,13 @@ public sealed class EfTransactionStore(
                 tag.PublicId == criteria.TagId.Value));
         }
 
+        foreach (var tagId in criteria.RequiredTagIds)
+        {
+            var requiredTagId = tagId;
+            transactions = transactions.Where(transaction => transaction.Tags.Any(tag =>
+                tag.PublicId == requiredTagId));
+        }
+
         if (criteria.CounterpartyId.HasValue)
         {
             transactions = transactions.Where(transaction =>

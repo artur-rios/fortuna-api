@@ -37,6 +37,7 @@ public sealed class FoundationApiTests
         Assert.Equal(256, options.JobQueueCapacity);
         Assert.Equal(100, options.PageSizeMaximum);
         Assert.Equal(366, options.ReportMaximumRangeDays);
+        Assert.Equal(15, options.ReportKeyLifetimeMinutes);
         Assert.Equal(50, options.TransactionMaximumTags);
         Assert.Equal(10 * 1024 * 1024, options.UploadMaximumBytes);
         Assert.Equal(["application/pdf", "image/jpeg", "image/png"],
@@ -245,6 +246,22 @@ public sealed class FoundationApiTests
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_REPORT_MAX_RANGE_DAYS", exception.Message,
+            StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("0")]
+    [InlineData("not-a-number")]
+    public void GivenInvalidReportKeyLifetime_WhenConfigurationLoads_ThenStartupIsRejected(
+        string value)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_REPORT_KEY_TTL_MINUTES"] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_REPORT_KEY_TTL_MINUTES", exception.Message,
             StringComparison.Ordinal);
     }
 

@@ -16,6 +16,7 @@ public sealed record FortunaOptions
     public int JobQueueCapacity { get; init; }
     public int PageSizeMaximum { get; init; }
     public int ReportMaximumRangeDays { get; init; }
+    public int ReportKeyLifetimeMinutes { get; init; }
     public int TransactionMaximumTags { get; init; }
     public int ExcelImportMaximumFileBytes { get; init; }
     public int PdfInvoiceImportMaximumFileBytes { get; init; }
@@ -60,6 +61,10 @@ public sealed record FortunaOptions
                 read("FORTUNA_REPORT_MAX_RANGE_DAYS"),
                 "FORTUNA_REPORT_MAX_RANGE_DAYS",
                 366),
+            ReportKeyLifetimeMinutes = PositiveInteger(
+                read("FORTUNA_REPORT_KEY_TTL_MINUTES"),
+                "FORTUNA_REPORT_KEY_TTL_MINUTES",
+                15),
             TransactionMaximumTags = PositiveInteger(
                 read("FORTUNA_TRANSACTION_MAX_TAGS"),
                 "FORTUNA_TRANSACTION_MAX_TAGS",
