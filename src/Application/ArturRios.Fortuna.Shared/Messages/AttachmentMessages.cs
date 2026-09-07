@@ -10,6 +10,10 @@ public static class AttachmentMessages
     public const string FileNameTooLong = "A document file name cannot exceed 300 characters.";
     public const string StorageUnavailable = "Attachment storage is unavailable.";
     public const string PersistenceFailed = "The attachment metadata could not be saved.";
+    public const string DownloadedSuccessfully = "Document downloaded successfully.";
+    public const string AttachmentNotFound = "The attachment was not found.";
+    public const string StoredObjectNotFound =
+        "The stored object for the attachment was not found.";
 
     public static string FileTooLarge(int maximumBytes) =>
         $"The document exceeds the configured maximum of {maximumBytes} bytes.";

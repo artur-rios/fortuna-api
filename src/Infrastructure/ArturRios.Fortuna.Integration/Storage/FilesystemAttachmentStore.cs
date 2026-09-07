@@ -28,8 +28,22 @@ public sealed class FilesystemAttachmentStore : IAttachmentStore
     public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Stream stream = new FileStream(Resolve(key), FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
-        return Task.FromResult(stream);
+        try
+        {
+            Stream stream = new FileStream(
+                Resolve(key),
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                81920,
+                useAsync: true);
+            return Task.FromResult(stream);
+        }
+        catch (Exception exception) when (
+            exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            throw new AttachmentObjectNotFoundException(key);
+        }
     }
 
     public Task DeleteAsync(string key, CancellationToken cancellationToken)

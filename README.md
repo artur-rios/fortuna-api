@@ -235,7 +235,7 @@ pull request.
 | Issue | Work | Spec |
 |---|---|---|
 | [#65](https://github.com/artur-rios/fortuna-api/issues/65) | ✅ UC-64: Attach a Document to a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#66](https://github.com/artur-rios/fortuna-api/issues/66) | UC-65: Download an Attachment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#66](https://github.com/artur-rios/fortuna-api/issues/66) | ✅ UC-65: Download an Attachment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#67](https://github.com/artur-rios/fortuna-api/issues/67) | UC-66: Delete an Attachment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#68](https://github.com/artur-rios/fortuna-api/issues/68) | UC-67: Query Records as a Table | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#69](https://github.com/artur-rios/fortuna-api/issues/69) | UC-68: Aggregate Transactions for a Chart | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |

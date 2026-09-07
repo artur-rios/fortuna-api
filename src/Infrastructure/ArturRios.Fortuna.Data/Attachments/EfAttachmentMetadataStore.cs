@@ -5,8 +5,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Attachments;
 
-public sealed class EfAttachmentMetadataStore(AppDbContext context) : IAttachmentMetadataStore
+public sealed class EfAttachmentMetadataStore(AppDbContext context)
+    : IAttachmentMetadataStore, IAttachmentMetadataReader
 {
+    public Task<AttachmentReadSnapshot?> FindOwnedAsync(
+        Guid userId,
+        Guid attachmentId,
+        CancellationToken cancellationToken) => context.Attachments
+        .Where(attachment => attachment.PublicId == attachmentId &&
+            attachment.Transaction.User.PublicId == userId &&
+            !attachment.IsDeleted)
+        .Select(attachment => new AttachmentReadSnapshot(
+            attachment.PublicId,
+            attachment.FileName,
+            attachment.ContentType,
+            attachment.SizeInBytes,
+            attachment.StorageKey))
+        .SingleOrDefaultAsync(cancellationToken);
+
     public Task<bool> IsOwnedLiveTransactionAsync(
         Guid userId,
         Guid transactionId,

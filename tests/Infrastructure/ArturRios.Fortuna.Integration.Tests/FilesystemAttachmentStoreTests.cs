@@ -1,5 +1,6 @@
 using System.Text;
 using ArturRios.Fortuna.Integration.Storage;
+using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Integration.Tests;
@@ -39,7 +40,7 @@ public sealed class FilesystemAttachmentStoreTests : IDisposable
 
         await store.DeleteAsync("attachment.txt", CancellationToken.None);
 
-        await Assert.ThrowsAsync<FileNotFoundException>(() =>
+        await Assert.ThrowsAsync<AttachmentObjectNotFoundException>(() =>
             store.OpenReadAsync("attachment.txt", CancellationToken.None));
     }
 

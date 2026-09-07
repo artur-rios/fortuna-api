@@ -127,7 +127,11 @@ try
         provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<ITransactionReconciliationStore>(provider =>
         provider.GetRequiredService<EfTransactionStore>());
-    builder.Services.AddScoped<IAttachmentMetadataStore, EfAttachmentMetadataStore>();
+    builder.Services.AddScoped<EfAttachmentMetadataStore>();
+    builder.Services.AddScoped<IAttachmentMetadataStore>(provider =>
+        provider.GetRequiredService<EfAttachmentMetadataStore>());
+    builder.Services.AddScoped<IAttachmentMetadataReader>(provider =>
+        provider.GetRequiredService<EfAttachmentMetadataStore>());
     builder.Services.AddScoped<EfCategoryStore>();
     builder.Services.AddScoped<ICategoryStore>(provider =>
         provider.GetRequiredService<EfCategoryStore>());
@@ -560,6 +564,10 @@ try
         GetTransactionByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetTransactionByIdQuery, TransactionOutput>,
         GetTransactionByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<DownloadAttachmentQuery>,
+        DownloadAttachmentQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<DownloadAttachmentQuery,
+        DownloadAttachmentQueryOutput>, DownloadAttachmentQueryHandler>();
     builder.Services.AddScoped<IValidator<SearchTransactionsQuery>,
         SearchTransactionsQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<SearchTransactionsQuery, TransactionSearchOutput>,

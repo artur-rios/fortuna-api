@@ -7,6 +7,7 @@ using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Security;
@@ -164,6 +165,134 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorResponse.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenOwnedLiveAttachment_WhenDownloaded_ThenOriginalFileResponseIsReturned()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+        byte[] document = [37, 80, 68, 70, 45, 49, 46, 55];
+        var attached = await AttachAsync(
+            client, transactionId, document, "statement.pdf", "application/pdf");
+        var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+
+        var response = await client.GetAsync($"/api/attachments/{attachmentId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/pdf", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("statement.pdf", response.Content.Headers.ContentDisposition?.FileNameStar);
+        Assert.Equal(document, await response.Content.ReadAsByteArrayAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignDeletedOrMissingAttachment_WhenDownloaded_ThenNotFoundIsReturned()
+    {
+        var ownerSubject = Guid.NewGuid();
+        var otherSubject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var owner = factory.CreateClient();
+        using var other = factory.CreateClient();
+        Authorize(owner, ownerSubject, HeimdallRoles.User);
+        Authorize(other, otherSubject, HeimdallRoles.User);
+        (await owner.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        (await other.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(ownerSubject);
+        var attached = await AttachAsync(
+            owner, transactionId, [1], "file.pdf", "application/pdf");
+        var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+
+        var foreign = await other.GetAsync($"/api/attachments/{attachmentId}");
+        await SetAttachmentDeletedAsync(attachmentId, deleted: true);
+        var deleted = await owner.GetAsync($"/api/attachments/{attachmentId}");
+        var missing = await owner.GetAsync($"/api/attachments/{Guid.NewGuid()}");
+        await SetAttachmentDeletedAsync(attachmentId, deleted: false);
+        var restored = await owner.GetAsync($"/api/attachments/{attachmentId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, deleted.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Contains(AttachmentMessages.AttachmentNotFound,
+            await foreign.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenMissingStoredObject_WhenDownloaded_ThenNotFoundIsAudited()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+        var attached = await AttachAsync(
+            client, transactionId, [1], "file.pdf", "application/pdf");
+        var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+        await using (var context = CreateContext())
+        {
+            var attachment = await context.Attachments.SingleAsync(item =>
+                item.PublicId == attachmentId);
+            File.Delete(Path.Combine(
+                storageRoot,
+                attachment.StorageKey.Replace('/', Path.DirectorySeparatorChar)));
+        }
+
+        var response = await client.GetAsync($"/api/attachments/{attachmentId}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Contains(AttachmentMessages.StoredObjectNotFound,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        await using var verification = CreateContext();
+        Assert.Contains(await verification.AuditEntries.ToArrayAsync(), entry =>
+            entry.Operation == nameof(DownloadAttachmentQuery) &&
+            entry.EntityPublicId == attachmentId &&
+            entry.Reason == AttachmentMessages.StoredObjectNotFound);
+    }
+
+    [FunctionalFact]
+    public async Task GivenUnreachableBacking_WhenDownloaded_ThenServiceUnavailableIsIsolated()
+    {
+        var subject = Guid.NewGuid();
+        Guid attachmentId;
+        await using (var healthyFactory = CreateFactory())
+        {
+            using var client = healthyFactory.CreateClient();
+            Authorize(client, subject, HeimdallRoles.User);
+            (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+            var transactionId = await SeedTransactionAsync(subject);
+            var attached = await AttachAsync(
+                client, transactionId, [1], "file.pdf", "application/pdf");
+            attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+        }
+
+        await using var unavailableFactory = CreateFactory(unavailableStorage: true);
+        using var unavailable = unavailableFactory.CreateClient();
+        Authorize(unavailable, subject, HeimdallRoles.User);
+        var response = await unavailable.GetAsync($"/api/attachments/{attachmentId}");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await unavailable.GetAsync("/api/me")).StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAnonymousOrAdministrator_WhenAttachmentDownloaded_ThenAccessIsRefused()
+    {
+        await using var factory = CreateFactory();
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+
+        var anonymousResponse = await anonymous.GetAsync($"/api/attachments/{Guid.NewGuid()}");
+        var administratorResponse = await administrator.GetAsync(
+            $"/api/attachments/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, administratorResponse.StatusCode);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -230,6 +359,22 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         context.AddRange(account, category, transaction);
         await context.SaveChangesAsync();
         return transaction.PublicId;
+    }
+
+    private async Task SetAttachmentDeletedAsync(Guid attachmentId, bool deleted)
+    {
+        await using var context = CreateContext();
+        var attachment = await context.Attachments.SingleAsync(item => item.PublicId == attachmentId);
+        if (deleted)
+        {
+            attachment.SoftDelete(DateTimeOffset.UtcNow);
+        }
+        else
+        {
+            attachment.Restore(DateTimeOffset.UtcNow);
+        }
+
+        await context.SaveChangesAsync();
     }
 
     private AppDbContext CreateContext()
