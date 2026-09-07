@@ -37,6 +37,9 @@ public sealed class FoundationApiTests
         Assert.Equal(256, options.JobQueueCapacity);
         Assert.Equal(100, options.PageSizeMaximum);
         Assert.Equal(50, options.TransactionMaximumTags);
+        Assert.Equal(10 * 1024 * 1024, options.UploadMaximumBytes);
+        Assert.Equal(["application/pdf", "image/jpeg", "image/png"],
+            options.UploadAllowedContentTypes);
         Assert.False(options.RunMigrations);
         Assert.Equal("BRL", options.DefaultDisplayCurrency);
         Assert.Equal("pt-BR", options.Locale);
@@ -44,6 +47,36 @@ public sealed class FoundationApiTests
         Assert.Equal(10, options.LocalAuthRecoveryCodeCount);
         Assert.Equal(0.01m, options.ReconciliationAmountTolerance);
         Assert.Equal(1, options.ReconciliationDateToleranceDays);
+    }
+
+    [UnitFact]
+    public void GivenConfiguredUploadPolicy_WhenConfigurationLoads_ThenValuesAreNormalized()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_UPLOAD_MAX_BYTES"] = "2048";
+        values["FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES"] = " IMAGE/PNG, application/pdf,image/png ";
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal(2048, options.UploadMaximumBytes);
+        Assert.Equal(["image/png", "application/pdf"], options.UploadAllowedContentTypes);
+    }
+
+    [UnitTheory]
+    [InlineData("FORTUNA_UPLOAD_MAX_BYTES", "0")]
+    [InlineData("FORTUNA_UPLOAD_MAX_BYTES", "invalid")]
+    [InlineData("FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES", "not-a-mime-type")]
+    public void GivenInvalidUploadPolicy_WhenConfigurationLoads_ThenStartupIsRejected(
+        string key,
+        string value)
+    {
+        var values = ValidSettings();
+        values[key] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]

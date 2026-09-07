@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Domain.Auditing;
+using ArturRios.Fortuna.Domain.Attachments;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
@@ -31,6 +32,7 @@ public sealed class AppDbContext(
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<FinancialAccount> FinancialAccounts => Set<FinancialAccount>();
     public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<Transfer> Transfers => Set<Transfer>();
     public DbSet<InstallmentPlan> InstallmentPlans => Set<InstallmentPlan>();
     public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();

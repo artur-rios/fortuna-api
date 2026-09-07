@@ -1,4 +1,4 @@
-namespace ArturRios.Fortuna.Integration.Storage;
+namespace ArturRios.Fortuna.Shared.Attachments;
 
 public interface IAttachmentStore
 {

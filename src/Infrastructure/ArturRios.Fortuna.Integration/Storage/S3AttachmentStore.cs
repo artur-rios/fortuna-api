@@ -1,5 +1,6 @@
 using Amazon.S3;
 using Amazon.S3.Model;
+using ArturRios.Fortuna.Shared.Attachments;
 
 namespace ArturRios.Fortuna.Integration.Storage;
 

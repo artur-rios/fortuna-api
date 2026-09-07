@@ -18,6 +18,8 @@ public sealed record FortunaOptions
     public int TransactionMaximumTags { get; init; }
     public int ExcelImportMaximumFileBytes { get; init; }
     public int PdfInvoiceImportMaximumFileBytes { get; init; }
+    public int UploadMaximumBytes { get; init; }
+    public IReadOnlyCollection<string> UploadAllowedContentTypes { get; init; } = [];
     public bool RunMigrations { get; init; }
     public required string AuthTokenSecret { get; init; }
     public string? AuthPreviousTokenSecret { get; init; }
@@ -65,6 +67,12 @@ public sealed record FortunaOptions
                 read("FORTUNA_PDF_IMPORT_MAX_BYTES"),
                 "FORTUNA_PDF_IMPORT_MAX_BYTES",
                 20 * 1024 * 1024),
+            UploadMaximumBytes = PositiveInteger(
+                read("FORTUNA_UPLOAD_MAX_BYTES"),
+                "FORTUNA_UPLOAD_MAX_BYTES",
+                10 * 1024 * 1024),
+            UploadAllowedContentTypes = ContentTypes(
+                read("FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES")),
             RunMigrations = Boolean(read("FORTUNA_RUN_MIGRATIONS"), "FORTUNA_RUN_MIGRATIONS", false),
             AuthTokenSecret = Required(read, "FORTUNA_AUTH_TOKEN_SECRET"),
             AuthPreviousTokenSecret = read("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),
@@ -178,6 +186,26 @@ public sealed record FortunaOptions
         return bool.TryParse(value, out var parsed)
             ? parsed
             : throw new InvalidOperationException($"Environment variable '{key}' must be true or false.");
+    }
+
+    private static IReadOnlyCollection<string> ContentTypes(string? value)
+    {
+        var source = string.IsNullOrWhiteSpace(value)
+            ? "application/pdf,image/jpeg,image/png"
+            : value;
+        var values = source.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(contentType => contentType.ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (values.Length == 0 || values.Any(contentType =>
+                !contentType.Contains('/', StringComparison.Ordinal) ||
+                contentType.Any(char.IsWhiteSpace)))
+        {
+            throw new InvalidOperationException(
+                "FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES must be a comma-separated list of MIME types.");
+        }
+
+        return values;
     }
 
     private static int NonNegativeInteger(string? value, string key, int fallback)
