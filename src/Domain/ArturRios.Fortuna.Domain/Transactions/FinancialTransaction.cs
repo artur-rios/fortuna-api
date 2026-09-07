@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Attachments;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
@@ -210,6 +211,7 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public bool IsLateArriving { get; private set; }
     public bool IsPossibleDuplicate { get; private set; }
     public ICollection<Tag> Tags { get; } = [];
+    public ICollection<Attachment> Attachments { get; } = [];
 
     public bool AttachTag(Tag tag, DateTimeOffset updatedAt)
     {

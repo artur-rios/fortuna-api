@@ -99,6 +99,14 @@ public sealed class TransactionsController(
             [TransactionMessages.SearchTextTooLong] = StatusCodes.Status400BadRequest,
             [TransactionMessages.DisplayCurrencyInvalid] = StatusCodes.Status400BadRequest,
             [TransactionMessages.SortByUnsupported] = StatusCodes.Status400BadRequest,
+            [AttachmentMessages.AttachedSuccessfully] = StatusCodes.Status201Created,
+            [AttachmentMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
+            [AttachmentMessages.TransactionNotFound] = StatusCodes.Status404NotFound,
+            [AttachmentMessages.FileRequired] = StatusCodes.Status400BadRequest,
+            [AttachmentMessages.FileNameRequired] = StatusCodes.Status400BadRequest,
+            [AttachmentMessages.FileNameTooLong] = StatusCodes.Status400BadRequest,
+            [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable,
+            [AttachmentMessages.PersistenceFailed] = StatusCodes.Status500InternalServerError,
             [TagMessages.AttachedSuccessfully] = StatusCodes.Status200OK,
             [TagMessages.AlreadyAttached] = StatusCodes.Status200OK,
             [TagMessages.DetachedSuccessfully] = StatusCodes.Status200OK,
@@ -153,6 +161,37 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RecordTransactionCommand,
             RecordTransactionCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("{id:guid}/attachments")]
+    [Consumes("multipart/form-data")]
+    [RequestFormLimits(MultipartBodyLengthLimit = 52_428_800)]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<AttachDocumentCommandOutput?>>> AttachDocument(
+        Guid id,
+        [FromForm] AttachDocumentRequest request)
+    {
+        await using var stream = request.File?.OpenReadStream() ?? Stream.Null;
+        using var content = new MemoryStream();
+        await stream.CopyToAsync(content, HttpContext.RequestAborted);
+        var command = new AttachDocumentCommand
+        {
+            TransactionId = id,
+            FileName = Path.GetFileName(request.File?.FileName ?? string.Empty),
+            ContentType = request.File?.ContentType ?? string.Empty,
+            Content = content.ToArray()
+        };
+        var result = await commandMediator.ExecuteCommandAsync<
+            AttachDocumentCommand,
+            AttachDocumentCommandOutput>(command);
+        if (result.Errors?.Any(error =>
+                error.StartsWith("The document exceeds", StringComparison.Ordinal) ||
+                error.StartsWith("The document content type", StringComparison.Ordinal)) == true)
+        {
+            return BadRequest(result);
+        }
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -244,4 +283,9 @@ public sealed class TransactionsController(
             TransactionLifecycleCommandOutput>(new HardDeleteTransactionCommand { Id = id });
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
+}
+
+public sealed class AttachDocumentRequest
+{
+    public IFormFile? File { get; set; }
 }

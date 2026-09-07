@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.Shared.Attachments;
+
 namespace ArturRios.Fortuna.Integration.Storage;
 
 public sealed class FilesystemAttachmentStore : IAttachmentStore

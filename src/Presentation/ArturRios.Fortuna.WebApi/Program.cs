@@ -1,6 +1,7 @@
 using Amazon.Runtime;
 using Amazon.S3;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Attachments;
 using ArturRios.Fortuna.Data.Accounts;
 using ArturRios.Fortuna.Data.Auditing;
 using ArturRios.Fortuna.Data.Cards;
@@ -23,6 +24,7 @@ using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Rates;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Accounts;
@@ -125,6 +127,7 @@ try
         provider.GetRequiredService<EfTransactionStore>());
     builder.Services.AddScoped<ITransactionReconciliationStore>(provider =>
         provider.GetRequiredService<EfTransactionStore>());
+    builder.Services.AddScoped<IAttachmentMetadataStore, EfAttachmentMetadataStore>();
     builder.Services.AddScoped<EfCategoryStore>();
     builder.Services.AddScoped<ICategoryStore>(provider =>
         provider.GetRequiredService<EfCategoryStore>());
@@ -239,6 +242,9 @@ try
     builder.Services.AddSingleton(new ExcelImportOptions(options.ExcelImportMaximumFileBytes));
     builder.Services.AddSingleton(new PdfInvoiceImportOptions(
         options.PdfInvoiceImportMaximumFileBytes));
+    builder.Services.AddSingleton(new AttachmentOptions(
+        options.UploadMaximumBytes,
+        options.UploadAllowedContentTypes));
     builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
@@ -332,6 +338,10 @@ try
         RecordTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordTransactionCommand,
         RecordTransactionCommandOutput, RecordTransactionCommandHandler>();
+    builder.Services.AddScoped<IValidator<AttachDocumentCommand>,
+        AttachDocumentCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<AttachDocumentCommand,
+        AttachDocumentCommandOutput, AttachDocumentCommandHandler>();
     builder.Services.AddScoped<IValidator<UpdateTransactionCommand>,
         UpdateTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateTransactionCommand,
