@@ -1,6 +1,7 @@
 using ArturRios.Mediator.Command;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
+using ArturRios.Fortuna.Shared.Auditing;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Command.Auditing;

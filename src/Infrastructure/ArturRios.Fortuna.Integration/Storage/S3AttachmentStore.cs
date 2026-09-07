@@ -1,6 +1,7 @@
 using Amazon.S3;
 using Amazon.S3.Model;
 using ArturRios.Fortuna.Shared.Attachments;
+using System.Net;
 
 namespace ArturRios.Fortuna.Integration.Storage;
 
@@ -21,12 +22,20 @@ public sealed class S3AttachmentStore(IAmazonS3 client, string bucket) : IAttach
     public async Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken)
     {
         Validate(key);
-        var response = await client.GetObjectAsync(bucket, key, cancellationToken);
-        var copy = new MemoryStream();
-        await response.ResponseStream.CopyToAsync(copy, cancellationToken);
-        copy.Position = 0;
-        response.Dispose();
-        return copy;
+        try
+        {
+            using var response = await client.GetObjectAsync(bucket, key, cancellationToken);
+            var copy = new MemoryStream();
+            await response.ResponseStream.CopyToAsync(copy, cancellationToken);
+            copy.Position = 0;
+            return copy;
+        }
+        catch (AmazonS3Exception exception) when (
+            exception.StatusCode == HttpStatusCode.NotFound ||
+            string.Equals(exception.ErrorCode, "NoSuchKey", StringComparison.Ordinal))
+        {
+            throw new AttachmentObjectNotFoundException(key);
+        }
     }
 
     public async Task DeleteAsync(string key, CancellationToken cancellationToken)

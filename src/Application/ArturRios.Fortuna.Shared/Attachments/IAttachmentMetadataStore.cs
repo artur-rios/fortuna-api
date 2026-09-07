@@ -12,6 +12,14 @@ public interface IAttachmentMetadataStore
         CancellationToken cancellationToken);
 }
 
+public interface IAttachmentMetadataReader
+{
+    Task<AttachmentReadSnapshot?> FindOwnedAsync(
+        Guid userId,
+        Guid attachmentId,
+        CancellationToken cancellationToken);
+}
+
 public sealed record AttachmentMetadataWrite(
     Guid UserId,
     Guid TransactionId,
@@ -38,6 +46,13 @@ public sealed record AttachmentSnapshot(
     string ContentType,
     long SizeInBytes,
     DateTimeOffset CreatedAt);
+
+public sealed record AttachmentReadSnapshot(
+    Guid Id,
+    string FileName,
+    string ContentType,
+    long SizeInBytes,
+    string StorageKey);
 
 public sealed record AttachmentOptions(
     int MaximumBytes,

@@ -1,4 +1,4 @@
-namespace ArturRios.Fortuna.Command.Auditing;
+namespace ArturRios.Fortuna.Shared.Auditing;
 
 public interface IAuditEntryWriter
 {

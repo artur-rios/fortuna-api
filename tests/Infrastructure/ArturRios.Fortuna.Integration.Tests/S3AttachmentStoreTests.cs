@@ -4,6 +4,7 @@ using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using ArturRios.Fortuna.Integration.Storage;
+using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Integration.Tests;
@@ -49,6 +50,16 @@ public sealed class S3AttachmentStoreTests
         Assert.False(await store.IsHealthyAsync(CancellationToken.None));
     }
 
+    [UnitFact]
+    public async Task GivenMissingObject_WhenOpened_ThenPortableNotFoundExceptionIsThrown()
+    {
+        using var client = new StubS3Client { MissingObject = true };
+        var store = new S3AttachmentStore(client, "receipts");
+
+        await Assert.ThrowsAsync<AttachmentObjectNotFoundException>(() =>
+            store.OpenReadAsync("missing.pdf", CancellationToken.None));
+    }
+
     [UnitTheory]
     [InlineData("")]
     [InlineData("/absolute")]
@@ -70,6 +81,7 @@ public sealed class S3AttachmentStoreTests
         public (string Bucket, string Key)? DeleteRequest { get; private set; }
         public string? HealthBucket { get; private set; }
         public bool FailHealth { get; init; }
+        public bool MissingObject { get; init; }
 
         public override Task<PutObjectResponse> PutObjectAsync(
             PutObjectRequest request,
@@ -85,6 +97,14 @@ public sealed class S3AttachmentStoreTests
             CancellationToken cancellationToken = default)
         {
             GetRequest = (bucketName, key);
+            if (MissingObject)
+            {
+                return Task.FromException<GetObjectResponse>(new AmazonS3Exception("missing")
+                {
+                    StatusCode = System.Net.HttpStatusCode.NotFound
+                });
+            }
+
             return Task.FromResult(new GetObjectResponse
             {
                 ResponseStream = new MemoryStream(Encoding.UTF8.GetBytes("stored"))

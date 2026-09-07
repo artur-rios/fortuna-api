@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Command.Auditing;
+using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Mediator.Command;

@@ -8381,6 +8381,29 @@
         ]
       }
     },
+    "/api/attachments/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Attachments"
+        ]
+      }
+    },
     "/api/audit-entries": {
       "get": {
         "parameters": [
@@ -13468,6 +13491,9 @@
   "tags": [
     {
       "name": "Accounts"
+    },
+    {
+      "name": "Attachments"
     },
     {
       "name": "AuditEntries"
