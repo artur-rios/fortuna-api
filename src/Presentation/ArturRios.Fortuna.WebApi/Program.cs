@@ -241,8 +241,11 @@ try
     builder.Services.AddSingleton<IPdfInvoiceParser, NubankPdfInvoiceParser>();
     builder.Services.AddScoped<IImportJobReader, EfImportJobReader>();
     builder.Services.AddScoped<ITableReportReader, EfTableReportReader>();
+    builder.Services.AddScoped<ITransactionAggregationReader, EfTransactionAggregationReader>();
     builder.Services.AddScoped<IImportJobRetryStore, EfImportJobRetryStore>();
     builder.Services.AddSingleton(new PaginationOptions(options.PageSizeMaximum));
+    builder.Services.AddSingleton(new TransactionAggregationOptions(
+        options.ReportMaximumRangeDays));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
         options.ReconciliationDateToleranceDays));
@@ -612,6 +615,10 @@ try
         QueryRecordsAsTableQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<QueryRecordsAsTableQuery, TableReportOutput>,
         QueryRecordsAsTableQueryHandler>();
+    builder.Services.AddScoped<IValidator<AggregateTransactionsQuery>,
+        AggregateTransactionsQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<AggregateTransactionsQuery,
+        TransactionAggregationOutput>, AggregateTransactionsQueryHandler>();
 
     builder.Services.AddSingleton(new PluggySourceOptions(
         options.PluggyClientId,

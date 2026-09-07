@@ -6661,6 +6661,157 @@
         },
         "type": "object"
       },
+      "TransactionAggregationBucketOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "conversions": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionAggregationConversionOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "drillDownKey": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "label": {
+            "nullable": true,
+            "type": "string"
+          },
+          "periodEnd": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "periodStart": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "share": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "total": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionAggregationConversionOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "displayAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "figureDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "rateSource": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          },
+          "sourceAmount": {
+            "format": "double",
+            "type": "number"
+          },
+          "sourceCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "unconvertedReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionAggregationOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionAggregationBucketOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "dimension": {
+            "nullable": true,
+            "type": "string"
+          },
+          "displayCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "from": {
+            "format": "date",
+            "type": "string"
+          },
+          "granularity": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "to": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionAggregationOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TransactionAggregationOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "TransactionCurrencyTotalOutput": {
         "additionalProperties": false,
         "properties": {
@@ -12696,6 +12847,167 @@
         },
         "tags": [
           "RecurringTransactions"
+        ]
+      }
+    },
+    "/api/reports/aggregate": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "Dimension",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Granularity",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "From",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "To",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "RollupCategories",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "FinancialAccountId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "CreditCardId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "CategoryId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "TagId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "CounterpartyId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Direction",
+            "schema": {
+              "$ref": "#/components/schemas/TransactionDirection"
+            }
+          },
+          {
+            "in": "query",
+            "name": "MinimumAmount",
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "MaximumAmount",
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Text",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "DisplayCurrencyCode",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionAggregationOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionAggregationOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionAggregationOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Reports"
         ]
       }
     },

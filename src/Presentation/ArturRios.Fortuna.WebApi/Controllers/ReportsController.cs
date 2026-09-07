@@ -48,4 +48,25 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
+
+    [HttpGet("aggregate")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<TransactionAggregationOutput?>>> Aggregate(
+        [FromQuery] AggregateTransactionsQuery query)
+    {
+        var result = await queryMediator.ExecuteQueryAsync<
+            AggregateTransactionsQuery,
+            TransactionAggregationOutput>(query);
+        if (result.Errors?.Count > 0 &&
+            !result.Errors.Contains(TransactionAggregationMessages.ProfileNotFound))
+        {
+            return BadRequest(result);
+        }
+
+        return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
+        {
+            [TransactionAggregationMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
+            [TransactionAggregationMessages.ProfileNotFound] = StatusCodes.Status404NotFound
+        });
+    }
 }
