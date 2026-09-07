@@ -15,6 +15,7 @@ public sealed record FortunaOptions
     public required string LogDirectory { get; init; }
     public int JobQueueCapacity { get; init; }
     public int PageSizeMaximum { get; init; }
+    public int ReportMaximumRangeDays { get; init; }
     public int TransactionMaximumTags { get; init; }
     public int ExcelImportMaximumFileBytes { get; init; }
     public int PdfInvoiceImportMaximumFileBytes { get; init; }
@@ -55,6 +56,10 @@ public sealed record FortunaOptions
             LogDirectory = Required(read, "FORTUNA_LOG_DIRECTORY"),
             JobQueueCapacity = PositiveInteger(read("FORTUNA_JOB_QUEUE_CAPACITY"), "FORTUNA_JOB_QUEUE_CAPACITY", 256),
             PageSizeMaximum = PositiveInteger(read("FORTUNA_PAGE_SIZE_MAX"), "FORTUNA_PAGE_SIZE_MAX", 100),
+            ReportMaximumRangeDays = PositiveInteger(
+                read("FORTUNA_REPORT_MAX_RANGE_DAYS"),
+                "FORTUNA_REPORT_MAX_RANGE_DAYS",
+                366),
             TransactionMaximumTags = PositiveInteger(
                 read("FORTUNA_TRANSACTION_MAX_TAGS"),
                 "FORTUNA_TRANSACTION_MAX_TAGS",

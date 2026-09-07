@@ -36,6 +36,7 @@ public sealed class FoundationApiTests
         Assert.NotNull(options.StoragePath);
         Assert.Equal(256, options.JobQueueCapacity);
         Assert.Equal(100, options.PageSizeMaximum);
+        Assert.Equal(366, options.ReportMaximumRangeDays);
         Assert.Equal(50, options.TransactionMaximumTags);
         Assert.Equal(10 * 1024 * 1024, options.UploadMaximumBytes);
         Assert.Equal(["application/pdf", "image/jpeg", "image/png"],
@@ -229,6 +230,22 @@ public sealed class FoundationApiTests
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_PAGE_SIZE_MAX", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("0")]
+    [InlineData("not-a-number")]
+    public void GivenInvalidMaximumReportRange_WhenConfigurationLoads_ThenStartupIsRejected(
+        string value)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_REPORT_MAX_RANGE_DAYS"] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_REPORT_MAX_RANGE_DAYS", exception.Message,
+            StringComparison.Ordinal);
     }
 
     [UnitTheory]
