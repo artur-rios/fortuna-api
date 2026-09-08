@@ -39,6 +39,8 @@ public sealed class FoundationApiTests
         Assert.Equal(366, options.ReportMaximumRangeDays);
         Assert.Equal(15, options.ReportKeyLifetimeMinutes);
         Assert.Equal(366, options.ProjectionMaximumHorizonDays);
+        Assert.Equal(1000, options.ExportSynchronousThresholdRows);
+        Assert.Equal(24, options.ExportRetentionHours);
         Assert.Equal(50, options.TransactionMaximumTags);
         Assert.Equal(10 * 1024 * 1024, options.UploadMaximumBytes);
         Assert.Equal(["application/pdf", "image/jpeg", "image/png"],
@@ -283,6 +285,24 @@ public sealed class FoundationApiTests
     }
 
     [UnitTheory]
+    [InlineData("FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS", "0")]
+    [InlineData("FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS", "not-a-number")]
+    [InlineData("FORTUNA_EXPORT_RETENTION_HOURS", "0")]
+    [InlineData("FORTUNA_EXPORT_RETENTION_HOURS", "not-a-number")]
+    public void GivenInvalidExportBound_WhenConfigurationLoads_ThenStartupIsRejected(
+        string key,
+        string value)
+    {
+        var values = ValidSettings();
+        values[key] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
     [InlineData("0")]
     [InlineData("not-a-number")]
     public void GivenInvalidMaximumTagCount_WhenConfigurationLoads_ThenStartupIsRejected(
@@ -436,6 +456,8 @@ public sealed class FoundationApiTests
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
+        ["FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS"] = "1000",
+        ["FORTUNA_EXPORT_RETENTION_HOURS"] = "24",
         ["FORTUNA_AUTH_TOKEN_SECRET"] = "fortuna-tests-signing-key-with-enough-entropy",
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = "heimdall-tests",
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = "fortuna-tests",

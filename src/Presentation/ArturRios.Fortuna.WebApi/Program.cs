@@ -7,6 +7,7 @@ using ArturRios.Fortuna.Data.Auditing;
 using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Data.Currencies;
+using ArturRios.Fortuna.Data.Exports;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Investments;
 using ArturRios.Fortuna.Data.Ingestion;
@@ -23,6 +24,7 @@ using ArturRios.Fortuna.Command.Input.Validation;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Integration.Ingestion;
+using ArturRios.Fortuna.Integration.Exports;
 using ArturRios.Fortuna.Integration.Rates;
 using ArturRios.Fortuna.Integration.Storage;
 using ArturRios.Fortuna.Shared.Jobs;
@@ -34,6 +36,7 @@ using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Currencies;
+using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
@@ -247,6 +250,9 @@ try
     builder.Services.AddScoped<INetPositionReader, EfNetPositionReader>();
     builder.Services.AddScoped<ICashFlowProjectionReader, EfCashFlowProjectionReader>();
     builder.Services.AddScoped<ICommittedObligationReader, EfCommittedObligationReader>();
+    builder.Services.AddScoped<IDataExportStore, EfDataExportStore>();
+    builder.Services.AddSingleton<IDataExportRenderer, DataExportRenderer>();
+    builder.Services.AddScoped<DataExportBuilder>();
     builder.Services.AddSingleton<ITransactionDrillDownKeyCodec,
         DataProtectionTransactionDrillDownKeyCodec>();
     builder.Services.AddScoped<IImportJobRetryStore, EfImportJobRetryStore>();
@@ -259,6 +265,10 @@ try
         options.ProjectionMaximumHorizonDays,
         90,
         30));
+    builder.Services.AddSingleton(new DataExportOptions(
+        options.ExportSynchronousThresholdRows,
+        TimeSpan.FromHours(options.ExportRetentionHours),
+        options.Locale));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
         options.ReconciliationDateToleranceDays));
@@ -277,6 +287,7 @@ try
     builder.Services.AddScoped<IBackgroundJobHandler, PluggySynchronizationJobHandler>();
     builder.Services.AddScoped<IBackgroundJobHandler, ExcelImportJobHandler>();
     builder.Services.AddScoped<IBackgroundJobHandler, PdfInvoiceImportJobHandler>();
+    builder.Services.AddScoped<IBackgroundJobHandler, DataExportJobHandler>();
     builder.Services.AddHostedService<DatabaseInitializationHostedService>();
     builder.Services.AddHostedService<BackgroundJobHostedService>();
     builder.Services.AddHostedService<ExchangeRateSyncHostedService>();
@@ -334,6 +345,10 @@ try
         ImportPdfInvoiceCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ImportPdfInvoiceCommand,
         ImportPdfInvoiceCommandOutput, ImportPdfInvoiceCommandHandler>();
+    builder.Services.AddScoped<IValidator<RequestDataExportCommand>,
+        RequestDataExportCommandValidator>();
+    builder.Services.AddAuditedCommandHandler<RequestDataExportCommand,
+        RequestDataExportCommandOutput, RequestDataExportCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CreateFinancialAccountCommand,
         CreateFinancialAccountCommandOutput, CreateFinancialAccountCommandHandler>();
     builder.Services.AddScoped<IValidator<UpdateFinancialAccountCommand>,
