@@ -1,0 +1,39 @@
+# Line endings are LF in the repository and in the working tree, on every
+# platform. The index is already entirely LF, so this codifies what is there
+# rather than changing it.
+#
+# The one that would actually break something is `docker/entrypoint.sh`: a CRLF
+# shell script in a Linux container fails with an unreadable interpreter error,
+# which is why the scripts below are pinned explicitly rather than left to the
+# default.
+* text=auto eol=lf
+
+# Scripts, where the ending is part of the contract with the interpreter.
+*.sh        text eol=lf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Visual Studio writes these with CRLF; keeping them so avoids a diff every time
+# the tooling touches one.
+*.sln       text eol=crlf
+
+# Generated, never hand-edited. The OpenAPI document is produced by the build and
+# is the input the Fortuna UI generates its client from.
+docs/openapi/*.json  linguist-generated=true
+
+# Binaries — never converted, never diffed as text.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
+*.zip    binary
+*.dll    binary
+*.so     binary
+*.dylib  binary
+*.exe    binary
+*.pdb    binary
+*.snk    binary
+*.nupkg  binary
