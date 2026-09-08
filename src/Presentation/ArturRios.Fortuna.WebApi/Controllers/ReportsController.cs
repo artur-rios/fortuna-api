@@ -94,4 +94,25 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
             [TransactionDrillDownMessages.BucketNotFound] = StatusCodes.Status404NotFound
         });
     }
+
+    [HttpGet("net-position")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<NetPositionOutput?>>> NetPosition(
+        [FromQuery] GetNetPositionQuery query)
+    {
+        var result = await queryMediator.ExecuteQueryAsync<GetNetPositionQuery, NetPositionOutput>(
+            query);
+        if (result.Errors?.Count > 0 &&
+            !result.Errors.Contains(NetPositionMessages.ProfileNotFound))
+        {
+            return BadRequest(result);
+        }
+
+        return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
+        {
+            [NetPositionMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
+            [NetPositionMessages.PartiallyConverted] = StatusCodes.Status200OK,
+            [NetPositionMessages.ProfileNotFound] = StatusCodes.Status404NotFound
+        });
+    }
 }
