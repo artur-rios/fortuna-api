@@ -169,6 +169,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Attachment storage | `FORTUNA_STORAGE_PROVIDER`, `FORTUNA_STORAGE_PATH`, `FORTUNA_STORAGE_S3_ENDPOINT`, `FORTUNA_STORAGE_S3_BUCKET`, `FORTUNA_STORAGE_S3_ACCESS_KEY`, `FORTUNA_STORAGE_S3_SECRET_KEY` | `Filesystem` or `S3`. The S3 keys are **secret**. |
 | Upload limits | `FORTUNA_UPLOAD_MAX_BYTES`, `FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES` | Enforced for attachments and for import files. |
 | Export | `FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS`, `FORTUNA_EXPORT_RETENTION_HOURS` | Above the threshold an export becomes a job; retention bounds how long a produced file is kept. |
+| Health | `FORTUNA_HEALTH_JOB_MAX_PENDING_SECONDS` | Maximum age of the oldest pending job before the job runner is reported unhealthy; defaults to `300`. |
 | Reporting bounds | `FORTUNA_REPORT_MAX_RANGE_DAYS`, `FORTUNA_REPORT_KEY_TTL_MINUTES`, `FORTUNA_PROJECTION_MAX_HORIZON_DAYS`, `FORTUNA_PAGE_SIZE_MAX` | The limits the endpoints validate against, including drill-down key lifetime. |
 | Transaction tags | `FORTUNA_TRANSACTION_MAX_TAGS` | Maximum number of live tags attached to one transaction; defaults to `50`. |
 | Reconciliation | `FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE`, `FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS` | Differences beyond these non-negative amount and day tolerances are accepted but flagged. Defaults to `0.01` and `1`. |

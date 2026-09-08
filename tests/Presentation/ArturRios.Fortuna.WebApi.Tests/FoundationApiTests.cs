@@ -35,6 +35,7 @@ public sealed class FoundationApiTests
         Assert.Equal("Filesystem", options.StorageProvider);
         Assert.NotNull(options.StoragePath);
         Assert.Equal(256, options.JobQueueCapacity);
+        Assert.Equal(300, options.HealthJobMaximumPendingSeconds);
         Assert.Equal(100, options.PageSizeMaximum);
         Assert.Equal(366, options.ReportMaximumRangeDays);
         Assert.Equal(15, options.ReportKeyLifetimeMinutes);
@@ -218,6 +219,20 @@ public sealed class FoundationApiTests
         values["FORTUNA_JOB_QUEUE_CAPACITY"] = value;
 
         var exception = Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("positive integer", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("0")]
+    [InlineData("not-a-number")]
+    public void GivenInvalidHealthJobAge_WhenConfigurationLoads_ThenStartupIsRejected(string value)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_HEALTH_JOB_MAX_PENDING_SECONDS"] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("positive integer", exception.Message, StringComparison.Ordinal);
     }

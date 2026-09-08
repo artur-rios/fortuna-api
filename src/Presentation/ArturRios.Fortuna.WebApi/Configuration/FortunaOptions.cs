@@ -14,6 +14,7 @@ public sealed record FortunaOptions
     public string? StorageS3SecretKey { get; init; }
     public required string LogDirectory { get; init; }
     public int JobQueueCapacity { get; init; }
+    public int HealthJobMaximumPendingSeconds { get; init; }
     public int PageSizeMaximum { get; init; }
     public int ReportMaximumRangeDays { get; init; }
     public int ReportKeyLifetimeMinutes { get; init; }
@@ -59,6 +60,10 @@ public sealed record FortunaOptions
             StorageS3SecretKey = read("FORTUNA_STORAGE_S3_SECRET_KEY"),
             LogDirectory = Required(read, "FORTUNA_LOG_DIRECTORY"),
             JobQueueCapacity = PositiveInteger(read("FORTUNA_JOB_QUEUE_CAPACITY"), "FORTUNA_JOB_QUEUE_CAPACITY", 256),
+            HealthJobMaximumPendingSeconds = PositiveInteger(
+                read("FORTUNA_HEALTH_JOB_MAX_PENDING_SECONDS"),
+                "FORTUNA_HEALTH_JOB_MAX_PENDING_SECONDS",
+                300),
             PageSizeMaximum = PositiveInteger(read("FORTUNA_PAGE_SIZE_MAX"), "FORTUNA_PAGE_SIZE_MAX", 100),
             ReportMaximumRangeDays = PositiveInteger(
                 read("FORTUNA_REPORT_MAX_RANGE_DAYS"),

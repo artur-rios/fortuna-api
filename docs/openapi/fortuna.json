@@ -5050,6 +5050,47 @@
         },
         "type": "object"
       },
+      "OperationalHealthOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "services": {
+            "items": {
+              "$ref": "#/components/schemas/OperationalHealthServiceOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "status": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "OperationalHealthServiceOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "oldestPendingSeconds": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          },
+          "queueDepth": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "status": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "QueryRecordsAsTableQuery": {
         "additionalProperties": false,
         "properties": {
@@ -15392,6 +15433,55 @@
           "HealthCheck"
         ]
       }
+    },
+    "/healthcheck/detailed": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalHealthOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalHealthOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalHealthOutput"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalHealthOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalHealthOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalHealthOutput"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "tags": [
+          "DetailedHealthCheck"
+        ]
+      }
     }
   },
   "security": [
@@ -15430,6 +15520,9 @@
     },
     {
       "name": "DataSources"
+    },
+    {
+      "name": "DetailedHealthCheck"
     },
     {
       "name": "ExchangeRates"

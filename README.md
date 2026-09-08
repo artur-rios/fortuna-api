@@ -84,7 +84,8 @@ Ubuntu, and a Linux VPS — differing only in the environment file supplied:
 docker compose --env-file docker/local.env up -d --build
 ```
 
-The API's liveness is observable at the public `GET /healthcheck` endpoint.
+The API's liveness is observable at the public `GET /healthcheck` endpoint. Instance administrators
+can inspect dependency health at `GET /healthcheck/detailed`.
 
 ## Testing
 
@@ -245,7 +246,7 @@ pull request.
 | [#73](https://github.com/artur-rios/fortuna-api/issues/73) | ✅ UC-72: View Committed Obligations | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#74](https://github.com/artur-rios/fortuna-api/issues/74) | ✅ UC-73: Export a Data Set | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#75](https://github.com/artur-rios/fortuna-api/issues/75) | ✅ UC-74: Retrieve a Completed Export | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#76](https://github.com/artur-rios/fortuna-api/issues/76) | UC-75: Check API Health | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
+| [#76](https://github.com/artur-rios/fortuna-api/issues/76) | ✅ UC-75: Check API Health | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
 
 ## Contributing
 
