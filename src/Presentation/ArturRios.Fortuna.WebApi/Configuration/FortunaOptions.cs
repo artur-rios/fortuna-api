@@ -17,6 +17,7 @@ public sealed record FortunaOptions
     public int PageSizeMaximum { get; init; }
     public int ReportMaximumRangeDays { get; init; }
     public int ReportKeyLifetimeMinutes { get; init; }
+    public int ProjectionMaximumHorizonDays { get; init; }
     public int TransactionMaximumTags { get; init; }
     public int ExcelImportMaximumFileBytes { get; init; }
     public int PdfInvoiceImportMaximumFileBytes { get; init; }
@@ -65,6 +66,10 @@ public sealed record FortunaOptions
                 read("FORTUNA_REPORT_KEY_TTL_MINUTES"),
                 "FORTUNA_REPORT_KEY_TTL_MINUTES",
                 15),
+            ProjectionMaximumHorizonDays = PositiveInteger(
+                read("FORTUNA_PROJECTION_MAX_HORIZON_DAYS"),
+                "FORTUNA_PROJECTION_MAX_HORIZON_DAYS",
+                366),
             TransactionMaximumTags = PositiveInteger(
                 read("FORTUNA_TRANSACTION_MAX_TAGS"),
                 "FORTUNA_TRANSACTION_MAX_TAGS",
