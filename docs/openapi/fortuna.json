@@ -4492,6 +4492,114 @@
         },
         "type": "object"
       },
+      "NetPositionCurrencyOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "creditCards": {
+            "format": "double",
+            "type": "number"
+          },
+          "displayNet": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "financialAccounts": {
+            "format": "double",
+            "type": "number"
+          },
+          "investments": {
+            "format": "double",
+            "type": "number"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "rateSource": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          },
+          "sourceCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sourceNet": {
+            "format": "double",
+            "type": "number"
+          },
+          "unconvertedReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "NetPositionOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "asOf": {
+            "format": "date",
+            "type": "string"
+          },
+          "currencyGroups": {
+            "items": {
+              "$ref": "#/components/schemas/NetPositionCurrencyOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "displayCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "total": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "NetPositionOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NetPositionOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ObjectDataOutput": {
         "additionalProperties": false,
         "properties": {
@@ -13147,6 +13255,68 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionDrillDownOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/reports/net-position": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "DisplayCurrencyCode",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "AsOf",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetPositionOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetPositionOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetPositionOutputDataOutput"
                 }
               }
             },

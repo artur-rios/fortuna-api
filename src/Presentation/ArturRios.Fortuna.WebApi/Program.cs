@@ -242,6 +242,8 @@ try
     builder.Services.AddScoped<IImportJobReader, EfImportJobReader>();
     builder.Services.AddScoped<ITableReportReader, EfTableReportReader>();
     builder.Services.AddScoped<ITransactionAggregationReader, EfTransactionAggregationReader>();
+    builder.Services.AddScoped<INetPositionReader, EfNetPositionReader>();
+    builder.Services.AddScoped<INetPositionReader, EfNetPositionReader>();
     builder.Services.AddSingleton<ITransactionDrillDownKeyCodec,
         DataProtectionTransactionDrillDownKeyCodec>();
     builder.Services.AddScoped<IImportJobRetryStore, EfImportJobRetryStore>();
@@ -544,6 +546,12 @@ try
     builder.Services.AddScoped<IValidator<ConvertFigureQuery>, ConvertFigureQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<ConvertFigureQuery, ConvertFigureQueryOutput>,
         ConvertFigureQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetNetPositionQuery>, GetNetPositionQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetNetPositionQuery, NetPositionOutput>,
+        GetNetPositionQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetNetPositionQuery>, GetNetPositionQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetNetPositionQuery, NetPositionOutput>,
+        GetNetPositionQueryHandler>();
     builder.Services.AddScoped<IValidator<ListAuditEntriesQuery>, ListAuditEntriesQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>,
         ListAuditEntriesQueryHandler>();
