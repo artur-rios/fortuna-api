@@ -139,7 +139,7 @@ letting the ones below it shift.
 
 | # | Rule | Rationale |
 | --- | --- | --- |
-| **BR-35** | In connected mode, Fortuna never stores or handles a password. Identity, credentials and recovery belong to Heimdall; Fortuna consumes the issued token. | One system owns identity, and it is the one built for it. |
+| **BR-35** | In connected mode, Fortuna never stores a password. It may carry one only in transit, forwarding a credential to Heimdall on the caller's behalf and retaining it nowhere — not in a log, a trace, a cache or an error payload. Identity, credentials and recovery remain Heimdall's; Fortuna consumes the issued token. | One system owns identity, and it is the one built for it. Fortuna carries a credential only far enough to hand it over, so that a client needs one API rather than two. |
 | **BR-36** | A desktop local account has no password reset and no e-mail recovery. Its recovery codes, issued at creation, are the only way back in — each usable once, stored hashed, and unrecoverable if lost. | Offline means there is no channel to prove identity through. This is stated plainly to the user at creation, because losing every code means losing the account. |
 | **BR-37** | Local-account data belongs to that installation. It is never synchronized to a shared instance implicitly. | — |
 
@@ -151,6 +151,7 @@ letting the ones below it shift.
 | **BR-39** | A soft-deleted record is excluded from every balance, aggregation, projection and export, but remains retrievable and restorable. | — |
 | **BR-40** | A hard delete is refused while any live record still references the target. | Leaving a transaction pointing at an account that no longer exists corrupts every query that joins them. |
 | **BR-41** | Audit log entries are append-only: never edited, never deleted, not even by a hard delete of what they describe. | An audit trail that can be pruned is not one. |
+| **BR-42** | An audit entry identifies its subject by an opaque reference and carries no other personal data — no name, no address, no record contents. Erasing a user destroys the mapping from that reference to the person, so the trail survives while ceasing to be personal data. | Reconciles `BR-41` with the right to erasure under the GDPR and the LGPD: a trail that cannot be pruned and a person who may demand deletion are only compatible if the trail does not identify them once they are gone. |
 
 ## Validation Constraints
 
