@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Exports;
 
-public sealed class EfDataExportStore(AppDbContext context) : IDataExportStore
+public sealed class EfDataExportStore(AppDbContext context) : IDataExportStore, IDataExportReader
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -87,6 +87,27 @@ public sealed class EfDataExportStore(AppDbContext context) : IDataExportStore
         export.Fail(reason.Length <= 1000 ? reason : reason[..1000], failedAt);
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    public Task<DataExportReadSnapshot?> FindOwnedAsync(
+        Guid userId,
+        Guid exportId,
+        CancellationToken cancellationToken) => context.DataExports
+        .AsNoTracking()
+        .Where(export => export.User.PublicId == userId && export.PublicId == exportId)
+        .Select(export => new DataExportReadSnapshot(
+            export.PublicId,
+            export.BackgroundJobId,
+            export.Format,
+            export.Status,
+            export.FileName,
+            export.RowCount,
+            export.ContentType,
+            export.StorageKey,
+            export.FailureReason,
+            export.CreatedAt,
+            export.UpdatedAt,
+            export.ExpiresAt))
+        .SingleOrDefaultAsync(cancellationToken);
 
     private async Task<DataExport> RequiredAsync(
         Guid exportId,
