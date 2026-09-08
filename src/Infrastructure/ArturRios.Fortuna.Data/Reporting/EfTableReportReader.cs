@@ -412,6 +412,10 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             Text("currencyCode", "currency.code"),
             Date("occurredOn", "r.occurred_on"),
             Text("description", "r.description"),
+            Text("attachmentNames",
+                "(SELECT COALESCE(string_agg(a.file_name, ', ' ORDER BY a.file_name), '') " +
+                "FROM fortuna.attachment a " +
+                "WHERE a.transaction_id = r.id AND NOT a.is_deleted)"),
             Enum("sourceType", "r.source_type", (1, "Manual"), (2, "Pluggy"),
                 (3, "Excel"), (4, "Pdf")),
             Boolean("isReconciled", "r.is_reconciled"),

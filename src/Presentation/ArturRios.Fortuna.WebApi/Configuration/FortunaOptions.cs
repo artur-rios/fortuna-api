@@ -18,6 +18,8 @@ public sealed record FortunaOptions
     public int ReportMaximumRangeDays { get; init; }
     public int ReportKeyLifetimeMinutes { get; init; }
     public int ProjectionMaximumHorizonDays { get; init; }
+    public int ExportSynchronousThresholdRows { get; init; }
+    public int ExportRetentionHours { get; init; }
     public int TransactionMaximumTags { get; init; }
     public int ExcelImportMaximumFileBytes { get; init; }
     public int PdfInvoiceImportMaximumFileBytes { get; init; }
@@ -70,6 +72,14 @@ public sealed record FortunaOptions
                 read("FORTUNA_PROJECTION_MAX_HORIZON_DAYS"),
                 "FORTUNA_PROJECTION_MAX_HORIZON_DAYS",
                 366),
+            ExportSynchronousThresholdRows = PositiveInteger(
+                read("FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS"),
+                "FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS",
+                1000),
+            ExportRetentionHours = PositiveInteger(
+                read("FORTUNA_EXPORT_RETENTION_HOURS"),
+                "FORTUNA_EXPORT_RETENTION_HOURS",
+                24),
             TransactionMaximumTags = PositiveInteger(
                 read("FORTUNA_TRANSACTION_MAX_TAGS"),
                 "FORTUNA_TRANSACTION_MAX_TAGS",

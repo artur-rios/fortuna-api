@@ -243,7 +243,7 @@ pull request.
 | [#71](https://github.com/artur-rios/fortuna-api/issues/71) | ✅ UC-70: View the Net Position | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#72](https://github.com/artur-rios/fortuna-api/issues/72) | ✅ UC-71: Project Cash Flow | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#73](https://github.com/artur-rios/fortuna-api/issues/73) | ✅ UC-72: View Committed Obligations | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
-| [#74](https://github.com/artur-rios/fortuna-api/issues/74) | UC-73: Export a Data Set | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#74](https://github.com/artur-rios/fortuna-api/issues/74) | ✅ UC-73: Export a Data Set | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#75](https://github.com/artur-rios/fortuna-api/issues/75) | UC-74: Retrieve a Completed Export | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#76](https://github.com/artur-rios/fortuna-api/issues/76) | UC-75: Check API Health | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
 

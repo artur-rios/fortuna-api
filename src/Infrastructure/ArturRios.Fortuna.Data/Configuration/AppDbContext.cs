@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Ingestion;
@@ -25,6 +26,7 @@ public sealed class AppDbContext(
 
     public DbSet<Currency> Currencies => Set<Currency>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+    public DbSet<DataExport> DataExports => Set<DataExport>();
     public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<LocalAccount> LocalAccounts => Set<LocalAccount>();

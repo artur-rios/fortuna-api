@@ -2863,6 +2863,54 @@
         },
         "type": "object"
       },
+      "DataExportDelivery": {
+        "enum": [
+          1,
+          2
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "DataExportFilterInput": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "nullable": true,
+            "type": "string"
+          },
+          "operator": {
+            "nullable": true,
+            "type": "string"
+          },
+          "value": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DataExportFormat": {
+        "enum": [
+          1,
+          2,
+          3
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "DataExportSortInput": {
+        "additionalProperties": false,
+        "properties": {
+          "descending": {
+            "type": "boolean"
+          },
+          "field": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "DataSourceKind": {
         "enum": [
           1,
@@ -6362,6 +6410,114 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RequestDataExportCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "displayCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "filters": {
+            "items": {
+              "$ref": "#/components/schemas/DataExportFilterInput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "format": {
+            "nullable": true,
+            "type": "string"
+          },
+          "locale": {
+            "nullable": true,
+            "type": "string"
+          },
+          "recordSet": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sorts": {
+            "items": {
+              "$ref": "#/components/schemas/DataExportSortInput"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "RequestDataExportCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "contentType": {
+            "nullable": true,
+            "type": "string"
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/DataExportDelivery"
+          },
+          "exportId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "fileName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "format": {
+            "$ref": "#/components/schemas/DataExportFormat"
+          },
+          "jobId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "rowCount": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "RequestDataExportCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RequestDataExportCommandOutput"
           },
           "errors": {
             "items": {
@@ -11513,6 +11669,77 @@
         ]
       }
     },
+    "/api/exports": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestDataExportCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestDataExportCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestDataExportCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDataExportCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDataExportCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDataExportCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "Accepted"
+          }
+        },
+        "tags": [
+          "Exports"
+        ]
+      }
+    },
     "/api/goals": {
       "get": {
         "parameters": [
@@ -15075,6 +15302,9 @@
     },
     {
       "name": "ExchangeRates"
+    },
+    {
+      "name": "Exports"
     },
     {
       "name": "Goals"
