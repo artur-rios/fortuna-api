@@ -34,4 +34,26 @@ public sealed class ProjectionsController(QueryMediator queryMediator) : Control
             [CashFlowProjectionMessages.ProfileNotFound] = StatusCodes.Status404NotFound
         });
     }
+
+    [HttpGet("commitments")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<CommittedObligationListOutput?>>> Commitments(
+        [FromQuery] ListCommittedObligationsQuery query)
+    {
+        var result = await queryMediator.ExecuteQueryAsync<
+            ListCommittedObligationsQuery,
+            CommittedObligationListOutput>(query);
+        if (result.Errors?.Count > 0 &&
+            !result.Errors.Contains(CommittedObligationMessages.ProfileNotFound))
+        {
+            return BadRequest(result);
+        }
+
+        return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
+        {
+            [CommittedObligationMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
+            [CommittedObligationMessages.PartiallyConverted] = StatusCodes.Status200OK,
+            [CommittedObligationMessages.ProfileNotFound] = StatusCodes.Status404NotFound
+        });
+    }
 }

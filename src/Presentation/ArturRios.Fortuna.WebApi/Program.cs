@@ -246,6 +246,7 @@ try
     builder.Services.AddScoped<ITransactionAggregationReader, EfTransactionAggregationReader>();
     builder.Services.AddScoped<INetPositionReader, EfNetPositionReader>();
     builder.Services.AddScoped<ICashFlowProjectionReader, EfCashFlowProjectionReader>();
+    builder.Services.AddScoped<ICommittedObligationReader, EfCommittedObligationReader>();
     builder.Services.AddSingleton<ITransactionDrillDownKeyCodec,
         DataProtectionTransactionDrillDownKeyCodec>();
     builder.Services.AddScoped<IImportJobRetryStore, EfImportJobRetryStore>();
@@ -558,6 +559,10 @@ try
     builder.Services.AddScoped<IValidator<ProjectCashFlowQuery>, ProjectCashFlowQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<ProjectCashFlowQuery, CashFlowProjectionOutput>,
         ProjectCashFlowQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListCommittedObligationsQuery>,
+        ListCommittedObligationsQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<ListCommittedObligationsQuery,
+        CommittedObligationListOutput>, ListCommittedObligationsQueryHandler>();
     builder.Services.AddScoped<IValidator<ListAuditEntriesQuery>, ListAuditEntriesQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>,
         ListAuditEntriesQueryHandler>();

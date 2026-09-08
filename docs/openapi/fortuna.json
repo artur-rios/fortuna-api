@@ -1109,6 +1109,203 @@
         },
         "type": "object"
       },
+      "CommittedObligationKind": {
+        "enum": [
+          1,
+          2
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "CommittedObligationListOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "asOf": {
+            "format": "date",
+            "type": "string"
+          },
+          "displayCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CommittedObligationOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/CommittedObligationPeriodOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "rates": {
+            "items": {
+              "$ref": "#/components/schemas/CommittedObligationRateOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "through": {
+            "format": "date",
+            "type": "string"
+          },
+          "total": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "CommittedObligationListOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CommittedObligationListOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CommittedObligationOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "appliedRate": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "currencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "cycleEnd": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "cycleStart": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "daysOverdue": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "displayAmount": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "dueDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isOverdue": {
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CommittedObligationKind"
+          },
+          "rateDate": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "rateSource": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          },
+          "unconvertedReason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CommittedObligationPeriodOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "periodEnd": {
+            "format": "date",
+            "type": "string"
+          },
+          "periodStart": {
+            "format": "date",
+            "type": "string"
+          },
+          "total": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "CommittedObligationRateOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "baseCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "quoteCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rate": {
+            "format": "double",
+            "type": "number"
+          },
+          "rateDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          }
+        },
+        "type": "object"
+      },
       "ConnectionOutput": {
         "additionalProperties": false,
         "properties": {
@@ -13042,6 +13239,68 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CashFlowProjectionOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Projections"
+        ]
+      }
+    },
+    "/api/projections/commitments": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "HorizonDays",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "DisplayCurrencyCode",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommittedObligationListOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommittedObligationListOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommittedObligationListOutputDataOutput"
                 }
               }
             },
