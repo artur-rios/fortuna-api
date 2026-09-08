@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Jobs;
+using ArturRios.Fortuna.Shared.Health;
 using ArturRios.Fortuna.Shared.Jobs;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Jobs;
 
-public sealed class EfBackgroundJobStore(AppDbContext context) : IBackgroundJobStore
+public sealed class EfBackgroundJobStore(AppDbContext context)
+    : IBackgroundJobStore, IBackgroundJobHealthReader
 {
     public async Task<BackgroundJob> CreateAsync(
         string type,
@@ -54,4 +56,12 @@ public sealed class EfBackgroundJobStore(AppDbContext context) : IBackgroundJobS
 
     public Task SaveAsync(BackgroundJob job, CancellationToken cancellationToken) =>
         context.SaveChangesAsync(cancellationToken);
+
+    public Task<DateTimeOffset?> GetOldestPendingAtAsync(
+        CancellationToken cancellationToken) => context.BackgroundJobs
+        .AsNoTracking()
+        .Where(job => job.State == BackgroundJobState.Pending)
+        .OrderBy(job => job.CreatedAt)
+        .Select(job => (DateTimeOffset?)job.CreatedAt)
+        .FirstOrDefaultAsync(cancellationToken);
 }

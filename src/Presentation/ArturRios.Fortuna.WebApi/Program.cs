@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Exports;
+using ArturRios.Fortuna.Data.Health;
 using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Investments;
 using ArturRios.Fortuna.Data.Ingestion;
@@ -37,6 +38,7 @@ using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Exports;
+using ArturRios.Fortuna.Shared.Health;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
@@ -273,6 +275,8 @@ try
         options.ExportSynchronousThresholdRows,
         TimeSpan.FromHours(options.ExportRetentionHours),
         options.Locale));
+    builder.Services.AddSingleton(new OperationalHealthOptions(
+        TimeSpan.FromSeconds(options.HealthJobMaximumPendingSeconds)));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
         options.ReconciliationDateToleranceDays));
@@ -283,7 +287,11 @@ try
     builder.Services.AddSingleton(new AttachmentOptions(
         options.UploadMaximumBytes,
         options.UploadAllowedContentTypes));
-    builder.Services.AddScoped<IBackgroundJobStore, EfBackgroundJobStore>();
+    builder.Services.AddScoped<EfBackgroundJobStore>();
+    builder.Services.AddScoped<IBackgroundJobStore>(provider =>
+        provider.GetRequiredService<EfBackgroundJobStore>());
+    builder.Services.AddScoped<IBackgroundJobHealthReader>(provider =>
+        provider.GetRequiredService<EfBackgroundJobStore>());
     builder.Services.AddSingleton<IBackgroundJobQueue>(new BackgroundJobQueue(options.JobQueueCapacity));
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddScoped<BackgroundJobProcessor>();
@@ -679,6 +687,36 @@ try
         client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/"));
     builder.Services.AddHttpClient<IPluggySynchronizationGateway, PluggySynchronizationGateway>(client =>
         client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/"));
+    builder.Services.AddHttpClient(OperationalHealthClientNames.Aggregator, client =>
+    {
+        client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/");
+        client.Timeout = TimeSpan.FromSeconds(5);
+    });
+    builder.Services.AddHttpClient(OperationalHealthClientNames.ExchangeRateSource, client =>
+    {
+        client.BaseAddress = options.RatesSourceBaseUri ?? new Uri("http://localhost/");
+        client.Timeout = TimeSpan.FromSeconds(5);
+    });
+    builder.Services.AddScoped<IOperationalHealthCheck, DatabaseOperationalHealthCheck>();
+    builder.Services.AddScoped<IOperationalHealthCheck,
+        AttachmentStorageOperationalHealthCheck>();
+    builder.Services.AddScoped<IOperationalHealthCheck, JobRunnerOperationalHealthCheck>();
+    builder.Services.AddScoped<IOperationalHealthCheck>(provider =>
+        new ExternalServiceOperationalHealthCheck(
+            "Aggregator",
+            !options.LocalAuthEnabled &&
+                !string.IsNullOrWhiteSpace(options.PluggyClientId) &&
+                !string.IsNullOrWhiteSpace(options.PluggyClientSecret) &&
+                options.PluggyBaseUri is not null,
+            provider.GetRequiredService<IHttpClientFactory>().CreateClient(
+                OperationalHealthClientNames.Aggregator)));
+    builder.Services.AddScoped<IOperationalHealthCheck>(provider =>
+        new ExternalServiceOperationalHealthCheck(
+            "ExchangeRateSource",
+            !options.LocalAuthEnabled && options.RatesSourceBaseUri is not null,
+            provider.GetRequiredService<IHttpClientFactory>().CreateClient(
+                OperationalHealthClientNames.ExchangeRateSource)));
+    builder.Services.AddScoped<OperationalHealthEvaluator>();
     builder.Services.AddSingleton<IIngestionSource, ExcelWorkbookIngestionSource>();
     builder.Services.AddSingleton<IIngestionSource, NubankInvoiceIngestionSource>();
     builder.Services.AddSingleton<IngestionSourceRegistry>();
