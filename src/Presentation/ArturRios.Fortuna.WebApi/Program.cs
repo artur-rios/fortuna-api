@@ -250,7 +250,11 @@ try
     builder.Services.AddScoped<INetPositionReader, EfNetPositionReader>();
     builder.Services.AddScoped<ICashFlowProjectionReader, EfCashFlowProjectionReader>();
     builder.Services.AddScoped<ICommittedObligationReader, EfCommittedObligationReader>();
-    builder.Services.AddScoped<IDataExportStore, EfDataExportStore>();
+    builder.Services.AddScoped<EfDataExportStore>();
+    builder.Services.AddScoped<IDataExportStore>(provider =>
+        provider.GetRequiredService<EfDataExportStore>());
+    builder.Services.AddScoped<IDataExportReader>(provider =>
+        provider.GetRequiredService<EfDataExportStore>());
     builder.Services.AddSingleton<IDataExportRenderer, DataExportRenderer>();
     builder.Services.AddScoped<DataExportBuilder>();
     builder.Services.AddSingleton<ITransactionDrillDownKeyCodec,
@@ -642,6 +646,9 @@ try
         ListConnectionsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetImportJobByIdQuery, ImportJobOutput>,
         GetImportJobByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetDataExportQuery>, GetDataExportQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetDataExportQuery,
+        RetrieveDataExportQueryOutput>, RetrieveDataExportQueryHandler>();
     builder.Services.AddScoped<IValidator<ListImportJobsQuery>, ListImportJobsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListImportJobsQuery, ImportJobOutput>,
         ListImportJobsQueryHandler>();

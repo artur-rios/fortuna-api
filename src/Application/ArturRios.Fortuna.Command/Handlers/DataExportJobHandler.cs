@@ -2,6 +2,7 @@ using System.Text.Json;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Messages;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
@@ -49,14 +50,11 @@ public sealed class DataExportJobHandler(
                 timeProvider.GetUtcNow(),
                 cancellationToken);
         }
-        catch (Exception exception)
+        catch (Exception)
         {
-            var reason = exception.Message.Length <= 1000
-                ? exception.Message
-                : exception.Message[..1000];
             await exports.FailAsync(
                 work.ExportId,
-                reason,
+                DataExportMessages.GenerationFailed,
                 timeProvider.GetUtcNow(),
                 cancellationToken);
             throw;

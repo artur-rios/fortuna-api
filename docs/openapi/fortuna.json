@@ -2911,6 +2911,16 @@
         },
         "type": "object"
       },
+      "DataExportStatus": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
       "DataSourceKind": {
         "enum": [
           1,
@@ -6518,6 +6528,87 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/RequestDataExportCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RetrieveDataExportQueryOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "contentType": {
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "failureReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "fileName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "format": {
+            "$ref": "#/components/schemas/DataExportFormat"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "jobId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "rowCount": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DataExportStatus"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RetrieveDataExportQueryOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RetrieveDataExportQueryOutput"
           },
           "errors": {
             "items": {
@@ -11733,6 +11824,46 @@
               }
             },
             "description": "Accepted"
+          }
+        },
+        "tags": [
+          "Exports"
+        ]
+      }
+    },
+    "/api/exports/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveDataExportQueryOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveDataExportQueryOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveDataExportQueryOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
           }
         },
         "tags": [

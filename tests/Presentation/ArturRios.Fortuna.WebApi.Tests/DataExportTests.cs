@@ -15,6 +15,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Exports;
+using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Security;
@@ -36,6 +37,8 @@ public sealed class DataExportTests : IAsyncLifetime
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateOnly Today = new(2026, 9, 8);
+    private static readonly DateTimeOffset Now = new(
+        2026, 9, 8, 12, 0, 0, TimeSpan.Zero);
     private readonly PostgreSqlContainer database =
         new PostgreSqlBuilder("postgres:17-alpine").Build();
     private readonly string storageRoot = Path.Combine(
@@ -153,6 +156,85 @@ public sealed class DataExportTests : IAsyncLifetime
         Assert.Contains("Second row", await File.ReadAllTextAsync(stored));
     }
 
+    [FunctionalFact]
+    public async Task GivenOwnedCompletedOrPendingExport_WhenRetrieved_ThenStateAndFileAreReturned()
+    {
+        var subject = Guid.NewGuid();
+        var otherSubject = Guid.NewGuid();
+        await SeedEmptyProfileAsync(subject);
+        await SeedEmptyProfileAsync(otherSubject);
+        var pendingId = await SeedDataExportAsync(subject, DataExportStatus.Pending);
+        var completedId = await SeedDataExportAsync(subject, DataExportStatus.Completed);
+        await using var factory = CreateFactory(100);
+        using var owner = factory.CreateClient();
+        Authorize(owner, subject, HeimdallRoles.User);
+        using var other = factory.CreateClient();
+        Authorize(other, otherSubject, HeimdallRoles.User);
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+
+        var pending = await owner.GetAsync($"/api/exports/{pendingId}");
+        var pendingJson = JsonDocument.Parse(await pending.Content.ReadAsStringAsync());
+        var completed = await owner.GetAsync($"/api/exports/{completedId}");
+        var foreign = await other.GetAsync($"/api/exports/{completedId}");
+        var unauthorized = await anonymous.GetAsync($"/api/exports/{completedId}");
+        var forbidden = await administrator.GetAsync($"/api/exports/{completedId}");
+
+        Assert.Equal(HttpStatusCode.OK, pending.StatusCode);
+        Assert.Equal((int)DataExportStatus.Pending,
+            pendingJson.RootElement.GetProperty("data").GetProperty("status").GetInt32());
+        Assert.Equal(HttpStatusCode.OK, completed.StatusCode);
+        Assert.StartsWith("text/csv", completed.Content.Headers.ContentType!.ToString());
+        Assert.Contains("completed export", await completed.Content.ReadAsStringAsync());
+        Assert.Equal("attachment; filename=export.csv; filename*=UTF-8''export.csv",
+            completed.Content.Headers.ContentDisposition!.ToString());
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Contains(DataExportMessages.NotFound, await foreign.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenFailedOrExpiredExport_WhenRetrieved_ThenReasonOrGoneIsReturned()
+    {
+        var subject = Guid.NewGuid();
+        await SeedTwoRowsAsync(subject);
+        var expiredId = await SeedDataExportAsync(
+            subject,
+            DataExportStatus.Completed,
+            Now.AddSeconds(-1));
+        await using var factory = CreateFactory(1, new FailingWriteAttachmentStore());
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+
+        var queued = await client.PostAsJsonAsync(
+            "/api/exports", Command("csv", ["description", "amount"]));
+        var queuedJson = JsonDocument.Parse(await queued.Content.ReadAsStringAsync());
+        var data = queuedJson.RootElement.GetProperty("data");
+        var exportId = data.GetProperty("exportId").GetGuid();
+        var jobId = data.GetProperty("jobId").GetGuid();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<BackgroundJobProcessor>()
+                .ProcessAsync(jobId, CancellationToken.None);
+        }
+
+        var failed = await client.GetAsync($"/api/exports/{exportId}");
+        var failedText = await failed.Content.ReadAsStringAsync();
+        var failedJson = JsonDocument.Parse(failedText);
+        var expired = await client.GetAsync($"/api/exports/{expiredId}");
+
+        Assert.Equal(HttpStatusCode.OK, failed.StatusCode);
+        Assert.Equal((int)DataExportStatus.Failed,
+            failedJson.RootElement.GetProperty("data").GetProperty("status").GetInt32());
+        Assert.Equal(DataExportMessages.GenerationFailed,
+            failedJson.RootElement.GetProperty("data").GetProperty("failureReason").GetString());
+        Assert.DoesNotContain("sensitive infrastructure detail", failedText);
+        Assert.Equal(HttpStatusCode.NotFound, expired.StatusCode);
+        Assert.Contains(DataExportMessages.Expired, await expired.Content.ReadAsStringAsync());
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -251,7 +333,58 @@ public sealed class DataExportTests : IAsyncLifetime
         await context.SaveChangesAsync();
     }
 
-    private WebApplicationFactory<Program> CreateFactory(int synchronousThreshold)
+    private async Task<Guid> SeedDataExportAsync(
+        Guid subject,
+        DataExportStatus status,
+        DateTimeOffset? expiresAt = null)
+    {
+        await using var context = CreateContext();
+        var externalSubject = subject.ToString("D");
+        var user = await context.UserProfiles.SingleAsync(
+            item => item.ExternalSubject == externalSubject);
+        var export = new DataExport(
+            user,
+            DataExportFormat.Csv,
+            "en-US",
+            "export.csv",
+            "{}",
+            Now.AddMinutes(-5),
+            expiresAt ?? Now.AddHours(1));
+        var job = BackgroundJob.Create(
+            DataExportJob.Type,
+            "{}",
+            $"test-export:{export.PublicId:N}",
+            null,
+            Now.AddMinutes(-5));
+        export.AttachBackgroundJob(job);
+        if (status != DataExportStatus.Pending)
+        {
+            export.Start(Now.AddMinutes(-4));
+        }
+
+        if (status == DataExportStatus.Completed)
+        {
+            var key = $"exports/{user.PublicId:N}/{export.PublicId:N}.csv";
+            export.Complete(1, "text/csv", key, Now.AddMinutes(-3));
+            var path = Path.Combine(
+                storageRoot,
+                key.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllTextAsync(path, "completed export");
+        }
+        else if (status == DataExportStatus.Failed)
+        {
+            export.Fail(DataExportMessages.GenerationFailed, Now.AddMinutes(-3));
+        }
+
+        context.AddRange(job, export);
+        await context.SaveChangesAsync();
+        return export.PublicId;
+    }
+
+    private WebApplicationFactory<Program> CreateFactory(
+        int synchronousThreshold,
+        IAttachmentStore? attachmentStore = null)
     {
         foreach (var setting in ValidSettings())
         {
@@ -273,6 +406,11 @@ public sealed class DataExportTests : IAsyncLifetime
                 services.AddSingleton<TimeProvider>(new FixedTimeProvider());
                 services.AddDbContext<AppDbContext>(options =>
                     options.UseNpgsql(database.GetConnectionString()));
+                if (attachmentStore is not null)
+                {
+                    services.RemoveAll<IAttachmentStore>();
+                    services.AddSingleton(attachmentStore);
+                }
             });
         });
     }
@@ -323,7 +461,26 @@ public sealed class DataExportTests : IAsyncLifetime
 
     private sealed class FixedTimeProvider : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() =>
-            new(2026, 9, 8, 12, 0, 0, TimeSpan.Zero);
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private sealed class FailingWriteAttachmentStore : IAttachmentStore
+    {
+        public Task WriteAsync(
+            string key,
+            Stream content,
+            CancellationToken cancellationToken) =>
+            throw new IOException("sensitive infrastructure detail");
+
+        public Task<Stream> OpenReadAsync(
+            string key,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task DeleteAsync(
+            string key,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(true);
     }
 }
