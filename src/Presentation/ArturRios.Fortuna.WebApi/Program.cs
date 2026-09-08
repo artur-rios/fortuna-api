@@ -11,6 +11,7 @@ using ArturRios.Fortuna.Data.Jobs;
 using ArturRios.Fortuna.Data.Investments;
 using ArturRios.Fortuna.Data.Ingestion;
 using ArturRios.Fortuna.Data.Planning;
+using ArturRios.Fortuna.Data.Projections;
 using ArturRios.Fortuna.Data.Reporting;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Data.Seeding;
@@ -38,6 +39,7 @@ using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
+using ArturRios.Fortuna.Shared.Projections;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
@@ -243,7 +245,7 @@ try
     builder.Services.AddScoped<ITableReportReader, EfTableReportReader>();
     builder.Services.AddScoped<ITransactionAggregationReader, EfTransactionAggregationReader>();
     builder.Services.AddScoped<INetPositionReader, EfNetPositionReader>();
-    builder.Services.AddScoped<INetPositionReader, EfNetPositionReader>();
+    builder.Services.AddScoped<ICashFlowProjectionReader, EfCashFlowProjectionReader>();
     builder.Services.AddSingleton<ITransactionDrillDownKeyCodec,
         DataProtectionTransactionDrillDownKeyCodec>();
     builder.Services.AddScoped<IImportJobRetryStore, EfImportJobRetryStore>();
@@ -252,6 +254,10 @@ try
         options.ReportMaximumRangeDays));
     builder.Services.AddSingleton(new TransactionDrillDownOptions(
         TimeSpan.FromMinutes(options.ReportKeyLifetimeMinutes)));
+    builder.Services.AddSingleton(new CashFlowProjectionOptions(
+        options.ProjectionMaximumHorizonDays,
+        90,
+        30));
     builder.Services.AddSingleton(new ReconciliationOptions(
         options.ReconciliationAmountTolerance,
         options.ReconciliationDateToleranceDays));
@@ -549,9 +555,9 @@ try
     builder.Services.AddScoped<IValidator<GetNetPositionQuery>, GetNetPositionQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetNetPositionQuery, NetPositionOutput>,
         GetNetPositionQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetNetPositionQuery>, GetNetPositionQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetNetPositionQuery, NetPositionOutput>,
-        GetNetPositionQueryHandler>();
+    builder.Services.AddScoped<IValidator<ProjectCashFlowQuery>, ProjectCashFlowQueryValidator>();
+    builder.Services.AddScoped<IQueryHandlerAsync<ProjectCashFlowQuery, CashFlowProjectionOutput>,
+        ProjectCashFlowQueryHandler>();
     builder.Services.AddScoped<IValidator<ListAuditEntriesQuery>, ListAuditEntriesQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>,
         ListAuditEntriesQueryHandler>();

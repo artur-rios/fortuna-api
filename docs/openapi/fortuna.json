@@ -707,6 +707,170 @@
         "format": "int32",
         "type": "integer"
       },
+      "CashFlowFigureKind": {
+        "enum": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "CashFlowFigureOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "format": "double",
+            "type": "number"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CashFlowFigureKind"
+          }
+        },
+        "type": "object"
+      },
+      "CashFlowPeriodOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "closingBalance": {
+            "format": "double",
+            "type": "number"
+          },
+          "figures": {
+            "items": {
+              "$ref": "#/components/schemas/CashFlowFigureOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "openingBalance": {
+            "format": "double",
+            "type": "number"
+          },
+          "periodEnd": {
+            "format": "date",
+            "type": "string"
+          },
+          "periodStart": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CashFlowPeriodicity": {
+        "enum": [
+          1,
+          2,
+          3
+        ],
+        "format": "int32",
+        "type": "integer"
+      },
+      "CashFlowProjectionOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "asOf": {
+            "format": "date",
+            "type": "string"
+          },
+          "displayCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "estimateOmittedReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "flatReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "periodicity": {
+            "$ref": "#/components/schemas/CashFlowPeriodicity"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/CashFlowPeriodOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "rates": {
+            "items": {
+              "$ref": "#/components/schemas/CashFlowRateOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "startingBalance": {
+            "format": "double",
+            "type": "number"
+          },
+          "through": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CashFlowProjectionOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CashFlowProjectionOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CashFlowRateOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "baseCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "quoteCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "rate": {
+            "format": "double",
+            "type": "number"
+          },
+          "rateDate": {
+            "format": "date",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExchangeRateSource"
+          }
+        },
+        "type": "object"
+      },
       "CategoryLifecycleCommandOutput": {
         "additionalProperties": false,
         "properties": {
@@ -12813,6 +12977,82 @@
         ]
       }
     },
+    "/api/projections/cash-flow": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "HorizonDays",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "DisplayCurrencyCode",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "IncludeEstimate",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "Periodicity",
+            "schema": {
+              "$ref": "#/components/schemas/CashFlowPeriodicity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageNumber",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "PageSize",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashFlowProjectionOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashFlowProjectionOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashFlowProjectionOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Projections"
+        ]
+      }
+    },
     "/api/recurring-transactions": {
       "post": {
         "requestBody": {
@@ -14600,6 +14840,9 @@
     },
     {
       "name": "Me"
+    },
+    {
+      "name": "Projections"
     },
     {
       "name": "RecurringTransactions"
