@@ -48,6 +48,13 @@ jobs:
       - name: Check generated header
         if: runner.os == 'Linux'
         run: git diff --exit-code -- native/fortuna-core/include/fortuna_core.h
+      - name: Compile C and C++ header consumers
+        if: runner.os == 'Linux'
+        run: |
+          cc native/fortuna-core/tests/header_smoke.c -L native/fortuna-core/target/release -lfortuna_core -o /tmp/fortuna-header-c
+          c++ -x c++ native/fortuna-core/tests/header_smoke.c -L native/fortuna-core/target/release -lfortuna_core -o /tmp/fortuna-header-cpp
+          LD_LIBRARY_PATH=native/fortuna-core/target/release /tmp/fortuna-header-c
+          LD_LIBRARY_PATH=native/fortuna-core/target/release /tmp/fortuna-header-cpp
       - name: Upload native package
         uses: actions/upload-artifact@v7
         with:

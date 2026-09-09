@@ -345,7 +345,10 @@ is missed by both filters, which is why it is not used.
 Running the unit suite first is the habit worth keeping: it costs seconds, while the functional suite
 pulls and starts a database container.
 
-The native command is a required part of the full repository suite. It calls
-the exported lifecycle, authentication and read functions through their C-compatible signatures,
-including every status family, concurrent calls, response ownership and exact decimal serialization.
-CI runs it on Windows and Linux and separately builds each release library.
+The native command is a required part of the full repository suite. It calls the exported lifecycle
+and generated operation functions through their C-compatible signatures, including capability
+discovery, every offline area, success and failure envelopes, owner-scoped CRUD and lifecycle,
+non-blocking job progress, concurrent calls, response ownership and exact decimal serialization.
+The registry test proves that every eligible route in the checked-in HTTP contract has a native
+operation and that connected-only routes are absent. CI runs it on Windows and Linux and separately
+builds each release library; rebuilding must leave the generated header unchanged.

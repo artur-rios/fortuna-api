@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::ffi::{CStr, CString, c_char, c_int};
 use std::path::PathBuf;
 use std::ptr;
-use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -12,17 +11,26 @@ use argon2::Argon2;
 use argon2::password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash};
 use chrono::{DateTime, Duration, Timelike, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::{Number, Value};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use zeroize::{Zeroize, Zeroizing};
 
+mod operation;
 mod persistence;
 
+use operation::OperationSpec;
 use persistence::NativeStore;
+
+#[cfg(test)]
+type NativeOperationFunction = extern "C" fn(*const c_char, *mut *mut c_char) -> c_int;
 
 /// Successful call. Operation functions use HTTP-compatible numeric statuses.
 pub const FORTUNA_STATUS_OK: c_int = 200;
+/// A resource was created successfully.
+pub const FORTUNA_STATUS_CREATED: c_int = 201;
+/// Long-running work was accepted and can be monitored through its job route.
+pub const FORTUNA_STATUS_ACCEPTED: c_int = 202;
 /// The JSON request or initialization configuration is invalid.
 pub const FORTUNA_STATUS_BAD_REQUEST: c_int = 400;
 /// Authentication is absent, invalid, or expired.
@@ -40,8 +48,6 @@ const INVALID_JSON: &str = "The request body is not valid JSON.";
 const INVALID_CREDENTIALS: &str = "The local account name or secret is invalid.";
 const AUTHENTICATED: &str = "Local account authenticated successfully.";
 const LOCAL_AUTH_DISABLED: &str = "Local authentication is not available in this deployment.";
-const ACCOUNT_RETRIEVED: &str = "Financial account retrieved successfully.";
-const ACCOUNT_NOT_FOUND: &str = "Financial account not found.";
 const NOT_INITIALIZED: &str = "The native core is not initialized.";
 const INTERNAL_ERROR: &str = "The native core could not complete the operation.";
 
@@ -85,40 +91,11 @@ impl Drop for AuthenticateRequest {
     }
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct GetAccountRequest {
-    token: String,
-    id: Uuid,
-    #[serde(default)]
-    include_deleted: bool,
-}
-
-impl Drop for GetAccountRequest {
-    fn drop(&mut self) {
-        self.token.zeroize();
-    }
-}
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AuthenticationOutput {
     token: String,
     expires_at: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FinancialAccountOutput {
-    id: Uuid,
-    name: String,
-    institution: Option<String>,
-    account_type: i16,
-    currency_code: String,
-    opening_balance: Number,
-    is_deleted: bool,
-    created_at: String,
-    updated_at: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -150,7 +127,7 @@ struct DataOutput<T: Serialize> {
 }
 
 impl<T: Serialize> DataOutput<T> {
-    fn success(data: T, message: impl Into<String>) -> Self {
+    pub(crate) fn success(data: T, message: impl Into<String>) -> Self {
         Self {
             data: Some(data),
             messages: vec![message.into()],
@@ -160,7 +137,7 @@ impl<T: Serialize> DataOutput<T> {
         }
     }
 
-    fn failure(error: impl Into<String>) -> Self {
+    pub(crate) fn failure(error: impl Into<String>) -> Self {
         Self {
             data: None,
             messages: Vec::new(),
@@ -224,40 +201,40 @@ impl Core {
         })
     }
 
-    fn get_account(
-        &self,
-        request: &mut GetAccountRequest,
-    ) -> Result<FinancialAccountOutput, AccountError> {
-        let token_hash: [u8; 32] = Sha256::digest(request.token.as_bytes()).into();
-        request.token.zeroize();
-        let user_id = {
-            let mut sessions = self
-                .sessions
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
-            sessions.retain(|_, session| session.expires_at > Utc::now());
-            sessions.get(&token_hash).map(|session| session.user_id)
+    fn authorize(&self, token: &mut String) -> Result<Uuid, AuthError> {
+        let token_hash: [u8; 32] = Sha256::digest(token.as_bytes()).into();
+        token.zeroize();
+        let mut sessions = self
+            .sessions
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        sessions.retain(|_, session| session.expires_at > Utc::now());
+        sessions
+            .get(&token_hash)
+            .map(|session| session.user_id)
+            .ok_or(AuthError::InvalidCredentials)
+    }
+
+    fn issue_session(&self, user_id: Uuid) -> AuthenticationOutput {
+        let expires_at = Utc::now() + Duration::seconds(self.token_lifetime_seconds);
+        let token = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
+        let token_hash = Sha256::digest(token.as_bytes()).into();
+        let mut sessions = self
+            .sessions
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        sessions.retain(|_, session| session.expires_at > Utc::now());
+        sessions.insert(
+            token_hash,
+            Session {
+                user_id,
+                expires_at,
+            },
+        );
+        AuthenticationOutput {
+            token,
+            expires_at: wire_timestamp(expires_at),
         }
-        .ok_or(AccountError::Unauthorized)?;
-
-        let account = self
-            .store
-            .find_financial_account(request.id, user_id, request.include_deleted)
-            .map_err(|_| AccountError::Internal)?
-            .ok_or(AccountError::NotFound)?;
-
-        Ok(FinancialAccountOutput {
-            id: Uuid::parse_str(&account.public_id).map_err(|_| AccountError::Internal)?,
-            name: account.name,
-            institution: account.institution,
-            account_type: account.account_type,
-            currency_code: account.currency_code,
-            opening_balance: Number::from_str(&account.opening_balance)
-                .map_err(|_| AccountError::Internal)?,
-            is_deleted: account.is_deleted,
-            created_at: account.created_at,
-            updated_at: account.updated_at,
-        })
     }
 }
 
@@ -265,13 +242,6 @@ impl Core {
 enum AuthError {
     Disabled,
     InvalidCredentials,
-    Internal,
-}
-
-#[derive(Debug)]
-enum AccountError {
-    Unauthorized,
-    NotFound,
     Internal,
 }
 
@@ -387,6 +357,29 @@ fn guarded_call(response_json: *mut *mut c_char, body: impl FnOnce() -> (c_int, 
         FORTUNA_STATUS_INTERNAL_ERROR
     }
 }
+
+fn operation_call(
+    operation: OperationSpec,
+    request_json: *const c_char,
+    response_json: *mut *mut c_char,
+) -> c_int {
+    guarded_call(response_json, || {
+        operation::execute(operation, request_json)
+    })
+}
+
+/// Describe every route available to offline callers and every deliberately absent route.
+/// Initialization is not required. The response is library-owned and must be released with
+/// `fortuna_string_free`.
+#[unsafe(no_mangle)]
+pub extern "C" fn fortuna_capabilities(
+    request_json: *const c_char,
+    response_json: *mut *mut c_char,
+) -> c_int {
+    guarded_call(response_json, || operation::capabilities(request_json))
+}
+
+include!(concat!(env!("OUT_DIR"), "/generated_operations.rs"));
 
 /// Initialize the native core from a UTF-8 JSON object.
 ///
@@ -591,40 +584,18 @@ pub extern "C" fn fortuna_api_accounts_get_by_id(
     request_json: *const c_char,
     response_json: *mut *mut c_char,
 ) -> c_int {
-    guarded_call(response_json, || {
-        let Some(core) = current_core() else {
-            return (
-                FORTUNA_STATUS_NOT_INITIALIZED,
-                serialize(&DataOutput::<Value>::failure(NOT_INITIALIZED)),
-            );
-        };
-        let Ok(mut request) = read_json::<GetAccountRequest>(request_json) else {
-            return (
-                FORTUNA_STATUS_BAD_REQUEST,
-                serialize(&DataOutput::<Value>::failure(INVALID_JSON)),
-            );
-        };
-        match core.get_account(&mut request) {
-            Ok(output) => (
-                FORTUNA_STATUS_OK,
-                serialize(&DataOutput::success(output, ACCOUNT_RETRIEVED)),
-            ),
-            Err(AccountError::Unauthorized) => (
-                FORTUNA_STATUS_UNAUTHORIZED,
-                serialize(&DataOutput::<Value>::failure(
-                    "The local authentication token is invalid or expired.",
-                )),
-            ),
-            Err(AccountError::NotFound) => (
-                FORTUNA_STATUS_NOT_FOUND,
-                serialize(&DataOutput::<Value>::failure(ACCOUNT_NOT_FOUND)),
-            ),
-            Err(AccountError::Internal) => (
-                FORTUNA_STATUS_INTERNAL_ERROR,
-                serialize(&DataOutput::<Value>::failure(INTERNAL_ERROR)),
-            ),
-        }
-    })
+    operation_call(
+        OperationSpec {
+            symbol: "fortuna_api_accounts_get_by_id",
+            method: "GET",
+            path: "/api/accounts/{id}",
+            area: "Accounts",
+            long_running: false,
+            response_schema: "FinancialAccountOutputDataOutput",
+        },
+        request_json,
+        response_json,
+    )
 }
 
 /// Release a response returned by any Fortuna native-core function.
@@ -714,14 +685,15 @@ mod tests {
         ).unwrap();
         connection
             .execute(
-                "INSERT INTO native_financial_account(
-                 public_id, user_id, name, institution, account_type, currency_code,
-                 opening_balance, is_deleted, created_at, updated_at)
-             VALUES (?1, ?2, 'Exact account', 'Native bank', 1, 'BRL', ?3, 0, ?4, ?4)",
+                "INSERT INTO native_offline_record(
+                 public_id, user_id, resource, body_json, is_deleted, created_at, updated_at)
+             VALUES (?1, ?2, 'accounts', ?3, 0, ?4, ?4)",
                 params![
                     account_id.to_string(),
                     user_id.to_string(),
-                    opening_balance,
+                    format!(
+                        r#"{{"id":"{account_id}","name":"Exact account","institution":"Native bank","accountType":1,"currencyCode":"BRL","openingBalance":{opening_balance},"isDeleted":false,"createdAt":"{now}","updatedAt":"{now}"}}"#
+                    ),
                     now
                 ],
             )
@@ -734,6 +706,33 @@ mod tests {
             .as_str()
             .unwrap()
             .to_owned()
+    }
+
+    fn create_local_user(path: &Path) -> String {
+        assert_eq!(FORTUNA_STATUS_OK, initialize(path, true).status);
+        let created = call(
+            fortuna_api_local_accounts_post,
+            r#"{"displayName":"Local User","secret":"correct-horse-battery-staple","storageMode":1}"#,
+        );
+        assert_eq!(FORTUNA_STATUS_CREATED, created.status, "{}", created.body);
+        let created_json: Value = serde_json::from_str(&created.body).unwrap();
+        assert_eq!(
+            10,
+            created_json["data"]["recoveryCodes"]
+                .as_array()
+                .unwrap()
+                .len()
+        );
+        let authenticated = call(
+            fortuna_api_local_accounts_authenticate_post,
+            r#"{"name":"Local User","secret":"correct-horse-battery-staple"}"#,
+        );
+        assert_eq!(
+            FORTUNA_STATUS_OK, authenticated.status,
+            "{}",
+            authenticated.body
+        );
+        token_from(&authenticated)
     }
 
     fn stop() {
@@ -770,6 +769,78 @@ mod tests {
             call(fortuna_shutdown, "{}").status
         );
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_version_one_native_database_when_initialized_then_accounts_migrate_to_the_shared_dispatcher()
+     {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let user_id = Uuid::new_v4();
+        let account_id = Uuid::new_v4();
+        let local_account_id = Uuid::new_v4();
+        let now = "2026-09-09T12:34:56.1234567Z";
+        let connection = Connection::open(&path).unwrap();
+        connection
+            .execute_batch(
+                "PRAGMA foreign_keys = ON;
+                 CREATE TABLE native_user_profile (
+                     public_id TEXT PRIMARY KEY NOT NULL, display_name TEXT NOT NULL,
+                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+                 CREATE TABLE native_local_account (
+                     public_id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL UNIQUE,
+                     name TEXT NOT NULL UNIQUE, secret_hash TEXT NOT NULL,
+                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+                 CREATE TABLE native_financial_account (
+                     public_id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL, name TEXT NOT NULL,
+                     institution TEXT NULL, account_type INTEGER NOT NULL, currency_code TEXT NOT NULL,
+                     opening_balance TEXT NOT NULL, is_deleted INTEGER NOT NULL,
+                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL);",
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO native_user_profile VALUES (?1, 'Local User', ?2, ?2)",
+                params![user_id.to_string(), now],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO native_local_account VALUES (?1, ?2, 'Local User', ?3, ?4, ?4)",
+                params![
+                    local_account_id.to_string(),
+                    user_id.to_string(),
+                    hash_secret("migration-secret").unwrap(),
+                    now
+                ],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO native_financial_account VALUES (?1, ?2, 'Migrated', NULL, 1, 'BRL',
+                 '123456789012345.6789', 0, ?3, ?3)",
+                params![account_id.to_string(), user_id.to_string(), now],
+            )
+            .unwrap();
+        drop(connection);
+
+        assert_eq!(FORTUNA_STATUS_OK, initialize(&path, true).status);
+        let authenticated = call(
+            fortuna_api_local_accounts_authenticate,
+            r#"{"name":"Local User","secret":"migration-secret"}"#,
+        );
+        let account = call(
+            fortuna_api_accounts_get_by_id,
+            &serde_json::json!({"token":token_from(&authenticated),"id":account_id}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, account.status, "{}", account.body);
+        assert!(
+            account
+                .body
+                .contains("\"openingBalance\":123456789012345.6789")
+        );
+        stop();
     }
 
     #[test]
@@ -824,7 +895,10 @@ mod tests {
             "123456789012345.6789",
             account_json["data"]["openingBalance"].to_string()
         );
-        assert_eq!(ACCOUNT_RETRIEVED, account_json["messages"][0]);
+        assert_eq!(
+            "Accounts retrieved successfully.",
+            account_json["messages"][0]
+        );
         stop();
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
     }
@@ -953,6 +1027,371 @@ mod tests {
             .collect::<Vec<_>>();
         for response in calls {
             assert_eq!(FORTUNA_STATUS_OK, response.join().unwrap().status);
+        }
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_checked_in_http_contract_when_discovering_capabilities_then_every_offline_route_is_listed()
+     {
+        let _guard = test_guard();
+        stop();
+        let response = call(fortuna_capabilities, "{}");
+        assert_eq!(FORTUNA_STATUS_OK, response.status);
+        let body: Value = serde_json::from_str(&response.body).unwrap();
+        let operations = body["data"]["operations"].as_array().unwrap();
+        assert_eq!(110, operations.len());
+        assert!(operations.iter().any(|operation| {
+            operation["method"] == "POST" && operation["path"] == "/api/imports/excel"
+        }));
+        assert!(!operations.iter().any(|operation| {
+            operation["path"].as_str().is_some_and(|path| {
+                path.starts_with("/api/auth") || path.starts_with("/api/connections")
+            })
+        }));
+        assert_eq!(5, body["data"]["unavailable"].as_array().unwrap().len());
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_every_generated_route_when_called_before_initialization_then_each_symbol_is_safe() {
+        let _guard = test_guard();
+        stop();
+        assert_eq!(110, NATIVE_OPERATION_FUNCTIONS.len());
+        for function in NATIVE_OPERATION_FUNCTIONS {
+            let response = call(*function, "{}");
+            assert_eq!(
+                FORTUNA_STATUS_NOT_INITIALIZED, response.status,
+                "{}",
+                response.body
+            );
+            assert_eq!(
+                Value::Bool(false),
+                serde_json::from_str::<Value>(&response.body).unwrap()["success"]
+            );
+        }
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_local_recovery_code_when_recovering_and_regenerating_then_one_time_credentials_match_http_behavior()
+     {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        assert_eq!(FORTUNA_STATUS_OK, initialize(&path, true).status);
+        let created = call(
+            fortuna_api_local_accounts_post,
+            r#"{"displayName":"Local User","secret":"initial-secret","storageMode":1}"#,
+        );
+        let created_json: Value = serde_json::from_str(&created.body).unwrap();
+        let code = created_json["data"]["recoveryCodes"][0]
+            .as_str()
+            .unwrap()
+            .to_owned();
+
+        let recovered = call(
+            fortuna_api_local_accounts_recover_post,
+            &serde_json::json!({
+                "name":"Local User","recoveryCode":code,"newSecret":"recovered-secret"
+            })
+            .to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, recovered.status, "{}", recovered.body);
+        assert_eq!(
+            9,
+            serde_json::from_str::<Value>(&recovered.body).unwrap()["data"]["remainingRecoveryCodes"]
+        );
+        assert_eq!(
+            FORTUNA_STATUS_UNAUTHORIZED,
+            call(
+                fortuna_api_local_accounts_authenticate_post,
+                r#"{"name":"Local User","secret":"initial-secret"}"#,
+            )
+            .status
+        );
+        let authenticated = call(
+            fortuna_api_local_accounts_authenticate_post,
+            r#"{"name":"Local User","secret":"recovered-secret"}"#,
+        );
+        assert_eq!(FORTUNA_STATUS_OK, authenticated.status);
+        let regenerated = call(
+            fortuna_api_local_accounts_recovery_codes_regenerate_post,
+            &serde_json::json!({
+                "token":token_from(&authenticated),"body":{"secret":"recovered-secret"}
+            })
+            .to_string(),
+        );
+        assert_eq!(
+            FORTUNA_STATUS_OK, regenerated.status,
+            "{}",
+            regenerated.body
+        );
+        assert_eq!(
+            10,
+            serde_json::from_str::<Value>(&regenerated.body).unwrap()["data"]["recoveryCodes"]
+                .as_array()
+                .unwrap()
+                .len()
+        );
+        assert_eq!(
+            FORTUNA_STATUS_UNAUTHORIZED,
+            call(
+                fortuna_api_local_accounts_recover_post,
+                &serde_json::json!({
+                    "name":"Local User","recoveryCode":code,"newSecret":"another-secret"
+                })
+                .to_string(),
+            )
+            .status
+        );
+        stop();
+    }
+
+    #[test]
+    fn given_local_account_when_using_identity_reference_and_exact_money_then_http_wire_contract_is_preserved()
+     {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let token = create_local_user(&path);
+
+        let profile = call(
+            fortuna_api_me_get,
+            &serde_json::json!({"token": token}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, profile.status);
+        let profile_json: Value = serde_json::from_str(&profile.body).unwrap();
+        assert_eq!("Local User", profile_json["data"]["displayName"]);
+
+        let currencies = call(
+            fortuna_api_currencies_get,
+            &serde_json::json!({"token": token}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, currencies.status);
+        let currencies_json: Value = serde_json::from_str(&currencies.body).unwrap();
+        assert!(
+            currencies_json["data"]["currencies"]
+                .as_array()
+                .unwrap()
+                .len()
+                >= 170
+        );
+        assert_eq!("AED", currencies_json["data"]["currencies"][0]["code"]);
+
+        let rate = call(
+            fortuna_api_exchange_rates_post,
+            &format!(
+                r#"{{"token":"{token}","body":{{"baseCurrencyCode":"USD","quoteCurrencyCode":"BRL","rate":1.0001,"rateDate":"2026-09-08"}}}}"#
+            ),
+        );
+        assert_eq!(FORTUNA_STATUS_CREATED, rate.status, "{}", rate.body);
+        assert!(rate.body.contains("\"rate\":1.0001"));
+
+        let converted = call(
+            fortuna_api_exchange_rates_convert_post,
+            &format!(
+                r#"{{"token":"{token}","body":{{"amounts":[{{"amount":123456789012345.6789,"currencyCode":"USD"}}],"displayCurrencyCode":"BRL","figureDate":"2026-09-09"}}}}"#
+            ),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, converted.status, "{}", converted.body);
+        assert!(converted.body.contains("123469134691246.91"));
+        stop();
+    }
+
+    #[test]
+    fn given_owned_records_when_using_each_offline_area_then_crud_lifecycle_jobs_and_reports_are_available()
+     {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let token = create_local_user(&path);
+
+        let account = call(
+            fortuna_api_accounts_post,
+            &format!(
+                r#"{{"token":"{token}","body":{{"name":"Wallet","institution":null,"accountType":1,"currencyCode":"BRL","openingBalance":123456789012345.6789}}}}"#
+            ),
+        );
+        assert_eq!(FORTUNA_STATUS_CREATED, account.status, "{}", account.body);
+        assert!(account.body.contains("123456789012345.6789"));
+        let account_id = serde_json::from_str::<Value>(&account.body).unwrap()["data"]["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+
+        let transaction = call(
+            fortuna_api_transactions_post,
+            &serde_json::json!({
+                "token": token,
+                "body": {"financialAccountId":account_id,"direction":2,"amount":19.90,
+                    "description":"Offline purchase","occurredAt":"2026-09-09T12:00:00Z"}
+            })
+            .to_string(),
+        );
+        assert_eq!(
+            FORTUNA_STATUS_CREATED, transaction.status,
+            "{}",
+            transaction.body
+        );
+        let transaction_id =
+            serde_json::from_str::<Value>(&transaction.body).unwrap()["data"]["id"]
+                .as_str()
+                .unwrap()
+                .to_owned();
+
+        let category = call(
+            fortuna_api_categories_post,
+            &serde_json::json!({"token":token,"body":{"name":"Food","color":"#112233"}})
+                .to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_CREATED, category.status);
+
+        let attachment = call(
+            fortuna_api_transactions_by_id_attachments_post,
+            &serde_json::json!({
+                "token":token,"route":{"id":transaction_id},
+                "body":{"fileName":"receipt.txt","contentType":"text/plain","content":"cmVjZWlwdA=="}
+            })
+            .to_string(),
+        );
+        assert_eq!(
+            FORTUNA_STATUS_CREATED, attachment.status,
+            "{}",
+            attachment.body
+        );
+
+        let deleted = call(
+            fortuna_api_accounts_by_id_delete,
+            &serde_json::json!({"token":token,"route":{"id":account_id}}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, deleted.status);
+        let restored = call(
+            fortuna_api_accounts_by_id_restore_post,
+            &serde_json::json!({"token":token,"route":{"id":account_id}}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, restored.status);
+
+        let audit = call(
+            fortuna_api_audit_entries_get,
+            &serde_json::json!({"token":token}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, audit.status);
+        assert!(
+            serde_json::from_str::<Value>(&audit.body).unwrap()["data"]
+                .as_array()
+                .unwrap()
+                .len()
+                >= 5
+        );
+
+        let import = call(
+            fortuna_api_imports_excel_post,
+            &serde_json::json!({"token":token,"body":{"fileName":"records.xlsx","content":"AA=="}})
+                .to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_ACCEPTED, import.status, "{}", import.body);
+        assert_eq!(
+            0,
+            serde_json::from_str::<Value>(&import.body).unwrap()["data"]["progress"]
+        );
+
+        let report = call(
+            fortuna_api_reports_table_post,
+            &serde_json::json!({"token":token,"body":{"dataSet":1}}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, report.status);
+        assert_eq!(
+            1,
+            serde_json::from_str::<Value>(&report.body).unwrap()["data"]["rows"]
+                .as_array()
+                .unwrap()
+                .len()
+        );
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_foreign_record_when_requested_through_native_route_then_it_is_indistinguishable_from_missing()
+     {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let token = create_local_user(&path);
+        let foreign_user = Uuid::new_v4();
+        let foreign_account = Uuid::new_v4();
+        let now = "2026-09-09T12:34:56.1234567Z";
+        let connection = Connection::open(&path).unwrap();
+        connection
+            .execute(
+                "INSERT INTO native_user_profile(public_id, display_name, display_currency, created_at, updated_at)
+                 VALUES (?1, 'Foreign User', 'BRL', ?2, ?2)",
+                params![foreign_user.to_string(), now],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO native_offline_record(user_id, resource, public_id, body_json, is_deleted, created_at, updated_at)
+                 VALUES (?1, 'accounts', ?2, ?3, 0, ?4, ?4)",
+                params![
+                    foreign_user.to_string(),
+                    foreign_account.to_string(),
+                    serde_json::json!({"id":foreign_account,"name":"Hidden","isDeleted":false}).to_string(),
+                    now
+                ],
+            )
+            .unwrap();
+
+        let foreign = call(
+            fortuna_api_accounts_by_id_get,
+            &serde_json::json!({"token":token,"route":{"id":foreign_account}}).to_string(),
+        );
+        let missing = call(
+            fortuna_api_accounts_by_id_get,
+            &serde_json::json!({"token":token,"route":{"id":Uuid::new_v4()}}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_NOT_FOUND, foreign.status);
+        assert_eq!(FORTUNA_STATUS_NOT_FOUND, missing.status);
+        let foreign_json: Value = serde_json::from_str(&foreign.body).unwrap();
+        let missing_json: Value = serde_json::from_str(&missing.body).unwrap();
+        assert_eq!(foreign_json["errors"], missing_json["errors"]);
+        assert_eq!(foreign_json["messages"], missing_json["messages"]);
+        assert_eq!(foreign_json["success"], missing_json["success"]);
+        stop();
+    }
+
+    #[test]
+    fn given_each_offline_area_when_authentication_is_invalid_then_the_http_failure_contract_is_shared()
+     {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        assert_eq!(FORTUNA_STATUS_OK, initialize(&path, true).status);
+        let calls: [extern "C" fn(*const c_char, *mut *mut c_char) -> c_int; 8] = [
+            fortuna_api_me_get,
+            fortuna_api_currencies_get,
+            fortuna_api_accounts_get,
+            fortuna_api_transactions_get,
+            fortuna_api_categories_get,
+            fortuna_api_audit_entries_get,
+            fortuna_api_import_jobs_get,
+            fortuna_api_reports_aggregate_get,
+        ];
+        for function in calls {
+            let response = call(function, r#"{"token":"invalid"}"#);
+            assert_eq!(
+                FORTUNA_STATUS_UNAUTHORIZED, response.status,
+                "{}",
+                response.body
+            );
+            let body: Value = serde_json::from_str(&response.body).unwrap();
+            assert_eq!(Value::Bool(false), body["success"]);
+            assert_eq!(
+                "The local authentication token is invalid or expired.",
+                body["errors"][0]
+            );
         }
         stop();
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));

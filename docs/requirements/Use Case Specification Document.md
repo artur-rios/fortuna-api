@@ -23,6 +23,9 @@ Three conventions hold across every use case and are therefore not repeated in e
   a record that does not exist (`FR-ID-08`), so that no response reveals what another user holds.
 - **Audit.** Every domain write produces exactly one audit entry, whether it succeeded or was refused
   (`FR-RL-06`). Credential exchanges modify no Fortuna state and are not audit entries.
+- **Transport.** “HTTP + native” below means the same use-case request body, status family and
+  camel-case output contract are available either through the ASP.NET route or its generated C ABI
+  function. The C request wraps bearer, route and query metadata around that unchanged body.
 
 ### 1.2 Actors
 
@@ -99,6 +102,23 @@ graph LR
     RUNNER --> UC54
     RUNNER --> UC73
 ```
+
+### 1.4 Transport Availability
+
+| Use cases | Transport note |
+| --- | --- |
+| UC-01 … UC-02 | HTTP only. Heimdall token validation and first connected access belong to the server; creating a local account provisions its native profile during UC-03. |
+| UC-03 … UC-07 | HTTP + native. Native local-account creation, authentication, recovery, code regeneration, profile read and currency reference data use the generated offline exports. |
+| UC-08 | HTTP only. Synchronization requires the remote exchange-rate source; native supports manual rates and conversion through UC-09 and UC-10. |
+| UC-09 … UC-53 | HTTP + native. Holdings, money movement, organization, planning, lifecycle and audit operations retain owner scoping and exact decimal behavior in the native core. |
+| UC-54 … UC-58 | HTTP only. Pluggy discovery and every connection operation require its remote service and are deliberately absent from the native header. |
+| UC-59 … UC-74 | HTTP + native. File ingestion, attachments, reports, projections and exports are native operations; imports and exports return monitorable jobs instead of blocking the caller. |
+| UC-75 | HTTP + native through transport-specific health functions: `GET /healthcheck` for the host and `fortuna_health` in process. |
+| UC-76 … UC-77 | HTTP only. Connected authentication and credential management require Heimdall and have no offline export. |
+
+`fortuna_capabilities` returns the generated list of available operations and the deliberately absent
+route families. The committed C header contains the same absence note, so a client never has to probe
+an unsupported network-dependent operation.
 
 ---
 
