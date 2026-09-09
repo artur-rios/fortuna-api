@@ -16,9 +16,7 @@ public sealed class DatabaseSeeder(AppDbContext context)
     public async Task SeedAsync(CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        await context.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock({CurrencySeedLockId})",
-            cancellationToken);
+        await DatabaseLock.AcquireAsync(context, CurrencySeedLockId, cancellationToken);
         var existing = await context.Currencies.Select(x => x.Code).ToHashSetAsync(cancellationToken);
         var missing = LoadCurrencies().Where(x => !existing.Contains(x.Code));
         context.Currencies.AddRange(missing);

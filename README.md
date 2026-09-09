@@ -56,7 +56,9 @@ the `requirements/` documents for the normative detail.
 
 ## Installation
 
-Prerequisites: the **.NET 10 SDK**, **Docker**, and a reachable **PostgreSQL** instance — see the
+Prerequisites: the **.NET 10 SDK** and either a reachable **PostgreSQL** instance for a shared
+deployment or local **SQLite** storage for desktop offline mode. Docker is required for the
+container workflow — see the
 [Technology Stack Document](docs/requirements/Technology%20Stack%20Document.md) and the
 [Operations & Infrastructure Document](docs/requirements/Operations%20%26%20Infrastructure%20Document.md).
 
@@ -87,6 +89,17 @@ docker compose --env-file docker/local.env up -d --build
 The API's liveness is observable at the public `GET /healthcheck` endpoint. Instance administrators
 can inspect dependency health at `GET /healthcheck/detailed`.
 
+For desktop offline mode, keep the same application configuration and select the local provider:
+
+```dotenv
+FORTUNA_DATA_DATABASETYPE=SQLite
+FORTUNA_DATA_CONNECTIONSTRING=/absolute/path/to/fortuna.db
+FORTUNA_RUN_MIGRATIONS=true
+```
+
+PostgreSQL remains the server default. Each provider has its own EF migration history while sharing
+the domain model; changing providers requires no application-code change.
+
 ## Testing
 
 The following command runs the complete suite described in the
@@ -98,7 +111,8 @@ dotnet test src/ArturRios.Fortuna.sln -m:1
 
 The suite covers **unit** tests over handlers, validators and domain behavior, and **functional**
 tests over every endpoint end to end against a real PostgreSQL instance provisioned by
-Testcontainers. Run one category at a time:
+Testcontainers, plus file-backed SQLite migration and exact-decimal persistence tests. Run one
+category at a time:
 
 ```bash
 dotnet test src/ArturRios.Fortuna.sln -m:1 --filter "Category=Unit"

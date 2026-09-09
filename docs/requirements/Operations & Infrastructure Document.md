@@ -158,7 +158,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Concern | Keys | Notes |
 | --- | --- | --- |
 | Runtime | `ASPNETCORE_ENVIRONMENT` | `Development` locally and in the WSL environment; `Production` on the server. Governs Swagger, the developer exception page and EF diagnostics. |
-| Database | `FORTUNA_DATA_CONNECTIONSTRING`, `FORTUNA_DATA_DATABASETYPE` | Assembled in the compose file from host, port, database, credentials and a pinned `Search Path`. **Secret.** |
+| Database | `FORTUNA_DATA_CONNECTIONSTRING`, `FORTUNA_DATA_DATABASETYPE` | `PostgreSql` plus a server connection string for shared deployments; `SQLite` plus either `Data Source=/path/fortuna.db` or the file path alone for desktop offline mode. PostgreSQL credentials are **secret**. |
 | Migrations | `FORTUNA_RUN_MIGRATIONS` | Whether the entrypoint applies pending migrations before starting. `false` when they are applied out of band. |
 | Token validation | `FORTUNA_AUTH_TOKEN_SECRET`, `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS`, `FORTUNA_AUTH_TOKEN_ISSUER`, `FORTUNA_AUTH_TOKEN_AUDIENCE` | The signing configuration Heimdall issues with and Fortuna validates against. The `PREVIOUS` key is set during a rotation so tokens signed with the retired key keep working. **Secret.** |
 | Token lifetime | `FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS` | Bounds the window in which a token revoked at Heimdall is still accepted here (NFR-14). |
@@ -312,7 +312,9 @@ pinned (IR-05).
 
 A **desktop installation** is a fourth shape rather than a fourth environment: the API runs beside the
 client on one machine, with local authentication enabled, filesystem storage, no aggregator and no
-rate source, and no network required at all (IR-20).
+rate source, and no network required at all (IR-20). It selects `SQLite` through
+`FORTUNA_DATA_DATABASETYPE`, points `FORTUNA_DATA_CONNECTIONSTRING` at a writable local database
+file, and applies the SQLite migration set. Unsupported providers fail explicitly during startup.
 
 ---
 

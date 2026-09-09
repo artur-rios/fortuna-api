@@ -7,6 +7,7 @@ namespace ArturRios.Fortuna.Data.Configuration;
 public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     private const string ConnectionVariable = "FORTUNA_DATA_CONNECTIONSTRING";
+    private const string ProviderVariable = "FORTUNA_DATA_DATABASETYPE";
 
     public AppDbContext CreateDbContext(string[] args)
     {
@@ -16,9 +17,10 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<App
             throw new InvalidOperationException($"Environment variable '{ConnectionVariable}' is required by the EF Core tools.");
         }
 
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(connection, postgres => postgres.MigrationsHistoryTable("__ef_migrations_history", AppDbContext.Schema))
-            .Options;
+        var provider = Environment.GetEnvironmentVariable(ProviderVariable) ?? DatabaseProvider.PostgreSql;
+        var builder = new DbContextOptionsBuilder<AppDbContext>();
+        DatabaseProvider.Configure(builder, provider, connection);
+        var options = builder.Options;
         return new AppDbContext(options, NullLoggerFactory.Instance, DatabaseDiagnosticsOptions.Disabled);
     }
 }

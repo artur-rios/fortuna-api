@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Shared.Classification;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Classification;
 
@@ -226,11 +225,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
             cancellationToken);
 
     private static bool IsDuplicateName(DbUpdateException exception) =>
-        exception.InnerException is PostgresException
-        {
-            SqlState: PostgresErrorCodes.UniqueViolation,
-            ConstraintName: LiveNameIndex
-        };
+        DatabaseException.IsUniqueViolation(exception, LiveNameIndex);
 
     private static TagSnapshot Snapshot(Tag tag) => new(
         tag.PublicId,

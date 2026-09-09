@@ -8,8 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <ProjectReference Include="..\..\..\src\Infrastructure\ArturRios.Fortuna.Data\ArturRios.Fortuna.Data.csproj" />
+    <ProjectReference Include="..\..\..\src\Infrastructure\ArturRios.Fortuna.Data.Sqlite.Migrations\ArturRios.Fortuna.Data.Sqlite.Migrations.csproj" />
   </ItemGroup>
 
 </Project>

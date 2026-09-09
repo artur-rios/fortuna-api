@@ -20,9 +20,7 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
         }
 
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        await context.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock({RateSyncLockId})",
-            cancellationToken);
+        await DatabaseLock.AcquireAsync(context, RateSyncLockId, cancellationToken);
 
         var codes = rates
             .SelectMany(rate => new[] { rate.BaseCurrencyCode, rate.QuoteCurrencyCode })
@@ -83,9 +81,7 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
         CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        await context.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock({RateSyncLockId})",
-            cancellationToken);
+        await DatabaseLock.AcquireAsync(context, RateSyncLockId, cancellationToken);
 
         var currencies = await context.Currencies
             .Where(currency =>

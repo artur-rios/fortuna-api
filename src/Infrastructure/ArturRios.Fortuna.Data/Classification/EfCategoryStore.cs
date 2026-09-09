@@ -4,7 +4,6 @@ using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Attachments;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Classification;
 
@@ -70,11 +69,7 @@ public sealed class EfCategoryStore(
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: RootSiblingNameIndex or NestedSiblingNameIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, RootSiblingNameIndex, NestedSiblingNameIndex))
         {
             context.Entry(category).State = EntityState.Detached;
             return Result(CategoryCreationOutcome.DuplicateSiblingName);
@@ -175,11 +170,7 @@ public sealed class EfCategoryStore(
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: RootSiblingNameIndex or NestedSiblingNameIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, RootSiblingNameIndex, NestedSiblingNameIndex))
         {
             context.Entry(category).State = EntityState.Detached;
             return UpdateResult(CategoryUpdateOutcome.DuplicateSiblingName);
@@ -319,11 +310,7 @@ public sealed class EfCategoryStore(
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: RootSiblingNameIndex or NestedSiblingNameIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, RootSiblingNameIndex, NestedSiblingNameIndex))
         {
             foreach (var item in subtree)
             {

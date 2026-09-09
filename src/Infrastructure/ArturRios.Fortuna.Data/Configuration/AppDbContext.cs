@@ -12,6 +12,7 @@ using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -23,6 +24,9 @@ public sealed class AppDbContext(
     DatabaseDiagnosticsOptions diagnostics) : DbContext(options), IDataProtectionKeyContext
 {
     public const string Schema = "fortuna";
+    private static readonly ValueConverter<DateTimeOffset, long> SqliteDateTimeOffsetConverter = new(
+        value => value.UtcTicks,
+        value => new DateTimeOffset(value, TimeSpan.Zero));
 
     public DbSet<Currency> Currencies => Set<Currency>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
@@ -70,7 +74,42 @@ public sealed class AppDbContext(
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultSchema(Schema);
+        if (!Database.IsSqlite())
+        {
+            modelBuilder.HasDefaultSchema(Schema);
+        }
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        if (Database.IsSqlite())
+        {
+            ConfigureSqliteModel(modelBuilder);
+        }
+    }
+
+    private static void ConfigureSqliteModel(ModelBuilder modelBuilder)
+    {
+        foreach (var property in modelBuilder.Model
+                     .GetEntityTypes()
+                     .SelectMany(entity => entity.GetProperties()))
+        {
+            if (property.ClrType == typeof(decimal) || property.ClrType == typeof(decimal?))
+            {
+                property.SetColumnType("TEXT");
+            }
+            else if (property.ClrType == typeof(DateTimeOffset))
+            {
+                property.SetValueConverter(SqliteDateTimeOffsetConverter);
+                property.SetColumnType("INTEGER");
+            }
+            else if (string.Equals(property.GetColumnType(), "jsonb", StringComparison.OrdinalIgnoreCase))
+            {
+                property.SetColumnType("TEXT");
+            }
+        }
+
+        modelBuilder.Entity<CreditCard>().ToTable("credit_card", table => table.HasCheckConstraint(
+            "ck_credit_card_last_four_digits",
+            "last_four_digits IS NULL OR (length(last_four_digits) = 4 AND last_four_digits NOT GLOB '*[^0-9]*')"));
     }
 }
