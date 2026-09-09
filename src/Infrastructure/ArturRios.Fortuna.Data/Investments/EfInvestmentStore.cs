@@ -4,7 +4,6 @@ using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Investments;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Investments;
 
@@ -118,11 +117,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: InvestmentMap.LiveInstrumentIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, InvestmentMap.LiveInstrumentIndex))
         {
             context.Entry(investment).State = EntityState.Detached;
             return new InvestmentCreationResult(null, DuplicateInstrument: true);
@@ -170,11 +165,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: InvestmentMap.LiveInstrumentIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, InvestmentMap.LiveInstrumentIndex))
         {
             context.Entry(investment).State = EntityState.Detached;
             return new InvestmentUpdateResult(null, DuplicateInstrument: true);
@@ -266,11 +257,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: InvestmentMap.LiveInstrumentIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, InvestmentMap.LiveInstrumentIndex))
         {
             context.Entry(investment).State = EntityState.Detached;
             foreach (var movement in movements)

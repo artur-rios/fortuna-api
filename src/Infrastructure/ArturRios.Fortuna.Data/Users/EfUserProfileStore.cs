@@ -5,7 +5,6 @@ using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Users;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Users;
 
@@ -75,11 +74,7 @@ public sealed class EfUserProfileStore(
             return Snapshot(profile);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: UserProfileMap.ExternalSubjectIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, UserProfileMap.ExternalSubjectIndex))
         {
             context.ChangeTracker.Clear();
 

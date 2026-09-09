@@ -27,10 +27,14 @@ public sealed class EfImportJobRetryStore(AppDbContext context) : IImportJobRetr
             return Result(RetryImportJobOutcome.NotFound);
         }
 
-        var importJob = await context.ImportJobs
-            .FromSqlInterpolated(
-                $"SELECT * FROM fortuna.import_job WHERE public_id = {importJobId} AND user_id = {ownerId.Value} FOR UPDATE")
-            .SingleOrDefaultAsync(cancellationToken);
+        var importJob = context.Database.IsSqlite()
+            ? await context.ImportJobs.SingleOrDefaultAsync(
+                item => item.PublicId == importJobId && item.UserId == ownerId.Value,
+                cancellationToken)
+            : await context.ImportJobs
+                .FromSqlInterpolated(
+                    $"SELECT * FROM fortuna.import_job WHERE public_id = {importJobId} AND user_id = {ownerId.Value} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
         if (importJob is null)
         {
             return Result(RetryImportJobOutcome.NotFound);

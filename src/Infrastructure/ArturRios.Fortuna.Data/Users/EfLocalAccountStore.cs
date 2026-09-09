@@ -4,7 +4,6 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Users;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Users;
 
@@ -58,9 +57,7 @@ public sealed class EfLocalAccountStore(
         CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        await context.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock({AccountLockId})",
-            cancellationToken);
+        await DatabaseLock.AcquireAsync(context, AccountLockId, cancellationToken);
 
         if (await context.LocalAccounts.AnyAsync(cancellationToken))
         {
@@ -102,11 +99,7 @@ public sealed class EfLocalAccountStore(
                     account.CreatedAt),
                 false);
         }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation
-            })
+        catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(exception))
         {
             return new LocalAccountCreationResult(null, true);
         }
@@ -117,9 +110,7 @@ public sealed class EfLocalAccountStore(
         CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        await context.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock({AccountLockId})",
-            cancellationToken);
+        await DatabaseLock.AcquireAsync(context, AccountLockId, cancellationToken);
         var account = await context.LocalAccounts
             .Include(x => x.User)
             .Include(x => x.RecoveryCodes)
@@ -163,9 +154,7 @@ public sealed class EfLocalAccountStore(
         CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-        await context.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock({AccountLockId})",
-            cancellationToken);
+        await DatabaseLock.AcquireAsync(context, AccountLockId, cancellationToken);
         var account = await context.LocalAccounts
             .Include(x => x.User)
             .Include(x => x.RecoveryCodes)

@@ -30,9 +30,7 @@ public sealed class EfInvestmentValuationStore(AppDbContext context)
         }
 
         var lockId = ValuationLockNamespace | (investment.Id & uint.MaxValue);
-        await context.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock({lockId})",
-            cancellationToken);
+        await DatabaseLock.AcquireAsync(context, lockId, cancellationToken);
         var valuation = await context.InvestmentValuations.SingleOrDefaultAsync(item =>
             item.InvestmentId == investment.Id &&
             item.ValuedOn == record.ValuedOn &&

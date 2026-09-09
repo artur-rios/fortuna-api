@@ -71,7 +71,7 @@ graph LR
     end
 
     subgraph Infrastructure
-        DB[(PostgreSQL)]
+        DB[(PostgreSQL / SQLite)]
         FS[Filesystem / S3-compatible store]
         HD[Heimdall API]
         PL[Pluggy]
@@ -870,7 +870,7 @@ every endpoint is scoped to the acting user (FR-ID-07).
 | NFR-04 | Performance | An aggregation or drill-down over one year of a user's transactions shall complete within **1 second at the 95th percentile** |
 | NFR-05 | Performance | An operation executed as a job shall be exempt from NFR-02 to NFR-04; the request that accepts it shall itself meet NFR-03 |
 | NFR-06 | Correctness | Monetary values shall be exact decimals end to end. No binary floating-point type shall appear in an entity, a data transfer object, a query projection, an export cell, or an intermediate calculation involving money |
-| NFR-07 | Correctness | Monetary columns shall be `numeric(19,4)` and exchange rate columns `numeric(19,8)`; rounding shall occur only at conversion or presentation |
+| NFR-07 | Correctness | PostgreSQL monetary columns shall be `numeric(19,4)` and exchange rate columns `numeric(19,8)`; SQLite shall use a lossless non-floating representation. Rounding shall occur only at conversion or presentation |
 | NFR-08 | Correctness | A computed balance shall equal the sum of its opening balance and its live transactions to the currency's minor unit, and shall be identical across repeated computations |
 | NFR-09 | Security | No credential for a financial institution shall be stored, logged or transmitted, under any configuration |
 | NFR-10 | Security | Every endpoint shall require a valid token, except the local-account authentication and recovery endpoints, the local-account creation endpoint, and the public liveness check defined in the [Operations & Infrastructure Document](Operations%20%26%20Infrastructure%20Document.md). Each shall be explicitly marked anonymous; no other endpoint may be |
@@ -891,6 +891,7 @@ every endpoint is scoped to the acting user (FR-ID-07).
 | NFR-25 | Maintainability | Merged line coverage shall not fall below **90%**, enforced in continuous integration and reproducibly on a developer machine |
 | NFR-26 | Portability | One `docker compose` invocation shall bring the instance up on Docker Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in the environment file supplied |
 | NFR-27 | Privacy | An export, an error message and a log line shall each contain only data the requesting user owns |
+| NFR-28 | Portability | Shared deployments shall use PostgreSQL and desktop offline deployments may use SQLite, selected only by configuration. Both providers shall use the same domain model and preserve exact monetary results |
 
 ---
 

@@ -85,9 +85,10 @@ try
     builder.Services.AddSingleton(new DatabaseDiagnosticsOptions(
         SensitiveDataLogging: false,
         DetailedErrors: !builder.Environment.IsProduction()));
-    builder.Services.AddDbContext<AppDbContext>((services, database) => database.UseNpgsql(
-        options.DataConnectionString,
-        postgres => postgres.MigrationsHistoryTable("__ef_migrations_history", AppDbContext.Schema)));
+    builder.Services.AddDbContext<AppDbContext>((services, database) => DatabaseProvider.Configure(
+        database,
+        options.DataDatabaseType,
+        options.DataConnectionString));
     builder.Services.AddDataProtection()
         .PersistKeysToDbContext<AppDbContext>()
         .SetApplicationName("Fortuna");

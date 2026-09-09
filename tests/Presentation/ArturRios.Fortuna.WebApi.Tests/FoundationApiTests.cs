@@ -189,14 +189,26 @@ public sealed class FoundationApiTests
     }
 
     [UnitFact]
-    public void GivenUnsupportedDatabaseType_WhenConfigurationLoads_ThenStartupIsRejected()
+    public void GivenSqliteDatabaseType_WhenConfigurationLoads_ThenOfflineProviderIsAccepted()
     {
         var values = ValidSettings();
         values["FORTUNA_DATA_DATABASETYPE"] = "Sqlite";
 
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal("Sqlite", options.DataDatabaseType);
+    }
+
+    [UnitFact]
+    public void GivenUnsupportedDatabaseType_WhenConfigurationLoads_ThenStartupIsRejected()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_DATA_DATABASETYPE"] = "MySql";
+
         var exception = Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("PostgreSql", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("SQLite", exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]

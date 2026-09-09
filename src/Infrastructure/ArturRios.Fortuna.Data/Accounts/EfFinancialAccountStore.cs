@@ -5,7 +5,6 @@ using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Attachments;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Accounts;
 
@@ -65,11 +64,7 @@ public sealed class EfFinancialAccountStore(
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: FinancialAccountMap.LiveNameIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, FinancialAccountMap.LiveNameIndex))
         {
             context.Entry(account).State = EntityState.Detached;
             return new FinancialAccountCreationResult(null, DuplicateName: true);
@@ -156,11 +151,7 @@ public sealed class EfFinancialAccountStore(
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: FinancialAccountMap.LiveNameIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, FinancialAccountMap.LiveNameIndex))
         {
             context.Entry(account).State = EntityState.Detached;
             return new FinancialAccountUpdateResult(null, DuplicateName: true);
@@ -225,11 +216,7 @@ public sealed class EfFinancialAccountStore(
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: FinancialAccountMap.LiveNameIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, FinancialAccountMap.LiveNameIndex))
         {
             context.Entry(account).State = EntityState.Detached;
             foreach (var transaction in transactions)

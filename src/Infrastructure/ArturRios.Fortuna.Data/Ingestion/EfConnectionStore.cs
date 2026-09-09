@@ -4,7 +4,6 @@ using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Ingestion;
 
@@ -40,12 +39,9 @@ public sealed class EfConnectionStore(AppDbContext context)
         {
             await context.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: "ix_connection_user_id_data_source_type_external_reference"
-            })
+        catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(
+            exception,
+            "ix_connection_user_id_data_source_type_external_reference"))
         {
             context.Entry(connection).State = EntityState.Detached;
             var duplicate = await FindByExternalReferenceAsync(
@@ -111,12 +107,9 @@ public sealed class EfConnectionStore(AppDbContext context)
             await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: "ix_connection_user_id_data_source_type_external_reference"
-            })
+        catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(
+            exception,
+            "ix_connection_user_id_data_source_type_external_reference"))
         {
             await transaction.RollbackAsync(cancellationToken);
             context.Entry(connection).State = EntityState.Detached;

@@ -1,4 +1,5 @@
 using System.Globalization;
+using ArturRios.Fortuna.Data.Configuration;
 
 namespace ArturRios.Fortuna.WebApi.Configuration;
 
@@ -147,9 +148,10 @@ public sealed record FortunaOptions
                 1)
         };
 
-        if (!string.Equals(options.DataDatabaseType, "PostgreSql", StringComparison.OrdinalIgnoreCase))
+        if (!DatabaseProvider.IsSupported(options.DataDatabaseType))
         {
-            throw new InvalidOperationException("FORTUNA_DATA_DATABASETYPE must be 'PostgreSql'.");
+            throw new InvalidOperationException(
+                "FORTUNA_DATA_DATABASETYPE must be 'PostgreSql' or 'SQLite'.");
         }
 
         if (string.Equals(provider, "Filesystem", StringComparison.OrdinalIgnoreCase))

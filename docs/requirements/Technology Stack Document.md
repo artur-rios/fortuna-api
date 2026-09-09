@@ -94,14 +94,15 @@ as a coherent set (§1.1).
 
 | Concern | Choice |
 | --- | --- |
-| Relational database | **PostgreSQL** — the sole supported relational engine. |
-| Provider integration | `ArturRios.Data.PostgreSql` → `AddPostgreSqlProvider()` (EF Core over Npgsql). |
-| Connection configuration | Environment variables `FORTUNA_DATA_CONNECTIONSTRING` and `FORTUNA_DATA_DATABASETYPE` (`PostgreSql`), bound with `AddDataConfigFromEnvironment<AppDbContext>("FORTUNA_DATA")`. |
-| Schema | `fortuna`, with the connection's `Search Path` pinned to it — see the [Operations & Infrastructure Document](Operations%20%26%20Infrastructure%20Document.md). |
+| Relational database | **PostgreSQL** for shared/server deployments; **SQLite** for single-user desktop offline mode. |
+| Provider integration | EF Core over Npgsql or `Microsoft.EntityFrameworkCore.Sqlite`, selected only in infrastructure. Application and domain code share one model and do not choose a provider. |
+| Connection configuration | `FORTUNA_DATA_DATABASETYPE` is `PostgreSql` or `SQLite`. `FORTUNA_DATA_CONNECTIONSTRING` is a PostgreSQL connection string or, for SQLite, either a `Data Source=...` connection string or a database file path. |
+| Migrations | Provider-specific migration assemblies: PostgreSQL migrations remain with the data project; SQLite migrations are in `ArturRios.Fortuna.Data.Sqlite.Migrations`. |
+| Schema | PostgreSQL uses `fortuna`, with the connection's `Search Path` pinned to it. SQLite uses its single database namespace. |
 
-PostgreSQL is used in **every** environment, automated tests included: functional tests run against
-a real instance provisioned by Testcontainers, never an in-memory provider, so behavior matches
-production.
+Server functional tests run against a real PostgreSQL instance provisioned by Testcontainers.
+SQLite persistence tests apply the real file-backed migrations and verify exact storage and
+aggregation behavior. Switching between the two is configuration-only.
 
 ### 4.2 Monetary storage
 
@@ -110,10 +111,10 @@ than a preference:
 
 | Concern | Choice |
 | --- | --- |
-| Database column | PostgreSQL **`numeric(19, 4)`** — exact decimal arithmetic, four fractional digits to hold minor units plus the headroom an unrounded intermediate needs. |
+| Database column | PostgreSQL **`numeric(19, 4)`**; SQLite **`TEXT`** through the provider's lossless decimal mapping. SQLite monetary values must never use `REAL`. |
 | CLR type | **`decimal`**. |
 | Forbidden | `float`, `double`, `real`, `double precision`, and `System.Single`/`System.Double` anywhere a monetary value can reach — entity, DTO, query projection, export cell, or intermediate calculation. |
-| Exchange rates | **`numeric(19, 8)`** — a rate needs more fractional precision than an amount, and rounding it early moves every figure derived from it. |
+| Exchange rates | PostgreSQL **`numeric(19, 8)`**; SQLite **`TEXT`**, preserving the same CLR `decimal` value. A rate needs more fractional precision than an amount. |
 
 ### 4.3 Binary storage
 

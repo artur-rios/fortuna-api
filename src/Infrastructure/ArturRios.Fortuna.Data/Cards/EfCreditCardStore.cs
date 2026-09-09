@@ -5,7 +5,6 @@ using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Attachments;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace ArturRios.Fortuna.Data.Cards;
 
@@ -76,11 +75,7 @@ public sealed class EfCreditCardStore(
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: CreditCardMap.LiveNameIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, CreditCardMap.LiveNameIndex))
         {
             context.Entry(card).State = EntityState.Detached;
             return new CreditCardCreationResult(null, DuplicateName: true);
@@ -131,11 +126,7 @@ public sealed class EfCreditCardStore(
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: CreditCardMap.LiveNameIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, CreditCardMap.LiveNameIndex))
         {
             context.Entry(card).State = EntityState.Detached;
             return new CreditCardUpdateResult(null, DuplicateName: true);
@@ -213,11 +204,7 @@ public sealed class EfCreditCardStore(
             await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (
-            exception.InnerException is PostgresException
-            {
-                SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: CreditCardMap.LiveNameIndex
-            })
+            DatabaseException.IsUniqueViolation(exception, CreditCardMap.LiveNameIndex))
         {
             context.Entry(card).State = EntityState.Detached;
             foreach (var transaction in transactions)

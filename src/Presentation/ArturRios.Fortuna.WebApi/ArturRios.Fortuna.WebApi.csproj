@@ -9,6 +9,10 @@
   <ItemGroup>
     <PackageReference Include="ArturRios.Util.WebApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.Map" />
@@ -20,6 +24,7 @@
     <ProjectReference Include="..\..\Application\ArturRios.Fortuna.Query\ArturRios.Fortuna.Query.csproj" />
     <ProjectReference Include="..\..\Application\ArturRios.Fortuna.Shared\ArturRios.Fortuna.Shared.csproj" />
     <ProjectReference Include="..\..\Infrastructure\ArturRios.Fortuna.Data\ArturRios.Fortuna.Data.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\ArturRios.Fortuna.Data.Sqlite.Migrations\ArturRios.Fortuna.Data.Sqlite.Migrations.csproj" />
     <ProjectReference Include="..\..\Infrastructure\ArturRios.Fortuna.Integration\ArturRios.Fortuna.Integration.csproj" />
   </ItemGroup>
 
