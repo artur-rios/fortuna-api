@@ -864,7 +864,7 @@ every endpoint is scoped to the acting user (FR-ID-07).
 
 | ID | Category | Requirement |
 | --- | --- | --- |
-| NFR-01 | Technology | The API shall be built on ASP.NET Core over the .NET platform, with the framework, libraries and versions defined in the [Technology Stack Document](Technology%20Stack%20Document.md) |
+| NFR-01 | Technology | The HTTP API shall be built on ASP.NET Core over the .NET platform; the in-process desktop core shall be a Rust native library, with both stacks and their versions defined in the [Technology Stack Document](Technology%20Stack%20Document.md) |
 | NFR-02 | Performance | A single-record read, or one page of a list, shall complete within **200 ms at the 95th percentile** |
 | NFR-03 | Performance | A write shall complete within **500 ms at the 95th percentile** |
 | NFR-04 | Performance | An aggregation or drill-down over one year of a user's transactions shall complete within **1 second at the 95th percentile** |
@@ -892,6 +892,12 @@ every endpoint is scoped to the acting user (FR-ID-07).
 | NFR-26 | Portability | One `docker compose` invocation shall bring the instance up on Docker Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in the environment file supplied |
 | NFR-27 | Privacy | An export, an error message and a log line shall each contain only data the requesting user owns |
 | NFR-28 | Portability | Shared deployments shall use PostgreSQL and desktop offline deployments may use SQLite, selected only by configuration. Both providers shall use the same domain model and preserve exact monetary results |
+| NFR-29 | Portability | Desktop offline mode shall be available as an in-process C ABI dynamic library on Windows x64 and Linux x64, without starting a process or opening a listening socket |
+| NFR-30 | Compatibility | The native ABI shall return HTTP-compatible numeric statuses and the same camel-case `DataOutput<T>` response shapes as corresponding HTTP operations; route, query and authorization metadata may be wrapped into the ABI's single JSON request object |
+| NFR-31 | Memory safety | Every native response, successful or failed, shall be owned by the library, released through one exported free function, and protected so no Rust panic unwinds across the C boundary |
+| NFR-32 | Concurrency | Native operations shall permit calls from concurrent background threads and synchronize lifecycle and authentication state without sharing an SQLite connection between calls |
+| NFR-33 | Security | The native core shall never log credentials, shall zeroize its credential-bearing request copies, and shall retain local session tokens only as cryptographic hashes until expiration or shutdown |
+| NFR-34 | Maintainability | The C header shall be generated from the exports, committed, drift-checked in continuous integration, and shipped with each Windows and Linux native artifact |
 
 ---
 

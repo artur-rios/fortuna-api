@@ -1,0 +1,58 @@
+name: Native Core
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: native-core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: rustsec/audit-check@v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: native/fortuna-core
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: fortuna-native-linux-x64
+            library: native/fortuna-core/target/release/libfortuna_core.so
+          - os: windows-latest
+            artifact: fortuna-native-windows-x64
+            library: native/fortuna-core/target/release/fortuna_core.dll
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Check formatting
+        run: cargo fmt --manifest-path native/fortuna-core/Cargo.toml -- --check
+      - name: Lint native core
+        run: cargo clippy --manifest-path native/fortuna-core/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Test native boundary
+        run: cargo test --manifest-path native/fortuna-core/Cargo.toml --locked
+      - name: Build native library
+        run: cargo build --manifest-path native/fortuna-core/Cargo.toml --release --locked
+      - name: Check generated header
+        if: runner.os == 'Linux'
+        run: git diff --exit-code -- native/fortuna-core/include/fortuna_core.h
+      - name: Upload native package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.library }}
+            native/fortuna-core/include/fortuna_core.h
+          if-no-files-found: error

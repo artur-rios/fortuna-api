@@ -44,6 +44,10 @@ an open-banking aggregator, an exchange rate service, statement parsers, export 
 attachment stores — is substantial enough that folding it into the data project would bury the
 persistence code. Everything else follows Heimdall's shape.
 
+The in-process desktop surface is a separate Rust native core with its own SQLite persistence. This
+is an explicit exception to the .NET layering above: it exists because the EF Core stack did not pass
+the NativeAOT feasibility gate, and it shares transport contracts rather than runtime assemblies.
+
 The foundational scaffolding establishes the project structure, the Entity Framework Core data layer
 with its initial migration, startup seeding, the background job runner, the two extension points,
 and the test harness that every use case is then built on.
@@ -54,6 +58,7 @@ and the test harness that every use case is then built on.
 graph TD
     subgraph Presentation
         WebApi[ArturRios.Fortuna.WebApi<br/>ASP.NET Core host, controllers, security]
+        Desktop[Desktop client<br/>C ABI, no socket]
     end
     subgraph Application
         Command[ArturRios.Fortuna.Command<br/>write handlers and validators]
@@ -69,6 +74,10 @@ graph TD
         Jobs[Job runner<br/>hosted service + queue]
         DB[(PostgreSQL)]
         Store[Filesystem / S3-compatible store]
+    end
+    subgraph Native
+        NativeCore[fortuna_core<br/>Rust domain and services]
+        NativeDb[(SQLite<br/>native_ tables)]
     end
 
     WebApi --> Command
@@ -86,6 +95,8 @@ graph TD
     Integration --> Store
     Data --> DomainLayer
     Data --> DB
+    Desktop --> NativeCore
+    NativeCore --> NativeDb
 ```
 
 The dependency that is deliberately absent: **`Integration` does not reference `Data`**. A parser or
@@ -97,12 +108,13 @@ to write a row.
 
 ```
 fortuna-api/
-├── .github/workflows/            tests.yml, check-openapi.yml
+├── .github/workflows/            tests.yml, check-openapi.yml, native-core.yml
 ├── docker/                       local.env.example, development.env.example, production.env.example
 ├── docs/
 │   ├── initial/                  Brainstorm, Project Overview, Technology Stack, Workflow, Business Rules
 │   └── requirements/             this document and the six beside it
 ├── scripts/                      coverage.py, migrations.py, vulnerabilities.py, openapi.py
+├── native/fortuna-core/          Rust core, SQLite persistence, generated C header
 ├── src/
 │   ├── ArturRios.Fortuna.sln
 │   ├── Domain/ArturRios.Fortuna.Domain/
@@ -146,6 +158,12 @@ fortuna-api/
 | IR-18 | A single `docker-compose.yml` shall bring the instance up on Docker Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in the environment file supplied |
 | IR-19 | The container shall declare a health check against the liveness endpoint |
 | IR-20 | The instance shall run without a Heimdall connection on the request path, and a desktop installation shall run with no network at all |
+| IR-21 | The in-process desktop core shall publish `fortuna_core.dll` for Windows x64 and `libfortuna_core.so` for Linux x64 together with its generated C header |
+| IR-22 | Native initialization shall take an explicit database path and configuration, create and migrate the native SQLite schema on demand, and native shutdown shall invalidate all process-local sessions |
+| IR-23 | A native operation called before initialization shall return the distinct HTTP-compatible status `503` and a JSON failure envelope rather than crash |
+| IR-24 | Every native function that returns JSON shall allocate it in the native library, document ownership in the header, and accept release through `fortuna_string_free` on success and failure alike |
+| IR-25 | Native CI shall build and test the library on Windows and Linux, reject generated-header drift, and publish both platform artifacts on every pull request and commit to `main` |
+| IR-26 | The native core shall own a namespaced SQLite schema independent from EF migrations; monetary values in it shall use SQLite `TEXT` and arbitrary-precision JSON serialization |
 
 ---
 
@@ -310,11 +328,17 @@ PostgreSQL is **not** a service in the compose file. Each environment already ru
 between services, each service owning its own database and schema — which is why `Search Path` is
 pinned (IR-05).
 
-A **desktop installation** is a fourth shape rather than a fourth environment: the API runs beside the
-client on one machine, with local authentication enabled, filesystem storage, no aggregator and no
-rate source, and no network required at all (IR-20). It selects `SQLite` through
-`FORTUNA_DATA_DATABASETYPE`, points `FORTUNA_DATA_CONNECTIONSTRING` at a writable local database
-file, and applies the SQLite migration set. Unsupported providers fail explicitly during startup.
+A **desktop installation** is a fourth shape rather than a fourth environment. Its preferred package
+places the generated `fortuna_core.h` contract and `fortuna_core.dll` (Windows) or
+`libfortuna_core.so` (Linux) beside the client. The client calls initialization with a writable
+SQLite path, calls operations from a worker isolate, frees every returned string and shuts the core
+down before exit. No helper process, bound port, Heimdall connection, aggregator or rate source is
+required (IR-20 … IR-26).
+
+The managed HTTP host remains an alternative local deployment: it selects `SQLite` through
+`FORTUNA_DATA_DATABASETYPE`, points `FORTUNA_DATA_CONNECTIONSTRING` at a writable database file and
+applies the EF SQLite migration set. The native and managed SQLite schemas are separate persistence
+implementations and are not interchangeable files.
 
 ---
 
@@ -333,7 +357,7 @@ docker compose --env-file docker/development.env up -d --build
 docker compose --env-file docker/production.env up -d --build
 ```
 
-**Continuous integration** (IR-17). Two workflows, both on every pull request and every commit to
+**Continuous integration** (IR-17). Three workflows, all on every pull request and every commit to
 `main`, with no path filters — a filter would let a change to an unlisted path merge without evidence
 that anything still passes:
 
@@ -341,6 +365,7 @@ that anything still passes:
 | --- | --- |
 | `tests.yml` | Restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor → upload the report and the test results → build the container image in a separate job |
 | `check-openapi.yml` | Regenerate the OpenAPI document from the code and fail if the committed one differs (IR-14) |
+| `native-core.yml` | Audit Cargo dependencies → format-check, lint and test the Rust boundary on Windows and Linux → build each release dynamic library → reject generated-header drift → upload the library and header as platform artifacts (IR-21 … IR-25) |
 
 The unit suite runs before the functional one on purpose: it costs seconds, so a broken handler is
 reported before the runner spends minutes pulling and starting a database container. The vulnerability
@@ -368,4 +393,5 @@ and a continuous integration run answer the same question, and so that raising i
 | Continuous integration | IR-17 | — |
 | Containerization and deployment | IR-18, IR-19 | — |
 | Offline and network-independent operation | IR-20 | — |
+| In-process desktop native core and C ABI | IR-21 … IR-26 | — |
 | Health and monitoring | FR-HC-01 … FR-HC-11 | UC-75 |

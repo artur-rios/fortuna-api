@@ -50,6 +50,7 @@ at implementation time" is the rule for *choosing* the number, not a licence to 
 | --- | --- | --- |
 | Runtime / framework | **.NET 10** (`net10.0`) | Every project targets `net10.0`. The Web API uses the `Microsoft.NET.Sdk.Web` SDK; libraries use `Microsoft.NET.Sdk`. |
 | Language | **C# 14** | The default language version for `net10.0`, used implicitly. No explicit `<LangVersion>` is set, which keeps the language tracking the target framework's default. |
+| Native desktop core | **Rust 2024 edition**, minimum Rust `1.85` | Builds a C-compatible dynamic library for Windows and Linux. It is a separate implementation used only for in-process offline desktop mode; the HTTP host remains .NET. |
 | Language features | `Nullable` **enabled**, `ImplicitUsings` **enabled** | Applied uniformly to every production and test project. |
 | Package management | **Central**, via `Directory.Packages.props`, with `CentralPackageTransitivePinningEnabled` | A `PackageReference` names a package; that one file decides its version. |
 
@@ -86,6 +87,18 @@ as a coherent set (§1.1).
 | **CsvHelper** | latest stable at implementation time | Data (CSV export adapter) | CSV writing, with correct quoting and culture-aware number formatting. |
 | **AWSSDK.S3** | latest stable at implementation time | Data (object storage adapter) | S3-protocol client, pointed at an S3-compatible endpoint (MEGA S4) rather than AWS. |
 
+### 3.3 Native core (Cargo)
+
+Cargo resolves and locks native dependencies in `native/fortuna-core/Cargo.lock`.
+
+| Crate | Version selected | Role |
+| --- | --- | --- |
+| **rusqlite** | `0.40.2` | SQLite persistence with SQLite compiled into the library for identical Windows/Linux packaging. |
+| **argon2** | `0.6.0` | Argon2id local-secret hashing and constant-work credential verification. |
+| **serde / serde_json** | `1.0.229` / `1.0.151` | HTTP-compatible camel-case JSON envelopes; arbitrary-precision JSON numbers keep money out of floating point. |
+| **chrono / uuid / sha2 / zeroize** | versions pinned by `Cargo.lock` | UTC wire timestamps, public identifiers, hashed session tokens and clearing credential-bearing memory. |
+| **cbindgen** | `0.29.4` | Generates the committed public C header directly from exported Rust functions. |
+
 ---
 
 ## 4. Data Storage
@@ -103,6 +116,12 @@ as a coherent set (§1.1).
 Server functional tests run against a real PostgreSQL instance provisioned by Testcontainers.
 SQLite persistence tests apply the real file-backed migrations and verify exact storage and
 aggregation behavior. Switching between the two is configuration-only.
+
+The embedded native core uses its **own** SQLite persistence implementation and tables prefixed
+`native_`; it does not load EF Core or the .NET application assemblies. This is an explicit desktop
+architecture boundary adopted after EF Core's NativeAOT path failed the #156 feasibility slice.
+It stores monetary values as SQLite `TEXT` and produces the same JSON data shapes and status meaning
+as the HTTP transport. The .NET SQLite provider remains available for a local HTTP deployment.
 
 ### 4.2 Monetary storage
 
@@ -163,6 +182,7 @@ by unit tests against a fake. Everything that writes goes through a repository, 
 | Authentication | **JWT validation** via `ArturRios.Util.WebApi` (namespace `ArturRios.Jwt`) | latest stable at implementation time | Tokens are **issued by Heimdall and validated locally by Fortuna** against the shared issuer, audience and signing configuration. Credential exchanges use a typed framework `HttpClient`; token validation never calls Heimdall. |
 | Authorization | Role attributes and middleware from `ArturRios.Util.WebApi`, plus per-record ownership checks | latest stable at implementation time | The role gate is the library's; the ownership gate is Fortuna's own and applies to every domain endpoint. |
 | Local (offline) authentication | Fortuna's own implementation over `ArturRios.Util` hashing and `CustomRandom` | latest stable at implementation time | Desktop-only. Recovery codes are hashed, never stored or returned in the clear after the response that mints them. |
+| Native local authentication | RustCrypto Argon2id plus SHA-256-hashed opaque sessions | versions pinned by `Cargo.lock` | In-process desktop only. Secrets and token-bearing request copies are zeroized and never logged; shutdown invalidates every session. |
 | Result / error model | `DataOutput<T>` (namespace `ArturRios.Output`) | latest stable at implementation time | Handlers return success, errors, messages and data rather than throwing; `ResponseResolver` maps that to an HTTP response. |
 | Background execution | `BackgroundService` + a bounded `System.Threading.Channels` queue, with `ImportJob` as the durable record | — (framework) | Imports, synchronizations and exports are accepted, persisted as a job, queued, and executed off the request thread. A restart re-queues jobs left `Pending` or `Running`. |
 | API documentation | **Swagger / OpenAPI** via `Swashbuckle.AspNetCore` | latest stable at implementation time | Enabled with JWT auth support. |
@@ -198,7 +218,8 @@ canonical list of the tools.
 | Mocking | **Moq** | latest stable at implementation time | The single mocking library, for non-repository collaborators. Do not introduce a second one. |
 | Test data generation | **Bogus** | latest stable at implementation time | `Faker<T>` for entities, commands and DTOs, instead of large inline literals. |
 | Functional database | **Testcontainers.PostgreSql** | latest stable at implementation time | A real, throwaway PostgreSQL container per functional run. |
-| Dependency vulnerability scanning | `dotnet list package --vulnerable`, parsed by `scripts/vulnerabilities.py` | — | Runs on every CI build, because a dependency does not have to change to become vulnerable. |
+| Dependency vulnerability scanning | `dotnet list package --vulnerable`, parsed by `scripts/vulnerabilities.py`; RustSec `cargo audit` for Cargo | — | Runs on every CI build, because a dependency does not have to change to become vulnerable. |
+| Native tests | Rust built-in test harness through `cargo test --locked` | Rust stable | Calls the exported C functions directly on Windows and Linux, covering lifecycle, statuses, JSON parity, threading, memory ownership and exact decimal round trips. |
 
 External services are never reached from a test. Pluggy, PTAX and the object store are exercised
 through their abstractions with in-repository fakes and recorded fixtures — see the
