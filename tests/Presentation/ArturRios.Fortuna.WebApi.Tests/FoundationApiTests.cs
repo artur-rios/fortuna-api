@@ -481,5 +481,9 @@ public sealed class FoundationApiTests
         ["FORTUNA_LOCALE"] = "pt-BR",
         ["FORTUNA_LOCAL_AUTH_ENABLED"] = "false",
         ["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = "10"
+        ,
+        ["FORTUNA_HEIMDALL_BASE_URL"] = "https://heimdall.example.test"
+        ,
+        ["FORTUNA_HEIMDALL_SCOPE_ID"] = "00000000-0000-0000-0000-000000000076"
     };
 }

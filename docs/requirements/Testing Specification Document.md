@@ -4,7 +4,7 @@
 
 This document defines **how a use case is tested once it has been implemented**. It is a standard to
 be followed by any human or agent that builds tests for this project, so that every use case
-(UC-01 … UC-75 in the
+(UC-01 onward in the
 [Use Case Specification Document](Use%20Case%20Specification%20Document.md) and the
 [Operations & Infrastructure Document](Operations%20%26%20Infrastructure%20Document.md)) receives
 the same shape of testing, with the same tools, naming and structure.

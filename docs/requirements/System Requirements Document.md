@@ -94,14 +94,15 @@ graph LR
     RPT --> DB
     JOB --> DB
     ATT --> FS
-    FC -.authenticates against.-> HD
+    SEC -.credential exchange.-> HD
     SEC -.validates tokens issued by.-> HD
     JOB --> PL
     JOB --> PT
 ```
 
-The dashed edges are the ones worth reading twice: the client authenticates against Heimdall
-directly, and Fortuna only *validates* what Heimdall issued. No request path calls Heimdall.
+The dashed edges are the ones worth reading twice: clients exchange credentials with Heimdall
+through Fortuna, which adds its configured scope identifier. Once a token is issued, every domain
+request validates it locally; token verification never calls Heimdall.
 
 ---
 
@@ -116,7 +117,7 @@ directly, and Fortuna only *validates* what Heimdall issued. No request path cal
 | FR-ID-03 | The system shall reject a request bearing a missing, malformed, expired or unverifiable token with `401 Unauthorized` |
 | FR-ID-04 | The system shall resolve the acting user from the token's subject claim on every authenticated request |
 | FR-ID-05 | The system shall create a local user profile, keyed by the token's subject, on that subject's first authenticated request, without administrator involvement |
-| FR-ID-06 | The system shall never store, log or transmit a password or credential belonging to a Heimdall identity |
+| FR-ID-06 | The system shall never store, log or retain a password or credential belonging to a Heimdall identity; a credential may exist only in transit during an explicit exchange with Heimdall |
 | FR-ID-07 | The system shall scope every domain operation to the acting user's owned records |
 | FR-ID-08 | The system shall refuse an operation targeting a record owned by another user with the same response it returns for a record that does not exist |
 | FR-ID-09 | The system shall create a desktop local account with a display name, a secret, and a set of recovery codes returned exactly once in the creation response |
@@ -127,6 +128,14 @@ directly, and Fortuna only *validates* what Heimdall issued. No request path cal
 | FR-ID-14 | The system shall expose no password reset and no e-mail-based recovery for a local account |
 | FR-ID-15 | The system shall expose the local account endpoints only when local authentication is enabled by configuration, and shall respond to them with `404 Not Found` otherwise |
 | FR-ID-16 | The system shall permit an instance administrator to configure the instance and its integrations, and shall deny them read access to any user's financial records |
+| FR-ID-17 | The system shall proxy email/password authentication to Heimdall and attach the configured Fortuna scope identifier rather than accepting a scope from the caller |
+| FR-ID-18 | The system shall proxy Google sign-in and first-sign-in registration to Heimdall with the configured Fortuna scope identifier |
+| FR-ID-19 | The system shall proxy completion of a Heimdall two-factor challenge by authenticator, email or recovery code |
+| FR-ID-20 | The system shall proxy authenticated Google sign-out using the caller's validated bearer token |
+| FR-ID-21 | The system shall preserve Heimdall's successful token and challenge data shape in the Fortuna response envelope |
+| FR-ID-22 | The system shall collapse every rejected credential exchange, and every rejected challenge exchange, into one non-enumerating `401 Unauthorized` response per operation |
+| FR-ID-23 | The system shall answer `503 Service Unavailable` without upstream details when Heimdall cannot be reached or returns a server failure |
+| FR-ID-24 | The system shall refuse startup without a valid Heimdall base URL and non-empty Fortuna scope identifier, and rate-limit anonymous credential endpoints |
 
 ### 3.2 Currency and Exchange Rates — `CU`
 
@@ -708,6 +717,10 @@ every endpoint is scoped to the acting user (FR-ID-07).
 | POST | `/api/local-accounts/authenticate` | Authenticate a local account — *anonymous* | FR-ID-11 |
 | POST | `/api/local-accounts/recover` | Consume a recovery code to restore access — *anonymous* | FR-ID-12 |
 | POST | `/api/local-accounts/recovery-codes/regenerate` | Issue a new set of recovery codes | FR-ID-13 |
+| POST | `/api/auth/login` | Exchange email/password credentials for a token or two-factor challenge — *anonymous* | FR-ID-17, FR-ID-21 through FR-ID-24 |
+| POST | `/api/auth/google` | Exchange a Google ID token for a Heimdall token — *anonymous* | FR-ID-18, FR-ID-21 through FR-ID-24 |
+| POST | `/api/auth/2fa/verify` | Complete a two-factor challenge — *anonymous* | FR-ID-19, FR-ID-21 through FR-ID-24 |
+| POST | `/api/auth/google/sign-out` | End the caller's Google-authenticated session | FR-ID-20, FR-ID-23 |
 
 ### 5.2 Currency Endpoints
 
@@ -950,7 +963,7 @@ was once real.
 | F-14 Export | FR-EX-01 through FR-EX-08 |
 | F-15 Attachments | FR-AT-01 through FR-AT-10 |
 | F-16 Budgets and goals | FR-PL-01 through FR-PL-07 |
-| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 |
+| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-24 |
 | F-18 Desktop offline account | FR-ID-09 through FR-ID-15 |
 | F-19 Asynchronous operations | FR-IM-03, FR-IM-04, FR-IM-05, FR-IM-21, FR-IM-22, FR-CU-05, FR-EX-04 |
 | F-20 Two-stage deletion and audit | FR-RL-01 through FR-RL-11, FR-IM-23 |
@@ -993,7 +1006,7 @@ was once real.
 | BR-32 Projected figures distinguishable | FR-PJ-02, FR-PJ-06 |
 | BR-33 Soft-deleted excluded from figures | FR-RL-02, FR-RP-07, FR-EX-07 |
 | BR-34 Aggregates resolve to transactions | FR-RP-05, FR-RP-06 |
-| BR-35 Fortuna never handles a password | FR-ID-06, FR-ID-01, FR-ID-02 |
+| BR-35 Fortuna never retains a password | FR-ID-06, FR-ID-17, FR-ID-22, FR-ID-23 |
 | BR-36 Recovery codes are the only local recovery | FR-ID-10, FR-ID-12, FR-ID-13, FR-ID-14, NFR-13 |
 | BR-37 Local data stays on its installation | FR-ID-15 |
 | BR-38 Soft delete before hard delete | FR-RL-01, FR-RL-04 |

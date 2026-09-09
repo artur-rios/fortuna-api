@@ -39,6 +39,37 @@ public sealed class AuthenticationTests
         Assert.Contains("FORTUNA_AUTH_TOKEN_SECRET", exception.Message, StringComparison.Ordinal);
     }
 
+    [UnitTheory]
+    [InlineData("FORTUNA_HEIMDALL_BASE_URL")]
+    [InlineData("FORTUNA_HEIMDALL_SCOPE_ID")]
+    public void GivenHeimdallSettingMissing_WhenConfigurationLoads_ThenStartupIsRejected(string key)
+    {
+        var values = ValidSettings();
+        values.Remove(key);
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("FORTUNA_HEIMDALL_BASE_URL", "not-a-url")]
+    [InlineData("FORTUNA_HEIMDALL_SCOPE_ID", "not-a-guid")]
+    [InlineData("FORTUNA_HEIMDALL_SCOPE_ID", "00000000-0000-0000-0000-000000000000")]
+    public void GivenHeimdallSettingInvalid_WhenConfigurationLoads_ThenStartupIsRejected(
+        string key,
+        string value)
+    {
+        var values = ValidSettings();
+        values[key] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains(key, exception.Message, StringComparison.Ordinal);
+    }
+
     [UnitFact]
     public void GivenHeimdallClaims_WhenClaimsAreMapped_ThenSubjectRoleScopeAndPermissionsArePreserved()
     {
@@ -284,6 +315,10 @@ public sealed class AuthenticationTests
         ["FORTUNA_LOCALE"] = "pt-BR",
         ["FORTUNA_LOCAL_AUTH_ENABLED"] = "false",
         ["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = "10"
+        ,
+        ["FORTUNA_HEIMDALL_BASE_URL"] = "https://heimdall.example.test"
+        ,
+        ["FORTUNA_HEIMDALL_SCOPE_ID"] = "00000000-0000-0000-0000-000000000076"
     };
 
     private sealed class StubUserProfileProvisioner : IUserProfileProvisioner

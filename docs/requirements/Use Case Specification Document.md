@@ -15,13 +15,14 @@ Alternative flows are numbered `AF-01` upward **within** each use case, restarti
 
 Three conventions hold across every use case and are therefore not repeated in each one:
 
-- **Authentication.** Every use case except UC-03, UC-04 and UC-05 requires a valid token
+- **Authentication.** Every use case except UC-03, UC-04, UC-05 and UC-76's explicitly anonymous
+  exchanges requires a valid token
   (`FR-ID-01`, `FR-ID-03`). A request without one is refused with `401 Unauthorized`.
 - **Isolation.** Every use case operates on the acting user's own records (`FR-ID-07`). A request
   naming a record owned by somebody else is refused with `404 Not Found` — the same response as for
   a record that does not exist (`FR-ID-08`), so that no response reveals what another user holds.
-- **Audit.** Every write produces exactly one audit entry, whether it succeeded or was refused
-  (`FR-RL-06`).
+- **Audit.** Every domain write produces exactly one audit entry, whether it succeeded or was refused
+  (`FR-RL-06`). Credential exchanges modify no Fortuna state and are not audit entries.
 
 ### 1.2 Actors
 
@@ -31,7 +32,7 @@ Three conventions hold across every use case and are therefore not repeated in e
 | **Local Account Holder** | The same authority, on a desktop installation authenticated by a Fortuna-owned local account rather than by Heimdall. Wherever a use case says "Account Owner", a Local Account Holder may act identically — except where a network source is required. |
 | **Instance Administrator** | Operates a shared deployment. Configures the instance and reads operational status; appears in these use cases only as the actor a domain request is **refused** for. |
 | **Fortuna Client** | The Flutter application. The caller through which every human actor acts. |
-| **Heimdall API** | External. Issues the tokens Fortuna validates. Never called by Fortuna on a request path. |
+| **Heimdall API** | External. Exchanges credentials and issues tokens through UC-76. Tokens are then validated locally by Fortuna on domain request paths. |
 | **Pluggy** | External. The open-banking aggregator synchronization pulls from. |
 | **Banco Central do Brasil (PTAX)** | External. Publishes the exchange rates the rate synchronization job fetches. |
 | **Job Runner** | Internal. Executes accepted jobs off the request thread; the actor of the flows that no human triggers directly. |
@@ -46,7 +47,7 @@ graph LR
     end
 
     subgraph Identity
-        UC01[UC-01 … UC-06<br/>Token access, profile,<br/>local account]
+        UC01[UC-01 … UC-06, UC-76<br/>Token access, profile,<br/>local account and exchange]
     end
 
     subgraph Currency
@@ -2394,6 +2395,45 @@ graph LR
 
 ---
 
+### UC-76: Authenticate through the Fortuna API
+
+| Field | Value |
+| --- | --- |
+| **ID** | UC-76 |
+| **Name** | Authenticate through the Fortuna API |
+| **Actors** | Account Owner, Instance Administrator, Fortuna Client, Heimdall API |
+| **Description** | Exchange credentials with Heimdall through Fortuna so clients depend on one API surface |
+| **Preconditions** | The Heimdall base address and Fortuna scope public identifier are configured |
+| **Postconditions** | The caller holds a Heimdall token or two-factor challenge; Fortuna state is unchanged |
+| **Requirements** | FR-ID-17 through FR-ID-24 |
+
+**Main Flow**
+
+1. The client submits email/password credentials or a Google ID token to Fortuna.
+2. Fortuna attaches its configured Heimdall scope identifier; the caller cannot select another scope.
+3. Fortuna forwards the exchange to Heimdall over TLS without storing or logging the credential.
+4. Fortuna returns the issued token, or the two-factor challenge in place of a token.
+5. A caller with a challenge submits an authenticator, email or recovery code to obtain the full token.
+6. A Google-authenticated caller may forward their authenticated sign-out through Fortuna.
+
+**Alternative Flows**
+
+| ID | Condition | Outcome |
+| --- | --- | --- |
+| AF-01 | Heimdall rejects credentials for any reason | `401 Unauthorized` with one non-enumerating message |
+| AF-02 | The account has two-factor authentication active | `200 OK` with a challenge and available methods, and no full token |
+| AF-03 | A second factor is wrong, expired, spent, or the challenge is forged | `401 Unauthorized`, all alike |
+| AF-04 | Heimdall is unreachable or returns a server error | `503 Service Unavailable`; upstream details are not returned |
+| AF-05 | Heimdall address or scope configuration is absent or malformed | Startup is refused |
+| AF-06 | A request is malformed | `400 Bad Request`, naming the invalid field |
+| AF-07 | Sign-out is called without a valid bearer token | `401 Unauthorized` before Heimdall is called |
+
+The anonymous login, Google sign-in and two-factor verification endpoints are limited to ten
+attempts per source address per minute. UC-01 remains the request-path token validator: after a token
+is issued, Fortuna validates it locally and does not call Heimdall to authorize domain requests.
+
+---
+
 ## 3. Use Case — Requirements Traceability
 
 | Use Case | Requirements |
@@ -2472,6 +2512,7 @@ graph LR
 | UC-72: View Committed Obligations | FR-PJ-04 |
 | UC-73: Export a Data Set | FR-EX-01, FR-EX-02, FR-EX-03, FR-EX-05, FR-EX-06, FR-EX-07 |
 | UC-74: Retrieve a Completed Export | FR-EX-04, FR-EX-08 |
+| UC-76: Authenticate through the Fortuna API | FR-ID-17 through FR-ID-24 |
 
 Every `FR-<AREA>-xx` defined in [System Requirements §3](System%20Requirements%20Document.md)
 appears at least once above. The platform requirements `IR-xx` and the health check requirements

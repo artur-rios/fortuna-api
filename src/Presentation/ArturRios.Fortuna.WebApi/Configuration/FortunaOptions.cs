@@ -36,6 +36,8 @@ public sealed record FortunaOptions
     public required string Locale { get; init; }
     public bool LocalAuthEnabled { get; init; }
     public int LocalAuthRecoveryCodeCount { get; init; }
+    public required Uri HeimdallBaseUri { get; init; }
+    public Guid HeimdallScopeId { get; init; }
     public string? PluggyClientId { get; init; }
     public string? PluggyClientSecret { get; init; }
     public Uri? PluggyBaseUri { get; init; }
@@ -119,6 +121,12 @@ public sealed record FortunaOptions
                 read("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"),
                 "FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT",
                 10),
+            HeimdallBaseUri = RequiredAbsoluteUri(
+                read("FORTUNA_HEIMDALL_BASE_URL"),
+                "FORTUNA_HEIMDALL_BASE_URL"),
+            HeimdallScopeId = RequiredGuid(
+                read("FORTUNA_HEIMDALL_SCOPE_ID"),
+                "FORTUNA_HEIMDALL_SCOPE_ID"),
             PluggyClientId = read("FORTUNA_PLUGGY_CLIENT_ID"),
             PluggyClientSecret = read("FORTUNA_PLUGGY_CLIENT_SECRET"),
             PluggyBaseUri = OptionalAbsoluteUri(
@@ -325,6 +333,16 @@ public sealed record FortunaOptions
 
         return uri;
     }
+
+    private static Uri RequiredAbsoluteUri(string? value, string key) =>
+        OptionalAbsoluteUri(value, key) ??
+        throw new InvalidOperationException($"Required environment variable '{key}' is not set.");
+
+    private static Guid RequiredGuid(string? value, string key) =>
+        Guid.TryParse(value, out var parsed) && parsed != Guid.Empty
+            ? parsed
+            : throw new InvalidOperationException(
+                $"Required environment variable '{key}' must be a non-empty GUID.");
 
     private static string SpecificLocale(string? value)
     {
