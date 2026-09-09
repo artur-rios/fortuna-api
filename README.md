@@ -48,7 +48,7 @@ the `requirements/` documents for the normative detail.
 | [Business Rules](docs/initial/Business%20Rules.md) | Domain entities, relationships, and the `BR-01` … `BR-41` rules. |
 | [Vision Document](docs/requirements/Vision%20Document.md) | Stakeholders, positioning, and the `F-01` … `F-20` features. |
 | [System Requirements Document](docs/requirements/System%20Requirements%20Document.md) | The `FR-<AREA>-xx` and `NFR-xx` requirements, data model, endpoint surface, authorization matrix and traceability. |
-| [Use Case Specification Document](docs/requirements/Use%20Case%20Specification%20Document.md) | The `UC-01` … `UC-74` use cases, their flows, and their `AF-xx` alternatives. |
+| [Use Case Specification Document](docs/requirements/Use%20Case%20Specification%20Document.md) | The application use cases, their flows, and their `AF-xx` alternatives. |
 | [Development Workflow Document](docs/requirements/Development%20Workflow%20Document.md) | The normative branch pattern, issue lifecycle, approval gates, and Definition of Done. |
 | [Testing Specification Document](docs/requirements/Testing%20Specification%20Document.md) | How tests are written, named, and run. |
 | [Technology Stack Document](docs/requirements/Technology%20Stack%20Document.md) | The single source of truth for every technology and version. |
@@ -134,8 +134,8 @@ and the [project board](https://github.com/users/artur-rios/projects/12) are the
 
 ## Backlog
 
-76 issues: one per use case, plus one foundation issue. One use case = one branch = one issue = one
-pull request.
+The backlog tracks one branch and one pull request per issue. Use cases retain the stricter invariant:
+one use case = one branch = one issue = one pull request.
 
 ### M-01 — Foundation
 
@@ -159,6 +159,7 @@ pull request.
 | [#11](https://github.com/artur-rios/fortuna-api/issues/11) | ✅ UC-10: View Figures in a Display Currency | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#53](https://github.com/artur-rios/fortuna-api/issues/53) | ✅ UC-52: Delete and Restore a Record | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#54](https://github.com/artur-rios/fortuna-api/issues/54) | ✅ UC-53: Read the Audit Trail | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#153](https://github.com/artur-rios/fortuna-api/issues/153) | ✅ UC-76: Authenticate through the Fortuna API | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ### M-03 — Holdings
 

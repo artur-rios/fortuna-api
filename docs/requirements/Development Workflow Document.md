@@ -4,7 +4,7 @@
 
 This document defines **how a use case moves from backlog to merged** — the branch, the issue status
 transitions, the testing gate, and the pull request. It is the standard every contributor, human or
-agent, follows so that each use case (UC-01 … UC-74 in the
+agent, follows so that each use case (UC-01 … UC-74 and UC-76 onward in the
 [Use Case Specification Document](Use%20Case%20Specification%20Document.md), plus UC-75 in the
 [Operations & Infrastructure Document](Operations%20%26%20Infrastructure%20Document.md)) is
 delivered the same way.

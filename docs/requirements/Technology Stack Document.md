@@ -159,7 +159,7 @@ by unit tests against a fake. Everything that writes goes through a repository, 
 | --- | --- | --- | --- |
 | Input validation | **FluentValidation** | latest stable at implementation time | One `IValidator<T>` per command or query input, invoked inside the handler before any work. |
 | Logging | **Serilog** | latest stable at implementation time | Structured JSON logging via `Host.UseSerilog()`. Monetary amounts, account identifiers and attachment contents are never logged. |
-| Authentication | **JWT validation** via `ArturRios.Util.WebApi` (namespace `ArturRios.Jwt`) | latest stable at implementation time | Tokens are **issued by Heimdall and validated locally by Fortuna** against the shared issuer, audience and signing configuration. Fortuna makes no call to Heimdall on the request path. |
+| Authentication | **JWT validation** via `ArturRios.Util.WebApi` (namespace `ArturRios.Jwt`) | latest stable at implementation time | Tokens are **issued by Heimdall and validated locally by Fortuna** against the shared issuer, audience and signing configuration. Credential exchanges use a typed framework `HttpClient`; token validation never calls Heimdall. |
 | Authorization | Role attributes and middleware from `ArturRios.Util.WebApi`, plus per-record ownership checks | latest stable at implementation time | The role gate is the library's; the ownership gate is Fortuna's own and applies to every domain endpoint. |
 | Local (offline) authentication | Fortuna's own implementation over `ArturRios.Util` hashing and `CustomRandom` | latest stable at implementation time | Desktop-only. Recovery codes are hashed, never stored or returned in the clear after the response that mints them. |
 | Result / error model | `DataOutput<T>` (namespace `ArturRios.Output`) | latest stable at implementation time | Handlers return success, errors, messages and data rather than throwing; `ResponseResolver` maps that to an HTTP response. |
@@ -171,7 +171,7 @@ by unit tests against a fake. Everything that writes goes through a repository, 
 
 | Service | Role | Integration |
 | --- | --- | --- |
-| **Heimdall API** | Identity, users, credentials, recovery, multi-factor | Fortuna registers as a Heimdall **scope** and validates Heimdall-issued JWTs locally (§6). It calls Heimdall on no request path. |
+| **Heimdall API** | Identity, users, credentials, recovery, multi-factor | Fortuna registers as a Heimdall **scope**. A typed `HttpClient` proxies explicit credential, Google and two-factor exchanges while attaching that scope; successful tokens are validated locally on every later request. Credentials are neither logged nor retained. |
 | **Pluggy** | Open-banking aggregation — accounts, cards, transactions | A typed HTTP client over Pluggy's REST API, behind Fortuna's own ingestion-source abstraction. Fortuna stores the item reference and access token, never a bank credential. |
 | **Banco Central do Brasil — PTAX** | Official exchange rates | The free, key-less Olinda OData service. It publishes both *cotação* (currency ↔ BRL) and *paridade* (currency ↔ USD), so non-BRL cross rates are derivable from this one source. Rates are fetched on a schedule and cached; a user may always override with a manually entered rate. |
 | **MEGA S4** | S3-compatible object storage for attachments | `AWSSDK.S3` against a configured endpoint (§4.3). |

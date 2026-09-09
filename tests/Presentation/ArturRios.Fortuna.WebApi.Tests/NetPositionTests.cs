@@ -30,6 +30,8 @@ public sealed class NetPositionTests : IAsyncLifetime
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateOnly AsOf = new(2026, 9, 8);
+    private static readonly DateTimeOffset CreatedAt =
+        new(2026, 9, 7, 12, 0, 0, TimeSpan.Zero);
     private readonly PostgreSqlContainer database =
         new PostgreSqlBuilder("postgres:17-alpine").Build();
 
@@ -155,29 +157,29 @@ public sealed class NetPositionTests : IAsyncLifetime
             .Include(item => item.Currency)
             .Where(item => item.PublicId == brlAccountId || item.PublicId == usdAccountId)
             .ToDictionaryAsync(item => item.PublicId);
-        var category = new Category(user, "General", DateTimeOffset.UtcNow);
+        var category = new Category(user, "General", CreatedAt);
         var card = new CreditCard(user, "Card", "Issuer", brl, 1000m, 20, 5, null,
-            DateTimeOffset.UtcNow);
+            CreatedAt);
         var brlInvestment = new Investment(user, "Fund", null, InvestmentType.Fund, brl,
-            DateTimeOffset.UtcNow);
+            CreatedAt);
         var usdInvestment = new Investment(user, "Stock", null, InvestmentType.Equity, usd,
-            DateTimeOffset.UtcNow);
+            CreatedAt);
         context.AddRange(category, card, brlInvestment, usdInvestment);
         await context.SaveChangesAsync();
         context.AddRange(
             new FinancialTransaction(user, accounts[brlAccountId], category,
-                TransactionDirection.Earning, 5m, AsOf, DateTimeOffset.UtcNow),
+                TransactionDirection.Earning, 5m, AsOf, CreatedAt),
             new FinancialTransaction(user, accounts[brlAccountId], category,
-                TransactionDirection.Earning, 999m, AsOf.AddDays(1), DateTimeOffset.UtcNow),
+                TransactionDirection.Earning, 999m, AsOf.AddDays(1), CreatedAt),
             new FinancialTransaction(user, card, category,
-                TransactionDirection.Expense, 25m, AsOf, DateTimeOffset.UtcNow),
-            new InvestmentValuation(brlInvestment, 50m, AsOf, DateTimeOffset.UtcNow),
+                TransactionDirection.Expense, 25m, AsOf, CreatedAt),
+            new InvestmentValuation(brlInvestment, 50m, AsOf, CreatedAt),
             new InvestmentMovement(usdInvestment, InvestmentMovementType.Contribution, 10m,
-                AsOf.AddDays(-2), DateTimeOffset.UtcNow),
+                AsOf.AddDays(-2), CreatedAt),
             new InvestmentMovement(usdInvestment, InvestmentMovementType.Withdrawal, 15m,
-                AsOf, DateTimeOffset.UtcNow),
+                AsOf, CreatedAt),
             new InvestmentMovement(usdInvestment, InvestmentMovementType.Contribution, 999m,
-                AsOf.AddDays(1), DateTimeOffset.UtcNow));
+                AsOf.AddDays(1), CreatedAt));
         await context.SaveChangesAsync();
     }
 

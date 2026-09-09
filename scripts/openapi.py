@@ -32,6 +32,8 @@ def generate(output):
         "FORTUNA_AUTH_TOKEN_SECRET": "fortuna-openapi-signing-key-with-enough-entropy",
         "FORTUNA_AUTH_TOKEN_ISSUER": "heimdall-openapi",
         "FORTUNA_AUTH_TOKEN_AUDIENCE": "fortuna-openapi",
+        "FORTUNA_HEIMDALL_BASE_URL": "https://heimdall.example.test/",
+        "FORTUNA_HEIMDALL_SCOPE_ID": "00000000-0000-0000-0000-000000000076",
         "FORTUNA_DEFAULT_DISPLAY_CURRENCY": "BRL",
         "FORTUNA_LOCALE": "pt-BR",
         "FORTUNA_LOCAL_AUTH_ENABLED": "false",

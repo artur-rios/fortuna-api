@@ -28,6 +28,7 @@ using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Integration.Exports;
 using ArturRios.Fortuna.Integration.Rates;
 using ArturRios.Fortuna.Integration.Storage;
+using ArturRios.Fortuna.Integration.Security;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Investments;
@@ -47,6 +48,7 @@ using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.Shared.Projections;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.WebApi.Configuration;
+using ArturRios.Fortuna.WebApi.Controllers;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Services;
 using ArturRios.Fortuna.Query.Handlers;
@@ -62,6 +64,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -69,6 +72,7 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var options = FortunaOptions.From(Environment.GetEnvironmentVariable);
 ConfigureLogging(options);
@@ -318,6 +322,12 @@ try
         options.LocalAuthRecoveryCodeCount,
         options.DefaultDisplayCurrency,
         options.Locale));
+    builder.Services.AddSingleton(new HeimdallAuthOptions(options.HeimdallScopeId));
+    builder.Services.AddHttpClient<IHeimdallAuthGateway, HeimdallAuthGateway>(client =>
+    {
+        client.BaseAddress = options.HeimdallBaseUri;
+        client.Timeout = TimeSpan.FromSeconds(10);
+    });
     builder.Services.AddSingleton(new RateSyncOptions(
         options.RatesSourceBaseUri,
         options.RatesSyncCron,
@@ -331,6 +341,20 @@ try
     builder.Services.AddSingleton<ILocalRecoveryCodeGenerator, LocalRecoveryCodeGenerator>();
     builder.Services.AddScoped<IConnectionAccessTokenProtector, ConnectionAccessTokenProtector>();
     builder.Services.AddScoped<CommandMediator>();
+    builder.Services.AddScoped<IValidator<LoginThroughApiCommand>,
+        LoginThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<LoginThroughApiCommand,
+        LoginThroughApiCommandOutput>, LoginThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<GoogleSignInThroughApiCommand>,
+        GoogleSignInThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<GoogleSignInThroughApiCommand,
+        GoogleSignInThroughApiCommandOutput>, GoogleSignInThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<VerifyTwoFactorThroughApiCommand>,
+        VerifyTwoFactorThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<VerifyTwoFactorThroughApiCommand,
+        VerifyTwoFactorThroughApiCommandOutput>, VerifyTwoFactorThroughApiCommandHandler>();
+    builder.Services.AddScoped<ICommandHandlerAsync<GoogleSignOutThroughApiCommand,
+        GoogleSignOutThroughApiCommandOutput>, GoogleSignOutThroughApiCommandHandler>();
     builder.Services.AddScoped<IValidator<CreateLocalAccountCommand>, CreateLocalAccountCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateLocalAccountCommand,
         CreateLocalAccountCommandOutput, CreateLocalAccountCommandHandler>();
@@ -747,6 +771,19 @@ try
         authorization.FallbackPolicy = new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser()
             .Build());
+    builder.Services.AddRateLimiter(rateLimiting =>
+    {
+        rateLimiting.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        rateLimiting.AddPolicy(AuthController.AnonymousRateLimitPolicy, context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
+    });
     builder.Services.AddSingleton(jwtConfiguration);
     builder.Services.AddSingleton<JwtHandler>();
     builder.Services.AddSingleton<FortunaIdentityMapper>();
@@ -786,6 +823,7 @@ try
 
     app.UseSerilogRequestLogging(logging =>
         logging.GetLevel = (_, _, _) => LogEventLevel.Information);
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseMiddleware<AuthenticatedActorMiddleware>();
     app.UseMiddleware<UserProfileProvisioningMiddleware>();
