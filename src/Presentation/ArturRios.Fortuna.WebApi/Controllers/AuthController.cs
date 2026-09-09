@@ -21,6 +21,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         {
             [HeimdallAuthMessages.AuthenticationRejected] = StatusCodes.Status401Unauthorized,
             [HeimdallAuthMessages.TwoFactorRejected] = StatusCodes.Status401Unauthorized,
+            [HeimdallAuthMessages.TwoFactorNotFound] = StatusCodes.Status404NotFound,
             [HeimdallAuthMessages.ServiceUnavailable] = StatusCodes.Status503ServiceUnavailable
         };
 
@@ -62,10 +63,108 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     {
         var command = new GoogleSignOutThroughApiCommand
         {
-            BearerToken = Request.Headers.Authorization.ToString()["Bearer ".Length..]
+            BearerToken = BearerToken()
         };
         var result = await commandMediator.ExecuteCommandAsync<
             GoogleSignOutThroughApiCommand, GoogleSignOutThroughApiCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
+
+    [HttpPost("password-recovery")]
+    [AllowAnonymous]
+    [EnableRateLimiting(AnonymousRateLimitPolicy)]
+    public async Task<ActionResult<DataOutput<RequestPasswordRecoveryThroughApiCommandOutput?>>>
+        RequestPasswordRecovery([FromBody] RequestPasswordRecoveryThroughApiCommand command)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            RequestPasswordRecoveryThroughApiCommand,
+            RequestPasswordRecoveryThroughApiCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("password-reset")]
+    [AllowAnonymous]
+    [EnableRateLimiting(AnonymousRateLimitPolicy)]
+    public async Task<ActionResult<DataOutput<ResetPasswordThroughApiCommandOutput?>>> ResetPassword(
+        [FromBody] ResetPasswordThroughApiCommand command)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            ResetPasswordThroughApiCommand, ResetPasswordThroughApiCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("verify-email")]
+    [AllowAnonymous]
+    [EnableRateLimiting(AnonymousRateLimitPolicy)]
+    public async Task<ActionResult<DataOutput<VerifyEmailThroughApiCommandOutput?>>> VerifyEmail(
+        [FromBody] VerifyEmailThroughApiCommand command)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            VerifyEmailThroughApiCommand, VerifyEmailThroughApiCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<ActionResult<DataOutput<ResendVerificationThroughApiCommandOutput?>>>
+        ResendVerification()
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            ResendVerificationThroughApiCommand, ResendVerificationThroughApiCommandOutput>(
+                new() { BearerToken = BearerToken() });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpGet("2fa")]
+    public async Task<ActionResult<DataOutput<GetTwoFactorStatusThroughApiCommandOutput?>>>
+        GetTwoFactorStatus()
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            GetTwoFactorStatusThroughApiCommand, GetTwoFactorStatusThroughApiCommandOutput>(
+                new() { BearerToken = BearerToken() });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("2fa/enable")]
+    public async Task<ActionResult<DataOutput<EnableTwoFactorThroughApiCommandOutput?>>> EnableTwoFactor(
+        [FromBody] EnableTwoFactorThroughApiCommand command)
+    {
+        command.BearerToken = BearerToken();
+        var result = await commandMediator.ExecuteCommandAsync<
+            EnableTwoFactorThroughApiCommand, EnableTwoFactorThroughApiCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("2fa/confirm")]
+    public async Task<ActionResult<DataOutput<ConfirmTwoFactorThroughApiCommandOutput?>>> ConfirmTwoFactor(
+        [FromBody] ConfirmTwoFactorThroughApiCommand command)
+    {
+        command.BearerToken = BearerToken();
+        var result = await commandMediator.ExecuteCommandAsync<
+            ConfirmTwoFactorThroughApiCommand, ConfirmTwoFactorThroughApiCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("2fa/disable")]
+    public async Task<ActionResult<DataOutput<DisableTwoFactorThroughApiCommandOutput?>>> DisableTwoFactor(
+        [FromBody] DisableTwoFactorThroughApiCommand command)
+    {
+        command.BearerToken = BearerToken();
+        var result = await commandMediator.ExecuteCommandAsync<
+            DisableTwoFactorThroughApiCommand, DisableTwoFactorThroughApiCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("2fa/recovery-codes/regenerate")]
+    public async Task<ActionResult<DataOutput<RegenerateRecoveryCodesThroughApiCommandOutput?>>>
+        RegenerateRecoveryCodes([FromBody] RegenerateRecoveryCodesThroughApiCommand command)
+    {
+        command.BearerToken = BearerToken();
+        var result = await commandMediator.ExecuteCommandAsync<
+            RegenerateRecoveryCodesThroughApiCommand,
+            RegenerateRecoveryCodesThroughApiCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    private string BearerToken() =>
+        Request.Headers.Authorization.ToString()["Bearer ".Length..];
 }

@@ -160,6 +160,7 @@ one use case = one branch = one issue = one pull request.
 | [#53](https://github.com/artur-rios/fortuna-api/issues/53) | ✅ UC-52: Delete and Restore a Record | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#54](https://github.com/artur-rios/fortuna-api/issues/54) | ✅ UC-53: Read the Audit Trail | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#153](https://github.com/artur-rios/fortuna-api/issues/153) | ✅ UC-76: Authenticate through the Fortuna API | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#154](https://github.com/artur-rios/fortuna-api/issues/154) | ✅ UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ### M-03 — Holdings
 

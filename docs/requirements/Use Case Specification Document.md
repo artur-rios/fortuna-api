@@ -15,8 +15,8 @@ Alternative flows are numbered `AF-01` upward **within** each use case, restarti
 
 Three conventions hold across every use case and are therefore not repeated in each one:
 
-- **Authentication.** Every use case except UC-03, UC-04, UC-05 and UC-76's explicitly anonymous
-  exchanges requires a valid token
+- **Authentication.** Every use case except UC-03, UC-04, UC-05, UC-76's explicitly anonymous
+  exchanges, and UC-77's recovery, reset and verification exchanges requires a valid token
   (`FR-ID-01`, `FR-ID-03`). A request without one is refused with `401 Unauthorized`.
 - **Isolation.** Every use case operates on the acting user's own records (`FR-ID-07`). A request
   naming a record owned by somebody else is refused with `404 Not Found` — the same response as for
@@ -32,7 +32,7 @@ Three conventions hold across every use case and are therefore not repeated in e
 | **Local Account Holder** | The same authority, on a desktop installation authenticated by a Fortuna-owned local account rather than by Heimdall. Wherever a use case says "Account Owner", a Local Account Holder may act identically — except where a network source is required. |
 | **Instance Administrator** | Operates a shared deployment. Configures the instance and reads operational status; appears in these use cases only as the actor a domain request is **refused** for. |
 | **Fortuna Client** | The Flutter application. The caller through which every human actor acts. |
-| **Heimdall API** | External. Exchanges credentials and issues tokens through UC-76. Tokens are then validated locally by Fortuna on domain request paths. |
+| **Heimdall API** | External. Exchanges credentials, issues tokens and manages the connected identity through UC-76 and UC-77. Tokens are then validated locally by Fortuna on domain request paths. |
 | **Pluggy** | External. The open-banking aggregator synchronization pulls from. |
 | **Banco Central do Brasil (PTAX)** | External. Publishes the exchange rates the rate synchronization job fetches. |
 | **Job Runner** | Internal. Executes accepted jobs off the request thread; the actor of the flows that no human triggers directly. |
@@ -47,7 +47,7 @@ graph LR
     end
 
     subgraph Identity
-        UC01[UC-01 … UC-06, UC-76<br/>Token access, profile,<br/>local account and exchange]
+        UC01[UC-01 … UC-06, UC-76 … UC-77<br/>Token access, profile,<br/>credentials and exchange]
     end
 
     subgraph Currency
@@ -2434,6 +2434,50 @@ is issued, Fortuna validates it locally and does not call Heimdall to authorize 
 
 ---
 
+### UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API
+
+| Field | Value |
+| --- | --- |
+| **ID** | UC-77 |
+| **Name** | Manage Credentials and Two-Factor Authentication through the Fortuna API |
+| **Actors** | Account Owner, Instance Administrator, Fortuna Client, Heimdall API |
+| **Description** | Recover a connected identity and manage its email verification and two-factor configuration through Fortuna |
+| **Preconditions** | The Heimdall base address and Fortuna scope public identifier are configured; authenticated operations carry a valid token |
+| **Postconditions** | Heimdall has applied the requested identity change; Fortuna state is unchanged |
+| **Requirements** | FR-ID-25 through FR-ID-35 |
+
+**Main Flow**
+
+1. An anonymous caller requests password recovery, resets a password with a token, or verifies an
+   address with a token; Fortuna rate-limits the request and attaches the configured scope where
+   Heimdall requires it.
+2. An authenticated caller may resend verification, inspect two-factor status, begin setup, confirm
+   it, disable it, or regenerate recovery codes.
+3. Fortuna forwards authenticated bearer tokens only as authorization headers and credentials only
+   in the explicit TLS request body.
+4. Setup returns an authenticator URI or email-code indication. Confirmation and regeneration return
+   recovery codes exactly once; status never returns a secret.
+5. Fortuna returns Heimdall's data in its normal `DataOutput<T>` response shape without persisting any
+   credential, reset token, factor, or recovery code.
+
+**Alternative Flows**
+
+| ID | Condition | Outcome |
+| --- | --- | --- |
+| AF-01 | Recovery is requested for an address nobody holds | `200 OK` with the same message as a registered address |
+| AF-02 | A reset or verification token is invalid or expired | `400 Bad Request` without echoing the token |
+| AF-03 | An authenticated endpoint is called without a valid bearer token | `401 Unauthorized` before Heimdall is called |
+| AF-04 | Confirmation or disabling carries a wrong password, wrong code, expired code, or spent factor | `401 Unauthorized`, without distinguishing or echoing the secret |
+| AF-05 | Disabling or recovery-code regeneration is requested with no active setup | `404 Not Found` |
+| AF-06 | Heimdall is unreachable or returns a server error | `503 Service Unavailable`; upstream details are not returned |
+| AF-07 | A request is malformed | `400 Bad Request`, and Heimdall is not called |
+
+The connected Heimdall identity and the desktop local account remain separate. UC-77 does not add a
+password-reset route to `api/local-accounts`. Every anonymous UC-77 endpoint uses the same limit of
+ten attempts per source address per minute as UC-76.
+
+---
+
 ## 3. Use Case — Requirements Traceability
 
 | Use Case | Requirements |
@@ -2513,6 +2557,7 @@ is issued, Fortuna validates it locally and does not call Heimdall to authorize 
 | UC-73: Export a Data Set | FR-EX-01, FR-EX-02, FR-EX-03, FR-EX-05, FR-EX-06, FR-EX-07 |
 | UC-74: Retrieve a Completed Export | FR-EX-04, FR-EX-08 |
 | UC-76: Authenticate through the Fortuna API | FR-ID-17 through FR-ID-24 |
+| UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35 |
 
 Every `FR-<AREA>-xx` defined in [System Requirements §3](System%20Requirements%20Document.md)
 appears at least once above. The platform requirements `IR-xx` and the health check requirements
