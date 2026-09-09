@@ -10,6 +10,7 @@ COPY src/Application/ArturRios.Fortuna.Command/ArturRios.Fortuna.Command.csproj 
 COPY src/Application/ArturRios.Fortuna.Query/ArturRios.Fortuna.Query.csproj src/Application/ArturRios.Fortuna.Query/
 COPY src/Application/ArturRios.Fortuna.Shared/ArturRios.Fortuna.Shared.csproj src/Application/ArturRios.Fortuna.Shared/
 COPY src/Infrastructure/ArturRios.Fortuna.Data/ArturRios.Fortuna.Data.csproj src/Infrastructure/ArturRios.Fortuna.Data/
+COPY src/Infrastructure/ArturRios.Fortuna.Data.Sqlite.Migrations/ArturRios.Fortuna.Data.Sqlite.Migrations.csproj src/Infrastructure/ArturRios.Fortuna.Data.Sqlite.Migrations/
 COPY src/Infrastructure/ArturRios.Fortuna.Integration/ArturRios.Fortuna.Integration.csproj src/Infrastructure/ArturRios.Fortuna.Integration/
 COPY src/Presentation/ArturRios.Fortuna.WebApi/ArturRios.Fortuna.WebApi.csproj src/Presentation/ArturRios.Fortuna.WebApi/
 RUN dotnet restore src/Presentation/ArturRios.Fortuna.WebApi/ArturRios.Fortuna.WebApi.csproj -m:1
