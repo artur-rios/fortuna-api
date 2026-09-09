@@ -20,7 +20,8 @@ Windows, Linux, the browser and mobile is a separate repository and a separate c
   the individual transactions behind any figure.
 - **Projects the future** from recurring commitments, unbilled installments and statements due.
 - **Exports** to CSV, Excel and PDF, and files **attachments** against transactions.
-- Runs **offline on a desktop**, or **multi-user on a shared instance**, from the same code.
+- Runs **offline on a desktop**, or **multi-user on a shared instance**, with the same client-facing
+  contracts across its native and managed cores.
 
 ## What it doesn't do
 
@@ -57,7 +58,8 @@ the `requirements/` documents for the normative detail.
 ## Installation
 
 Prerequisites: the **.NET 10 SDK** and either a reachable **PostgreSQL** instance for a shared
-deployment or local **SQLite** storage for desktop offline mode. Docker is required for the
+deployment or local **SQLite** storage for desktop offline mode. Building the in-process desktop
+core also requires the stable **Rust** toolchain. Docker is required for the
 container workflow — see the
 [Technology Stack Document](docs/requirements/Technology%20Stack%20Document.md) and the
 [Operations & Infrastructure Document](docs/requirements/Operations%20%26%20Infrastructure%20Document.md).
@@ -100,13 +102,19 @@ FORTUNA_RUN_MIGRATIONS=true
 PostgreSQL remains the server default. Each provider has its own EF migration history while sharing
 the domain model; changing providers requires no application-code change.
 
+The desktop client can instead embed the native core without starting the HTTP host or opening a
+listening socket. It ships `fortuna_core.dll` on Windows or `libfortuna_core.so` on Linux together
+with the generated C header. The native core owns its Rust domain/persistence implementation and
+SQLite schema; see [`native/README.md`](native/README.md) for the ABI, ownership and build contract.
+
 ## Testing
 
-The following command runs the complete suite described in the
+The following commands run the complete suite described in the
 [Testing Specification Document](docs/requirements/Testing%20Specification%20Document.md):
 
 ```bash
 dotnet test src/ArturRios.Fortuna.sln -m:1
+cargo test --manifest-path native/fortuna-core/Cargo.toml --locked
 ```
 
 The suite covers **unit** tests over handlers, validators and domain behavior, and **functional**

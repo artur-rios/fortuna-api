@@ -335,6 +335,7 @@ dotnet test
 | Functional only | `dotnet test --filter "Category=Functional"` |
 | With coverage | `dotnet test --collect:"XPlat Code Coverage"` |
 | Coverage report and threshold | `python scripts/coverage.py` |
+| Native core boundary | `cargo test --manifest-path native/fortuna-core/Cargo.toml --locked` |
 
 The `Category` trait comes from the `[UnitFact]` / `[UnitTheory]` and `[FunctionalFact]` /
 `[FunctionalTheory]` attributes in `ArturRios.Util.Test`, so the filter needs no per-project
@@ -343,3 +344,8 @@ is missed by both filters, which is why it is not used.
 
 Running the unit suite first is the habit worth keeping: it costs seconds, while the functional suite
 pulls and starts a database container.
+
+The native command is a required part of the full repository suite. It calls
+the exported lifecycle, authentication and read functions through their C-compatible signatures,
+including every status family, concurrent calls, response ownership and exact decimal serialization.
+CI runs it on Windows and Linux and separately builds each release library.

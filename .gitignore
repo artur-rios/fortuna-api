@@ -12,3 +12,4 @@ src/Presentation/ArturRios.Fortuna.WebApi/Environments/.env.*
 .vscode/
 attachments/
 logs/
+**/target/
