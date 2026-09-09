@@ -14,6 +14,8 @@ parse_deps = false
 [export]
 include = [
   "FORTUNA_STATUS_OK",
+  "FORTUNA_STATUS_CREATED",
+  "FORTUNA_STATUS_ACCEPTED",
   "FORTUNA_STATUS_BAD_REQUEST",
   "FORTUNA_STATUS_UNAUTHORIZED",
   "FORTUNA_STATUS_NOT_FOUND",
@@ -24,6 +26,7 @@ include = [
   "fortuna_shutdown",
   "fortuna_version",
   "fortuna_health",
+  "fortuna_capabilities",
   "fortuna_api_local_accounts_authenticate",
   "fortuna_api_accounts_get_by_id",
   "fortuna_string_free",

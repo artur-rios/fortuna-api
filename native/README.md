@@ -43,19 +43,38 @@ are synchronized.
 | `fortuna_shutdown` | `{}` | `200` |
 | `fortuna_version` | `{}` | `200` |
 | `fortuna_health` | `{}` | `200` after initialization |
+| `fortuna_capabilities` | `{}` | `200`; initialization is not required |
 | `fortuna_api_local_accounts_authenticate` | HTTP authentication body: `{"name":"...","secret":"..."}` | `200` |
 | `fortuna_api_accounts_get_by_id` | `{"token":"...","id":"uuid","includeDeleted":false}` | `200` |
 
-The account read wraps the HTTP route value, query value, and authorization metadata in its one ABI
-request object; its response is the same `DataOutput<FinancialAccountOutput?>` body returned by
-`GET /api/accounts/{id}`. Local tokens are opaque, are stored only as SHA-256 hashes, expire at the
-configured lifetime, and are invalidated at shutdown. Credential-bearing request copies are
-zeroized and never logged.
+The header additionally contains 110 concrete route functions generated from the checked-in OpenAPI
+contract. Their deterministic names end in the lowercase HTTP method; for example,
+`fortuna_api_transactions_by_id_put` mirrors `PUT /api/transactions/{id}`. An authenticated call
+wraps transport metadata while leaving the HTTP body unchanged:
+
+```json
+{
+  "token": "opaque-local-token",
+  "route": { "id": "00000000-0000-0000-0000-000000000000" },
+  "query": { "includeDeleted": false },
+  "body": { "name": "Updated name" }
+}
+```
+
+`fortuna_capabilities` is the machine-readable registry. It includes each function's method, path,
+area and `longRunning` flag and explains why connected identity, Pluggy, remote rate synchronization
+and HTTP-host health routes are absent. Imports and exports return `202` with a persisted job and
+progress; job reads do not block the caller.
+
+Local tokens are opaque, are stored only as SHA-256 hashes, expire at the configured lifetime, and
+are invalidated at shutdown. Credential-bearing request copies are zeroized and never logged.
 
 ## Persistence boundary
 
 The native core owns tables prefixed `native_` and applies idempotent SQLite migrations during
 initialization. It does not use EF migrations or the .NET domain/application assemblies. Monetary
-amounts are stored as SQLite `TEXT` and parsed into arbitrary-precision JSON numbers, never through
-binary floating point. The initial schema exists to prove local authentication and one owned account
-read; issue #157 expands it with the rest of the offline operation surface.
+amounts retain their decimal JSON lexemes in SQLite `TEXT` documents and are parsed with arbitrary
+precision, never through binary floating point. The schema contains local profiles, credential and
+recovery-code hashes, owner-keyed offline records, append-only audit entries and monitorable
+operation jobs. Every record query includes the authenticated owner identifier even though a desktop
+installation normally has only one local user.

@@ -713,10 +713,23 @@ There is no balance column. A balance is always computed (FR-AC-07, FR-AC-08).
 
 ---
 
-## 5. API Endpoints Overview
+## 5. HTTP and Native Interface Overview
 
 Paths address entities by `PublicId`. Every endpoint requires a valid token except where noted, and
 every endpoint is scoped to the acting user (FR-ID-07).
+
+The tables below are also the source interface for desktop offline mode. The native build reads the
+checked-in OpenAPI document and exports one C function for each eligible method/path pair, using the
+deterministic name `fortuna_<path segments>_<method>` (route parameters become `by_<name>`). The C
+request is `{"token":"...","route":{...},"query":{...},"body":{...}}`; `body` is the unchanged
+HTTP JSON body. Anonymous local-account operations may pass that body directly. Every response uses
+the matching HTTP numeric status and camel-case output envelope.
+
+There are 110 generated offline route exports. `fortuna_capabilities` returns their method, path,
+area, symbol and long-running flag plus the unavailable route families. Connected `/api/auth/**`,
+Pluggy data-source and connection routes, remote exchange-rate synchronization and host-only health
+routes are deliberately not generated. The native equivalents for health and local recovery are
+`fortuna_health` and the recovery-code operations.
 
 ### 5.1 Identity Endpoints
 
@@ -891,13 +904,15 @@ every endpoint is scoped to the acting user (FR-ID-07).
 | NFR-25 | Maintainability | Merged line coverage shall not fall below **90%**, enforced in continuous integration and reproducibly on a developer machine |
 | NFR-26 | Portability | One `docker compose` invocation shall bring the instance up on Docker Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in the environment file supplied |
 | NFR-27 | Privacy | An export, an error message and a log line shall each contain only data the requesting user owns |
-| NFR-28 | Portability | Shared deployments shall use PostgreSQL and desktop offline deployments may use SQLite, selected only by configuration. Both providers shall use the same domain model and preserve exact monetary results |
+| NFR-28 | Portability | Shared deployments shall use the managed PostgreSQL persistence implementation and desktop offline deployments shall use the native SQLite persistence implementation. Both shall implement the same documented business model and preserve exact monetary results |
 | NFR-29 | Portability | Desktop offline mode shall be available as an in-process C ABI dynamic library on Windows x64 and Linux x64, without starting a process or opening a listening socket |
 | NFR-30 | Compatibility | The native ABI shall return HTTP-compatible numeric statuses and the same camel-case `DataOutput<T>` response shapes as corresponding HTTP operations; route, query and authorization metadata may be wrapped into the ABI's single JSON request object |
 | NFR-31 | Memory safety | Every native response, successful or failed, shall be owned by the library, released through one exported free function, and protected so no Rust panic unwinds across the C boundary |
 | NFR-32 | Concurrency | Native operations shall permit calls from concurrent background threads and synchronize lifecycle and authentication state without sharing an SQLite connection between calls |
 | NFR-33 | Security | The native core shall never log credentials, shall zeroize its credential-bearing request copies, and shall retain local session tokens only as cryptographic hashes until expiration or shutdown |
 | NFR-34 | Maintainability | The C header shall be generated from the exports, committed, drift-checked in continuous integration, and shipped with each Windows and Linux native artifact |
+| NFR-35 | Compatibility | The native build shall derive its offline operation registry from the checked-in OpenAPI contract, export one concrete symbol for every eligible method/path pair, and expose capability discovery that states both available and deliberately unavailable operations |
+| NFR-36 | Responsiveness | Native imports and exports shall return an accepted job with progress immediately; callers shall monitor completion through the generated job retrieval operations rather than block the calling thread |
 
 ---
 

@@ -19,6 +19,16 @@
 #define FORTUNA_STATUS_OK 200
 
 /**
+ * A resource was created successfully.
+ */
+#define FORTUNA_STATUS_CREATED 201
+
+/**
+ * Long-running work was accepted and can be monitored through its job route.
+ */
+#define FORTUNA_STATUS_ACCEPTED 202
+
+/**
  * The JSON request or initialization configuration is invalid.
  */
 #define FORTUNA_STATUS_BAD_REQUEST 400
@@ -51,6 +61,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
+
+/**
+ * Describe every route available to offline callers and every deliberately absent route.
+ * Initialization is not required. The response is library-owned and must be released with
+ * `fortuna_string_free`.
+ */
+int fortuna_capabilities(const char *request_json, char **response_json);
 
 /**
  * Initialize the native core from a UTF-8 JSON object.
@@ -113,6 +130,134 @@ int fortuna_api_accounts_get_by_id(const char *request_json, char **response_jso
  * this exact loaded library instance and must not have been freed previously.
  */
 void fortuna_string_free(char *response_json);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif  // __cplusplus
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
+
+/**
+ * Offline route exports generated from docs/openapi/fortuna.json.
+ * Request metadata uses {token, route, query, body}; body is the unchanged HTTP JSON body.
+ * Deliberately unavailable: /api/auth/** (Heimdall), /api/connections/** and
+ * GET /api/data-sources (Pluggy), POST /api/exchange-rates/sync (remote rate source),
+ * POST /api/local-accounts/password-reset (use recovery codes), and the HTTP-host health routes.
+ * Call fortuna_capabilities to discover the machine-readable availability contract.
+ */
+int fortuna_api_accounts_get(const char *request_json, char **response_json); /* GET /api/accounts */
+int fortuna_api_accounts_post(const char *request_json, char **response_json); /* POST /api/accounts */
+int fortuna_api_accounts_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/accounts/{id} */
+int fortuna_api_accounts_by_id_get(const char *request_json, char **response_json); /* GET /api/accounts/{id} */
+int fortuna_api_accounts_by_id_put(const char *request_json, char **response_json); /* PUT /api/accounts/{id} */
+int fortuna_api_accounts_by_id_balance_get(const char *request_json, char **response_json); /* GET /api/accounts/{id}/balance */
+int fortuna_api_accounts_by_id_hard_delete(const char *request_json, char **response_json); /* DELETE /api/accounts/{id}/hard */
+int fortuna_api_accounts_by_id_restore_post(const char *request_json, char **response_json); /* POST /api/accounts/{id}/restore */
+int fortuna_api_attachments_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/attachments/{id} */
+int fortuna_api_attachments_by_id_get(const char *request_json, char **response_json); /* GET /api/attachments/{id} */
+int fortuna_api_attachments_by_id_hard_delete(const char *request_json, char **response_json); /* DELETE /api/attachments/{id}/hard */
+int fortuna_api_audit_entries_get(const char *request_json, char **response_json); /* GET /api/audit-entries */
+int fortuna_api_budgets_get(const char *request_json, char **response_json); /* GET /api/budgets */
+int fortuna_api_budgets_post(const char *request_json, char **response_json); /* POST /api/budgets */
+int fortuna_api_budgets_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/budgets/{id} */
+int fortuna_api_budgets_by_id_get(const char *request_json, char **response_json); /* GET /api/budgets/{id} */
+int fortuna_api_budgets_by_id_put(const char *request_json, char **response_json); /* PUT /api/budgets/{id} */
+int fortuna_api_budgets_by_id_consumption_get(const char *request_json, char **response_json); /* GET /api/budgets/{id}/consumption */
+int fortuna_api_categories_get(const char *request_json, char **response_json); /* GET /api/categories */
+int fortuna_api_categories_post(const char *request_json, char **response_json); /* POST /api/categories */
+int fortuna_api_categories_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/categories/{id} */
+int fortuna_api_categories_by_id_get(const char *request_json, char **response_json); /* GET /api/categories/{id} */
+int fortuna_api_categories_by_id_put(const char *request_json, char **response_json); /* PUT /api/categories/{id} */
+int fortuna_api_categories_by_id_hard_delete(const char *request_json, char **response_json); /* DELETE /api/categories/{id}/hard */
+int fortuna_api_categories_by_id_reassign_post(const char *request_json, char **response_json); /* POST /api/categories/{id}/reassign */
+int fortuna_api_categories_by_id_restore_post(const char *request_json, char **response_json); /* POST /api/categories/{id}/restore */
+int fortuna_api_counterparties_get(const char *request_json, char **response_json); /* GET /api/counterparties */
+int fortuna_api_counterparties_post(const char *request_json, char **response_json); /* POST /api/counterparties */
+int fortuna_api_counterparties_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/counterparties/{id} */
+int fortuna_api_counterparties_by_id_put(const char *request_json, char **response_json); /* PUT /api/counterparties/{id} */
+int fortuna_api_counterparties_by_id_merge_post(const char *request_json, char **response_json); /* POST /api/counterparties/{id}/merge */
+int fortuna_api_counterparties_by_id_suggested_category_get(const char *request_json, char **response_json); /* GET /api/counterparties/{id}/suggested-category */
+int fortuna_api_credit_cards_get(const char *request_json, char **response_json); /* GET /api/credit-cards */
+int fortuna_api_credit_cards_post(const char *request_json, char **response_json); /* POST /api/credit-cards */
+int fortuna_api_credit_cards_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/credit-cards/{id} */
+int fortuna_api_credit_cards_by_id_get(const char *request_json, char **response_json); /* GET /api/credit-cards/{id} */
+int fortuna_api_credit_cards_by_id_put(const char *request_json, char **response_json); /* PUT /api/credit-cards/{id} */
+int fortuna_api_credit_cards_by_id_hard_delete(const char *request_json, char **response_json); /* DELETE /api/credit-cards/{id}/hard */
+int fortuna_api_credit_cards_by_id_restore_post(const char *request_json, char **response_json); /* POST /api/credit-cards/{id}/restore */
+int fortuna_api_credit_cards_by_id_statements_get(const char *request_json, char **response_json); /* GET /api/credit-cards/{id}/statements */
+int fortuna_api_currencies_get(const char *request_json, char **response_json); /* GET /api/currencies */
+int fortuna_api_currencies_by_code_get(const char *request_json, char **response_json); /* GET /api/currencies/{code} */
+int fortuna_api_exchange_rates_post(const char *request_json, char **response_json); /* POST /api/exchange-rates */
+int fortuna_api_exchange_rates_convert_post(const char *request_json, char **response_json); /* POST /api/exchange-rates/convert */
+int fortuna_api_exports_post(const char *request_json, char **response_json); /* POST /api/exports */
+int fortuna_api_exports_by_id_get(const char *request_json, char **response_json); /* GET /api/exports/{id} */
+int fortuna_api_goals_get(const char *request_json, char **response_json); /* GET /api/goals */
+int fortuna_api_goals_post(const char *request_json, char **response_json); /* POST /api/goals */
+int fortuna_api_goals_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/goals/{id} */
+int fortuna_api_goals_by_id_get(const char *request_json, char **response_json); /* GET /api/goals/{id} */
+int fortuna_api_goals_by_id_put(const char *request_json, char **response_json); /* PUT /api/goals/{id} */
+int fortuna_api_goals_by_id_progress_get(const char *request_json, char **response_json); /* GET /api/goals/{id}/progress */
+int fortuna_api_import_jobs_get(const char *request_json, char **response_json); /* GET /api/import-jobs */
+int fortuna_api_import_jobs_by_id_get(const char *request_json, char **response_json); /* GET /api/import-jobs/{id} */
+int fortuna_api_import_jobs_by_id_records_get(const char *request_json, char **response_json); /* GET /api/import-jobs/{id}/records */
+int fortuna_api_import_jobs_by_id_retry_post(const char *request_json, char **response_json); /* POST /api/import-jobs/{id}/retry */
+int fortuna_api_imports_excel_post(const char *request_json, char **response_json); /* POST /api/imports/excel */
+int fortuna_api_imports_pdf_post(const char *request_json, char **response_json); /* POST /api/imports/pdf */
+int fortuna_api_installment_plans_post(const char *request_json, char **response_json); /* POST /api/installment-plans */
+int fortuna_api_installment_plans_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/installment-plans/{id} */
+int fortuna_api_installment_plans_by_id_get(const char *request_json, char **response_json); /* GET /api/installment-plans/{id} */
+int fortuna_api_installment_plans_by_id_restore_post(const char *request_json, char **response_json); /* POST /api/installment-plans/{id}/restore */
+int fortuna_api_investments_get(const char *request_json, char **response_json); /* GET /api/investments */
+int fortuna_api_investments_post(const char *request_json, char **response_json); /* POST /api/investments */
+int fortuna_api_investments_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/investments/{id} */
+int fortuna_api_investments_by_id_get(const char *request_json, char **response_json); /* GET /api/investments/{id} */
+int fortuna_api_investments_by_id_put(const char *request_json, char **response_json); /* PUT /api/investments/{id} */
+int fortuna_api_investments_by_id_hard_delete(const char *request_json, char **response_json); /* DELETE /api/investments/{id}/hard */
+int fortuna_api_investments_by_id_movements_post(const char *request_json, char **response_json); /* POST /api/investments/{id}/movements */
+int fortuna_api_investments_by_id_restore_post(const char *request_json, char **response_json); /* POST /api/investments/{id}/restore */
+int fortuna_api_investments_by_id_valuations_get(const char *request_json, char **response_json); /* GET /api/investments/{id}/valuations */
+int fortuna_api_investments_by_id_valuations_post(const char *request_json, char **response_json); /* POST /api/investments/{id}/valuations */
+int fortuna_api_local_accounts_post(const char *request_json, char **response_json); /* POST /api/local-accounts */
+int fortuna_api_local_accounts_authenticate_post(const char *request_json, char **response_json); /* POST /api/local-accounts/authenticate */
+int fortuna_api_local_accounts_recover_post(const char *request_json, char **response_json); /* POST /api/local-accounts/recover */
+int fortuna_api_local_accounts_recovery_codes_regenerate_post(const char *request_json, char **response_json); /* POST /api/local-accounts/recovery-codes/regenerate */
+int fortuna_api_me_get(const char *request_json, char **response_json); /* GET /api/me */
+int fortuna_api_projections_cash_flow_get(const char *request_json, char **response_json); /* GET /api/projections/cash-flow */
+int fortuna_api_projections_commitments_get(const char *request_json, char **response_json); /* GET /api/projections/commitments */
+int fortuna_api_recurring_transactions_post(const char *request_json, char **response_json); /* POST /api/recurring-transactions */
+int fortuna_api_recurring_transactions_materialize_post(const char *request_json, char **response_json); /* POST /api/recurring-transactions/materialize */
+int fortuna_api_recurring_transactions_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/recurring-transactions/{id} */
+int fortuna_api_recurring_transactions_by_id_get(const char *request_json, char **response_json); /* GET /api/recurring-transactions/{id} */
+int fortuna_api_recurring_transactions_by_id_put(const char *request_json, char **response_json); /* PUT /api/recurring-transactions/{id} */
+int fortuna_api_reports_aggregate_get(const char *request_json, char **response_json); /* GET /api/reports/aggregate */
+int fortuna_api_reports_drill_down_get(const char *request_json, char **response_json); /* GET /api/reports/drill-down */
+int fortuna_api_reports_net_position_get(const char *request_json, char **response_json); /* GET /api/reports/net-position */
+int fortuna_api_reports_table_post(const char *request_json, char **response_json); /* POST /api/reports/table */
+int fortuna_api_statements_by_id_get(const char *request_json, char **response_json); /* GET /api/statements/{id} */
+int fortuna_api_statements_by_id_close_post(const char *request_json, char **response_json); /* POST /api/statements/{id}/close */
+int fortuna_api_statements_by_id_settle_post(const char *request_json, char **response_json); /* POST /api/statements/{id}/settle */
+int fortuna_api_tags_get(const char *request_json, char **response_json); /* GET /api/tags */
+int fortuna_api_tags_post(const char *request_json, char **response_json); /* POST /api/tags */
+int fortuna_api_tags_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/tags/{id} */
+int fortuna_api_tags_by_id_put(const char *request_json, char **response_json); /* PUT /api/tags/{id} */
+int fortuna_api_transactions_get(const char *request_json, char **response_json); /* GET /api/transactions */
+int fortuna_api_transactions_post(const char *request_json, char **response_json); /* POST /api/transactions */
+int fortuna_api_transactions_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/transactions/{id} */
+int fortuna_api_transactions_by_id_get(const char *request_json, char **response_json); /* GET /api/transactions/{id} */
+int fortuna_api_transactions_by_id_put(const char *request_json, char **response_json); /* PUT /api/transactions/{id} */
+int fortuna_api_transactions_by_id_attachments_post(const char *request_json, char **response_json); /* POST /api/transactions/{id}/attachments */
+int fortuna_api_transactions_by_id_hard_delete(const char *request_json, char **response_json); /* DELETE /api/transactions/{id}/hard */
+int fortuna_api_transactions_by_id_reconcile_post(const char *request_json, char **response_json); /* POST /api/transactions/{id}/reconcile */
+int fortuna_api_transactions_by_id_restore_post(const char *request_json, char **response_json); /* POST /api/transactions/{id}/restore */
+int fortuna_api_transactions_by_id_tags_by_tag_id_delete(const char *request_json, char **response_json); /* DELETE /api/transactions/{id}/tags/{tagId} */
+int fortuna_api_transactions_by_id_tags_by_tag_id_post(const char *request_json, char **response_json); /* POST /api/transactions/{id}/tags/{tagId} */
+int fortuna_api_transfers_post(const char *request_json, char **response_json); /* POST /api/transfers */
+int fortuna_api_transfers_by_id_delete(const char *request_json, char **response_json); /* DELETE /api/transfers/{id} */
+int fortuna_api_transfers_by_id_get(const char *request_json, char **response_json); /* GET /api/transfers/{id} */
+int fortuna_api_transfers_by_id_restore_post(const char *request_json, char **response_json); /* POST /api/transfers/{id}/restore */
 
 #ifdef __cplusplus
 }  // extern "C"

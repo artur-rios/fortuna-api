@@ -104,8 +104,10 @@ the domain model; changing providers requires no application-code change.
 
 The desktop client can instead embed the native core without starting the HTTP host or opening a
 listening socket. It ships `fortuna_core.dll` on Windows or `libfortuna_core.so` on Linux together
-with the generated C header. The native core owns its Rust domain/persistence implementation and
-SQLite schema; see [`native/README.md`](native/README.md) for the ABI, ownership and build contract.
+with the generated C header. Its 110 generated offline route exports cover the local operation
+surface, while capability discovery identifies network-dependent routes that remain HTTP-only. The
+native core owns its Rust domain/persistence implementation and SQLite schema; see
+[`native/README.md`](native/README.md) for the ABI, ownership and build contract.
 
 ## Testing
 
