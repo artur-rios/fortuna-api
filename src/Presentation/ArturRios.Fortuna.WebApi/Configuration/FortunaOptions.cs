@@ -121,7 +121,7 @@ public sealed record FortunaOptions
                 read("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"),
                 "FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT",
                 10),
-            HeimdallBaseUri = RequiredAbsoluteUri(
+            HeimdallBaseUri = RequiredHttpsUri(
                 read("FORTUNA_HEIMDALL_BASE_URL"),
                 "FORTUNA_HEIMDALL_BASE_URL"),
             HeimdallScopeId = RequiredGuid(
@@ -337,6 +337,15 @@ public sealed record FortunaOptions
     private static Uri RequiredAbsoluteUri(string? value, string key) =>
         OptionalAbsoluteUri(value, key) ??
         throw new InvalidOperationException($"Required environment variable '{key}' is not set.");
+
+    private static Uri RequiredHttpsUri(string? value, string key)
+    {
+        var uri = RequiredAbsoluteUri(value, key);
+        return uri.Scheme == Uri.UriSchemeHttps
+            ? uri
+            : throw new InvalidOperationException(
+                $"Environment variable '{key}' must be an absolute HTTPS URL.");
+    }
 
     private static Guid RequiredGuid(string? value, string key) =>
         Guid.TryParse(value, out var parsed) && parsed != Guid.Empty

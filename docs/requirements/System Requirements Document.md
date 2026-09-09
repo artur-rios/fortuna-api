@@ -136,6 +136,17 @@ request validates it locally; token verification never calls Heimdall.
 | FR-ID-22 | The system shall collapse every rejected credential exchange, and every rejected challenge exchange, into one non-enumerating `401 Unauthorized` response per operation |
 | FR-ID-23 | The system shall answer `503 Service Unavailable` without upstream details when Heimdall cannot be reached or returns a server failure |
 | FR-ID-24 | The system shall refuse startup without a valid Heimdall base URL and non-empty Fortuna scope identifier, and rate-limit anonymous credential endpoints |
+| FR-ID-25 | The system shall proxy password-recovery requests with the configured scope and return the same successful response whether or not the address is registered |
+| FR-ID-26 | The system shall proxy password reset and email verification tokens without persisting, logging or echoing them, and shall map invalid or expired tokens to `400 Bad Request` |
+| FR-ID-27 | The system shall let an authenticated caller resend their own verification message by forwarding their bearer token to Heimdall |
+| FR-ID-28 | The system shall report the caller's two-factor active state, enabled methods and remaining recovery-code count without returning a secret |
+| FR-ID-29 | The system shall begin two-factor setup for App, Email or both and preserve the authenticator URI and email-code indication returned by Heimdall |
+| FR-ID-30 | The system shall confirm pending two-factor setup with the required first factor and return the new recovery codes exactly once |
+| FR-ID-31 | The system shall disable two-factor authentication only through Heimdall's password-and-factor exchange and shall collapse secret mismatches into `401 Unauthorized` |
+| FR-ID-32 | The system shall regenerate recovery codes through a valid factor and return the replacements exactly once |
+| FR-ID-33 | The system shall require local bearer authentication for connected credential-management endpoints and forward that token only in the Heimdall authorization header |
+| FR-ID-34 | The system shall map absent two-factor setup to `404 Not Found` and identity-provider unavailability or server failure to a sanitized `503 Service Unavailable` |
+| FR-ID-35 | The system shall rate-limit anonymous recovery, reset and verification requests and shall never persist or log a password, token, factor or recovery code handled by UC-77 |
 
 ### 3.2 Currency and Exchange Rates — `CU`
 
@@ -721,6 +732,15 @@ every endpoint is scoped to the acting user (FR-ID-07).
 | POST | `/api/auth/google` | Exchange a Google ID token for a Heimdall token — *anonymous* | FR-ID-18, FR-ID-21 through FR-ID-24 |
 | POST | `/api/auth/2fa/verify` | Complete a two-factor challenge — *anonymous* | FR-ID-19, FR-ID-21 through FR-ID-24 |
 | POST | `/api/auth/google/sign-out` | End the caller's Google-authenticated session | FR-ID-20, FR-ID-23 |
+| POST | `/api/auth/password-recovery` | Request password-recovery instructions without disclosing registration — *anonymous* | FR-ID-25, FR-ID-35 |
+| POST | `/api/auth/password-reset` | Set a new password with a reset token — *anonymous* | FR-ID-26, FR-ID-35 |
+| POST | `/api/auth/verify-email` | Verify an address with its token — *anonymous* | FR-ID-26, FR-ID-35 |
+| POST | `/api/auth/resend-verification` | Resend verification to the authenticated caller | FR-ID-27, FR-ID-33 |
+| GET | `/api/auth/2fa` | Report the caller's non-secret two-factor status | FR-ID-28, FR-ID-33 |
+| POST | `/api/auth/2fa/enable` | Begin two-factor setup and return its setup payload | FR-ID-29, FR-ID-33 |
+| POST | `/api/auth/2fa/confirm` | Confirm pending setup and return recovery codes once | FR-ID-30, FR-ID-33 |
+| POST | `/api/auth/2fa/disable` | Disable active two-factor authentication with password and factor | FR-ID-31, FR-ID-33, FR-ID-34 |
+| POST | `/api/auth/2fa/recovery-codes/regenerate` | Replace recovery codes and return them once | FR-ID-32, FR-ID-33, FR-ID-34 |
 
 ### 5.2 Currency Endpoints
 
@@ -963,7 +983,7 @@ was once real.
 | F-14 Export | FR-EX-01 through FR-EX-08 |
 | F-15 Attachments | FR-AT-01 through FR-AT-10 |
 | F-16 Budgets and goals | FR-PL-01 through FR-PL-07 |
-| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-24 |
+| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-35 |
 | F-18 Desktop offline account | FR-ID-09 through FR-ID-15 |
 | F-19 Asynchronous operations | FR-IM-03, FR-IM-04, FR-IM-05, FR-IM-21, FR-IM-22, FR-CU-05, FR-EX-04 |
 | F-20 Two-stage deletion and audit | FR-RL-01 through FR-RL-11, FR-IM-23 |
@@ -1006,7 +1026,7 @@ was once real.
 | BR-32 Projected figures distinguishable | FR-PJ-02, FR-PJ-06 |
 | BR-33 Soft-deleted excluded from figures | FR-RL-02, FR-RP-07, FR-EX-07 |
 | BR-34 Aggregates resolve to transactions | FR-RP-05, FR-RP-06 |
-| BR-35 Fortuna never retains a password | FR-ID-06, FR-ID-17, FR-ID-22, FR-ID-23 |
+| BR-35 Fortuna never retains a password | FR-ID-06, FR-ID-17, FR-ID-22, FR-ID-23, FR-ID-26, FR-ID-31, FR-ID-35 |
 | BR-36 Recovery codes are the only local recovery | FR-ID-10, FR-ID-12, FR-ID-13, FR-ID-14, NFR-13 |
 | BR-37 Local data stays on its installation | FR-ID-15 |
 | BR-38 Soft delete before hard delete | FR-RL-01, FR-RL-04 |

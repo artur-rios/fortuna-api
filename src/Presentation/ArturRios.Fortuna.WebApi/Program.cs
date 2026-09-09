@@ -355,6 +355,38 @@ try
         VerifyTwoFactorThroughApiCommandOutput>, VerifyTwoFactorThroughApiCommandHandler>();
     builder.Services.AddScoped<ICommandHandlerAsync<GoogleSignOutThroughApiCommand,
         GoogleSignOutThroughApiCommandOutput>, GoogleSignOutThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<RequestPasswordRecoveryThroughApiCommand>,
+        RequestPasswordRecoveryThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<RequestPasswordRecoveryThroughApiCommand,
+        RequestPasswordRecoveryThroughApiCommandOutput>, RequestPasswordRecoveryThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<ResetPasswordThroughApiCommand>,
+        ResetPasswordThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<ResetPasswordThroughApiCommand,
+        ResetPasswordThroughApiCommandOutput>, ResetPasswordThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<VerifyEmailThroughApiCommand>,
+        VerifyEmailThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<VerifyEmailThroughApiCommand,
+        VerifyEmailThroughApiCommandOutput>, VerifyEmailThroughApiCommandHandler>();
+    builder.Services.AddScoped<ICommandHandlerAsync<ResendVerificationThroughApiCommand,
+        ResendVerificationThroughApiCommandOutput>, ResendVerificationThroughApiCommandHandler>();
+    builder.Services.AddScoped<ICommandHandlerAsync<GetTwoFactorStatusThroughApiCommand,
+        GetTwoFactorStatusThroughApiCommandOutput>, GetTwoFactorStatusThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<EnableTwoFactorThroughApiCommand>,
+        EnableTwoFactorThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<EnableTwoFactorThroughApiCommand,
+        EnableTwoFactorThroughApiCommandOutput>, EnableTwoFactorThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<ConfirmTwoFactorThroughApiCommand>,
+        ConfirmTwoFactorThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<ConfirmTwoFactorThroughApiCommand,
+        ConfirmTwoFactorThroughApiCommandOutput>, ConfirmTwoFactorThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<DisableTwoFactorThroughApiCommand>,
+        DisableTwoFactorThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<DisableTwoFactorThroughApiCommand,
+        DisableTwoFactorThroughApiCommandOutput>, DisableTwoFactorThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<RegenerateRecoveryCodesThroughApiCommand>,
+        RegenerateRecoveryCodesThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<RegenerateRecoveryCodesThroughApiCommand,
+        RegenerateRecoveryCodesThroughApiCommandOutput>, RegenerateRecoveryCodesThroughApiCommandHandler>();
     builder.Services.AddScoped<IValidator<CreateLocalAccountCommand>, CreateLocalAccountCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateLocalAccountCommand,
         CreateLocalAccountCommandOutput, CreateLocalAccountCommandHandler>();

@@ -200,6 +200,18 @@ public sealed class FoundationApiTests
     }
 
     [UnitFact]
+    public void GivenInsecureHeimdallUrl_WhenConfigurationLoads_ThenStartupIsRejected()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_HEIMDALL_BASE_URL"] = "http://heimdall.example.test";
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("HTTPS", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
     public void GivenUnsupportedStorageProvider_WhenConfigurationLoads_ThenStartupIsRejected()
     {
         var values = ValidSettings();

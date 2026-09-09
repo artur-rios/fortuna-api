@@ -221,5 +221,50 @@ public sealed class HeimdallAuthCommandHandlerTests
             SignOutToken = bearerToken;
             return Task.FromResult(SignOutResult);
         }
+
+        public Task<HeimdallAuthResult<object>> RequestPasswordRecoveryAsync(
+            string email, Guid scopeId, CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
+
+        public Task<HeimdallAuthResult<object>> ResetPasswordAsync(
+            string token, string newPassword, CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
+
+        public Task<HeimdallAuthResult<object>> VerifyEmailAsync(
+            string token, CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
+
+        public Task<HeimdallAuthResult<object>> ResendVerificationAsync(
+            string bearerToken, CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
+
+        public Task<HeimdallAuthResult<HeimdallTwoFactorStatusResult>> GetTwoFactorStatusAsync(
+            string bearerToken, CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<HeimdallTwoFactorStatusResult>(
+                HeimdallAuthOutcome.Rejected));
+
+        public Task<HeimdallAuthResult<HeimdallTwoFactorSetupResult>> EnableTwoFactorAsync(
+            IReadOnlyCollection<string> methods, string bearerToken,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<HeimdallTwoFactorSetupResult>(
+                HeimdallAuthOutcome.Rejected));
+
+        public Task<HeimdallAuthResult<HeimdallRecoveryCodesResult>> ConfirmTwoFactorAsync(
+            string? appCode, string? emailCode, string bearerToken,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<HeimdallRecoveryCodesResult>(
+                HeimdallAuthOutcome.Rejected));
+
+        public Task<HeimdallAuthResult<HeimdallTwoFactorDisabledResult>> DisableTwoFactorAsync(
+            string password, string? code, string? recoveryCode, string bearerToken,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<HeimdallTwoFactorDisabledResult>(
+                HeimdallAuthOutcome.Rejected));
+
+        public Task<HeimdallAuthResult<HeimdallRecoveryCodesResult>> RegenerateRecoveryCodesAsync(
+            string? code, string? recoveryCode, string bearerToken,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<HeimdallRecoveryCodesResult>(
+                HeimdallAuthOutcome.Rejected));
     }
 }
