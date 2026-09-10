@@ -454,23 +454,123 @@ impl NativeStore {
         let connection = self.open().map_err(|_| StoreError)?;
         let mut statement = connection
             .prepare(
-                "SELECT public_id, entity_type, entity_id, operation, outcome, occurred_at
-                 FROM native_audit_entry WHERE user_id = ?1 ORDER BY occurred_at DESC, public_id DESC",
+                "SELECT entry.public_id, entry.subject_reference, entry.entity_type, entry.entity_id,
+                        entry.operation, entry.outcome, entry.occurred_at
+                 FROM native_audit_entry AS entry
+                 JOIN native_audit_subject AS subject
+                   ON subject.subject_reference = entry.subject_reference
+                 WHERE subject.user_id = ?1
+                 ORDER BY entry.occurred_at DESC, entry.public_id DESC",
             )
             .map_err(|_| StoreError)?;
         let rows = statement
             .query_map(params![user_id.to_string()], |row| {
                 Ok(serde_json::json!({
                     "id": row.get::<_, String>(0)?,
-                    "entityType": row.get::<_, String>(1)?,
-                    "entityId": row.get::<_, String>(2)?,
-                    "operation": row.get::<_, String>(3)?,
-                    "outcome": row.get::<_, String>(4)?,
-                    "occurredAt": row.get::<_, String>(5)?,
+                    "subjectReference": row.get::<_, String>(1)?,
+                    "entityType": row.get::<_, Option<String>>(2)?,
+                    "entityId": row.get::<_, Option<String>>(3)?,
+                    "operation": row.get::<_, String>(4)?,
+                    "outcome": row.get::<_, String>(5)?,
+                    "occurredAt": row.get::<_, String>(6)?,
                 }))
             })
             .map_err(|_| StoreError)?;
         rows.map(|row| row.map_err(|_| StoreError)).collect()
+    }
+
+    pub(crate) fn erase_user(
+        &self,
+        user_id: Uuid,
+        timestamp: &str,
+    ) -> Result<Option<Value>, StoreError> {
+        let mut connection = self.open().map_err(|_| StoreError)?;
+        let transaction = connection.transaction().map_err(|_| StoreError)?;
+        let user = user_id.to_string();
+        let exists: bool = transaction
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM native_user_profile WHERE public_id = ?1)",
+                params![user],
+                |row| row.get(0),
+            )
+            .map_err(|_| StoreError)?;
+        if !exists {
+            return Ok(None);
+        }
+
+        let local_accounts = count(&transaction, "native_local_account", &user)?;
+        let recovery_codes: i64 = transaction
+            .query_row(
+                "SELECT count(*) FROM native_local_recovery_code
+                 WHERE local_account_id IN (
+                     SELECT public_id FROM native_local_account WHERE user_id = ?1)",
+                params![user],
+                |row| row.get(0),
+            )
+            .map_err(|_| StoreError)?;
+        let records = count(&transaction, "native_offline_record", &user)?;
+        let jobs = count(&transaction, "native_operation_job", &user)?;
+        let subject_reference = audit_subject(&transaction, user_id).map_err(|_| StoreError)?;
+
+        transaction
+            .execute(
+                "DELETE FROM native_local_recovery_code
+                 WHERE local_account_id IN (
+                     SELECT public_id FROM native_local_account WHERE user_id = ?1)",
+                params![user],
+            )
+            .map_err(|_| StoreError)?;
+        transaction
+            .execute(
+                "DELETE FROM native_local_account WHERE user_id = ?1",
+                params![user],
+            )
+            .map_err(|_| StoreError)?;
+        transaction
+            .execute(
+                "DELETE FROM native_offline_record WHERE user_id = ?1",
+                params![user],
+            )
+            .map_err(|_| StoreError)?;
+        transaction
+            .execute(
+                "DELETE FROM native_operation_job WHERE user_id = ?1",
+                params![user],
+            )
+            .map_err(|_| StoreError)?;
+        transaction
+            .execute(
+                "INSERT INTO native_audit_entry(
+                    public_id, subject_reference, entity_type, entity_id, operation, outcome, occurred_at)
+                 VALUES (?1, ?2, NULL, NULL, 'EraseUserCommand', 'Succeeded', ?3)",
+                params![Uuid::new_v4().to_string(), subject_reference, timestamp],
+            )
+            .map_err(|_| StoreError)?;
+        transaction
+            .execute(
+                "DELETE FROM native_audit_subject WHERE user_id = ?1",
+                params![user],
+            )
+            .map_err(|_| StoreError)?;
+        transaction
+            .execute(
+                "DELETE FROM native_user_profile WHERE public_id = ?1",
+                params![user],
+            )
+            .map_err(|_| StoreError)?;
+        transaction.commit().map_err(|_| StoreError)?;
+
+        Ok(Some(serde_json::json!({
+            "erased": {
+                "profiles": 1,
+                "credentials": local_accounts,
+                "recoveryCodes": recovery_codes,
+                "financialRecords": records,
+                "jobs": jobs
+            },
+            "revokedConnections": 0,
+            "irreversible": true
+        })))
     }
 
     pub(crate) fn create_job(
@@ -605,7 +705,7 @@ fn prepare_parent(database_path: &Path) -> std::io::Result<()> {
 }
 
 fn migrate(database_path: &Path) -> rusqlite::Result<()> {
-    let connection = Connection::open(database_path)?;
+    let mut connection = Connection::open(database_path)?;
     connection.busy_timeout(std::time::Duration::from_secs(5))?;
     connection.execute_batch(
         "PRAGMA foreign_keys = ON;
@@ -686,8 +786,6 @@ fn migrate(database_path: &Path) -> rusqlite::Result<()> {
              outcome TEXT NOT NULL,
              occurred_at TEXT NOT NULL
          );
-         CREATE INDEX IF NOT EXISTS ix_native_audit_entry_owner
-             ON native_audit_entry(user_id, occurred_at);
          CREATE TABLE IF NOT EXISTS native_operation_job (
              public_id TEXT PRIMARY KEY NOT NULL,
              user_id TEXT NOT NULL REFERENCES native_user_profile(public_id) ON DELETE RESTRICT,
@@ -718,6 +816,57 @@ fn migrate(database_path: &Path) -> rusqlite::Result<()> {
         "INSERT OR IGNORE INTO native_schema_migration(version) VALUES (2)",
         [],
     )?;
+    let has_v3: bool = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM native_schema_migration WHERE version = 3)",
+        [],
+        |row| row.get(0),
+    )?;
+    if !has_v3 {
+        let transaction = connection.transaction()?;
+        transaction.execute_batch(
+            "CREATE TABLE native_audit_subject (
+                 user_id TEXT PRIMARY KEY NOT NULL
+                     REFERENCES native_user_profile(public_id) ON DELETE RESTRICT,
+                 subject_reference TEXT NOT NULL UNIQUE
+             );
+             CREATE TABLE native_audit_entry_v3 (
+                 public_id TEXT PRIMARY KEY NOT NULL,
+                 subject_reference TEXT NULL,
+                 entity_type TEXT NULL,
+                 entity_id TEXT NULL,
+                 operation TEXT NOT NULL,
+                 outcome TEXT NOT NULL,
+                 occurred_at TEXT NOT NULL
+             );",
+        )?;
+        let user_ids = {
+            let mut statement = transaction
+                .prepare("SELECT DISTINCT user_id FROM native_audit_entry ORDER BY user_id")?;
+            statement
+                .query_map([], |row| row.get::<_, String>(0))?
+                .collect::<rusqlite::Result<Vec<_>>>()?
+        };
+        for user_id in user_ids {
+            transaction.execute(
+                "INSERT INTO native_audit_subject(user_id, subject_reference) VALUES (?1, ?2)",
+                params![user_id, Uuid::new_v4().to_string()],
+            )?;
+        }
+        transaction.execute_batch(
+            "INSERT INTO native_audit_entry_v3(
+                 public_id, subject_reference, entity_type, entity_id, operation, outcome, occurred_at)
+             SELECT entry.public_id, subject.subject_reference, entry.entity_type, entry.entity_id,
+                    entry.operation, entry.outcome, entry.occurred_at
+             FROM native_audit_entry AS entry
+             LEFT JOIN native_audit_subject AS subject ON subject.user_id = entry.user_id;
+             DROP TABLE native_audit_entry;
+             ALTER TABLE native_audit_entry_v3 RENAME TO native_audit_entry;
+             CREATE INDEX ix_native_audit_entry_subject
+                 ON native_audit_entry(subject_reference, occurred_at);
+             INSERT INTO native_schema_migration(version) VALUES (3);",
+        )?;
+        transaction.commit()?;
+    }
     Ok(())
 }
 
@@ -730,13 +879,48 @@ fn append_audit(
     outcome: &str,
     timestamp: &str,
 ) -> rusqlite::Result<()> {
+    let subject_reference = audit_subject(transaction, user_id)?;
     transaction.execute(
-        "INSERT INTO native_audit_entry(public_id, user_id, entity_type, entity_id, operation, outcome, occurred_at)
+        "INSERT INTO native_audit_entry(public_id, subject_reference, entity_type, entity_id, operation, outcome, occurred_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![Uuid::new_v4().to_string(), user_id.to_string(), entity_type, entity_id.to_string(),
+        params![Uuid::new_v4().to_string(), subject_reference, entity_type, entity_id.to_string(),
             operation, outcome, timestamp],
     )?;
     Ok(())
+}
+
+fn audit_subject(
+    transaction: &rusqlite::Transaction<'_>,
+    user_id: Uuid,
+) -> rusqlite::Result<String> {
+    if let Some(reference) = transaction
+        .query_row(
+            "SELECT subject_reference FROM native_audit_subject WHERE user_id = ?1",
+            params![user_id.to_string()],
+            |row| row.get(0),
+        )
+        .optional()?
+    {
+        return Ok(reference);
+    }
+
+    let reference = Uuid::new_v4().to_string();
+    transaction.execute(
+        "INSERT INTO native_audit_subject(user_id, subject_reference) VALUES (?1, ?2)",
+        params![user_id.to_string(), reference],
+    )?;
+    Ok(reference)
+}
+
+fn count(
+    transaction: &rusqlite::Transaction<'_>,
+    table: &str,
+    user_id: &str,
+) -> Result<i64, StoreError> {
+    let sql = format!("SELECT count(*) FROM {table} WHERE user_id = ?1");
+    transaction
+        .query_row(&sql, params![user_id], |row| row.get(0))
+        .map_err(|_| StoreError)
 }
 
 fn job_json(

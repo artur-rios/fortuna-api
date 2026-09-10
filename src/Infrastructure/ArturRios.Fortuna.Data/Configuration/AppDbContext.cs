@@ -36,6 +36,7 @@ public sealed class AppDbContext(
     public DbSet<LocalAccount> LocalAccounts => Set<LocalAccount>();
     public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<AuditSubject> AuditSubjects => Set<AuditSubject>();
     public DbSet<FinancialAccount> FinancialAccounts => Set<FinancialAccount>();
     public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
     public DbSet<Attachment> Attachments => Set<Attachment>();

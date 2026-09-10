@@ -14,7 +14,7 @@ public sealed class AuditEntry
     }
 
     public AuditEntry(
-        Guid? actorUserId,
+        Guid? subjectReference,
         string operation,
         string? entityType,
         Guid? entityPublicId,
@@ -37,7 +37,7 @@ public sealed class AuditEntry
             throw new ArgumentException("An audit reason cannot exceed 1000 characters.", nameof(reason));
         }
 
-        ActorUserId = actorUserId;
+        SubjectReference = subjectReference;
         Operation = operation;
         EntityType = entityType;
         EntityPublicId = entityPublicId;
@@ -47,7 +47,7 @@ public sealed class AuditEntry
     }
 
     public long Id { get; private set; }
-    public Guid? ActorUserId { get; private set; }
+    public Guid? SubjectReference { get; private set; }
     public string Operation { get; private set; } = string.Empty;
     public string? EntityType { get; private set; }
     public Guid? EntityPublicId { get; private set; }

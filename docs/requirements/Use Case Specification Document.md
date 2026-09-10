@@ -50,7 +50,7 @@ graph LR
     end
 
     subgraph Identity
-        UC01[UC-01 … UC-06, UC-76 … UC-77<br/>Token access, profile,<br/>credentials and exchange]
+        UC01[UC-01 … UC-06, UC-76 … UC-78<br/>Token access, profile,<br/>credentials and erasure]
     end
 
     subgraph Currency
@@ -115,6 +115,7 @@ graph LR
 | UC-59 … UC-74 | HTTP + native. File ingestion, attachments, reports, projections and exports are native operations; imports and exports return monitorable jobs instead of blocking the caller. |
 | UC-75 | HTTP + native through transport-specific health functions: `GET /healthcheck` for the host and `fortuna_health` in process. |
 | UC-76 … UC-77 | HTTP only. Connected authentication and credential management require Heimdall and have no offline export. |
+| UC-78 | HTTP + native owner erasure. The administrator route is HTTP-only because an offline installation has no instance administrator. |
 
 `fortuna_capabilities` returns the generated list of available operations and the deliberately absent
 route families. The committed C header contains the same absence note, so a client never has to probe
@@ -2498,6 +2499,48 @@ ten attempts per source address per minute as UC-76.
 
 ---
 
+### UC-78: Erase a User Account
+
+| Field | Value |
+| --- | --- |
+| **ID** | UC-78 |
+| **Name** | Erase a User Account |
+| **Actors** | Account Owner, Instance Administrator, Fortuna Client |
+| **Description** | Irreversibly erase a person and their complete ownership graph while preserving an unlinkable audit trail |
+| **Preconditions** | The caller is the owner erasing themselves, or an instance administrator acting on a documented request; the caller supplies the exact `ERASE` confirmation |
+| **Postconditions** | The profile, credentials, records, jobs, connections, imported data, stored objects and audit mapping are gone; audit entries remain without identifying the person |
+| **Requirements** | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
+
+**Main Flow**
+
+1. The caller submits `ERASE` after the client has stated that the action is irreversible.
+2. The system resolves only the caller's profile for `POST /api/me/erasure`, or only the public user
+   identifier for an instance administrator's `DELETE /api/users/{id}` request.
+3. The system revokes every live external connection and stages every attachment/export object so
+   that it can compensate a failed cascade.
+4. In one serializable transaction, the system removes links and dependents in the declared order,
+   then financial and classification roots, imports and jobs, credentials and recovery codes.
+5. The system appends one final audit entry containing the random opaque subject reference and no
+   target or reason, deletes the user-to-reference mapping, and deletes the profile.
+6. The system commits the object removals and reports category counts plus the number of connections
+   revoked. It never returns record contents.
+
+**Alternative Flows**
+
+| ID | Condition | Outcome |
+| --- | --- | --- |
+| AF-01 | The caller is not the owner and not an instance administrator | `404 Not Found`, identical to an absent target |
+| AF-02 | Confirmation is absent or differs from the case-sensitive literal `ERASE` | `400 Bad Request`; no erasure-store operation runs |
+| AF-03 | The profile does not exist or has already been erased | `404 Not Found` |
+| AF-04 | A database or stored-object step fails | The transaction rolls back and staged objects are restored; no partial erasure is reported or retained |
+| AF-05 | One or more connections are live | Their access tokens are destroyed and they are marked revoked before removal; the response reports the count without exposing connection data |
+
+UC-78 is deliberately not UC-52 applied in a loop. It does not soft-delete anything, and immutable
+import evidence is in scope because the subject—not a single record—is being erased. Audit rows
+remain under BR-41; BR-42 makes them non-personal after their mapping is destroyed.
+
+---
+
 ## 3. Use Case — Requirements Traceability
 
 | Use Case | Requirements |
@@ -2578,6 +2621,7 @@ ten attempts per source address per minute as UC-76.
 | UC-74: Retrieve a Completed Export | FR-EX-04, FR-EX-08 |
 | UC-76: Authenticate through the Fortuna API | FR-ID-17 through FR-ID-24 |
 | UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35 |
+| UC-78: Erase a User Account | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 
 Every `FR-<AREA>-xx` defined in [System Requirements §3](System%20Requirements%20Document.md)
 appears at least once above. The platform requirements `IR-xx` and the health check requirements

@@ -318,6 +318,7 @@ try
         provider.GetRequiredService<EfUserProfileStore>());
     builder.Services.AddScoped<IUserProfileProvisioner>(provider =>
         provider.GetRequiredService<EfUserProfileStore>());
+    builder.Services.AddScoped<IUserErasureStore, EfUserErasureStore>();
     builder.Services.AddSingleton(new LocalAccountOptions(
         options.LocalAuthEnabled,
         options.LocalAuthRecoveryCodeCount,
@@ -389,6 +390,9 @@ try
     builder.Services.AddScoped<ICommandHandlerAsync<RegenerateRecoveryCodesThroughApiCommand,
         RegenerateRecoveryCodesThroughApiCommandOutput>, RegenerateRecoveryCodesThroughApiCommandHandler>();
     builder.Services.AddScoped<IValidator<CreateLocalAccountCommand>, CreateLocalAccountCommandValidator>();
+    builder.Services.AddScoped<IValidator<EraseUserCommand>, EraseUserCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<EraseUserCommand,
+        EraseUserCommandOutput>, EraseUserCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CreateLocalAccountCommand,
         CreateLocalAccountCommandOutput, CreateLocalAccountCommandHandler>();
     builder.Services.AddAuditedCommandHandler<AuthenticateLocalAccountCommand,

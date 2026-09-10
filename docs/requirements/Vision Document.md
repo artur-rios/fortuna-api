@@ -25,7 +25,8 @@ and transfers; ingesting data manually, from the Pluggy open-banking aggregator,
 spreadsheets and from defined PDF statement layouts; classification, budgets and goals; multi-currency
 handling with official exchange rates; tabular and aggregated read models with drill-down; forward
 projections; export to CSV, Excel and PDF; attachments; and the identity integration that isolates
-one user's data from another's.
+one user's data from another's; and confirmed, irreversible account erasure that preserves only an
+unlinkable audit trail.
 
 **Out of scope**, deliberately and permanently:
 
@@ -47,6 +48,7 @@ one user's data from another's.
 | --- | --- |
 | **Account Owner** | The human who owns a set of financial records. The primary actor of nearly every use case. |
 | **Instance Administrator** | The operator of a shared deployment. Manages users and configuration; has no access to any user's financial records. |
+| **Data Controller** | In a single-owner deployment, the self-hosting owner; in a shared deployment, the organization or person operating the instance and deciding why personal data is processed. |
 | **Financial Account** | A bank account or cash holding, with its own currency, opening balance and transaction history. |
 | **Credit Card** | A revolving credit facility whose charges accumulate into statements and are settled by a payment from a financial account. Not a Financial Account. |
 | **Statement** | One billing cycle of a credit card — the invoice. Has a period, a closing date, a due date, a total and a settlement state. |
@@ -110,6 +112,12 @@ that runs where its owner decides it runs.
 | **That** | Aggregates every account, card and investment into one exact, multi-currency ledger; ingests automatically from open banking, spreadsheets and statement PDFs; and serves that history as tables, drillable charts and forward projections to desktop, web and mobile clients alike. |
 | **Unlike** | A hosted aggregator, which owns the data and the terms on which it is held; or a spreadsheet, which owns nothing but costs an afternoon a month and cannot project, deduplicate or reconcile. |
 | **Our product** | Runs on the owner's own machine or server, stores no bank credential at any point, computes money with exact decimal arithmetic rather than floating point, and treats every ingestion source as a plug-in so the system grows without being rebuilt. |
+
+The deployment shape determines the controller for privacy requests. A single self-hosting owner is
+their own controller and exercises erasure directly. On a shared instance, its operator is the
+controller and an instance administrator may execute a documented erasure request while receiving
+counts only—never the person's financial records. Fortuna removes the complete ownership graph;
+the connected Heimdall controller remains responsible for erasing the upstream identity it owns.
 
 ---
 

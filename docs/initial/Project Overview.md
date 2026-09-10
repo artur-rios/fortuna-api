@@ -37,6 +37,11 @@ An instance runs in one of two shapes, and the API supports both without a code 
 - **Shared instance** — several registered users on one deployment, each strictly isolated from the
   others.
 
+For personal-data obligations, the single self-hosting owner is the controller of their own
+deployment. On a shared instance, the operator is the controller: an administrator may carry out a
+documented erasure request but receives category counts rather than access to the user's records.
+Heimdall remains the controller of the connected identity and credentials it stores.
+
 ## What It Does
 
 - **Tracks accounts** — bank accounts, credit cards and investments, each with its own balance,
@@ -57,6 +62,9 @@ An instance runs in one of two shapes, and the API supports both without a code 
   installments and observed history.
 - **Exports** — CSV, Excel and PDF renderings of any queried data set.
 - **Searches, filters, updates and deletes** — across every kind of record it holds.
+- **Erases an account completely** — after explicit confirmation, including credentials, imports,
+  connections, jobs and stored files, while retaining only an audit trail that can no longer be
+  linked to the person.
 
 ## What It Doesn't Do
 

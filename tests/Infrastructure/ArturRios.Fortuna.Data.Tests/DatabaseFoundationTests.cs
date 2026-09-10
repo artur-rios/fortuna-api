@@ -138,7 +138,7 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
-    public async Task GivenExistingAuditRows_WhenLifecycleMigrationRuns_ThenActorPublicIdsArePreserved()
+    public async Task GivenExistingAuditRows_WhenErasureMigrationRuns_ThenOpaqueReferencesReplaceUserIds()
     {
         var databaseName = $"fortuna_migration_{Guid.NewGuid():N}";
         var connectionBuilder = new NpgsqlConnectionStringBuilder(database.GetConnectionString());
@@ -192,12 +192,18 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         await currentConnection.OpenAsync();
         await using var select = currentConnection.CreateCommand();
         select.CommandText = """
-            SELECT actor_user_id
-            FROM fortuna.audit_entry
+            SELECT ae.subject_reference, subject.subject_reference, u.public_id
+            FROM fortuna.audit_entry AS ae
+            JOIN fortuna.audit_subject AS subject
+              ON subject.subject_reference = ae.subject_reference
+            JOIN fortuna."user" AS u ON u.id = subject.user_id
             WHERE operation = 'ExistingWriteCommand';
             """;
-
-        Assert.Equal(actorId, (Guid?)await select.ExecuteScalarAsync());
+        await using var reader = await select.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(reader.GetGuid(0), reader.GetGuid(1));
+        Assert.Equal(actorId, reader.GetGuid(2));
+        Assert.NotEqual(actorId, reader.GetGuid(0));
     }
 
     [FunctionalFact]
@@ -301,8 +307,10 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         var target = new UserProfile(Guid.NewGuid(), "Hard Delete Target", currency, DateTimeOffset.UtcNow);
         context.UserProfiles.AddRange(actor, target);
         await context.SaveChangesAsync();
+        var auditSubject = new AuditSubject(actor);
+        context.AuditSubjects.Add(auditSubject);
         var audit = new AuditEntry(
-            actor.PublicId,
+            auditSubject.SubjectReference,
             "DeleteRecordCommand",
             "UserProfile",
             target.PublicId,
@@ -325,7 +333,8 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         var retainedBeforeDelete = await context.AuditEntries
             .AsNoTracking()
             .SingleAsync(item => item.Id == auditId);
-        Assert.Equal(actor.PublicId, retainedBeforeDelete.ActorUserId);
+        Assert.Equal(auditSubject.SubjectReference, retainedBeforeDelete.SubjectReference);
+        Assert.NotEqual(actor.PublicId, retainedBeforeDelete.SubjectReference);
         Assert.NotEqual(actorId, persistedTarget.Id);
         persistedTarget.EnsureHardDeletionAllowed();
         context.UserProfiles.Remove(persistedTarget);
@@ -333,7 +342,7 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         context.ChangeTracker.Clear();
 
         var retainedAudit = await context.AuditEntries.SingleAsync(item => item.Id == auditId);
-        Assert.Equal(actor.PublicId, retainedAudit.ActorUserId);
+        Assert.Equal(auditSubject.SubjectReference, retainedAudit.SubjectReference);
         Assert.Equal(targetId, retainedAudit.EntityPublicId);
         Assert.Equal("DeleteRecordCommand", retainedAudit.Operation);
     }

@@ -65,7 +65,8 @@ public sealed class FinancialAccountCreationTests : IAsyncLifetime
         Assert.False(account.IsDeleted);
         var audit = await context.AuditEntries.SingleAsync(item =>
             item.Operation == "CreateFinancialAccountCommand");
-        Assert.Equal(account.User.PublicId, audit.ActorUserId);
+        Assert.NotNull(audit.SubjectReference);
+        Assert.NotEqual(account.User.PublicId, audit.SubjectReference);
         Assert.Equal("FinancialAccount", audit.EntityType);
         Assert.Equal(account.PublicId, audit.EntityPublicId);
         Assert.Equal(AuditOutcome.Succeeded, audit.Outcome);

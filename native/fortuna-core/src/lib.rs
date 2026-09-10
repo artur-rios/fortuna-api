@@ -904,6 +904,71 @@ mod tests {
     }
 
     #[test]
+    fn given_version_two_native_audit_when_initialized_then_subject_is_rekeyed_opaquely() {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let user_id = Uuid::new_v4();
+        let entry_id = Uuid::new_v4();
+        let now = "2026-09-09T12:34:56.1234567Z";
+        let connection = Connection::open(&path).unwrap();
+        connection
+            .execute_batch(
+                "PRAGMA foreign_keys = ON;
+                 CREATE TABLE native_schema_migration (version INTEGER PRIMARY KEY NOT NULL);
+                 INSERT INTO native_schema_migration(version) VALUES (1), (2);
+                 CREATE TABLE native_user_profile (
+                     public_id TEXT PRIMARY KEY NOT NULL, display_name TEXT NOT NULL,
+                     display_currency TEXT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+                 CREATE TABLE native_audit_entry (
+                     public_id TEXT PRIMARY KEY NOT NULL, user_id TEXT NOT NULL,
+                     entity_type TEXT NOT NULL, entity_id TEXT NOT NULL,
+                     operation TEXT NOT NULL, outcome TEXT NOT NULL, occurred_at TEXT NOT NULL);",
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO native_user_profile VALUES (?1, 'Legacy User', 'BRL', ?2, ?2)",
+                params![user_id.to_string(), now],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO native_audit_entry VALUES (?1, ?2, 'Account', ?3,
+                 'CreateAccountCommand', 'Succeeded', ?4)",
+                params![
+                    entry_id.to_string(),
+                    user_id.to_string(),
+                    Uuid::new_v4().to_string(),
+                    now
+                ],
+            )
+            .unwrap();
+        drop(connection);
+
+        assert_eq!(FORTUNA_STATUS_OK, initialize(&path, true).status);
+        let connection = Connection::open(&path).unwrap();
+        let migrated: (String, String, i64) = connection
+            .query_row(
+                "SELECT subject.subject_reference, entry.subject_reference,
+                        (SELECT count(*) FROM native_schema_migration WHERE version = 3)
+                 FROM native_audit_subject AS subject
+                 JOIN native_audit_entry AS entry
+                   ON entry.subject_reference = subject.subject_reference
+                 WHERE subject.user_id = ?1 AND entry.public_id = ?2",
+                params![user_id.to_string(), entry_id.to_string()],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(migrated.0, migrated.1);
+        assert_ne!(user_id.to_string(), migrated.0);
+        assert_eq!(1, migrated.2);
+        drop(connection);
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
     fn given_boundary_failures_when_called_then_every_status_has_json_and_no_allocation_leaks() {
         let _guard = test_guard();
         stop();
@@ -1041,7 +1106,7 @@ mod tests {
         assert_eq!(FORTUNA_STATUS_OK, response.status);
         let body: Value = serde_json::from_str(&response.body).unwrap();
         let operations = body["data"]["operations"].as_array().unwrap();
-        assert_eq!(110, operations.len());
+        assert_eq!(111, operations.len());
         assert!(operations.iter().any(|operation| {
             operation["method"] == "POST" && operation["path"] == "/api/imports/excel"
         }));
@@ -1050,7 +1115,13 @@ mod tests {
                 path.starts_with("/api/auth") || path.starts_with("/api/connections")
             })
         }));
-        assert_eq!(5, body["data"]["unavailable"].as_array().unwrap().len());
+        assert!(operations.iter().any(|operation| {
+            operation["method"] == "POST" && operation["path"] == "/api/me/erasure"
+        }));
+        assert!(!operations.iter().any(|operation| {
+            operation["method"] == "DELETE" && operation["path"] == "/api/users/{id}"
+        }));
+        assert_eq!(6, body["data"]["unavailable"].as_array().unwrap().len());
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
     }
 
@@ -1058,7 +1129,7 @@ mod tests {
     fn given_every_generated_route_when_called_before_initialization_then_each_symbol_is_safe() {
         let _guard = test_guard();
         stop();
-        assert_eq!(110, NATIVE_OPERATION_FUNCTIONS.len());
+        assert_eq!(111, NATIVE_OPERATION_FUNCTIONS.len());
         for function in NATIVE_OPERATION_FUNCTIONS {
             let response = call(*function, "{}");
             assert_eq!(
@@ -1071,6 +1142,93 @@ mod tests {
                 serde_json::from_str::<Value>(&response.body).unwrap()["success"]
             );
         }
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_confirmed_local_owner_when_erased_then_identity_data_and_mapping_are_gone_but_audit_remains()
+     {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let token = create_local_user(&path);
+        let account = call(
+            fortuna_api_accounts_post,
+            &serde_json::json!({
+                "token": token,
+                "body": {
+                    "name": "Erased account",
+                    "accountType": 1,
+                    "currencyCode": "BRL",
+                    "openingBalance": 1
+                }
+            })
+            .to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_CREATED, account.status, "{}", account.body);
+        let user_id: String = Connection::open(&path)
+            .unwrap()
+            .query_row("SELECT user_id FROM native_local_account", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+
+        let invalid = call(
+            fortuna_api_me_erasure_post,
+            &serde_json::json!({"token": token, "body": {"confirmation": "erase"}}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_BAD_REQUEST, invalid.status);
+
+        let erased = call(
+            fortuna_api_me_erasure_post,
+            &serde_json::json!({"token": token, "body": {"confirmation": "ERASE"}}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, erased.status, "{}", erased.body);
+        let body: Value = serde_json::from_str(&erased.body).unwrap();
+        assert_eq!(Value::Bool(true), body["data"]["irreversible"]);
+        assert_eq!(1, body["data"]["erased"]["profiles"]);
+        assert_eq!(1, body["data"]["erased"]["credentials"]);
+        assert_eq!(10, body["data"]["erased"]["recoveryCodes"]);
+        assert_eq!(1, body["data"]["erased"]["financialRecords"]);
+
+        let connection = Connection::open(&path).unwrap();
+        for table in [
+            "native_user_profile",
+            "native_local_account",
+            "native_local_recovery_code",
+            "native_offline_record",
+            "native_audit_subject",
+        ] {
+            let count: i64 = connection
+                .query_row(&format!("SELECT count(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert_eq!(0, count, "{table}");
+        }
+        let retained: (i64, String, i64) = connection
+            .query_row(
+                "SELECT count(*), min(subject_reference),
+                        count(DISTINCT subject_reference)
+                 FROM native_audit_entry",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(2, retained.0);
+        assert_eq!(1, retained.2);
+        assert_ne!(user_id, retained.1);
+        drop(connection);
+
+        assert_eq!(
+            FORTUNA_STATUS_NOT_FOUND,
+            call(
+                fortuna_api_me_erasure_post,
+                &serde_json::json!({"token": token, "body": {"confirmation": "ERASE"}}).to_string(),
+            )
+            .status
+        );
+        stop();
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
     }
 

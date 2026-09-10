@@ -56,7 +56,7 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(1, envelope!.TotalItems);
         var item = Assert.Single(envelope.Data!);
-        Assert.Equal(actorId, item.ActorUserId);
+        Assert.Equal(actorId, item.SubjectReference);
         Assert.Equal("DeleteAccountCommand", item.Operation);
         Assert.Equal("Account", item.EntityType);
         Assert.Equal(entityId, item.EntityId);
@@ -231,10 +231,18 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
         var response = await client.GetAsync("/api/me");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         await using var context = CreateContext();
-        return await context.UserProfiles
-            .Where(profile => profile.ExternalSubject == subject.ToString("D"))
-            .Select(profile => profile.PublicId)
-            .SingleAsync();
+        var profile = await context.UserProfiles.SingleAsync(
+            item => item.ExternalSubject == subject.ToString("D"));
+        var auditSubject = await context.AuditSubjects.SingleOrDefaultAsync(
+            item => item.UserId == profile.Id);
+        if (auditSubject is null)
+        {
+            auditSubject = new AuditSubject(profile);
+            context.AuditSubjects.Add(auditSubject);
+            await context.SaveChangesAsync();
+        }
+
+        return auditSubject.SubjectReference;
     }
 
     private async Task AddEntriesAsync(params AuditEntry[] entries)
@@ -335,7 +343,7 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
         int TotalPages);
 
     private sealed record AuditItem(
-        Guid ActorUserId,
+        Guid SubjectReference,
         string Operation,
         string? EntityType,
         Guid? EntityId,

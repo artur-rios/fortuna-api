@@ -109,10 +109,6 @@
       "AuditEntryOutput": {
         "additionalProperties": false,
         "properties": {
-          "actorUserId": {
-            "format": "uuid",
-            "type": "string"
-          },
           "entityId": {
             "format": "uuid",
             "nullable": true,
@@ -135,6 +131,10 @@
           },
           "reason": {
             "nullable": true,
+            "type": "string"
+          },
+          "subjectReference": {
+            "format": "uuid",
             "type": "string"
           }
         },
@@ -3327,6 +3327,69 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "EraseUserCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "EraseUserCommandOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "erased": {
+            "additionalProperties": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "nullable": true,
+            "type": "object"
+          },
+          "irreversible": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "revokedConnections": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "EraseUserCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EraseUserCommandOutput"
           },
           "errors": {
             "items": {
@@ -14836,6 +14899,54 @@
         ]
       }
     },
+    "/api/me/erasure": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EraseUserCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EraseUserCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EraseUserCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Me"
+        ]
+      }
+    },
     "/api/projections/cash-flow": {
       "get": {
         "parameters": [
@@ -16685,6 +16796,65 @@
         ]
       }
     },
+    "/api/users/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EraseUserCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EraseUserCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EraseUserCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
     "/healthcheck": {
       "get": {
         "responses": {
@@ -16840,6 +17010,9 @@
     },
     {
       "name": "Transfers"
+    },
+    {
+      "name": "Users"
     }
   ]
 }

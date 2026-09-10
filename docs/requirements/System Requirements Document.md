@@ -147,6 +147,8 @@ request validates it locally; token verification never calls Heimdall.
 | FR-ID-33 | The system shall require local bearer authentication for connected credential-management endpoints and forward that token only in the Heimdall authorization header |
 | FR-ID-34 | The system shall map absent two-factor setup to `404 Not Found` and identity-provider unavailability or server failure to a sanitized `503 Service Unavailable` |
 | FR-ID-35 | The system shall rate-limit anonymous recovery, reset and verification requests and shall never persist or log a password, token, factor or recovery code handled by UC-77 |
+| FR-ID-36 | The system shall irreversibly erase an account only after the account owner or an instance administrator supplies the exact explicit confirmation required by the operation |
+| FR-ID-37 | Account erasure shall remove the user profile, connected subject mapping, local account, secret hash, salt and recovery-code hashes; a missing, already-erased or unauthorized target shall be returned as `404 Not Found` |
 
 ### 3.2 Currency and Exchange Rates — `CU`
 
@@ -399,6 +401,8 @@ imported; the payment-option and regulatory pages are ignored by design.
 | FR-RL-09 | The system shall return to a user the audit entries concerning their own records |
 | FR-RL-10 | The system shall maintain a creation and a last-update timestamp on every entity |
 | FR-RL-11 | The system shall fix a record's owner at creation and reject any operation that would change it |
+| FR-RL-12 | Account erasure shall remove every owned financial, classification, planning, ingestion, connection, attachment, export and background-job record in one explicit dependency-ordered transaction; any failure shall leave the account entirely intact |
+| FR-RL-13 | Audit entries shall identify an actor only by a random opaque subject reference held in a separate revocable mapping, and account erasure shall append its final non-identifying entry before destroying that mapping |
 
 ---
 
@@ -704,12 +708,17 @@ There is no balance column. A balance is always computed (FR-AC-07, FR-AC-08).
 | Audit Entry field | Type | Constraints | Description |
 | --- | --- | --- | --- |
 | Id | `bigint` | PK | Internal key. Append-only; no update, no delete. |
-| ActorUserId | `uuid` | Nullable, no FK | The acting identity's public identifier, where one was resolved; retained after hard deletion. |
+| SubjectReference | `uuid` | Nullable, no FK | A random opaque audit subject; retained after erasure but unlinkable once its separate mapping is destroyed. |
 | Operation | `varchar(150)` | Required | What was attempted. |
 | EntityType / EntityPublicId | `varchar(100)` / `uuid` | Nullable | The target, where one was resolved. |
 | Outcome | `smallint` | Required | Succeeded or Refused. |
 | Reason | `varchar(1000)` | Nullable | On refusal, from the application's own messages (FR-RL-07). |
 | OccurredAt | `timestamptz` | Required | When. |
+
+`AUDIT_SUBJECT` maps one internal user key to one random `SubjectReference`. It is operationally
+required for owner-scoped audit reads but contains no audit facts itself. Account erasure deletes
+this mapping; audit rows have no user foreign key, name, external subject, credential or record
+content and therefore remain append-only without continuing to identify the erased person.
 
 ---
 
@@ -725,10 +734,10 @@ request is `{"token":"...","route":{...},"query":{...},"body":{...}}`; `body` is
 HTTP JSON body. Anonymous local-account operations may pass that body directly. Every response uses
 the matching HTTP numeric status and camel-case output envelope.
 
-There are 110 generated offline route exports. `fortuna_capabilities` returns their method, path,
+There are 111 generated offline route exports. `fortuna_capabilities` returns their method, path,
 area, symbol and long-running flag plus the unavailable route families. Connected `/api/auth/**`,
 Pluggy data-source and connection routes, remote exchange-rate synchronization and host-only health
-routes are deliberately not generated. The native equivalents for health and local recovery are
+routes, plus the administrator-only `DELETE /api/users/{id}`, are deliberately not generated. The native equivalents for health and local recovery are
 `fortuna_health` and the recovery-code operations.
 
 ### 5.1 Identity Endpoints
@@ -737,6 +746,8 @@ routes are deliberately not generated. The native equivalents for health and loc
 | --- | --- | --- | --- |
 | GET | `/api/me` | The acting user's profile, provisioning it on first call | FR-ID-05 |
 | PUT | `/api/me` | Update display name and display currency | FR-ID-05 |
+| POST | `/api/me/erasure` | Irreversibly erase the caller and every record they own after exact confirmation | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
+| DELETE | `/api/users/{id}` | Perform the same count-only erasure on an instance administrator's documented authority | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 | POST | `/api/local-accounts` | Create the desktop local account, returning its recovery codes once — *desktop mode only, anonymous* | FR-ID-09 |
 | POST | `/api/local-accounts/authenticate` | Authenticate a local account — *anonymous* | FR-ID-11 |
 | POST | `/api/local-accounts/recover` | Consume a recovery code to restore access — *anonymous* | FR-ID-12 |
@@ -981,6 +992,17 @@ cascading hard delete is how a year of history disappears from one request.
 deletion of what they describe. They are the evidence that the deletion happened and that the data
 was once real.
 
+**Account erasure is the deliberate exception.** UC-78 is not an ordinary record hard delete and
+does not pass through a soft-deleted state (BR-38). It satisfies BR-40 rather than bypassing it by
+removing links and dependents explicitly in this order: many-to-many links and stored-object
+metadata; transfers, transactions, statements, movements and valuations; import rows, connection
+resources, export/import jobs and their payloads; schedules and owner roots; classification rows;
+revoked connections; local credentials and recovery codes; the audit-subject mapping; then the user
+profile. Attachment and export objects are staged with compensation around the database transaction.
+Imported records, normally immutable and retained, are erased here because the data subject—not one
+financial record—is being erased. The final audit entry keeps only the opaque reference, operation,
+outcome and time; deleting the mapping makes all retained entries unlinkable.
+
 ---
 
 ## 9. Traceability
@@ -1005,10 +1027,10 @@ was once real.
 | F-14 Export | FR-EX-01 through FR-EX-08 |
 | F-15 Attachments | FR-AT-01 through FR-AT-10 |
 | F-16 Budgets and goals | FR-PL-01 through FR-PL-07 |
-| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-35 |
+| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-37 |
 | F-18 Desktop offline account | FR-ID-09 through FR-ID-15 |
 | F-19 Asynchronous operations | FR-IM-03, FR-IM-04, FR-IM-05, FR-IM-21, FR-IM-22, FR-CU-05, FR-EX-04 |
-| F-20 Two-stage deletion and audit | FR-RL-01 through FR-RL-11, FR-IM-23 |
+| F-20 Two-stage deletion, account erasure and audit | FR-RL-01 through FR-RL-13, FR-IM-23 |
 
 ### 9.2 Business Rule → Requirements
 
@@ -1051,7 +1073,8 @@ was once real.
 | BR-35 Fortuna never retains a password | FR-ID-06, FR-ID-17, FR-ID-22, FR-ID-23, FR-ID-26, FR-ID-31, FR-ID-35 |
 | BR-36 Recovery codes are the only local recovery | FR-ID-10, FR-ID-12, FR-ID-13, FR-ID-14, NFR-13 |
 | BR-37 Local data stays on its installation | FR-ID-15 |
-| BR-38 Soft delete before hard delete | FR-RL-01, FR-RL-04 |
+| BR-38 Soft delete before hard delete | FR-RL-01, FR-RL-04; UC-78's confirmed whole-account erasure is explicitly outside the record lifecycle |
 | BR-39 Soft-deleted records restorable | FR-RL-02, FR-RL-03 |
-| BR-40 Hard delete refused while referenced | FR-RL-05, NFR-19 |
+| BR-40 Hard delete refused while referenced | FR-RL-05, FR-RL-12, NFR-19 |
 | BR-41 Audit entries append-only | FR-RL-06, FR-RL-08, NFR-17 |
+| BR-42 Audit subject becomes unlinkable on erasure | FR-RL-13, FR-ID-37 |

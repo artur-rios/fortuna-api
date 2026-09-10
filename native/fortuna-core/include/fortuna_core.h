@@ -145,7 +145,8 @@ extern "C" {
  * Request metadata uses {token, route, query, body}; body is the unchanged HTTP JSON body.
  * Deliberately unavailable: /api/auth/** (Heimdall), /api/connections/** and
  * GET /api/data-sources (Pluggy), POST /api/exchange-rates/sync (remote rate source),
- * POST /api/local-accounts/password-reset (use recovery codes), and the HTTP-host health routes.
+ * DELETE /api/users/{id} (no offline administrator), POST /api/local-accounts/password-reset
+ * (use recovery codes), and the HTTP-host health routes.
  * Call fortuna_capabilities to discover the machine-readable availability contract.
  */
 int fortuna_api_accounts_get(const char *request_json, char **response_json); /* GET /api/accounts */
@@ -225,6 +226,7 @@ int fortuna_api_local_accounts_authenticate_post(const char *request_json, char 
 int fortuna_api_local_accounts_recover_post(const char *request_json, char **response_json); /* POST /api/local-accounts/recover */
 int fortuna_api_local_accounts_recovery_codes_regenerate_post(const char *request_json, char **response_json); /* POST /api/local-accounts/recovery-codes/regenerate */
 int fortuna_api_me_get(const char *request_json, char **response_json); /* GET /api/me */
+int fortuna_api_me_erasure_post(const char *request_json, char **response_json); /* POST /api/me/erasure */
 int fortuna_api_projections_cash_flow_get(const char *request_json, char **response_json); /* GET /api/projections/cash-flow */
 int fortuna_api_projections_commitments_get(const char *request_json, char **response_json); /* GET /api/projections/commitments */
 int fortuna_api_recurring_transactions_post(const char *request_json, char **response_json); /* POST /api/recurring-transactions */

@@ -196,10 +196,6 @@ namespace ArturRios.Fortuna.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<Guid?>("ActorUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("actor_user_id");
-
                     b.Property<Guid?>("EntityPublicId")
                         .HasColumnType("uuid")
                         .HasColumnName("entity_public_id");
@@ -228,16 +224,51 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("reason");
 
+                    b.Property<Guid?>("SubjectReference")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_reference");
+
                     b.HasKey("Id")
                         .HasName("pk_audit_entry");
-
-                    b.HasIndex("ActorUserId")
-                        .HasDatabaseName("ix_audit_entry_actor_user_id");
 
                     b.HasIndex("OccurredAt")
                         .HasDatabaseName("ix_audit_entry_occurred_at");
 
+                    b.HasIndex("SubjectReference")
+                        .HasDatabaseName("ix_audit_entry_subject_reference");
+
                     b.ToTable("audit_entry", "fortuna");
+                });
+
+            modelBuilder.Entity("ArturRios.Fortuna.Domain.Auditing.AuditSubject", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("SubjectReference")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_reference");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_subject");
+
+                    b.HasIndex("SubjectReference")
+                        .IsUnique()
+                        .HasDatabaseName("ix_audit_subject_subject_reference");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_audit_subject_user_id");
+
+                    b.ToTable("audit_subject", "fortuna");
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Cards.CreditCard", b =>
@@ -2323,6 +2354,18 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasConstraintName("fk_attachment_financial_transactions_transaction_id");
 
                     b.Navigation("Transaction");
+                });
+
+            modelBuilder.Entity("ArturRios.Fortuna.Domain.Auditing.AuditSubject", b =>
+                {
+                    b.HasOne("ArturRios.Fortuna.Domain.Users.UserProfile", "User")
+                        .WithOne()
+                        .HasForeignKey("ArturRios.Fortuna.Domain.Auditing.AuditSubject", "UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_audit_subject_user_profiles_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Cards.CreditCard", b =>

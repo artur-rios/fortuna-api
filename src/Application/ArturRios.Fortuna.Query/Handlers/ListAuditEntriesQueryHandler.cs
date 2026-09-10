@@ -38,7 +38,11 @@ public sealed class ListAuditEntriesQueryHandler(
                 .WithError(AuditEntryMessages.ProfileNotFound);
         }
 
-        var filtered = entries.Query().Where(entry => entry.ActorUserId == profile.Id);
+        var subjectReference = await entries.FindSubjectReferenceAsync(
+            profile.Id,
+            CancellationToken.None);
+        var filtered = entries.Query().Where(entry =>
+            subjectReference.HasValue && entry.SubjectReference == subjectReference);
 
         if (!string.IsNullOrWhiteSpace(query.EntityType))
         {
@@ -82,7 +86,7 @@ public sealed class ListAuditEntriesQueryHandler(
             .ThenByDescending(entry => entry.Id)
             .Select(entry => new AuditEntryOutput
             {
-                ActorUserId = entry.ActorUserId!.Value,
+                SubjectReference = entry.SubjectReference!.Value,
                 Operation = entry.Operation,
                 EntityType = entry.EntityType,
                 EntityId = entry.EntityPublicId,

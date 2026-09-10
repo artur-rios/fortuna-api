@@ -62,7 +62,8 @@ public sealed class InvestmentCreationTests : IAsyncLifetime
         Assert.False(investment.IsDeleted);
         var audit = await context.AuditEntries.SingleAsync(item =>
             item.Operation == "CreateInvestmentCommand");
-        Assert.Equal(investment.User.PublicId, audit.ActorUserId);
+        Assert.NotNull(audit.SubjectReference);
+        Assert.NotEqual(investment.User.PublicId, audit.SubjectReference);
         Assert.Equal("Investment", audit.EntityType);
         Assert.Equal(investment.PublicId, audit.EntityPublicId);
         Assert.Equal(AuditOutcome.Succeeded, audit.Outcome);

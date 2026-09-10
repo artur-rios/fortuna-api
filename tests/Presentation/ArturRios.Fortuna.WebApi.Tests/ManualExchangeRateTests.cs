@@ -60,13 +60,13 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
             rates,
             rate => Assert.Equal((ExchangeRateSource.Published, 5.1m), (rate.Source, rate.Rate)),
             rate => Assert.Equal((ExchangeRateSource.Manual, 5.25m), (rate.Source, rate.Rate)));
-        var actorId = await context.UserProfiles
-            .Where(profile => profile.ExternalSubject == subject.ToString("D"))
-            .Select(profile => profile.PublicId)
+        var actorId = await context.AuditSubjects
+            .Where(item => item.User.ExternalSubject == subject.ToString("D"))
+            .Select(item => item.SubjectReference)
             .SingleAsync();
         var audit = await context.AuditEntries
             .SingleAsync(entry => entry.Operation == "RecordManualExchangeRateCommand" &&
-                entry.ActorUserId == actorId);
+                entry.SubjectReference == actorId);
         Assert.Equal(AuditOutcome.Succeeded, audit.Outcome);
         Assert.Null(audit.Reason);
     }
@@ -89,13 +89,13 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
         await using var context = CreateContext();
         Assert.False(await context.ExchangeRates.AnyAsync(rate =>
             rate.Source == ExchangeRateSource.Manual && rate.RateDate == new DateOnly(2026, 8, 30)));
-        var actorId = await context.UserProfiles
-            .Where(profile => profile.ExternalSubject == subject.ToString("D"))
-            .Select(profile => profile.PublicId)
+        var actorId = await context.AuditSubjects
+            .Where(item => item.User.ExternalSubject == subject.ToString("D"))
+            .Select(item => item.SubjectReference)
             .SingleAsync();
         var audit = await context.AuditEntries
             .SingleAsync(entry => entry.Operation == "RecordManualExchangeRateCommand" &&
-                entry.ActorUserId == actorId);
+                entry.SubjectReference == actorId);
         Assert.Equal(AuditOutcome.Refused, audit.Outcome);
         Assert.Equal("Rate must be greater than zero.", audit.Reason);
     }
@@ -181,14 +181,14 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
         var manual = await context.ExchangeRates.SingleAsync(rate =>
             rate.Source == ExchangeRateSource.Manual && rate.RateDate == date);
         Assert.Equal(6.2m, manual.Rate);
-        var actorId = await context.UserProfiles
-            .Where(profile => profile.ExternalSubject == subject.ToString("D"))
-            .Select(profile => profile.PublicId)
+        var actorId = await context.AuditSubjects
+            .Where(item => item.User.ExternalSubject == subject.ToString("D"))
+            .Select(item => item.SubjectReference)
             .SingleAsync();
         Assert.Equal(2, await context.AuditEntries.CountAsync(entry =>
             entry.Operation == "RecordManualExchangeRateCommand" &&
             entry.Outcome == AuditOutcome.Succeeded &&
-            entry.ActorUserId == actorId));
+            entry.SubjectReference == actorId));
     }
 
     [FunctionalFact]
@@ -256,7 +256,7 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
         Assert.True(await context.ExchangeRates.AnyAsync(rate =>
             rate.Source == ExchangeRateSource.Manual && rate.RateDate == date));
         Assert.True(await context.AuditEntries.AnyAsync(entry =>
-            entry.Operation == "RecordManualExchangeRateCommand" && entry.ActorUserId != null));
+            entry.Operation == "RecordManualExchangeRateCommand" && entry.SubjectReference != null));
     }
 
     public async Task InitializeAsync()
