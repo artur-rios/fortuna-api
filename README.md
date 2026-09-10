@@ -104,7 +104,7 @@ the domain model; changing providers requires no application-code change.
 
 The desktop client can instead embed the native core without starting the HTTP host or opening a
 listening socket. It ships `fortuna_core.dll` on Windows or `libfortuna_core.so` on Linux together
-with the generated C header. Its 111 generated offline route exports cover the local operation
+with the generated C header. Its 113 generated offline route exports cover the local operation
 surface, while capability discovery identifies network-dependent routes that remain HTTP-only. The
 native core owns its Rust domain/persistence implementation and SQLite schema; see
 [`native/README.md`](native/README.md) for the ABI, ownership and build contract.
@@ -274,6 +274,7 @@ one use case = one branch = one issue = one pull request.
 | [#74](https://github.com/artur-rios/fortuna-api/issues/74) | ✅ UC-73: Export a Data Set | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#75](https://github.com/artur-rios/fortuna-api/issues/75) | ✅ UC-74: Retrieve a Completed Export | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#76](https://github.com/artur-rios/fortuna-api/issues/76) | ✅ UC-75: Check API Health | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
+| [#159](https://github.com/artur-rios/fortuna-api/issues/159) | ✅ UC-79: Export All Personal Data | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ## Contributing
 

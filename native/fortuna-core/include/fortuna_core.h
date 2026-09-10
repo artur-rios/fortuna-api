@@ -226,6 +226,8 @@ int fortuna_api_local_accounts_authenticate_post(const char *request_json, char 
 int fortuna_api_local_accounts_recover_post(const char *request_json, char **response_json); /* POST /api/local-accounts/recover */
 int fortuna_api_local_accounts_recovery_codes_regenerate_post(const char *request_json, char **response_json); /* POST /api/local-accounts/recovery-codes/regenerate */
 int fortuna_api_me_get(const char *request_json, char **response_json); /* GET /api/me */
+int fortuna_api_me_data_export_post(const char *request_json, char **response_json); /* POST /api/me/data-export */
+int fortuna_api_me_data_export_by_job_id_get(const char *request_json, char **response_json); /* GET /api/me/data-export/{jobId} */
 int fortuna_api_me_erasure_post(const char *request_json, char **response_json); /* POST /api/me/erasure */
 int fortuna_api_projections_cash_flow_get(const char *request_json, char **response_json); /* GET /api/projections/cash-flow */
 int fortuna_api_projections_commitments_get(const char *request_json, char **response_json); /* GET /api/projections/commitments */

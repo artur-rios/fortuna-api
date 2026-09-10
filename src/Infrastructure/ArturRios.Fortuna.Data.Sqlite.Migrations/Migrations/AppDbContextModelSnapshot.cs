@@ -802,6 +802,12 @@ namespace ArturRios.Fortuna.Data.Sqlite.Migrations.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("format");
 
+                    b.Property<short>("Kind")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue((short)1)
+                        .HasColumnName("kind");
+
                     b.Property<string>("Locale")
                         .IsRequired()
                         .HasMaxLength(35)
@@ -854,7 +860,11 @@ namespace ArturRios.Fortuna.Data.Sqlite.Migrations.Migrations
 
                     b.ToTable("data_export", null, t =>
                         {
-                            t.HasCheckConstraint("ck_data_export_format", "format BETWEEN 1 AND 3");
+                            t.HasCheckConstraint("ck_data_export_format", "format BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("ck_data_export_kind", "kind BETWEEN 1 AND 2");
+
+                            t.HasCheckConstraint("ck_data_export_kind_format", "(kind = 1 AND format BETWEEN 1 AND 3) OR (kind = 2 AND format = 4)");
 
                             t.HasCheckConstraint("ck_data_export_row_count", "row_count IS NULL OR row_count >= 0");
 

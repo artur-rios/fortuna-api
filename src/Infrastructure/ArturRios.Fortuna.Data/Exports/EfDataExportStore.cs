@@ -7,7 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Exports;
 
-public sealed class EfDataExportStore(AppDbContext context) : IDataExportStore, IDataExportReader
+public sealed class EfDataExportStore(AppDbContext context) :
+    IDataExportStore,
+    IDataExportReader,
+    IPersonalDataExportStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -46,7 +49,9 @@ public sealed class EfDataExportStore(AppDbContext context) : IDataExportStore, 
     {
         var export = await context.DataExports
             .Include(item => item.User)
-            .SingleOrDefaultAsync(item => item.PublicId == exportId, cancellationToken);
+            .SingleOrDefaultAsync(item =>
+                item.PublicId == exportId && item.Kind == DataExportKind.DataSet,
+                cancellationToken);
         if (export is null)
         {
             return null;
@@ -93,7 +98,86 @@ public sealed class EfDataExportStore(AppDbContext context) : IDataExportStore, 
         Guid exportId,
         CancellationToken cancellationToken) => context.DataExports
         .AsNoTracking()
-        .Where(export => export.User.PublicId == userId && export.PublicId == exportId)
+        .Where(export => export.User.PublicId == userId &&
+                         export.PublicId == exportId &&
+                         export.Kind == DataExportKind.DataSet)
+        .Select(export => new DataExportReadSnapshot(
+            export.PublicId,
+            export.BackgroundJobId,
+            export.Format,
+            export.Status,
+            export.FileName,
+            export.RowCount,
+            export.ContentType,
+            export.StorageKey,
+            export.FailureReason,
+            export.CreatedAt,
+            export.UpdatedAt,
+            export.ExpiresAt))
+        .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<QueueDataExportResult> QueuePersonalAsync(
+        QueuePersonalDataExportRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await context.UserProfiles.SingleAsync(
+            item => item.PublicId == request.UserId,
+            cancellationToken);
+        var export = new DataExport(
+            user,
+            DataExportFormat.Zip,
+            "und",
+            request.FileName,
+            "{\"archiveSchemaVersion\":1}",
+            request.RequestedAt,
+            request.ExpiresAt,
+            DataExportKind.PersonalArchive);
+        var backgroundJob = BackgroundJob.Create(
+            PersonalDataExportJob.Type,
+            JsonSerializer.Serialize(
+                new PersonalDataExportJobPayload(export.PublicId),
+                JsonOptions),
+            $"{PersonalDataExportJob.Type}:{export.PublicId:N}",
+            request.CorrelationId,
+            request.RequestedAt);
+        export.AttachBackgroundJob(backgroundJob);
+        context.AddRange(backgroundJob, export);
+        await context.SaveChangesAsync(cancellationToken);
+        return new QueueDataExportResult(export.PublicId, backgroundJob.Id);
+    }
+
+    public async Task<PersonalDataExportWorkItem?> StartPersonalAsync(
+        Guid exportId,
+        DateTimeOffset startedAt,
+        CancellationToken cancellationToken)
+    {
+        var export = await context.DataExports
+            .Include(item => item.User)
+            .SingleOrDefaultAsync(item =>
+                item.PublicId == exportId && item.Kind == DataExportKind.PersonalArchive,
+                cancellationToken);
+        if (export is null)
+        {
+            return null;
+        }
+
+        export.Start(startedAt);
+        await context.SaveChangesAsync(cancellationToken);
+        return new PersonalDataExportWorkItem(
+            export.PublicId,
+            export.User.PublicId,
+            export.FileName,
+            export.ExpiresAt);
+    }
+
+    public Task<DataExportReadSnapshot?> FindOwnedPersonalAsync(
+        Guid userId,
+        Guid exportId,
+        CancellationToken cancellationToken) => context.DataExports
+        .AsNoTracking()
+        .Where(export => export.User.PublicId == userId &&
+                         export.PublicId == exportId &&
+                         export.Kind == DataExportKind.PersonalArchive)
         .Select(export => new DataExportReadSnapshot(
             export.PublicId,
             export.BackgroundJobId,

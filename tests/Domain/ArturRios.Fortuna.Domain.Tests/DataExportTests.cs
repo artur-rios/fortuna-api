@@ -50,6 +50,41 @@ public sealed class DataExportTests
             0, "text/csv", "exports/result.csv", Now.AddMinutes(1)));
     }
 
+    [UnitFact]
+    public void GivenPersonalArchive_WhenCreatedAsZip_ThenItsKindIsExplicit()
+    {
+        var export = new DataExport(
+            User(),
+            DataExportFormat.Zip,
+            "und",
+            "personal.zip",
+            "{}",
+            Now,
+            Now.AddHours(24),
+            DataExportKind.PersonalArchive);
+
+        Assert.Equal(DataExportKind.PersonalArchive, export.Kind);
+        Assert.Equal(DataExportFormat.Zip, export.Format);
+    }
+
+    [UnitTheory]
+    [InlineData(DataExportFormat.Zip, DataExportKind.DataSet)]
+    [InlineData(DataExportFormat.Csv, DataExportKind.PersonalArchive)]
+    public void GivenIncompatibleKindAndFormat_WhenCreated_ThenItIsRejected(
+        DataExportFormat format,
+        DataExportKind kind)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new DataExport(
+            User(),
+            format,
+            "und",
+            "export.file",
+            "{}",
+            Now,
+            Now.AddHours(24),
+            kind));
+    }
+
     private static DataExport Export(UserProfile user) => new(
         user,
         DataExportFormat.Csv,

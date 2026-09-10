@@ -47,7 +47,7 @@ are synchronized.
 | `fortuna_api_local_accounts_authenticate` | HTTP authentication body: `{"name":"...","secret":"..."}` | `200` |
 | `fortuna_api_accounts_get_by_id` | `{"token":"...","id":"uuid","includeDeleted":false}` | `200` |
 
-The header additionally contains 111 concrete route functions generated from the checked-in OpenAPI
+The header additionally contains 113 concrete route functions generated from the checked-in OpenAPI
 contract. Their deterministic names end in the lowercase HTTP method; for example,
 `fortuna_api_transactions_by_id_put` mirrors `PUT /api/transactions/{id}`. An authenticated call
 wraps transport metadata while leaving the HTTP body unchanged:
@@ -66,6 +66,13 @@ area and `longRunning` flag and explains why connected identity, administrator-o
 Pluggy, remote rate synchronization and HTTP-host health routes are absent. Imports and exports return `202` with a persisted job and
 progress; job reads do not block the caller.
 
+Personal-data portability is implemented inside the native boundary rather than delegated to the
+hosted API. `POST /api/me/data-export` snapshots owner-keyed native records into an expiring ZIP,
+stores the blob beside its native job, and returns immediately. The job route returns its ZIP as
+base64 in the C ABI envelope. The archive contains a manifest, JSON data and schemas, real attachment
+bytes when present, invariant decimal strings and redacted imported payloads; credential and recovery
+tables are never read by the builder.
+
 Local tokens are opaque, are stored only as SHA-256 hashes, expire at the configured lifetime, and
 are invalidated at shutdown. Credential-bearing request copies are zeroized and never logged.
 
@@ -76,7 +83,7 @@ initialization. It does not use EF migrations or the .NET domain/application ass
 amounts retain their decimal JSON lexemes in SQLite `TEXT` documents and are parsed with arbitrary
 precision, never through binary floating point. The schema contains local profiles, credential and
 recovery-code hashes, owner-keyed offline records, append-only audit entries and monitorable
-operation jobs. Every record query includes the authenticated owner identifier even though a desktop
+operation jobs, and expiring personal-archive blobs. Every record query includes the authenticated owner identifier even though a desktop
 installation normally has only one local user. Audit rows carry a separate random subject reference;
 confirmed owner erasure deletes its mapping and all identity/record/job rows atomically while leaving
 the now-unlinkable audit facts intact.

@@ -41,6 +41,9 @@ For personal-data obligations, the single self-hosting owner is the controller o
 deployment. On a shared instance, the operator is the controller: an administrator may carry out a
 documented erasure request but receives category counts rather than access to the user's records.
 Heimdall remains the controller of the connected identity and credentials it stores.
+Fortuna's portability archive covers the data Fortuna controls in both hosted and desktop-offline
+deployments; each backend builds it from its own persistence layer, and neither exports Heimdall or
+bank credentials.
 
 ## What It Does
 
@@ -61,6 +64,8 @@ Heimdall remains the controller of the connected identity and credentials it sto
 - **Projects the future** — forward projections built from recurring commitments, credit card
   installments and observed history.
 - **Exports** — CSV, Excel and PDF renderings of any queried data set.
+- **Supports data portability** — gives the owner a complete, structured, expiring ZIP of every
+  record and attachment Fortuna controls, while excluding credentials, recovery codes and tokens.
 - **Searches, filters, updates and deletes** — across every kind of record it holds.
 - **Erases an account completely** — after explicit confirmation, including credentials, imports,
   connections, jobs and stored files, while retaining only an audit trail that can no longer be

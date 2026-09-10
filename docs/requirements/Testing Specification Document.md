@@ -281,6 +281,10 @@ For each endpoint a use case exposes:
       indirect job payload and stored object; another user's rows remain; the audit rows remain under
       one opaque reference while its mapping is gone; and an injected mid-cascade failure restores
       both database and object-store state.
+- [ ] For a **personal-data archive**: that the mapped ownership graph has an inclusion or explicit
+      exclusion policy; every manifest part and schema exists; profile-only data is valid; attachments
+      are real files; exact monetary lexemes survive as strings; secrets are absent even when nested
+      in imported JSON; foreign and expired handles are hidden; and failures can be requested again.
 
 ---
 
@@ -355,6 +359,8 @@ discovery, every offline area, success and failure envelopes, owner-scoped CRUD 
 non-blocking job progress, concurrent calls, response ownership and exact decimal serialization.
 It also confirms that local owner erasure removes the native profile, credentials, recovery hashes,
 records and jobs while retaining audit rows after their subject mapping is destroyed.
+The native archive test opens the ZIP returned through the C ABI and checks manifest/schema coverage,
+exact decimal strings, secret redaction and attachment bytes from the native SQLite implementation.
 The registry test proves that every eligible route in the checked-in HTTP contract has a native
 operation and that connected-only routes are absent. CI runs it on Windows and Linux and separately
 builds each release library; rebuilding must leave the generated header unchanged.

@@ -50,7 +50,7 @@ graph LR
     end
 
     subgraph Identity
-        UC01[UC-01 … UC-06, UC-76 … UC-78<br/>Token access, profile,<br/>credentials and erasure]
+        UC01[UC-01 … UC-06, UC-76 … UC-79<br/>Token access, profile,<br/>credentials and data rights]
     end
 
     subgraph Currency
@@ -116,6 +116,7 @@ graph LR
 | UC-75 | HTTP + native through transport-specific health functions: `GET /healthcheck` for the host and `fortuna_health` in process. |
 | UC-76 … UC-77 | HTTP only. Connected authentication and credential management require Heimdall and have no offline export. |
 | UC-78 | HTTP + native owner erasure. The administrator route is HTTP-only because an offline installation has no instance administrator. |
+| UC-79 | HTTP + native. Each transport owns its persistence and archive implementation; both return an owner-scoped asynchronous job and a complete, expiring ZIP without credentials or tokens. |
 
 `fortuna_capabilities` returns the generated list of available operations and the deliberately absent
 route families. The committed C header contains the same absence note, so a client never has to probe
@@ -2541,6 +2542,50 @@ remain under BR-41; BR-42 makes them non-personal after their mapping is destroy
 
 ---
 
+### UC-79: Export All Personal Data
+
+| Field | Value |
+| --- | --- |
+| **ID** | UC-79 |
+| **Name** | Export All Personal Data |
+| **Actors** | Account Owner, Fortuna Client |
+| **Description** | Produce a complete, structured and machine-readable copy of everything Fortuna holds about the caller |
+| **Preconditions** | The caller is authenticated as the owner |
+| **Postconditions** | An expiring ZIP archive is available through its job handle; domain state is unchanged |
+| **Requirements** | FR-EX-09 through FR-EX-15 |
+
+**Main Flow**
+
+1. The owner calls `POST /api/me/data-export`; Fortuna creates a personal-archive export and a
+   durable background job, then returns `202 Accepted` with its handle, progress and expiry.
+2. The runner snapshots the complete ownership graph: profile, holdings, movements, classifications,
+   planning data, connections without tokens, import evidence and outcomes, attachments, audit
+   entries and export history. Soft-deleted records are included because portability is not a report.
+3. The runner writes one JSON data part and one JSON Schema per entity kind, a manifest that names
+   every part and schema, and attachment bytes under stable archive paths.
+4. All monetary values are invariant exact decimal strings. Credential material, recovery codes,
+   hashes, encrypted access tokens and sensitive token/password fields inside imported payloads are
+   excluded or redacted.
+5. The owner calls `GET /api/me/data-export/{jobId}`. An unfinished job returns status and progress;
+   a completed job returns the ZIP. The hosted API and native core implement this independently in
+   their own persistence layers.
+
+**Alternative Flows**
+
+| ID | Condition | Outcome |
+| --- | --- | --- |
+| AF-01 | The handle belongs to another user | `404 Not Found`, indistinguishable from an absent handle |
+| AF-02 | The job is pending or running | `200 OK` with progress and no archive content |
+| AF-03 | Assembly or storage fails | The job is `Failed`, a safe reason is reported, and a new request creates a retry job |
+| AF-04 | The archive has expired | `404 Not Found`; the owner may request a fresh archive |
+| AF-05 | Only the profile exists | A valid ZIP contains the profile and empty data arrays for every other declared part |
+
+The `PersonalDataArchiveCoverage` contract is compared with the mapped owner graph in tests. Adding
+an owned entity without an inclusion or explicit secret/operational exclusion therefore fails the
+build instead of silently making future archives incomplete.
+
+---
+
 ## 3. Use Case — Requirements Traceability
 
 | Use Case | Requirements |
@@ -2622,6 +2667,7 @@ remain under BR-41; BR-42 makes them non-personal after their mapping is destroy
 | UC-76: Authenticate through the Fortuna API | FR-ID-17 through FR-ID-24 |
 | UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35 |
 | UC-78: Erase a User Account | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
+| UC-79: Export All Personal Data | FR-EX-09 through FR-EX-15 |
 
 Every `FR-<AREA>-xx` defined in [System Requirements §3](System%20Requirements%20Document.md)
 appears at least once above. The platform requirements `IR-xx` and the health check requirements

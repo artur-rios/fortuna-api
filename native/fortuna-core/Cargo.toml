@@ -13,6 +13,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 argon2 = { version = "0.6.0", features = ["rand_core", "zeroize"] }
+base64 = "0.22.1"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
 rusqlite = { version = "0.40.2", default-features = false, features = ["bundled"] }
 serde = { version = "1.0.228", features = ["derive"] }
@@ -21,6 +22,7 @@ sha2 = "0.11.0"
 rust_decimal = "1.40.0"
 uuid = { version = "1.26.0", features = ["serde", "v4"] }
 zeroize = "1.9.0"
+zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
 
 [build-dependencies]
 cbindgen = "0.29.4"
