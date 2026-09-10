@@ -225,7 +225,7 @@ reading a log should be able to tell **that** an import processed 412 rows and r
 
 | Endpoint | Purpose | Authorization |
 | --- | --- | --- |
-| `GET /healthcheck` | Liveness — the process is up and answering | **Public** |
+| `GET /healthcheck` | Liveness — identifies `Fortuna API` and its published contract version without touching dependencies | **Public** |
 | `GET /healthcheck/detailed` | Per-dependency status and an aggregate | **Instance Administrator only** |
 
 ### 5.2 Functional Requirements
@@ -243,8 +243,24 @@ reading a log should be able to tell **that** an import processed 412 rows and r
 | FR-HC-09 | The health check design shall be extensible: a new verification appends an entry to the response and participates in the same aggregation, with no change to the contract | Medium |
 | FR-HC-10 | The detailed endpoint shall map the aggregate to an HTTP status — `200 OK` for `Healthy` and `Degraded`, `503 Service Unavailable` for `Unhealthy` | Medium |
 | FR-HC-11 | The health response shall contain no configuration value, no connection string and no credential | High |
+| FR-HC-12 | Public liveness shall return exactly service identifier `Fortuna API` and `contractVersion` equal to the OpenAPI `info.version`; it shall expose no build version or operational detail | High |
 
 ### 5.3 Response Contract
+
+Public liveness is deliberately small and stable:
+
+```json
+{
+  "contractVersion": "v1",
+  "service": "Fortuna API"
+}
+```
+
+Its `200 OK` meaning remains “the process is answering,” so callers that ignore the additive body
+are unaffected. It never probes the database, storage, job runner or external services. The version
+is the published API contract version, not a build or assembly identifier.
+
+The administrator-only detailed response is:
 
 ```json
 {
@@ -278,7 +294,8 @@ database, the storage backing, the job runner — is down.
 **Main Flow (liveness)**
 
 1. A monitor, load balancer or anonymous caller requests the liveness endpoint.
-2. The system returns a success response indicating the API is up, without touching any dependency.
+2. The system returns `200 OK` with service `Fortuna API` and the published OpenAPI
+   `contractVersion`, without touching any dependency.
 
 **Main Flow (detailed)**
 
@@ -311,6 +328,8 @@ sequenceDiagram
 | AF-04 | Only the aggregator or the rate source is unreachable | `200` with the aggregate `Degraded`; a user's own data is still served |
 | AF-05 | An external service is not configured in this deployment | It is reported as not configured, and does not affect the aggregate |
 | AF-06 | The job queue's oldest pending job exceeds the configured age threshold | The job runner is reported `Unhealthy`, since jobs are accepted but not progressing |
+| AF-07 | A liveness caller ignores the response body | It remains compatible: `200 OK` still means the process is up |
+| AF-08 | Dependencies are starting or not ready | Liveness still returns its two published identifiers; dependency readiness remains detailed-only |
 
 ---
 
@@ -395,4 +414,4 @@ and a continuous integration run answer the same question, and so that raising i
 | Containerization and deployment | IR-18, IR-19 | — |
 | Offline and network-independent operation | IR-20 | — |
 | In-process desktop native core and C ABI | IR-21 … IR-26 | — |
-| Health and monitoring | FR-HC-01 … FR-HC-11 | UC-75 |
+| Health and monitoring | FR-HC-01 … FR-HC-12 | UC-75 |

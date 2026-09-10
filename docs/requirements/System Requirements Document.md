@@ -909,6 +909,17 @@ deliberately not generated. The native equivalents for health and local recovery
 | GET | `/api/exports/{id}` | Retrieve a completed export's file | FR-EX-08 |
 | GET | `/api/audit-entries` | The acting user's own audit entries | FR-RL-09 |
 
+### 5.10 Health Endpoints
+
+| Method | Path | Description | Requirement |
+| --- | --- | --- | --- |
+| GET | `/healthcheck` | Anonymous dependency-free liveness with exactly service `Fortuna API` and the published OpenAPI contract version | FR-HC-01, FR-HC-11, FR-HC-12 |
+| GET | `/healthcheck/detailed` | Administrator-only aggregate and per-dependency operational health | FR-HC-02 through FR-HC-11 |
+
+The liveness `contractVersion` is the OpenAPI `info.version`, not an assembly or build version. A
+client can therefore reject an incompatible contract before using a domain endpoint without
+receiving deployment detail that it cannot act on.
+
 ---
 
 ## 6. Non-Functional Requirements

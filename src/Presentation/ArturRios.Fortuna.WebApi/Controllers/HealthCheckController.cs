@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.WebApi.Configuration;
+using ArturRios.Fortuna.WebApi.Output;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,6 +11,10 @@ public sealed class HealthCheckController : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult Get() => Ok(new { status = "Healthy" });
+    [ProducesResponseType(typeof(LivenessOutput), StatusCodes.Status200OK)]
+    public ActionResult<LivenessOutput> Get() => Ok(new LivenessOutput
+    {
+        ContractVersion = ApiContractMetadata.Version,
+        Service = ApiContractMetadata.Service
+    });
 }

@@ -851,8 +851,8 @@ try
     {
         document.SwaggerDoc("v1", new()
         {
-            Title = "Fortuna API",
-            Version = "v1"
+            Title = ApiContractMetadata.Service,
+            Version = ApiContractMetadata.Version
         });
         var jwtSecurityScheme = new OpenApiSecurityScheme
         {

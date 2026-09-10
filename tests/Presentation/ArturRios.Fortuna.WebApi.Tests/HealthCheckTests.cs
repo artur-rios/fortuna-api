@@ -40,9 +40,30 @@ public sealed class HealthCheckTests : IAsyncLifetime
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/healthcheck");
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var publishedContract = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(RepositoryRoot(), "docs", "openapi", "fortuna.json")));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Healthy", await response.Content.ReadAsStringAsync());
+        Assert.Equal(2, document.RootElement.EnumerateObject().Count());
+        Assert.Equal("Fortuna API", document.RootElement.GetProperty("service").GetString());
+        Assert.Equal(
+            publishedContract.RootElement.GetProperty("info").GetProperty("version").GetString(),
+            document.RootElement.GetProperty("contractVersion").GetString());
+        Assert.False(document.RootElement.TryGetProperty("status", out _));
+        Assert.False(document.RootElement.TryGetProperty("buildVersion", out _));
+    }
+
+    private static string RepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null &&
+               !File.Exists(Path.Combine(directory.FullName, "docs", "openapi", "fortuna.json")))
+        {
+            directory = directory.Parent;
+        }
+        return directory?.FullName ?? throw new DirectoryNotFoundException(
+            "Could not locate the repository root.");
     }
 
     [FunctionalFact]
