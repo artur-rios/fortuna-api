@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
+using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Mediator.Query;
@@ -9,6 +10,7 @@ using ArturRios.Mediator.Command;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
+using ArturRios.Util.WebApi.Security.Attributes;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
 
@@ -24,7 +26,12 @@ public sealed class MeController(
         {
             [UserProfileMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [UserErasureMessages.ConfirmationInvalid] = StatusCodes.Status400BadRequest,
-            [UserErasureMessages.UserNotFound] = StatusCodes.Status404NotFound
+            [UserErasureMessages.UserNotFound] = StatusCodes.Status404NotFound,
+            [PersonalDataExportMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
+            [PersonalDataExportMessages.NotFound] = StatusCodes.Status404NotFound,
+            [PersonalDataExportMessages.Expired] = StatusCodes.Status404NotFound,
+            [PersonalDataExportMessages.FileNotFound] = StatusCodes.Status404NotFound,
+            [PersonalDataExportMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable
         };
 
     [HttpGet]
@@ -49,5 +56,47 @@ public sealed class MeController(
             EraseUserCommand,
             EraseUserCommandOutput>(command);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("data-export")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<RequestPersonalDataExportCommandOutput?>),
+        StatusCodes.Status202Accepted)]
+    public async Task<ActionResult<DataOutput<RequestPersonalDataExportCommandOutput?>>> RequestDataExport()
+    {
+        var command = new RequestPersonalDataExportCommand
+        {
+            CorrelationId = HttpContext.TraceIdentifier
+        };
+        var result = await commandMediator.ExecuteCommandAsync<
+            RequestPersonalDataExportCommand,
+            RequestPersonalDataExportCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
+        {
+            [PersonalDataExportMessages.Accepted] = StatusCodes.Status202Accepted,
+            [PersonalDataExportMessages.ProfileNotFound] = StatusCodes.Status404NotFound
+        });
+    }
+
+    [HttpGet("data-export/{jobId:guid}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(DataOutput<PersonalDataExportQueryOutput?>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDataExport(Guid jobId)
+    {
+        var result = await queryMediator.ExecuteQueryAsync<
+            GetPersonalDataExportQuery,
+            PersonalDataExportQueryOutput>(new GetPersonalDataExportQuery { JobId = jobId });
+        if (result.Success && result.Data?.Content is not null)
+        {
+            return File(
+                result.Data.Content,
+                result.Data.ContentType!,
+                result.Data.FileName,
+                enableRangeProcessing: true);
+        }
+        var response = ResponseResolver.Resolve(result, statusMap: StatusMap);
+        return response.Result ?? Ok(response.Value);
     }
 }

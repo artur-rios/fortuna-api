@@ -1,8 +1,11 @@
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Map, Value};
 use uuid::Uuid;
+
+use crate::personal_archive::{self, PersonalDataSnapshot};
 
 #[derive(Clone, Debug)]
 pub(crate) struct NativeStore {
@@ -20,6 +23,17 @@ pub(crate) struct LocalAccountRecord {
     pub(crate) account_id: String,
     pub(crate) user_id: String,
     pub(crate) secret_hash: String,
+}
+
+#[derive(Debug)]
+pub(crate) struct PersonalArchiveState {
+    pub(crate) status: i64,
+    pub(crate) progress: i64,
+    pub(crate) failure_reason: Option<String>,
+    pub(crate) created_at: String,
+    pub(crate) updated_at: String,
+    pub(crate) expires_at: String,
+    pub(crate) content: Option<Vec<u8>>,
 }
 
 impl NativeStore {
@@ -683,6 +697,176 @@ impl NativeStore {
             .map_err(|_| StoreError)
     }
 
+    pub(crate) fn generate_personal_archive(
+        &self,
+        user_id: Uuid,
+        id: Uuid,
+        generated_at: &str,
+        expires_at: &str,
+    ) -> Result<(), StoreError> {
+        self.open()
+            .and_then(|connection| {
+                connection.execute(
+                    "UPDATE native_operation_job
+                     SET status = 2, progress = 50, failure_reason = NULL, updated_at = ?1
+                     WHERE user_id = ?2 AND public_id = ?3 AND kind = '/api/me/data-export'",
+                    params![generated_at, user_id.to_string(), id.to_string()],
+                )?;
+                Ok(())
+            })
+            .map_err(|_| StoreError)?;
+
+        let snapshot = self.personal_data_snapshot(user_id)?;
+        let content =
+            personal_archive::build(snapshot, generated_at, expires_at).map_err(|_| StoreError)?;
+        let mut connection = self.open().map_err(|_| StoreError)?;
+        let transaction = connection.transaction().map_err(|_| StoreError)?;
+        transaction
+            .execute(
+                "INSERT OR REPLACE INTO native_personal_archive(job_id, content, expires_at)
+                 VALUES (?1, ?2, ?3)",
+                params![id.to_string(), content, expires_at],
+            )
+            .map_err(|_| StoreError)?;
+        transaction
+            .execute(
+                "UPDATE native_operation_job
+                 SET status = 3, progress = 100, failure_reason = NULL, updated_at = ?1
+                 WHERE user_id = ?2 AND public_id = ?3 AND kind = '/api/me/data-export'",
+                params![generated_at, user_id.to_string(), id.to_string()],
+            )
+            .map_err(|_| StoreError)?;
+        transaction.commit().map_err(|_| StoreError)
+    }
+
+    pub(crate) fn fail_personal_archive(
+        &self,
+        user_id: Uuid,
+        id: Uuid,
+        timestamp: &str,
+    ) -> Result<(), StoreError> {
+        self.open()
+            .and_then(|connection| {
+                connection.execute(
+                    "UPDATE native_operation_job
+                     SET status = 4, progress = 100,
+                         failure_reason = 'The personal data archive could not be generated.',
+                         updated_at = ?1
+                     WHERE user_id = ?2 AND public_id = ?3 AND kind = '/api/me/data-export'",
+                    params![timestamp, user_id.to_string(), id.to_string()],
+                )?;
+                Ok(())
+            })
+            .map_err(|_| StoreError)
+    }
+
+    pub(crate) fn get_personal_archive(
+        &self,
+        user_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<PersonalArchiveState>, StoreError> {
+        self.open()
+            .and_then(|connection| {
+                connection
+                    .query_row(
+                        "SELECT job.status, job.progress, job.failure_reason,
+                                job.created_at, job.updated_at,
+                                COALESCE(archive.expires_at,
+                                    json_extract(job.request_json, '$.expiresAt')),
+                                archive.content
+                         FROM native_operation_job AS job
+                         LEFT JOIN native_personal_archive AS archive
+                           ON archive.job_id = job.public_id
+                         WHERE job.user_id = ?1 AND job.public_id = ?2
+                           AND job.kind = '/api/me/data-export'",
+                        params![user_id.to_string(), id.to_string()],
+                        |row| {
+                            Ok(PersonalArchiveState {
+                                status: row.get(0)?,
+                                progress: row.get(1)?,
+                                failure_reason: row.get(2)?,
+                                created_at: row.get(3)?,
+                                updated_at: row.get(4)?,
+                                expires_at: row.get(5)?,
+                                content: row.get(6)?,
+                            })
+                        },
+                    )
+                    .optional()
+            })
+            .map_err(|_| StoreError)
+    }
+
+    fn personal_data_snapshot(&self, user_id: Uuid) -> Result<PersonalDataSnapshot, StoreError> {
+        let connection = self.open().map_err(|_| StoreError)?;
+        let user = user_id.to_string();
+        let profile = connection
+            .query_row(
+                "SELECT public_id, display_name, display_currency, created_at, updated_at
+                 FROM native_user_profile WHERE public_id = ?1",
+                params![user],
+                |row| {
+                    Ok(serde_json::json!({
+                        "publicId": row.get::<_, String>(0)?,
+                        "displayName": row.get::<_, String>(1)?,
+                        "displayCurrencyCode": row.get::<_, Option<String>>(2)?,
+                        "createdAt": row.get::<_, String>(3)?,
+                        "updatedAt": row.get::<_, String>(4)?,
+                    }))
+                },
+            )
+            .map_err(|_| StoreError)?;
+
+        let mut records = BTreeMap::<String, Vec<Value>>::new();
+        let mut statement = connection
+            .prepare(
+                "SELECT resource, body_json FROM native_offline_record
+                 WHERE user_id = ?1 ORDER BY resource, created_at, public_id",
+            )
+            .map_err(|_| StoreError)?;
+        let rows = statement
+            .query_map(params![user], |row| {
+                let body: String = row.get(1)?;
+                Ok((
+                    row.get::<_, String>(0)?,
+                    serde_json::from_str(&body).map_err(|_| rusqlite::Error::InvalidQuery)?,
+                ))
+            })
+            .map_err(|_| StoreError)?;
+        for row in rows {
+            let (resource, value) = row.map_err(|_| StoreError)?;
+            records.entry(resource).or_default().push(value);
+        }
+        drop(statement);
+
+        let audit_entries = self.audit_entries(user_id)?;
+        let jobs = self.list_jobs(user_id)?;
+        let import_jobs = jobs
+            .iter()
+            .filter(|job| {
+                job["kind"]
+                    .as_str()
+                    .is_some_and(|kind| kind.starts_with("/api/imports/"))
+            })
+            .cloned()
+            .collect();
+        let export_history = jobs
+            .into_iter()
+            .filter(|job| {
+                job["kind"]
+                    .as_str()
+                    .is_some_and(|kind| kind.contains("export"))
+            })
+            .collect();
+        Ok(PersonalDataSnapshot {
+            profile,
+            records,
+            audit_entries,
+            import_jobs,
+            export_history,
+        })
+    }
+
     fn open(&self) -> rusqlite::Result<Connection> {
         let connection = Connection::open(&self.database_path)?;
         connection.busy_timeout(std::time::Duration::from_secs(5))?;
@@ -867,7 +1051,33 @@ fn migrate(database_path: &Path) -> rusqlite::Result<()> {
         )?;
         transaction.commit()?;
     }
+    let has_failure_reason =
+        table_has_column(&connection, "native_operation_job", "failure_reason")?;
+    if !has_failure_reason {
+        connection.execute(
+            "ALTER TABLE native_operation_job ADD COLUMN failure_reason TEXT NULL",
+            [],
+        )?;
+    }
+    connection.execute_batch(
+        "CREATE TABLE IF NOT EXISTS native_personal_archive (
+             job_id TEXT PRIMARY KEY NOT NULL
+                 REFERENCES native_operation_job(public_id) ON DELETE CASCADE,
+             content BLOB NOT NULL,
+             expires_at TEXT NOT NULL
+         );
+         INSERT OR IGNORE INTO native_schema_migration(version) VALUES (4);",
+    )?;
     Ok(())
+}
+
+fn table_has_column(connection: &Connection, table: &str, column: &str) -> rusqlite::Result<bool> {
+    let mut statement = connection.prepare(&format!("PRAGMA table_info({table})"))?;
+    Ok(statement
+        .query_map([], |row| row.get::<_, String>(1))?
+        .collect::<rusqlite::Result<Vec<_>>>()?
+        .iter()
+        .any(|name| name == column))
 }
 
 fn append_audit(

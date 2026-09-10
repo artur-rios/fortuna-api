@@ -10,7 +10,11 @@ public sealed class DataExportMap : IEntityTypeConfiguration<DataExport>
     {
         builder.ToTable("data_export", table =>
         {
-            table.HasCheckConstraint("ck_data_export_format", "format BETWEEN 1 AND 3");
+            table.HasCheckConstraint("ck_data_export_format", "format BETWEEN 1 AND 4");
+            table.HasCheckConstraint("ck_data_export_kind", "kind BETWEEN 1 AND 2");
+            table.HasCheckConstraint(
+                "ck_data_export_kind_format",
+                "(kind = 1 AND format BETWEEN 1 AND 3) OR (kind = 2 AND format = 4)");
             table.HasCheckConstraint("ck_data_export_status", "status BETWEEN 1 AND 4");
             table.HasCheckConstraint("ck_data_export_row_count", "row_count IS NULL OR row_count >= 0");
         });
@@ -19,6 +23,9 @@ public sealed class DataExportMap : IEntityTypeConfiguration<DataExport>
         builder.Property(export => export.UserId).IsRequired();
         builder.Property(export => export.BackgroundJobId).IsRequired();
         builder.Property(export => export.Format).IsRequired();
+        builder.Property(export => export.Kind)
+            .HasDefaultValue(DataExportKind.DataSet)
+            .IsRequired();
         builder.Property(export => export.Status).IsRequired();
         builder.Property(export => export.Locale).HasMaxLength(35).IsRequired();
         builder.Property(export => export.FileName).HasMaxLength(300).IsRequired();

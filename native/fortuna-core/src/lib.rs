@@ -18,6 +18,7 @@ use zeroize::{Zeroize, Zeroizing};
 
 mod operation;
 mod persistence;
+mod personal_archive;
 
 use operation::OperationSpec;
 use persistence::NativeStore;
@@ -621,9 +622,13 @@ pub unsafe extern "C" fn fortuna_string_free(response_json: *mut c_char) {
 mod tests {
     use super::*;
     use std::ffi::CString;
+    use std::io::{Cursor, Read};
     use std::path::Path;
 
+    use base64::Engine;
+    use base64::engine::general_purpose::STANDARD;
     use rusqlite::{Connection, params};
+    use zip::ZipArchive;
 
     static TEST_LOCK: Mutex<()> = Mutex::new(());
 
@@ -1106,7 +1111,7 @@ mod tests {
         assert_eq!(FORTUNA_STATUS_OK, response.status);
         let body: Value = serde_json::from_str(&response.body).unwrap();
         let operations = body["data"]["operations"].as_array().unwrap();
-        assert_eq!(111, operations.len());
+        assert_eq!(113, operations.len());
         assert!(operations.iter().any(|operation| {
             operation["method"] == "POST" && operation["path"] == "/api/imports/excel"
         }));
@@ -1117,6 +1122,9 @@ mod tests {
         }));
         assert!(operations.iter().any(|operation| {
             operation["method"] == "POST" && operation["path"] == "/api/me/erasure"
+        }));
+        assert!(operations.iter().any(|operation| {
+            operation["method"] == "POST" && operation["path"] == "/api/me/data-export"
         }));
         assert!(!operations.iter().any(|operation| {
             operation["method"] == "DELETE" && operation["path"] == "/api/users/{id}"
@@ -1129,7 +1137,7 @@ mod tests {
     fn given_every_generated_route_when_called_before_initialization_then_each_symbol_is_safe() {
         let _guard = test_guard();
         stop();
-        assert_eq!(111, NATIVE_OPERATION_FUNCTIONS.len());
+        assert_eq!(113, NATIVE_OPERATION_FUNCTIONS.len());
         for function in NATIVE_OPERATION_FUNCTIONS {
             let response = call(*function, "{}");
             assert_eq!(
@@ -1467,6 +1475,145 @@ mod tests {
                 .unwrap()
                 .len()
         );
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_native_owner_data_when_personal_archive_completes_then_zip_is_complete_exact_and_secret_free()
+     {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let token = create_local_user(&path);
+
+        let account = call(
+            fortuna_api_accounts_post,
+            &format!(
+                r#"{{"token":"{token}","body":{{"name":"Exact account","institution":"Native bank","accountType":1,"currencyCode":"BRL","openingBalance":123456789012345.6789}}}}"#
+            ),
+        );
+        assert_eq!(FORTUNA_STATUS_CREATED, account.status, "{}", account.body);
+        let account_id = serde_json::from_str::<Value>(&account.body).unwrap()["data"]["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let transaction = call(
+            fortuna_api_transactions_post,
+            &serde_json::json!({
+                "token": token,
+                "body": {"financialAccountId":account_id,"direction":2,"amount":0.0001,
+                    "description":"Portable","occurredAt":"2026-09-10T01:00:00Z"}
+            })
+            .to_string(),
+        );
+        let transaction_id =
+            serde_json::from_str::<Value>(&transaction.body).unwrap()["data"]["id"]
+                .as_str()
+                .unwrap()
+                .to_owned();
+        let attachment = call(
+            fortuna_api_transactions_by_id_attachments_post,
+            &serde_json::json!({
+                "token":token,"route":{"id":transaction_id},
+                "body":{"fileName":"receipt.txt","contentType":"text/plain",
+                    "content":STANDARD.encode("native attachment")}
+            })
+            .to_string(),
+        );
+        assert_eq!(
+            FORTUNA_STATUS_CREATED, attachment.status,
+            "{}",
+            attachment.body
+        );
+
+        let connection = Connection::open(&path).unwrap();
+        let user_id: String = connection
+            .query_row(
+                "SELECT public_id FROM native_user_profile LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let imported_id = Uuid::new_v4();
+        connection
+            .execute(
+                "INSERT INTO native_offline_record(
+                 public_id, user_id, resource, body_json, is_deleted, created_at, updated_at)
+             VALUES (?1, ?2, 'imported-records', ?3, 0, ?4, ?4)",
+                params![
+                    imported_id.to_string(),
+                    user_id,
+                    serde_json::json!({
+                        "id": imported_id,
+                        "rawPayload": {"access_token":"NATIVE-ACCESS-TOKEN",
+                            "nested":{"password":"NATIVE-PASSWORD"}}
+                    })
+                    .to_string(),
+                    "2026-09-10T01:00:00Z"
+                ],
+            )
+            .unwrap();
+        drop(connection);
+
+        let queued = call(
+            fortuna_api_me_data_export_post,
+            &serde_json::json!({"token":token}).to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_ACCEPTED, queued.status, "{}", queued.body);
+        let job_id = serde_json::from_str::<Value>(&queued.body).unwrap()["data"]["jobId"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+
+        let completed = (0..200)
+            .find_map(|_| {
+                let response = call(
+                    fortuna_api_me_data_export_by_job_id_get,
+                    &serde_json::json!({"token":token,"route":{"jobId":job_id}}).to_string(),
+                );
+                let body = serde_json::from_str::<Value>(&response.body).unwrap();
+                if body["data"]["status"] == 3 {
+                    Some(body)
+                } else {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                    None
+                }
+            })
+            .expect("personal archive did not complete");
+        let content = STANDARD
+            .decode(completed["data"]["contentBase64"].as_str().unwrap())
+            .unwrap();
+        let mut zip = ZipArchive::new(Cursor::new(content)).unwrap();
+        assert!(zip.by_name("manifest.json").is_ok());
+        assert!(zip.by_name("schemas/profile.schema.json").is_ok());
+        let mut accounts = String::new();
+        zip.by_name("data/financial-accounts.json")
+            .unwrap()
+            .read_to_string(&mut accounts)
+            .unwrap();
+        assert!(accounts.contains(r#""openingBalance": "123456789012345.6789""#));
+        let mut imported = String::new();
+        zip.by_name("data/imported-records.json")
+            .unwrap()
+            .read_to_string(&mut imported)
+            .unwrap();
+        assert!(!imported.contains("NATIVE-ACCESS-TOKEN"));
+        assert!(!imported.contains("NATIVE-PASSWORD"));
+        assert!(imported.contains("[redacted]"));
+        let attachment_path = (0..zip.len())
+            .find_map(|index| {
+                let name = zip.by_index(index).ok()?.name().to_owned();
+                name.starts_with("attachments/").then_some(name)
+            })
+            .expect("attachment file missing");
+        let mut attachment_bytes = Vec::new();
+        zip.by_name(&attachment_path)
+            .unwrap()
+            .read_to_end(&mut attachment_bytes)
+            .unwrap();
+        assert_eq!(b"native attachment", attachment_bytes.as_slice());
+
         stop();
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
     }

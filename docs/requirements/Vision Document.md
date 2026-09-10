@@ -26,7 +26,8 @@ spreadsheets and from defined PDF statement layouts; classification, budgets and
 handling with official exchange rates; tabular and aggregated read models with drill-down; forward
 projections; export to CSV, Excel and PDF; attachments; and the identity integration that isolates
 one user's data from another's; and confirmed, irreversible account erasure that preserves only an
-unlinkable audit trail.
+unlinkable audit trail. The owner can also take a complete, structured copy of all personal data,
+including stored files, without credential or token material.
 
 **Out of scope**, deliberately and permanently:
 
@@ -118,6 +119,8 @@ their own controller and exercises erasure directly. On a shared instance, its o
 controller and an instance administrator may execute a documented erasure request while receiving
 counts only—never the person's financial records. Fortuna removes the complete ownership graph;
 the connected Heimdall controller remains responsible for erasing the upstream identity it owns.
+The same controller boundary governs portability: Fortuna exports everything it controls in a
+machine-readable, expiring archive, while Heimdall identity data remains Heimdall's responsibility.
 
 ---
 
@@ -190,7 +193,7 @@ Two properties of this picture matter more than the boxes:
 | F-11 | Tabular queries | Query any record set with filtering, sorting and pagination, shaped for a spreadsheet-style grid. |
 | F-12 | Chart aggregations with drill-down | Aggregate by period, category, account or counterparty, and resolve any aggregated figure into the finer breakdown — and ultimately the transactions — behind it. |
 | F-13 | Forward projections | Project cash flow and committed obligations forward from recurring rules, open installments and observed history. |
-| F-14 | Export | Render any queried data set to CSV, Excel or PDF. |
+| F-14 | Export and data portability | Render queried data sets to CSV, Excel or PDF, and give the owner a complete structured archive of all personal data and attachments without secrets. |
 | F-15 | Attachments | File receipts and documents against a transaction, in filesystem or S3-compatible storage. |
 | F-16 | Budgets and goals | Set a spending ceiling per category and period, and a savings target with a date, each measured against actuals. |
 | F-17 | Identity and isolation | Authenticate through Heimdall, provision a local profile on first access, and guarantee that one user's data is unreachable by another. |

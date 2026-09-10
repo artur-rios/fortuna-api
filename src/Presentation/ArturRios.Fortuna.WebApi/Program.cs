@@ -262,6 +262,9 @@ try
         provider.GetRequiredService<EfDataExportStore>());
     builder.Services.AddScoped<IDataExportReader>(provider =>
         provider.GetRequiredService<EfDataExportStore>());
+    builder.Services.AddScoped<IPersonalDataExportStore>(provider =>
+        provider.GetRequiredService<EfDataExportStore>());
+    builder.Services.AddScoped<IPersonalDataArchiveBuilder, EfPersonalDataArchiveBuilder>();
     builder.Services.AddSingleton<IDataExportRenderer, DataExportRenderer>();
     builder.Services.AddScoped<DataExportBuilder>();
     builder.Services.AddSingleton<ITransactionDrillDownKeyCodec,
@@ -305,6 +308,7 @@ try
     builder.Services.AddScoped<IBackgroundJobHandler, ExcelImportJobHandler>();
     builder.Services.AddScoped<IBackgroundJobHandler, PdfInvoiceImportJobHandler>();
     builder.Services.AddScoped<IBackgroundJobHandler, DataExportJobHandler>();
+    builder.Services.AddScoped<IBackgroundJobHandler, PersonalDataExportJobHandler>();
     builder.Services.AddHostedService<DatabaseInitializationHostedService>();
     builder.Services.AddHostedService<BackgroundJobHostedService>();
     builder.Services.AddHostedService<ExchangeRateSyncHostedService>();
@@ -422,6 +426,8 @@ try
         RequestDataExportCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RequestDataExportCommand,
         RequestDataExportCommandOutput, RequestDataExportCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<RequestPersonalDataExportCommand,
+        RequestPersonalDataExportCommandOutput, RequestPersonalDataExportCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CreateFinancialAccountCommand,
         CreateFinancialAccountCommandOutput, CreateFinancialAccountCommandHandler>();
     builder.Services.AddScoped<IValidator<UpdateFinancialAccountCommand>,
@@ -718,6 +724,8 @@ try
     builder.Services.AddScoped<IValidator<GetDataExportQuery>, GetDataExportQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetDataExportQuery,
         RetrieveDataExportQueryOutput>, RetrieveDataExportQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetPersonalDataExportQuery,
+        PersonalDataExportQueryOutput>, GetPersonalDataExportQueryHandler>();
     builder.Services.AddScoped<IValidator<ListImportJobsQuery>, ListImportJobsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListImportJobsQuery, ImportJobOutput>,
         ListImportJobsQueryHandler>();

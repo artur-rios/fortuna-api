@@ -385,6 +385,13 @@ imported; the payment-option and regulatory pages are ignored by design.
 | FR-EX-06 | The system shall include in an export only records owned by the requesting user |
 | FR-EX-07 | The system shall exclude soft-deleted records from every export |
 | FR-EX-08 | The system shall make an export's produced file available only to the user who requested it |
+| FR-EX-09 | The system shall accept a request for a complete personal-data archive as a durable asynchronous job and report status and progress through its handle |
+| FR-EX-10 | A personal-data archive shall contain every record in the requesting user's ownership graph, including profile, soft-deleted records, connection metadata, import evidence and outcomes, audit entries and export history |
+| FR-EX-11 | A personal-data archive shall be a ZIP containing a manifest plus versioned JSON data and JSON Schema documents for every included entity kind |
+| FR-EX-12 | A personal-data archive shall exclude password and recovery-code material, credential hashes, connection tokens and other token-, secret- or credential-valued fields, including sensitive fields nested in imported payloads |
+| FR-EX-13 | A personal-data archive shall include each owned attachment as a file under the path named by its portable metadata |
+| FR-EX-14 | A personal-data archive shall encode every monetary value as an invariant exact decimal string without floating-point conversion |
+| FR-EX-15 | A personal-data archive shall be available only to its owner until its stated expiry; foreign, absent and expired handles shall return not-found |
 
 ### 3.14 Record Lifecycle and Audit — `RL`
 
@@ -734,7 +741,7 @@ request is `{"token":"...","route":{...},"query":{...},"body":{...}}`; `body` is
 HTTP JSON body. Anonymous local-account operations may pass that body directly. Every response uses
 the matching HTTP numeric status and camel-case output envelope.
 
-There are 111 generated offline route exports. `fortuna_capabilities` returns their method, path,
+There are 113 generated offline route exports. `fortuna_capabilities` returns their method, path,
 area, symbol and long-running flag plus the unavailable route families. Connected `/api/auth/**`,
 Pluggy data-source and connection routes, remote exchange-rate synchronization and host-only health
 routes, plus the administrator-only `DELETE /api/users/{id}`, are deliberately not generated. The native equivalents for health and local recovery are
@@ -746,6 +753,8 @@ routes, plus the administrator-only `DELETE /api/users/{id}`, are deliberately n
 | --- | --- | --- | --- |
 | GET | `/api/me` | The acting user's profile, provisioning it on first call | FR-ID-05 |
 | PUT | `/api/me` | Update display name and display currency | FR-ID-05 |
+| POST | `/api/me/data-export` | Queue a complete, expiring personal-data archive | FR-EX-09 … FR-EX-14 |
+| GET | `/api/me/data-export/{jobId}` | Read progress or retrieve the owner's finished archive | FR-EX-15 |
 | POST | `/api/me/erasure` | Irreversibly erase the caller and every record they own after exact confirmation | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 | DELETE | `/api/users/{id}` | Perform the same count-only erasure on an instance administrator's documented authority | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 | POST | `/api/local-accounts` | Create the desktop local account, returning its recovery codes once — *desktop mode only, anonymous* | FR-ID-09 |
@@ -1024,12 +1033,12 @@ outcome and time; deleting the mapping makes all retained entries unlinkable.
 | F-11 Tabular queries | FR-RP-01, FR-TX-10, FR-TX-11 |
 | F-12 Chart aggregations with drill-down | FR-RP-02 through FR-RP-11 |
 | F-13 Forward projections | FR-PJ-01 through FR-PJ-06 |
-| F-14 Export | FR-EX-01 through FR-EX-08 |
+| F-14 Export and data portability | FR-EX-01 through FR-EX-15 |
 | F-15 Attachments | FR-AT-01 through FR-AT-10 |
 | F-16 Budgets and goals | FR-PL-01 through FR-PL-07 |
 | F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-37 |
 | F-18 Desktop offline account | FR-ID-09 through FR-ID-15 |
-| F-19 Asynchronous operations | FR-IM-03, FR-IM-04, FR-IM-05, FR-IM-21, FR-IM-22, FR-CU-05, FR-EX-04 |
+| F-19 Asynchronous operations | FR-IM-03, FR-IM-04, FR-IM-05, FR-IM-21, FR-IM-22, FR-CU-05, FR-EX-04, FR-EX-09 |
 | F-20 Two-stage deletion, account erasure and audit | FR-RL-01 through FR-RL-13, FR-IM-23 |
 
 ### 9.2 Business Rule → Requirements

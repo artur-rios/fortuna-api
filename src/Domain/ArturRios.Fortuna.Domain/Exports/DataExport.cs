@@ -7,7 +7,14 @@ public enum DataExportFormat : short
 {
     Csv = 1,
     Excel = 2,
-    Pdf = 3
+    Pdf = 3,
+    Zip = 4
+}
+
+public enum DataExportKind : short
+{
+    DataSet = 1,
+    PersonalArchive = 2
 }
 
 public enum DataExportStatus : short
@@ -31,12 +38,20 @@ public sealed class DataExport
         string fileName,
         string requestJson,
         DateTimeOffset createdAt,
-        DateTimeOffset expiresAt)
+        DateTimeOffset expiresAt,
+        DataExportKind kind = DataExportKind.DataSet)
     {
         User = user ?? throw new ArgumentNullException(nameof(user));
         if (!Enum.IsDefined(format))
         {
             throw new ArgumentOutOfRangeException(nameof(format));
+        }
+
+        if (!Enum.IsDefined(kind) ||
+            (kind == DataExportKind.DataSet && format == DataExportFormat.Zip) ||
+            (kind == DataExportKind.PersonalArchive && format != DataExportFormat.Zip))
+        {
+            throw new ArgumentOutOfRangeException(nameof(kind));
         }
 
         if (expiresAt <= createdAt)
@@ -47,6 +62,7 @@ public sealed class DataExport
         PublicId = Guid.NewGuid();
         UserId = user.Id;
         Format = format;
+        Kind = kind;
         Locale = Required(locale, 35, nameof(locale));
         FileName = Required(fileName, 300, nameof(fileName));
         RequestJson = string.IsNullOrWhiteSpace(requestJson)
@@ -65,6 +81,7 @@ public sealed class DataExport
     public Guid? BackgroundJobId { get; private set; }
     public BackgroundJob? BackgroundJob { get; private set; }
     public DataExportFormat Format { get; private set; }
+    public DataExportKind Kind { get; private set; }
     public DataExportStatus Status { get; private set; }
     public string Locale { get; private set; } = string.Empty;
     public string FileName { get; private set; } = string.Empty;

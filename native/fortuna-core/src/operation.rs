@@ -5,7 +5,9 @@ use std::sync::OnceLock;
 
 use argon2::Argon2;
 use argon2::password_hash::{PasswordVerifier, phc::PasswordHash};
-use chrono::Utc;
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
+use chrono::{DateTime, Duration, Utc};
 use rust_decimal::{Decimal, RoundingStrategy};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Number, Value};
@@ -240,6 +242,12 @@ fn execute_authenticated(
             Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
         };
     }
+    if operation.path == "/api/me/data-export" {
+        return request_personal_archive(core, user_id, &timestamp);
+    }
+    if operation.path == "/api/me/data-export/{jobId}" {
+        return get_personal_archive(core, request, user_id);
+    }
     if operation.path.starts_with("/api/import-jobs") || operation.path == "/api/exports/{id}" {
         return job_operation(core, operation, request, user_id, &timestamp);
     }
@@ -299,6 +307,93 @@ fn execute_authenticated(
     }
 
     execute_record_operation(core, operation, request, user_id, &timestamp)
+}
+
+fn request_personal_archive(core: &Core, user_id: Uuid, timestamp: &str) -> (c_int, String) {
+    let expires_at = wire_timestamp(Utc::now() + Duration::hours(24));
+    let request = serde_json::json!({"expiresAt": expires_at});
+    match core
+        .store
+        .create_job(user_id, "/api/me/data-export", &request, timestamp)
+    {
+        Ok(job) => {
+            let Some(job_id) = job["id"]
+                .as_str()
+                .and_then(|value| Uuid::parse_str(value).ok())
+            else {
+                return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
+            };
+            let store = core.store.clone();
+            let expires_at_for_job = expires_at.clone();
+            std::thread::spawn(move || {
+                let generated_at = wire_timestamp(Utc::now());
+                if store
+                    .generate_personal_archive(user_id, job_id, &generated_at, &expires_at_for_job)
+                    .is_err()
+                {
+                    let _ =
+                        store.fail_personal_archive(user_id, job_id, &wire_timestamp(Utc::now()));
+                }
+            });
+            success(
+                FORTUNA_STATUS_ACCEPTED,
+                serde_json::json!({
+                    "jobId": job_id,
+                    "status": 1,
+                    "progress": 0,
+                    "expiresAt": expires_at
+                }),
+                "Personal data archive queued successfully.",
+            )
+        }
+        Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
+    }
+}
+
+fn get_personal_archive(core: &Core, request: &OperationRequest, user_id: Uuid) -> (c_int, String) {
+    let Some(job_id) = route_uuid(request, "jobId") else {
+        return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST);
+    };
+    match core.store.get_personal_archive(user_id, job_id) {
+        Ok(Some(archive)) => {
+            let expired = DateTime::parse_from_rfc3339(&archive.expires_at)
+                .map(|expires_at| expires_at <= Utc::now())
+                .unwrap_or(true);
+            if expired {
+                return failure(
+                    FORTUNA_STATUS_NOT_FOUND,
+                    "The personal data archive has expired.",
+                );
+            }
+            let content = archive.content.map(|value| STANDARD.encode(value));
+            success(
+                FORTUNA_STATUS_OK,
+                serde_json::json!({
+                    "jobId": job_id,
+                    "status": archive.status,
+                    "progress": archive.progress,
+                    "fileName": if archive.status == 3 {
+                        Value::String("fortuna-personal-data.zip".to_owned())
+                    } else {
+                        Value::Null
+                    },
+                    "contentType": if archive.status == 3 {
+                        Value::String("application/zip".to_owned())
+                    } else {
+                        Value::Null
+                    },
+                    "failureReason": archive.failure_reason,
+                    "contentBase64": content,
+                    "createdAt": archive.created_at,
+                    "updatedAt": archive.updated_at,
+                    "expiresAt": archive.expires_at
+                }),
+                "Personal data archive status retrieved successfully.",
+            )
+        }
+        Ok(None) => failure(FORTUNA_STATUS_NOT_FOUND, NOT_FOUND),
+        Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
+    }
 }
 
 fn create_local_account(core: &Core, request: &mut OperationRequest) -> (c_int, String) {
