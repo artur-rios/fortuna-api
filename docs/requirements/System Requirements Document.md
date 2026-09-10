@@ -962,6 +962,7 @@ receiving deployment detail that it cannot act on.
 | NFR-34 | Maintainability | The C header shall be generated from the exports, committed, drift-checked in continuous integration, and shipped with each Windows and Linux native artifact |
 | NFR-35 | Compatibility | The native build shall derive its offline operation registry from the checked-in OpenAPI contract, export one concrete symbol for every eligible method/path pair, and expose capability discovery that states both available and deliberately unavailable operations |
 | NFR-36 | Responsiveness | Native imports and exports shall return an accepted job with progress immediately; callers shall monitor completion through the generated job retrieval operations rather than block the calling thread |
+| NFR-37 | Compatibility | Every integer enum published in OpenAPI shall include an `x-enum-varnames` entry whose names align positionally with its values, so generated clients preserve the domain vocabulary without changing the integer wire format |
 
 ---
 

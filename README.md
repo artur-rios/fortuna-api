@@ -148,7 +148,7 @@ and the [project board](https://github.com/users/artur-rios/projects/12) are the
 
 | Milestone | Delivers | Depends on | Issues | Status |
 |---|---|---|---|---|
-| [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 1 | 1 / 1 closed |
+| [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 3 | 3 / 3 closed |
 | [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, lifecycle, account erasure and the audit trail | M-01 | 15 | 15 / 15 closed |
 | [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 19 | 16 / 19 closed |
 | [M-04 — Money movement](https://github.com/artur-rios/fortuna-api/milestone/4) | Transactions, transfers, installment plans, recurring commitments and reconciliation | M-03 | 11 | 0 / 11 closed |
@@ -167,6 +167,7 @@ one use case = one branch = one issue = one pull request.
 |---|---|---|
 | [#1](https://github.com/artur-rios/fortuna-api/issues/1) | ✅ Project scaffold and initial infrastructure | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
 | [#162](https://github.com/artur-rios/fortuna-api/issues/162) | ✅ Publish exact decimal values as JSON strings | [Technology Stack](docs/requirements/Technology%20Stack%20Document.md) |
+| [#163](https://github.com/artur-rios/fortuna-api/issues/163) | ✅ Publish enum member names in OpenAPI | [System Requirements](docs/requirements/System%20Requirements%20Document.md) |
 
 ### M-02 — Access and cross-cutting mechanisms
 

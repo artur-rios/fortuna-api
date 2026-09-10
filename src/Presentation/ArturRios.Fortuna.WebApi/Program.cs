@@ -49,6 +49,7 @@ using ArturRios.Fortuna.Shared.Projections;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Controllers;
+using ArturRios.Fortuna.WebApi.OpenApi;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Serialization;
 using ArturRios.Fortuna.WebApi.Services;
@@ -851,6 +852,7 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(document =>
     {
+        document.SchemaFilter<EnumNamesSchemaFilter>();
         document.MapType<decimal>(() => new OpenApiSchema
         {
             Type = JsonSchemaType.String,
