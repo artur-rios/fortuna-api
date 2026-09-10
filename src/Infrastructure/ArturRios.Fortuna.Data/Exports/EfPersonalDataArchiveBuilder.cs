@@ -189,6 +189,9 @@ public sealed class EfPersonalDataArchiveBuilder(
         new(PersonalDataArchiveCoverage.Connections,
             await BoxAsync(context.Connections.AsNoTracking()
                 .Where(item => item.UserId == userId), cancellationToken)),
+        new(PersonalDataArchiveCoverage.ProcessingConsents,
+            await BoxAsync(context.ProcessingConsents.AsNoTracking()
+                .Where(item => item.UserId == userId), cancellationToken)),
         new(PersonalDataArchiveCoverage.ConnectionResources,
             await BoxAsync(context.ConnectionResources.AsNoTracking()
                 .Where(item => item.Connection.UserId == userId), cancellationToken)),
@@ -600,6 +603,7 @@ public static class PersonalDataArchiveCoverage
     public static readonly PersonalDataArchivePart Budgets = new("budgets", typeof(Budget));
     public static readonly PersonalDataArchivePart Goals = new("goals", typeof(Goal));
     public static readonly PersonalDataArchivePart Connections = new("connections", typeof(Connection));
+    public static readonly PersonalDataArchivePart ProcessingConsents = new("processing-consents", typeof(ProcessingConsent));
     public static readonly PersonalDataArchivePart ConnectionResources = new("connection-resources", typeof(ConnectionResource));
     public static readonly PersonalDataArchivePart ImportJobs = new("import-jobs", typeof(ImportJob));
     public static readonly PersonalDataArchivePart ImportedRecords = new("imported-records", typeof(ImportedRecord));
@@ -612,7 +616,8 @@ public static class PersonalDataArchiveCoverage
         Profile, FinancialAccounts, CreditCards, CreditCardStatements, Investments,
         InvestmentMovements, InvestmentValuations, Transactions, Transfers, InstallmentPlans,
         RecurringTransactions, Categories, Tags, Counterparties, Budgets, Goals, Connections,
-        ConnectionResources, ImportJobs, ImportedRecords, Attachments, AuditEntries, ExportHistory
+        ProcessingConsents, ConnectionResources, ImportJobs, ImportedRecords, Attachments,
+        AuditEntries, ExportHistory
     ];
 
     public static IReadOnlySet<Type> SecretOrOperationalExclusions { get; } = new HashSet<Type>

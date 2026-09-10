@@ -121,6 +121,11 @@ counts only—never the person's financial records. Fortuna removes the complete
 the connected Heimdall controller remains responsible for erasing the upstream identity it owns.
 The same controller boundary governs portability: Fortuna exports everything it controls in a
 machine-readable, expiring archive, while Heimdall identity data remains Heimdall's responsibility.
+That controller must publish the disclosure version used for hosted external processing. Fortuna
+records the owner's explicit decision before Pluggy receives authority, and withdrawal ends that
+access immediately without deleting the financial history already imported. A desktop-offline
+owner remains their own controller; because its native persistence has no external processor,
+manual and file-based ingestion need no processing consent.
 
 ---
 

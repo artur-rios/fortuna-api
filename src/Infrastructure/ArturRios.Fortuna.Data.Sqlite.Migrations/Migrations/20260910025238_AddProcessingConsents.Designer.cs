@@ -3,89 +3,84 @@ using System;
 using ArturRios.Fortuna.Data.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace ArturRios.Fortuna.Data.Migrations
+namespace ArturRios.Fortuna.Data.Sqlite.Migrations.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910025238_AddProcessingConsents")]
+    partial class AddProcessingConsents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasDefaultSchema("fortuna")
-                .HasAnnotation("ProductVersion", "10.0.11")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
-
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Accounts.FinancialAccount", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<short>("AccountType")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("account_type");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<long>("CurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("currency_id");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<string>("Institution")
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("institution");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("normalized_name");
 
                     b.Property<decimal>("OpeningBalance")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("opening_balance");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -106,7 +101,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasDatabaseName("ux_financial_account_user_normalized_name_live")
                         .HasFilter("NOT is_deleted");
 
-                    b.ToTable("financial_account", "fortuna", t =>
+                    b.ToTable("financial_account", null, t =>
                         {
                             t.HasCheckConstraint("ck_financial_account_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
 
@@ -118,57 +113,55 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("content_type");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("file_name");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<long>("SizeInBytes")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("size_in_bytes");
 
                     b.Property<string>("StorageKey")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("storage_key");
 
                     b.Property<long>("TransactionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("transaction_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -181,7 +174,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("TransactionId", "IsDeleted")
                         .HasDatabaseName("ix_attachment_transaction_id_is_deleted");
 
-                    b.ToTable("attachment", "fortuna", t =>
+                    b.ToTable("attachment", null, t =>
                         {
                             t.HasCheckConstraint("ck_attachment_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
                         });
@@ -191,41 +184,39 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<Guid?>("EntityPublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("entity_public_id");
 
                     b.Property<string>("EntityType")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("entity_type");
 
-                    b.Property<DateTimeOffset>("OccurredAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("OccurredAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("occurred_at");
 
                     b.Property<string>("Operation")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("operation");
 
                     b.Property<short>("Outcome")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("outcome");
 
                     b.Property<string>("Reason")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("reason");
 
                     b.Property<Guid?>("SubjectReference")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("subject_reference");
 
                     b.HasKey("Id")
@@ -237,24 +228,22 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("SubjectReference")
                         .HasDatabaseName("ix_audit_entry_subject_reference");
 
-                    b.ToTable("audit_entry", "fortuna");
+                    b.ToTable("audit_entry", (string)null);
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Auditing.AuditSubject", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<Guid>("SubjectReference")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("subject_reference");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -268,53 +257,51 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_audit_subject_user_id");
 
-                    b.ToTable("audit_subject", "fortuna");
+                    b.ToTable("audit_subject", (string)null);
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Cards.CreditCard", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<short>("ClosingDay")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("closing_day");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<decimal>("CreditLimit")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("credit_limit");
 
                     b.Property<long>("CurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("currency_id");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<short>("DueDay")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("due_day");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("Issuer")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("issuer");
 
                     b.Property<string>("LastFourDigits")
@@ -324,25 +311,25 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("normalized_name");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -363,7 +350,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasDatabaseName("ux_credit_card_user_normalized_name_live")
                         .HasFilter("NOT is_deleted");
 
-                    b.ToTable("credit_card", "fortuna", t =>
+                    b.ToTable("credit_card", null, t =>
                         {
                             t.HasCheckConstraint("ck_credit_card_closing_day", "closing_day BETWEEN 1 AND 31");
 
@@ -371,7 +358,7 @@ namespace ArturRios.Fortuna.Data.Migrations
 
                             t.HasCheckConstraint("ck_credit_card_due_day", "due_day BETWEEN 1 AND 31");
 
-                            t.HasCheckConstraint("ck_credit_card_last_four_digits", "last_four_digits IS NULL OR last_four_digits ~ '^[0-9]{4}$'");
+                            t.HasCheckConstraint("ck_credit_card_last_four_digits", "last_four_digits IS NULL OR (length(last_four_digits) = 4 AND last_four_digits NOT GLOB '*[^0-9]*')");
 
                             t.HasCheckConstraint("ck_credit_card_limit", "credit_limit > 0");
                         });
@@ -381,89 +368,87 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal>("AmountDue")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("amount_due");
 
                     b.Property<DateOnly>("ClosingDate")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("closing_date");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<long>("CreditCardId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("credit_card_id");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<DateOnly>("DueDate")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("due_date");
 
                     b.Property<decimal>("ForeignTaxTotal")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("foreign_tax_total");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<decimal>("OtherEntries")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("other_entries");
 
                     b.Property<decimal>("PaymentsReceived")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("payments_received");
 
                     b.Property<DateOnly>("PeriodEnd")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("period_end");
 
                     b.Property<DateOnly>("PeriodStart")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("period_start");
 
                     b.Property<decimal>("PreviousBalance")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("previous_balance");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<decimal>("PurchaseTotal")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("purchase_total");
 
                     b.Property<long?>("SettlementTransactionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("settlement_transaction_id");
 
                     b.Property<short>("Status")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("status");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -483,7 +468,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_credit_card_statement_card_period");
 
-                    b.ToTable("credit_card_statement", "fortuna", t =>
+                    b.ToTable("credit_card_statement", null, t =>
                         {
                             t.HasCheckConstraint("ck_credit_card_statement_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
 
@@ -497,51 +482,49 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("normalized_name");
 
                     b.Property<long?>("ParentId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("parent_id");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -567,7 +550,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasDatabaseName("ix_category_user_id_parent_id_normalized_name")
                         .HasFilter("parent_id IS NOT NULL AND NOT is_deleted");
 
-                    b.ToTable("category", "fortuna", t =>
+                    b.ToTable("category", null, t =>
                         {
                             t.HasCheckConstraint("ck_category_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
                         });
@@ -577,47 +560,45 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("normalized_name");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -635,7 +616,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasDatabaseName("ix_counterparty_user_id_normalized_name")
                         .HasFilter("NOT is_deleted");
 
-                    b.ToTable("counterparty", "fortuna", t =>
+                    b.ToTable("counterparty", null, t =>
                         {
                             t.HasCheckConstraint("ck_counterparty_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
                         });
@@ -645,47 +626,45 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("normalized_name");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -703,7 +682,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasDatabaseName("ix_tag_user_id_normalized_name")
                         .HasFilter("NOT is_deleted");
 
-                    b.ToTable("tag", "fortuna", t =>
+                    b.ToTable("tag", null, t =>
                         {
                             t.HasCheckConstraint("ck_tag_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
                         });
@@ -713,10 +692,8 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -724,13 +701,13 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasColumnName("code");
 
                     b.Property<short>("MinorUnitDigits")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("minor_unit_digits");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -740,29 +717,27 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_currency_code");
 
-                    b.ToTable("currency", "fortuna");
+                    b.ToTable("currency", (string)null);
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Currencies.ExchangeRate", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<long>("BaseCurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("base_currency_id");
 
                     b.Property<long>("QuoteCurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("quote_currency_id");
 
                     b.Property<decimal>("Rate")
                         .HasPrecision(19, 8)
-                        .HasColumnType("numeric(19,8)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("rate");
 
                     b.Property<DateOnly>("RateDate")
@@ -770,7 +745,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasColumnName("rate_date");
 
                     b.Property<short>("Source")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("source");
 
                     b.HasKey("Id")
@@ -781,9 +756,9 @@ namespace ArturRios.Fortuna.Data.Migrations
 
                     b.HasIndex("BaseCurrencyId", "QuoteCurrencyId", "RateDate", "Source")
                         .IsUnique()
-                        .HasDatabaseName("ix_exchange_rate_base_currency_id_quote_currency_id_rate_date_");
+                        .HasDatabaseName("ix_exchange_rate_base_currency_id_quote_currency_id_rate_date_source");
 
-                    b.ToTable("exchange_rate", "fortuna", t =>
+                    b.ToTable("exchange_rate", null, t =>
                         {
                             t.HasCheckConstraint("ck_exchange_rate_distinct_currency", "base_currency_id <> quote_currency_id");
 
@@ -795,83 +770,81 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<Guid>("BackgroundJobId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("background_job_id");
 
                     b.Property<string>("ContentType")
                         .HasMaxLength(150)
-                        .HasColumnType("character varying(150)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("content_type");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("ExpiresAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("expires_at");
 
                     b.Property<string>("FailureReason")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("failure_reason");
 
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("file_name");
 
                     b.Property<short>("Format")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("format");
 
                     b.Property<short>("Kind")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue((short)1)
                         .HasColumnName("kind");
 
                     b.Property<string>("Locale")
                         .IsRequired()
                         .HasMaxLength(35)
-                        .HasColumnType("character varying(35)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("locale");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<string>("RequestJson")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("TEXT")
                         .HasColumnName("request_json");
 
                     b.Property<int?>("RowCount")
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("row_count");
 
                     b.Property<short>("Status")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("status");
 
                     b.Property<string>("StorageKey")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("storage_key");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -888,7 +861,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("UserId", "CreatedAt")
                         .HasDatabaseName("ix_data_export_user_id_created_at");
 
-                    b.ToTable("data_export", "fortuna", t =>
+                    b.ToTable("data_export", null, t =>
                         {
                             t.HasCheckConstraint("ck_data_export_format", "format BETWEEN 1 AND 4");
 
@@ -906,44 +879,42 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<byte[]>("AccessTokenCipher")
                         .IsRequired()
-                        .HasColumnType("bytea")
+                        .HasColumnType("BLOB")
                         .HasColumnName("access_token_cipher");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<short>("DataSourceType")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("data_source_type");
 
                     b.Property<string>("ExternalReference")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("external_reference");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<short>("Status")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("status");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -957,34 +928,32 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_connection_user_id_data_source_type_external_reference");
 
-                    b.ToTable("connection", "fortuna");
+                    b.ToTable("connection", (string)null);
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Ingestion.ConnectionResource", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<long>("ConnectionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("connection_id");
 
                     b.Property<long?>("CreditCardId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("credit_card_id");
 
                     b.Property<string>("ExternalReference")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("external_reference");
 
                     b.Property<long?>("FinancialAccountId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("financial_account_id");
 
                     b.HasKey("Id")
@@ -1000,7 +969,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_connection_resource_connection_id_external_reference");
 
-                    b.ToTable("connection_resource", "fortuna", t =>
+                    b.ToTable("connection_resource", null, t =>
                         {
                             t.HasCheckConstraint("ck_connection_resource_target", "(financial_account_id IS NULL) <> (credit_card_id IS NULL)");
                         });
@@ -1010,68 +979,66 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
                     b.Property<long?>("ConnectionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("connection_id");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<int>("DuplicateCount")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(0)
                         .HasColumnName("duplicate_count");
 
                     b.Property<string>("FailureReason")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("failure_reason");
 
                     b.Property<int>("ImportedCount")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(0)
                         .HasColumnName("imported_count");
 
                     b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("period_end");
 
                     b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("period_start");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<int>("RejectedCount")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(0)
                         .HasColumnName("rejected_count");
 
                     b.Property<short>("SourceType")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("source_type");
 
                     b.Property<short>("Status")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("status");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1092,7 +1059,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("UserId", "Status")
                         .HasDatabaseName("ix_import_job_user_id_status");
 
-                    b.ToTable("import_job", "fortuna", t =>
+                    b.ToTable("import_job", null, t =>
                         {
                             t.HasCheckConstraint("ck_import_job_source_type", "source_type BETWEEN 2 AND 4");
 
@@ -1104,41 +1071,39 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal?>("Amount")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("amount");
 
                     b.Property<string>("ExternalId")
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("external_id");
 
                     b.Property<long>("ImportJobId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("import_job_id");
 
                     b.Property<DateOnly?>("OccurredOn")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("occurred_on");
 
                     b.Property<short>("Outcome")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("outcome");
 
                     b.Property<string>("RawPayload")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("TEXT")
                         .HasColumnName("raw_payload");
 
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("rejection_reason");
 
                     b.HasKey("Id")
@@ -1147,7 +1112,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("ImportJobId")
                         .HasDatabaseName("ix_imported_record_import_job_id");
 
-                    b.ToTable("imported_record", "fortuna", t =>
+                    b.ToTable("imported_record", null, t =>
                         {
                             t.HasCheckConstraint("ck_imported_record_amount", "amount IS NULL OR amount > 0");
 
@@ -1159,60 +1124,58 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<long>("CurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("currency_id");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<string>("Institution")
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("institution");
 
                     b.Property<string>("Instrument")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("instrument");
 
                     b.Property<short>("InvestmentType")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("investment_type");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("NormalizedInstrument")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("normalized_instrument");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1233,7 +1196,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasDatabaseName("ux_investment_user_normalized_instrument_live")
                         .HasFilter("NOT is_deleted");
 
-                    b.ToTable("investment", "fortuna", t =>
+                    b.ToTable("investment", null, t =>
                         {
                             t.HasCheckConstraint("ck_investment_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
 
@@ -1245,48 +1208,46 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("amount");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<long>("InvestmentId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("investment_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<short>("MovementType")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("movement_type");
 
                     b.Property<DateOnly>("OccurredOn")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("occurred_on");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -1299,7 +1260,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("InvestmentId", "IsDeleted", "OccurredOn")
                         .HasDatabaseName("ix_investment_movement_investment_id_is_deleted_occurred_on");
 
-                    b.ToTable("investment_movement", "fortuna", t =>
+                    b.ToTable("investment_movement", null, t =>
                         {
                             t.HasCheckConstraint("ck_investment_movement_amount", "amount > 0");
 
@@ -1313,44 +1274,42 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<long>("InvestmentId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("investment_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<decimal>("Value")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("value");
 
                     b.Property<DateOnly>("ValuedOn")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("valued_on");
 
                     b.HasKey("Id")
@@ -1368,7 +1327,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("InvestmentId", "IsDeleted", "ValuedOn")
                         .HasDatabaseName("ix_investment_valuation_investment_id_is_deleted_valued_on");
 
-                    b.ToTable("investment_valuation", "fortuna", t =>
+                    b.ToTable("investment_valuation", null, t =>
                         {
                             t.HasCheckConstraint("ck_investment_valuation_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
                         });
@@ -1378,50 +1337,50 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<DateTimeOffset?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("completed_at");
 
                     b.Property<string>("CorrelationId")
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("correlation_id");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<string>("FailureReason")
                         .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("failure_reason");
 
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("idempotency_key");
 
                     b.Property<string>("Payload")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("TEXT")
                         .HasColumnName("payload");
 
                     b.Property<DateTimeOffset?>("StartedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("started_at");
 
                     b.Property<short>("State")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("state");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("type");
 
                     b.HasKey("Id")
@@ -1434,65 +1393,63 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("State")
                         .HasDatabaseName("ix_background_job_state");
 
-                    b.ToTable("background_job", "fortuna");
+                    b.ToTable("background_job", (string)null);
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Planning.Budget", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("amount");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<long>("CurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("currency_id");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<bool>("IncludeDescendants")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(true)
                         .HasColumnName("include_descendants");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<DateOnly>("PeriodStart")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("period_start");
 
                     b.Property<short>("PeriodType")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("period_type");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1508,7 +1465,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("UserId", "IsDeleted")
                         .HasDatabaseName("ix_budget_user_id_is_deleted");
 
-                    b.ToTable("budget", "fortuna", t =>
+                    b.ToTable("budget", null, t =>
                         {
                             t.HasCheckConstraint("ck_budget_amount", "amount > 0");
 
@@ -1522,54 +1479,52 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<long>("CurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("currency_id");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<decimal>("TargetAmount")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("target_amount");
 
                     b.Property<DateOnly>("TargetDate")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("target_date");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1585,7 +1540,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("UserId", "IsDeleted")
                         .HasDatabaseName("ix_goal_user_id_is_deleted");
 
-                    b.ToTable("goal", "fortuna", t =>
+                    b.ToTable("goal", null, t =>
                         {
                             t.HasCheckConstraint("ck_goal_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
 
@@ -1597,141 +1552,139 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("amount");
 
                     b.Property<decimal?>("AppliedRate")
                         .HasPrecision(19, 8)
-                        .HasColumnType("numeric(19,8)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("applied_rate");
 
                     b.Property<long>("CategoryId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("category_id");
 
                     b.Property<long?>("CounterpartyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("counterparty_id");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<long?>("CreditCardId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("credit_card_id");
 
                     b.Property<long>("CurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("currency_id");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<short>("Direction")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("direction");
 
                     b.Property<long?>("FinancialAccountId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("financial_account_id");
 
                     b.Property<long?>("ImportedRecordId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("imported_record_id");
 
                     b.Property<short?>("InstallmentNumber")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("installment_number");
 
                     b.Property<long?>("InstallmentPlanId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("installment_plan_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<bool>("IsLateArriving")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_late_arriving");
 
                     b.Property<bool>("IsManuallyCorrected")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_manually_corrected");
 
                     b.Property<bool>("IsPossibleDuplicate")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_possible_duplicate");
 
                     b.Property<bool>("IsReconciled")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_reconciled");
 
                     b.Property<DateOnly>("OccurredOn")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("occurred_on");
 
                     b.Property<decimal?>("OriginalAmount")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("original_amount");
 
                     b.Property<long?>("OriginalCurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("original_currency_id");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<DateOnly?>("RateDate")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("rate_date");
 
                     b.Property<long?>("RecurringTransactionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("recurring_transaction_id");
 
                     b.Property<short>("SourceType")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue((short)1)
                         .HasColumnName("source_type");
 
                     b.Property<long?>("StatementId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("statement_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1775,9 +1728,9 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasDatabaseName("ix_financial_transaction_credit_card_id_is_deleted_occurred_on");
 
                     b.HasIndex("FinancialAccountId", "IsDeleted", "OccurredOn")
-                        .HasDatabaseName("ix_financial_transaction_financial_account_id_is_deleted_occur");
+                        .HasDatabaseName("ix_financial_transaction_financial_account_id_is_deleted_occurred_on");
 
-                    b.ToTable("financial_transaction", "fortuna", t =>
+                    b.ToTable("financial_transaction", null, t =>
                         {
                             t.HasCheckConstraint("ck_financial_transaction_amount", "amount > 0");
 
@@ -1799,48 +1752,46 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<long>("CreditCardId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("credit_card_id");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<short>("InstallmentCount")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("installment_count");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<DateOnly>("PurchasedOn")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("purchased_on");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("total_amount");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -1853,7 +1804,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("CreditCardId", "IsDeleted")
                         .HasDatabaseName("ix_installment_plan_credit_card_id_is_deleted");
 
-                    b.ToTable("installment_plan", "fortuna", t =>
+                    b.ToTable("installment_plan", null, t =>
                         {
                             t.HasCheckConstraint("ck_installment_plan_count", "installment_count >= 2");
 
@@ -1867,85 +1818,83 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("amount");
 
                     b.Property<long>("CategoryId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("category_id");
 
                     b.Property<long?>("CounterpartyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("counterparty_id");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<long?>("CreditCardId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("credit_card_id");
 
                     b.Property<long>("CurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("currency_id");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<short>("Direction")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("direction");
 
                     b.Property<DateOnly?>("EndsOn")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("ends_on");
 
                     b.Property<long?>("FinancialAccountId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("financial_account_id");
 
                     b.Property<short>("Frequency")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("frequency");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<DateOnly?>("LastMaterializedOn")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_materialized_on");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<DateOnly>("StartsOn")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("starts_on");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1973,7 +1922,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("UserId", "IsDeleted")
                         .HasDatabaseName("ix_recurring_transaction_user_id_is_deleted");
 
-                    b.ToTable("recurring_transaction", "fortuna", t =>
+                    b.ToTable("recurring_transaction", null, t =>
                         {
                             t.HasCheckConstraint("ck_recurring_transaction_amount", "amount > 0");
 
@@ -1993,52 +1942,50 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<decimal?>("AppliedRate")
                         .HasPrecision(19, 8)
-                        .HasColumnType("numeric(19,8)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("applied_rate");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<long?>("InboundInvestmentMovementId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("inbound_investment_movement_id");
 
                     b.Property<long?>("InboundTransactionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("inbound_transaction_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<long>("OutboundTransactionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("outbound_transaction_id");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<DateOnly?>("RateDate")
-                        .HasColumnType("date")
+                        .HasColumnType("TEXT")
                         .HasColumnName("rate_date");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -2060,7 +2007,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_transfer_public_id");
 
-                    b.ToTable("transfer", "fortuna", t =>
+                    b.ToTable("transfer", null, t =>
                         {
                             t.HasCheckConstraint("ck_transfer_conversion", "(applied_rate IS NULL AND rate_date IS NULL) OR (applied_rate > 0 AND rate_date IS NOT NULL)");
 
@@ -2074,45 +2021,43 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<byte[]>("Salt")
                         .IsRequired()
-                        .HasColumnType("bytea")
+                        .HasColumnType("BLOB")
                         .HasColumnName("salt");
 
                     b.Property<byte[]>("SecretHash")
                         .IsRequired()
-                        .HasColumnType("bytea")
+                        .HasColumnType("BLOB")
                         .HasColumnName("secret_hash");
 
                     b.Property<short>("StorageMode")
                         .HasColumnType("smallint")
                         .HasColumnName("storage_mode");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -2130,42 +2075,40 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_local_account_user_id");
 
-                    b.ToTable("local_account", "fortuna");
+                    b.ToTable("local_account", (string)null);
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Users.ProcessingConsent", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("GrantedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("GrantedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("granted_at");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
                     b.Property<short>("Purpose")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("purpose");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<long>("UserId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("user_id");
 
                     b.Property<string>("Version")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("version");
 
                     b.HasKey("Id")
@@ -2179,7 +2122,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_processing_consent_user_id_purpose");
 
-                    b.ToTable("processing_consent", "fortuna", t =>
+                    b.ToTable("processing_consent", null, t =>
                         {
                             t.HasCheckConstraint("ck_processing_consent_purpose", "purpose = 1");
                         });
@@ -2189,26 +2132,24 @@ namespace ArturRios.Fortuna.Data.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<byte[]>("CodeHash")
                         .IsRequired()
-                        .HasColumnType("bytea")
+                        .HasColumnType("BLOB")
                         .HasColumnName("code_hash");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<long>("LocalAccountId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("local_account_id");
 
                     b.Property<DateTimeOffset?>("UsedAt")
-                        .HasColumnType("timestamp with time zone")
+                        .HasColumnType("TEXT")
                         .HasColumnName("used_at");
 
                     b.HasKey("Id")
@@ -2218,34 +2159,32 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_recovery_code_local_account_id_code_hash");
 
-                    b.ToTable("recovery_code", "fortuna");
+                    b.ToTable("recovery_code", (string)null);
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Users.UserProfile", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("DeletionCascadeId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deletion_cascade_id");
 
                     b.Property<long>("DisplayCurrencyId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("display_currency_id");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("display_name");
 
                     b.Property<string>("ExternalSubject")
@@ -2254,16 +2193,16 @@ namespace ArturRios.Fortuna.Data.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
+                        .HasColumnType("INTEGER")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<Guid>("PublicId")
-                        .HasColumnType("uuid")
+                        .HasColumnType("TEXT")
                         .HasColumnName("public_id");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -2280,7 +2219,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_user_public_id");
 
-                    b.ToTable("user", "fortuna", t =>
+                    b.ToTable("user", null, t =>
                         {
                             t.HasCheckConstraint("ck_user_deletion_state", "(is_deleted AND deletion_cascade_id IS NOT NULL) OR (NOT is_deleted AND deletion_cascade_id IS NULL)");
                         });
@@ -2289,11 +2228,11 @@ namespace ArturRios.Fortuna.Data.Migrations
             modelBuilder.Entity("BudgetCategory", b =>
                 {
                     b.Property<long>("BudgetId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("budget_id");
 
                     b.Property<long>("CategoryId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("category_id");
 
                     b.HasKey("BudgetId", "CategoryId")
@@ -2302,17 +2241,17 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("CategoryId")
                         .HasDatabaseName("ix_budget_category_category_id");
 
-                    b.ToTable("budget_category", "fortuna");
+                    b.ToTable("budget_category", (string)null);
                 });
 
             modelBuilder.Entity("FinancialTransactionTag", b =>
                 {
                     b.Property<long>("FinancialTransactionId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("financial_transaction_id");
 
                     b.Property<long>("TagId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("tag_id");
 
                     b.HasKey("FinancialTransactionId", "TagId")
@@ -2321,17 +2260,17 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("TagId")
                         .HasDatabaseName("ix_financial_transaction_tag_tag_id");
 
-                    b.ToTable("financial_transaction_tag", "fortuna");
+                    b.ToTable("financial_transaction_tag", (string)null);
                 });
 
             modelBuilder.Entity("GoalAccount", b =>
                 {
                     b.Property<long>("GoalId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("goal_id");
 
                     b.Property<long>("AccountId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("account_id");
 
                     b.HasKey("GoalId", "AccountId")
@@ -2340,17 +2279,17 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("AccountId")
                         .HasDatabaseName("ix_goal_account_account_id");
 
-                    b.ToTable("goal_account", "fortuna");
+                    b.ToTable("goal_account", (string)null);
                 });
 
             modelBuilder.Entity("GoalInvestment", b =>
                 {
                     b.Property<long>("GoalId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("goal_id");
 
                     b.Property<long>("InvestmentId")
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("investment_id");
 
                     b.HasKey("GoalId", "InvestmentId")
@@ -2359,30 +2298,28 @@ namespace ArturRios.Fortuna.Data.Migrations
                     b.HasIndex("InvestmentId")
                         .HasDatabaseName("ix_goal_investment_investment_id");
 
-                    b.ToTable("goal_investment", "fortuna");
+                    b.ToTable("goal_investment", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
                     b.Property<string>("FriendlyName")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("friendly_name");
 
                     b.Property<string>("Xml")
-                        .HasColumnType("text")
+                        .HasColumnType("TEXT")
                         .HasColumnName("xml");
 
                     b.HasKey("Id")
                         .HasName("pk_data_protection_keys");
 
-                    b.ToTable("data_protection_keys", "fortuna");
+                    b.ToTable("data_protection_keys", (string)null);
                 });
 
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Accounts.FinancialAccount", b =>
@@ -2464,7 +2401,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .WithMany()
                         .HasForeignKey("SettlementTransactionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_credit_card_statement_financial_transactions_settlement_tra");
+                        .HasConstraintName("fk_credit_card_statement_financial_transactions_settlement_transaction_id");
 
                     b.Navigation("CreditCard");
 
@@ -2772,7 +2709,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .WithMany()
                         .HasForeignKey("RecurringTransactionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_financial_transaction_recurring_transactions_recurring_tran");
+                        .HasConstraintName("fk_financial_transaction_recurring_transactions_recurring_transaction_id");
 
                     b.HasOne("ArturRios.Fortuna.Domain.Cards.CreditCardStatement", "Statement")
                         .WithMany()
@@ -2976,7 +2913,7 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .HasForeignKey("FinancialTransactionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_financial_transaction_tag_financial_transaction_financial_t");
+                        .HasConstraintName("fk_financial_transaction_tag_financial_transaction_financial_transaction_id");
 
                     b.HasOne("ArturRios.Fortuna.Domain.Classification.Tag", null)
                         .WithMany()

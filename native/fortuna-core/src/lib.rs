@@ -1117,7 +1117,9 @@ mod tests {
         }));
         assert!(!operations.iter().any(|operation| {
             operation["path"].as_str().is_some_and(|path| {
-                path.starts_with("/api/auth") || path.starts_with("/api/connections")
+                path.starts_with("/api/auth")
+                    || path.starts_with("/api/connections")
+                    || path.starts_with("/api/me/consents")
             })
         }));
         assert!(operations.iter().any(|operation| {
@@ -1129,7 +1131,14 @@ mod tests {
         assert!(!operations.iter().any(|operation| {
             operation["method"] == "DELETE" && operation["path"] == "/api/users/{id}"
         }));
-        assert_eq!(6, body["data"]["unavailable"].as_array().unwrap().len());
+        let unavailable = body["data"]["unavailable"].as_array().unwrap();
+        assert_eq!(7, unavailable.len());
+        assert!(unavailable.iter().any(|entry| {
+            entry["routes"] == "/api/me/consents/**"
+                && entry["reason"]
+                    .as_str()
+                    .is_some_and(|reason| reason.contains("hosted integrations"))
+        }));
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
     }
 

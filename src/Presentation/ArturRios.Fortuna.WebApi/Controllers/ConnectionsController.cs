@@ -51,7 +51,9 @@ public sealed class ConnectionsController(
             [ConnectionMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [ConnectionMessages.SortByUnsupported] = StatusCodes.Status400BadRequest,
             [ConnectionMessages.DataSourceTypeInvalid] = StatusCodes.Status400BadRequest,
-            [ConnectionMessages.StatusInvalid] = StatusCodes.Status400BadRequest
+            [ConnectionMessages.StatusInvalid] = StatusCodes.Status400BadRequest,
+            [ProcessingConsentMessages.ExternalDataProcessingRequired] =
+                StatusCodes.Status403Forbidden
         };
 
     [HttpPost]

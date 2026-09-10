@@ -46,7 +46,7 @@ the `requirements/` documents for the normative detail.
 | [Project Overview](docs/initial/Project%20Overview.md) | What the project is, who it's for, and how success is measured. |
 | [Technology Stack](docs/initial/Technology%20Stack.md) | The informal stack decisions. |
 | [Workflow](docs/initial/Workflow.md) | How one use case is delivered, step by step. |
-| [Business Rules](docs/initial/Business%20Rules.md) | Domain entities, relationships, and the `BR-01` … `BR-41` rules. |
+| [Business Rules](docs/initial/Business%20Rules.md) | Domain entities, relationships, and the `BR-01` … `BR-45` rules. |
 | [Vision Document](docs/requirements/Vision%20Document.md) | Stakeholders, positioning, and the `F-01` … `F-20` features. |
 | [System Requirements Document](docs/requirements/System%20Requirements%20Document.md) | The `FR-<AREA>-xx` and `NFR-xx` requirements, data model, endpoint surface, authorization matrix and traceability. |
 | [Use Case Specification Document](docs/requirements/Use%20Case%20Specification%20Document.md) | The application use cases, their flows, and their `AF-xx` alternatives. |
@@ -257,6 +257,7 @@ one use case = one branch = one issue = one pull request.
 | [#62](https://github.com/artur-rios/fortuna-api/issues/62) | ✅ UC-61: Monitor an Import Job | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#63](https://github.com/artur-rios/fortuna-api/issues/63) | ✅ UC-62: Retry a Failed Import Job | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#64](https://github.com/artur-rios/fortuna-api/issues/64) | ✅ UC-63: Review Imported Records | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#160](https://github.com/artur-rios/fortuna-api/issues/160) | ✅ UC-80: Record Processing Consent | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ### M-07 — Insight and output
 

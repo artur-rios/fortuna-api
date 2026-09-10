@@ -9,6 +9,7 @@ using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Security;
@@ -729,6 +730,189 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenNoConsent_WhenPluggyConnectionIsRequested_ThenExternalCallIsBlocked()
+    {
+        var gateway = Gateway(PluggyConnectionValidationOutcome.Succeeded);
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+
+        var response = await client.PostAsJsonAsync("/api/connections", new
+        {
+            DataSource = "pluggy",
+            ExternalReference = Guid.NewGuid()
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Contains(ProcessingConsentMessages.ExternalDataProcessingRequired,
+            await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(0, gateway.CallCount);
+    }
+
+    [FunctionalFact]
+    public async Task GivenNoDecision_WhenConsentsAreListed_ThenRecognizedPurposeIsCurrentFalse()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+
+        var response = await client.GetAsync("/api/me/consents");
+        var body = (await response.Content.ReadFromJsonAsync<ConsentListEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var consent = Assert.Single(body.Consents);
+        Assert.Equal("external-data-processing", consent.Purpose);
+        Assert.Equal("1.0", consent.CurrentVersion);
+        Assert.Null(consent.GrantedVersion);
+        Assert.Null(consent.GrantedAt);
+        Assert.False(consent.IsCurrent);
+    }
+
+    [FunctionalTheory]
+    [InlineData("unknown", "1.0", ProcessingConsentMessages.UnknownPurpose)]
+    [InlineData("external-data-processing", "", ProcessingConsentMessages.VersionRequired)]
+    [InlineData("external-data-processing", "0.9", ProcessingConsentMessages.VersionNotCurrent)]
+    public async Task GivenInvalidConsentDecision_WhenGranted_ThenNamedErrorIsReturned(
+        string purpose,
+        string version,
+        string expectedError)
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+
+        var response = await client.PostAsJsonAsync("/api/me/consents", new
+        {
+            Purpose = purpose,
+            Version = version
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(expectedError, await response.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+        await using var context = CreateContext();
+        Assert.False(await context.ProcessingConsents.AnyAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenOldConsentText_WhenListed_ThenAReplacementDecisionIsRequired()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        var subject = Guid.NewGuid();
+        Authorize(client, subject, HeimdallRoles.User);
+        await GrantConsentAsync(client);
+        await using (var context = CreateContext())
+        {
+            var consent = await context.ProcessingConsents.SingleAsync();
+            consent.Grant("0.9", Now.AddDays(-1));
+            await context.SaveChangesAsync();
+        }
+
+        var response = await client.GetAsync("/api/me/consents");
+        var state = Assert.Single((await response.Content
+            .ReadFromJsonAsync<ConsentListEnvelope>())!.Data!.Consents);
+
+        Assert.Equal("0.9", state.GrantedVersion);
+        Assert.Equal("1.0", state.CurrentVersion);
+        Assert.False(state.IsCurrent);
+    }
+
+    [FunctionalFact]
+    public async Task GivenDependentPluggyData_WhenConsentIsWithdrawn_ThenAccessStopsAndHistoryRemains()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var connected = await ConnectAsync(client);
+        var connection = (await connected.Content.ReadFromJsonAsync<ConnectionEnvelope>())!.Data!;
+        var queued = await client.PostAsJsonAsync(
+            $"/api/connections/{connection.Id}/sync", new { });
+        var pendingId = (await queued.Content
+            .ReadFromJsonAsync<SynchronizationEnvelope>())!.Data!.ImportJobId;
+        long retainedRecordId;
+        await using (var context = CreateContext())
+        {
+            var stored = await context.Connections.Include(item => item.User)
+                .SingleAsync(item => item.PublicId == connection.Id);
+            var completed = new ImportJob(stored.User, stored, null, null, Now);
+            completed.Start(Now.AddMinutes(1));
+            var record = new ImportedRecord(
+                completed, "{\"id\":\"retained-by-consent-withdrawal\"}",
+                ImportedRecordOutcome.Imported, 10m, new DateOnly(2026, 9, 1),
+                "retained-by-consent-withdrawal");
+            completed.Complete(1, 0, 0, Now.AddMinutes(2));
+            context.AddRange(completed, record);
+            await context.SaveChangesAsync();
+            retainedRecordId = record.Id;
+        }
+
+        var response = await client.DeleteAsync(
+            "/api/me/consents/external-data-processing");
+        var result = (await response.Content
+            .ReadFromJsonAsync<ConsentWithdrawalEnvelope>())!.Data!;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, result.RevokedConnections);
+        Assert.Equal(1, result.StoppedSynchronizations);
+        await using var assertionContext = CreateContext();
+        var revoked = await assertionContext.Connections.SingleAsync();
+        Assert.Equal(ConnectionStatus.Revoked, revoked.Status);
+        Assert.Empty(revoked.AccessTokenCipher);
+        Assert.False(await assertionContext.ProcessingConsents.AnyAsync());
+        Assert.True(await assertionContext.ImportedRecords.AnyAsync(
+            item => item.Id == retainedRecordId));
+        Assert.Equal(ImportJobStatus.Failed, await assertionContext.ImportJobs
+            .Where(item => item.PublicId == pendingId)
+            .Select(item => item.Status)
+            .SingleAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenAnotherOwnersConsent_WhenWithdrawn_ThenItIsIndistinguishableFromMissing()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var owner = factory.CreateClient();
+        using var other = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        Authorize(other, Guid.NewGuid(), HeimdallRoles.User);
+        await GrantConsentAsync(owner);
+        await other.GetAsync("/api/me/consents");
+
+        var foreign = await other.DeleteAsync(
+            "/api/me/consents/external-data-processing");
+
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Contains(ProcessingConsentMessages.NotFound,
+            await foreign.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        await using var context = CreateContext();
+        Assert.Single(await context.ProcessingConsents.ToArrayAsync());
+    }
+
+    [FunctionalFact]
+    public async Task GivenMissingOrUnauthorizedConsentWithdrawal_WhenRequested_ThenExpectedStatusIsReturned()
+    {
+        await using var factory = CreateFactory(Gateway(
+            PluggyConnectionValidationOutcome.Succeeded));
+        using var owner = factory.CreateClient();
+        using var anonymous = factory.CreateClient();
+        Authorize(owner, Guid.NewGuid(), HeimdallRoles.User);
+        await owner.GetAsync("/api/me/consents");
+
+        var missing = await owner.DeleteAsync(
+            "/api/me/consents/external-data-processing");
+        var unauthorized = await anonymous.GetAsync("/api/me/consents");
+
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -784,12 +968,23 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         await context.SaveChangesAsync();
     }
 
-    private static Task<HttpResponseMessage> ConnectAsync(
+    private static async Task<HttpResponseMessage> ConnectAsync(
         HttpClient client,
-        Guid? externalReference = null) => client.PostAsJsonAsync("/api/connections", new
+        Guid? externalReference = null)
+    {
+        await GrantConsentAsync(client);
+        return await client.PostAsJsonAsync("/api/connections", new
         {
             DataSource = "pluggy",
             ExternalReference = externalReference ?? Guid.NewGuid()
+        });
+    }
+
+    private static Task<HttpResponseMessage> GrantConsentAsync(HttpClient client) =>
+        client.PostAsJsonAsync("/api/me/consents", new
+        {
+            Purpose = "external-data-processing",
+            Version = "1.0"
         });
 
     private static StubPluggyGateway Gateway(PluggyConnectionValidationOutcome outcome) => new(
@@ -832,6 +1027,8 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
     };
 
     private sealed record ConnectionEnvelope(ConnectionData? Data);
+    private sealed record ConsentListEnvelope(ConsentListData? Data);
+    private sealed record ConsentWithdrawalEnvelope(ConsentWithdrawalData? Data);
     private sealed record SynchronizationEnvelope(SynchronizationData? Data);
     private sealed record ConnectionQueryEnvelope(ConnectionQueryData? Data);
     private sealed record RevocationEnvelope(RevocationData? Data);
@@ -862,6 +1059,17 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         ImportJobStatus Status,
         DateOnly? PeriodStart,
         DateOnly? PeriodEnd);
+    private sealed record ConsentListData(IReadOnlyCollection<ConsentState> Consents);
+    private sealed record ConsentState(
+        string Purpose,
+        string CurrentVersion,
+        string? GrantedVersion,
+        DateTimeOffset? GrantedAt,
+        bool IsCurrent);
+    private sealed record ConsentWithdrawalData(
+        string Purpose,
+        int RevokedConnections,
+        int StoppedSynchronizations);
 
     private sealed class StubPluggyGateway(PluggyConnectionValidation result)
         : IPluggyConnectionGateway

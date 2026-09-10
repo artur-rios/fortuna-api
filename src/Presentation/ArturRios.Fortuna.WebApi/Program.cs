@@ -323,6 +323,13 @@ try
     builder.Services.AddScoped<IUserProfileProvisioner>(provider =>
         provider.GetRequiredService<EfUserProfileStore>());
     builder.Services.AddScoped<IUserErasureStore, EfUserErasureStore>();
+    builder.Services.AddScoped<EfProcessingConsentStore>();
+    builder.Services.AddScoped<IProcessingConsentStore>(provider =>
+        provider.GetRequiredService<EfProcessingConsentStore>());
+    builder.Services.AddScoped<IProcessingConsentReader>(provider =>
+        provider.GetRequiredService<EfProcessingConsentStore>());
+    builder.Services.AddSingleton(new ProcessingConsentOptions(
+        options.ConsentExternalDataProcessingVersion));
     builder.Services.AddSingleton(new LocalAccountOptions(
         options.LocalAuthEnabled,
         options.LocalAuthRecoveryCodeCount,
@@ -428,6 +435,10 @@ try
         RequestDataExportCommandOutput, RequestDataExportCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RequestPersonalDataExportCommand,
         RequestPersonalDataExportCommandOutput, RequestPersonalDataExportCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<GrantProcessingConsentCommand,
+        GrantProcessingConsentCommandOutput, GrantProcessingConsentCommandHandler>();
+    builder.Services.AddAuditedCommandHandler<WithdrawProcessingConsentCommand,
+        WithdrawProcessingConsentCommandOutput, WithdrawProcessingConsentCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CreateFinancialAccountCommand,
         CreateFinancialAccountCommandOutput, CreateFinancialAccountCommandHandler>();
     builder.Services.AddScoped<IValidator<UpdateFinancialAccountCommand>,
@@ -618,6 +629,8 @@ try
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();
+    builder.Services.AddScoped<IQueryHandlerAsync<GetMyProcessingConsentsQuery,
+        ProcessingConsentQueryOutput>, GetMyProcessingConsentsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCategoryTreeQuery, CategoryTreeOutput>,
         GetCategoryTreeQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCategoryByIdQuery, CategoryOutput>,

@@ -108,6 +108,9 @@ fn exclusion_reason(_method: &str, path: &str) -> Option<&'static str> {
     if path.starts_with("/api/connections") || path == "/api/data-sources" {
         return Some("Pluggy operations require a remote service");
     }
+    if path == "/api/me/consents" || path.starts_with("/api/me/consents/") {
+        return Some("external-processing consent applies only to hosted integrations");
+    }
     if path.starts_with("/api/users") {
         return Some("offline installations have no instance administrator");
     }
@@ -193,7 +196,7 @@ fn append_operation_declarations(header: &PathBuf, operations: &[Operation]) {
     let mut contents = fs::read_to_string(header).expect("read generated header");
     let marker = "#endif  /* FORTUNA_CORE_H */";
     let mut declarations = String::from(
-        "\n#ifdef __cplusplus\nextern \"C\" {\n#endif  // __cplusplus\n\n/**\n * Offline route exports generated from docs/openapi/fortuna.json.\n * Request metadata uses {token, route, query, body}; body is the unchanged HTTP JSON body.\n * Deliberately unavailable: /api/auth/** (Heimdall), /api/connections/** and\n * GET /api/data-sources (Pluggy), POST /api/exchange-rates/sync (remote rate source),\n * DELETE /api/users/{id} (no offline administrator), POST /api/local-accounts/password-reset\n * (use recovery codes), and the HTTP-host health routes.\n * Call fortuna_capabilities to discover the machine-readable availability contract.\n */\n",
+        "\n#ifdef __cplusplus\nextern \"C\" {\n#endif  // __cplusplus\n\n/**\n * Offline route exports generated from docs/openapi/fortuna.json.\n * Request metadata uses {token, route, query, body}; body is the unchanged HTTP JSON body.\n * Deliberately unavailable: /api/auth/** (Heimdall), /api/connections/** and\n * GET /api/data-sources (Pluggy), POST /api/exchange-rates/sync (remote rate source),\n * DELETE /api/users/{id} (no offline administrator), /api/me/consents/** (hosted\n * external processing only), POST /api/local-accounts/password-reset (use recovery\n * codes), and the HTTP-host health routes.\n * Call fortuna_capabilities to discover the machine-readable availability contract.\n */\n",
     );
     for operation in operations {
         declarations.push_str(&format!(

@@ -44,6 +44,10 @@ Heimdall remains the controller of the connected identity and credentials it sto
 Fortuna's portability archive covers the data Fortuna controls in both hosted and desktop-offline
 deployments; each backend builds it from its own persistence layer, and neither exports Heimdall or
 bank credentials.
+For a shared or hosted deployment, its operator also owns the processing disclosure presented before
+Pluggy access. Fortuna records the owner's explicit, versioned decision and revokes dependent
+connections on withdrawal. The desktop native core has separate persistence and no external
+processor, so local entry, spreadsheet import and PDF import remain available without this consent.
 
 ## What It Does
 

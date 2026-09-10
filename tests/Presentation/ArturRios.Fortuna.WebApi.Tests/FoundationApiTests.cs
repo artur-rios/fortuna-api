@@ -51,8 +51,33 @@ public sealed class FoundationApiTests
         Assert.Equal("pt-BR", options.Locale);
         Assert.False(options.LocalAuthEnabled);
         Assert.Equal(10, options.LocalAuthRecoveryCodeCount);
+        Assert.Equal("1.0", options.ConsentExternalDataProcessingVersion);
         Assert.Equal(0.01m, options.ReconciliationAmountTolerance);
         Assert.Equal(1, options.ReconciliationDateToleranceDays);
+    }
+
+    [UnitFact]
+    public void GivenConfiguredConsentVersion_WhenConfigurationLoads_ThenValueIsNormalized()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION"] = " 2026-09 ";
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal("2026-09", options.ConsentExternalDataProcessingVersion);
+    }
+
+    [UnitFact]
+    public void GivenOversizedConsentVersion_WhenConfigurationLoads_ThenStartupIsRejected()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION"] = new string('v', 51);
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION", exception.Message,
+            StringComparison.Ordinal);
     }
 
     [UnitFact]
