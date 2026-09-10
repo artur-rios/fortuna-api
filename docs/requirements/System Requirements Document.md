@@ -161,7 +161,7 @@ request validates it locally; token verification never calls Heimdall.
 | ID | Requirement |
 | --- | --- |
 | FR-CU-01 | The system shall maintain a reference set of ISO 4217 currencies, each with its minor-unit precision |
-| FR-CU-02 | The system shall represent every monetary amount as an exact decimal value paired with its currency |
+| FR-CU-02 | The system shall represent every monetary amount as an exact decimal value paired with its currency and shall publish every decimal request or response property as an invariant JSON string matching the documented decimal schema |
 | FR-CU-03 | The system shall never represent a monetary amount, at any layer, in binary floating point |
 | FR-CU-04 | The system shall refuse to sum, net or compare amounts in different currencies unless an explicit conversion is applied |
 | FR-CU-05 | The system shall fetch published exchange rates from the configured official source on a schedule, as a job |
@@ -931,7 +931,7 @@ receiving deployment detail that it cannot act on.
 | NFR-03 | Performance | A write shall complete within **500 ms at the 95th percentile** |
 | NFR-04 | Performance | An aggregation or drill-down over one year of a user's transactions shall complete within **1 second at the 95th percentile** |
 | NFR-05 | Performance | An operation executed as a job shall be exempt from NFR-02 to NFR-04; the request that accepts it shall itself meet NFR-03 |
-| NFR-06 | Correctness | Monetary values shall be exact decimals end to end. No binary floating-point type shall appear in an entity, a data transfer object, a query projection, an export cell, or an intermediate calculation involving money |
+| NFR-06 | Correctness | Monetary values shall be exact decimals end to end. No binary floating-point type shall appear in an entity, a data transfer object, a query projection, an export cell, a JSON wire value, or an intermediate calculation involving money; hosted and native JSON responses shall serialize decimals as invariant strings |
 | NFR-07 | Correctness | PostgreSQL monetary columns shall be `numeric(19,4)` and exchange rate columns `numeric(19,8)`; SQLite shall use a lossless non-floating representation. Rounding shall occur only at conversion or presentation |
 | NFR-08 | Correctness | A computed balance shall equal the sum of its opening balance and its live transactions to the currency's minor unit, and shall be identical across repeated computations |
 | NFR-09 | Security | No credential for a financial institution shall be stored, logged or transmitted, under any configuration |

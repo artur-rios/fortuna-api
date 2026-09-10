@@ -160,7 +160,7 @@ pub(crate) fn execute(operation: OperationSpec, request_json: *const c_char) -> 
         return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_JSON);
     };
 
-    match (operation.method, operation.path) {
+    let response = match (operation.method, operation.path) {
         ("POST", "/api/local-accounts") => create_local_account(&core, &mut request),
         ("POST", "/api/local-accounts/authenticate") => authenticate(&core, &mut request),
         ("POST", "/api/local-accounts/recover") => recover_local_account(&core, &mut request),
@@ -168,7 +168,8 @@ pub(crate) fn execute(operation: OperationSpec, request_json: *const c_char) -> 
             regenerate_recovery_codes(&core, &mut request)
         }
         _ => execute_authenticated(&core, operation, &mut request),
-    }
+    };
+    normalize_decimal_response(operation, response)
 }
 
 fn execute_authenticated(
@@ -1527,6 +1528,50 @@ fn project_schema(schema: &Value, value: &Value, schemas: &Value) -> Value {
         return Value::Object(output);
     }
     value.clone()
+}
+
+fn normalize_decimal_response(
+    operation: OperationSpec,
+    response: (c_int, String),
+) -> (c_int, String) {
+    if operation.response_schema.is_empty() {
+        return response;
+    }
+    let Ok(mut document) = serde_json::from_str::<Value>(&response.1) else {
+        return response;
+    };
+    let schemas = &openapi_document()["components"]["schemas"];
+    normalize_decimal_schema(&schemas[operation.response_schema], &mut document, schemas);
+    (response.0, serialize(&document))
+}
+
+fn normalize_decimal_schema(schema: &Value, value: &mut Value, schemas: &Value) {
+    if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
+        let name = reference.rsplit('/').next().unwrap_or_default();
+        normalize_decimal_schema(&schemas[name], value, schemas);
+        return;
+    }
+    if schema.get("format").and_then(Value::as_str) == Some("decimal") {
+        if let Some(decimal) = value_decimal(value) {
+            *value = Value::String(decimal.normalize().to_string());
+        }
+        return;
+    }
+    if let (Some(items), Some(values)) = (schema.get("items"), value.as_array_mut()) {
+        for item in values {
+            normalize_decimal_schema(items, item, schemas);
+        }
+    }
+    if let (Some(properties), Some(values)) = (
+        schema.get("properties").and_then(Value::as_object),
+        value.as_object_mut(),
+    ) {
+        for (name, property) in properties {
+            if let Some(field) = values.get_mut(name) {
+                normalize_decimal_schema(property, field, schemas);
+            }
+        }
+    }
 }
 
 fn schema_default(schema: &Value, schemas: &Value) -> Value {

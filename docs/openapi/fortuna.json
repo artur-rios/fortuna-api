@@ -291,8 +291,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categories": {
             "items": {
@@ -378,9 +379,10 @@
             "type": "boolean"
           },
           "overage": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "periodEnd": {
             "format": "date",
@@ -391,14 +393,16 @@
             "type": "string"
           },
           "remaining": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "spent": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -407,8 +411,9 @@
         "additionalProperties": false,
         "properties": {
           "budgetAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "budgetId": {
             "format": "uuid",
@@ -436,9 +441,10 @@
             "type": "boolean"
           },
           "overage": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "periodEnd": {
             "format": "date",
@@ -455,18 +461,20 @@
             "type": "string"
           },
           "remaining": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "requestedDate": {
             "format": "date",
             "type": "string"
           },
           "spent": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -513,9 +521,10 @@
             "type": "boolean"
           },
           "overage": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "periodEnd": {
             "format": "date",
@@ -526,14 +535,16 @@
             "type": "string"
           },
           "remaining": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "spent": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -542,14 +553,16 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "convertedAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -560,8 +573,9 @@
             "$ref": "#/components/schemas/ExchangeRateSource"
           },
           "sourceAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "sourceCurrencyCode": {
             "nullable": true,
@@ -622,8 +636,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categories": {
             "items": {
@@ -721,8 +736,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "kind": {
             "$ref": "#/components/schemas/CashFlowFigureKind"
@@ -734,8 +750,9 @@
         "additionalProperties": false,
         "properties": {
           "closingBalance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "figures": {
             "items": {
@@ -745,8 +762,9 @@
             "type": "array"
           },
           "openingBalance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "periodEnd": {
             "format": "date",
@@ -805,8 +823,9 @@
             "type": "array"
           },
           "startingBalance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "through": {
             "format": "date",
@@ -858,8 +877,9 @@
             "type": "string"
           },
           "rate": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -1040,8 +1060,9 @@
         "additionalProperties": false,
         "properties": {
           "amountDue": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "closingDate": {
             "format": "date",
@@ -1068,8 +1089,9 @@
             "type": "string"
           },
           "purchaseTotal": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "status": {
             "nullable": true,
@@ -1157,9 +1179,10 @@
             "type": "string"
           },
           "total": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -1199,13 +1222,15 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -1226,9 +1251,10 @@
             "type": "integer"
           },
           "displayAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "dueDate": {
             "format": "date",
@@ -1274,9 +1300,10 @@
             "type": "string"
           },
           "total": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -1293,8 +1320,9 @@
             "type": "string"
           },
           "rate": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -1538,9 +1566,10 @@
             "type": "boolean"
           },
           "total": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -1580,14 +1609,16 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "displayAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -1598,8 +1629,9 @@
             "$ref": "#/components/schemas/ExchangeRateSource"
           },
           "sourceAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "sourceCurrencyCode": {
             "nullable": true,
@@ -1850,8 +1882,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryIds": {
             "items": {
@@ -2046,8 +2079,9 @@
             "type": "integer"
           },
           "creditLimit": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -2084,8 +2118,9 @@
             "type": "string"
           },
           "creditLimit": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -2168,8 +2203,9 @@
             "type": "string"
           },
           "openingBalance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -2201,8 +2237,9 @@
             "type": "string"
           },
           "openingBalance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "updatedAt": {
             "format": "date-time",
@@ -2270,8 +2307,9 @@
             "type": "string"
           },
           "targetAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "targetDate": {
             "format": "date",
@@ -2471,8 +2509,9 @@
             "type": "string"
           },
           "outstandingAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -2512,8 +2551,9 @@
         "additionalProperties": false,
         "properties": {
           "availableAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "closingDay": {
             "format": "int32",
@@ -2524,8 +2564,9 @@
             "type": "string"
           },
           "creditLimit": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -2552,16 +2593,18 @@
             "type": "string"
           },
           "overageAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "updatedAt": {
             "format": "date-time",
             "type": "string"
           },
           "usedAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -2653,8 +2696,9 @@
         "additionalProperties": false,
         "properties": {
           "amountDue": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "closingDate": {
             "format": "date",
@@ -2677,20 +2721,23 @@
             "type": "string"
           },
           "foreignTaxTotal": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "id": {
             "format": "uuid",
             "type": "string"
           },
           "otherEntries": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "paymentsReceived": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "periodEnd": {
             "format": "date",
@@ -2701,12 +2748,14 @@
             "type": "string"
           },
           "previousBalance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "purchaseTotal": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "settlementTransactionId": {
             "format": "uuid",
@@ -2827,13 +2876,15 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "createdAt": {
             "format": "date-time",
@@ -2855,9 +2906,10 @@
             "type": "string"
           },
           "originalAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "originalCurrencyCode": {
             "nullable": true,
@@ -3087,8 +3139,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryId": {
             "format": "uuid",
@@ -3139,8 +3192,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryId": {
             "format": "uuid",
@@ -3429,8 +3483,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -3447,8 +3502,9 @@
             "type": "string"
           },
           "balance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -3563,8 +3619,9 @@
             "type": "string"
           },
           "openingBalance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "updatedAt": {
             "format": "date-time",
@@ -3756,8 +3813,9 @@
             "type": "string"
           },
           "targetAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "targetDate": {
             "format": "date",
@@ -3885,8 +3943,9 @@
             "type": "string"
           },
           "targetAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "targetDate": {
             "format": "date",
@@ -3934,9 +3993,10 @@
         "additionalProperties": false,
         "properties": {
           "currentAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "isFullyConverted": {
             "type": "boolean"
@@ -3946,14 +4006,16 @@
             "type": "boolean"
           },
           "proportionReached": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "remaining": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -3970,9 +4032,10 @@
             "type": "string"
           },
           "currentAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "daysRemaining": {
             "format": "int32",
@@ -3994,9 +4057,10 @@
             "type": "boolean"
           },
           "proportionReached": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "resources": {
             "items": {
@@ -4006,13 +4070,15 @@
             "type": "array"
           },
           "shortfall": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "targetAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "targetDate": {
             "format": "date",
@@ -4056,9 +4122,10 @@
         "additionalProperties": false,
         "properties": {
           "currentAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "isFullyConverted": {
             "type": "boolean"
@@ -4068,14 +4135,16 @@
             "type": "boolean"
           },
           "proportionReached": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "remaining": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -4112,14 +4181,16 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "convertedAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "exclusionReason": {
             "nullable": true,
@@ -4148,9 +4219,10 @@
             "$ref": "#/components/schemas/GoalResourceType"
           },
           "sourceAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "sourceCurrencyCode": {
             "nullable": true,
@@ -4595,9 +4667,10 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "externalId": {
             "nullable": true,
@@ -4686,13 +4759,15 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -4710,9 +4785,10 @@
             "type": "string"
           },
           "originalAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "originalCurrencyCode": {
             "nullable": true,
@@ -4739,13 +4815,15 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -4766,9 +4844,10 @@
             "type": "string"
           },
           "originalAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "originalCurrencyCode": {
             "nullable": true,
@@ -4836,9 +4915,10 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "createdAt": {
             "format": "date-time",
@@ -4875,9 +4955,10 @@
             "type": "string"
           },
           "originalTotalAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "purchasedOn": {
             "format": "date",
@@ -4889,8 +4970,9 @@
             "type": "string"
           },
           "totalAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "updatedAt": {
             "format": "date-time",
@@ -4985,9 +5067,10 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "createdAt": {
             "format": "date-time",
@@ -5002,9 +5085,10 @@
             "type": "string"
           },
           "displayPosition": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "id": {
             "format": "uuid",
@@ -5030,13 +5114,15 @@
             "type": "string"
           },
           "latestValuationValue": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "position": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -5174,8 +5260,9 @@
             "type": "string"
           },
           "value": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "valuedOn": {
             "format": "date",
@@ -5465,26 +5552,31 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "creditCards": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "displayNet": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "financialAccounts": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "investments": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -5499,8 +5591,9 @@
             "type": "string"
           },
           "sourceNet": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "unconvertedReason": {
             "nullable": true,
@@ -5531,9 +5624,10 @@
             "type": "boolean"
           },
           "total": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -5987,8 +6081,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -6079,8 +6174,9 @@
             "type": "string"
           },
           "totalAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -6089,9 +6185,10 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "creditCardId": {
             "format": "uuid",
@@ -6121,9 +6218,10 @@
             "type": "string"
           },
           "originalTotalAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "purchasedOn": {
             "format": "date",
@@ -6135,8 +6233,9 @@
             "type": "string"
           },
           "totalAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -6176,8 +6275,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "financialAccountId": {
             "format": "uuid",
@@ -6202,13 +6302,15 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "createdAt": {
             "format": "date-time",
@@ -6224,9 +6326,10 @@
             "type": "string"
           },
           "fundingAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "fundingCurrencyCode": {
             "nullable": true,
@@ -6253,8 +6356,9 @@
             "type": "string"
           },
           "position": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -6312,8 +6416,9 @@
             "type": "string"
           },
           "value": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "valuedOn": {
             "format": "date",
@@ -6350,13 +6455,15 @@
             "type": "string"
           },
           "latestValuationValue": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "position": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "replacedExisting": {
             "type": "boolean"
@@ -6366,8 +6473,9 @@
             "type": "string"
           },
           "value": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "valuedOn": {
             "format": "date",
@@ -6419,8 +6527,9 @@
             "type": "string"
           },
           "rate": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -6441,8 +6550,9 @@
             "type": "string"
           },
           "rate": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -6495,8 +6605,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryId": {
             "format": "uuid",
@@ -6550,13 +6661,15 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryId": {
             "format": "uuid",
@@ -6612,9 +6725,10 @@
             "type": "string"
           },
           "originalAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "originalCurrencyCode": {
             "nullable": true,
@@ -6651,9 +6765,10 @@
             "type": "string"
           },
           "statementPurchaseTotal": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "statementStatus": {
             "nullable": true,
@@ -6708,8 +6823,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "destinationFinancialAccountId": {
             "format": "uuid",
@@ -6741,9 +6857,10 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "createdAt": {
             "format": "date-time",
@@ -6764,8 +6881,9 @@
             "type": "string"
           },
           "inboundAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "inboundCurrencyCode": {
             "nullable": true,
@@ -6784,8 +6902,9 @@
             "type": "string"
           },
           "outboundAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "outboundCurrencyCode": {
             "nullable": true,
@@ -7013,8 +7132,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryId": {
             "format": "uuid",
@@ -7754,8 +7874,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "financialAccountId": {
             "format": "uuid",
@@ -7776,13 +7897,15 @@
         "additionalProperties": false,
         "properties": {
           "appliedAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "carryStatementId": {
             "format": "uuid",
@@ -7790,8 +7913,9 @@
             "type": "string"
           },
           "creditAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "creditCardCurrencyCode": {
             "nullable": true,
@@ -7814,8 +7938,9 @@
             "type": "string"
           },
           "paymentAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "paymentCurrencyCode": {
             "nullable": true,
@@ -7831,12 +7956,14 @@
             "type": "string"
           },
           "remainingBalance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "statementAmountDue": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "status": {
             "nullable": true,
@@ -8154,14 +8281,16 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "convertedValue": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "figureDate": {
             "format": "date",
@@ -8181,8 +8310,9 @@
             "type": "string"
           },
           "sourceValue": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "unconvertedReason": {
             "nullable": true,
@@ -8213,9 +8343,10 @@
             "type": "boolean"
           },
           "value": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -8381,14 +8512,16 @@
             "type": "string"
           },
           "share": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "total": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -8397,14 +8530,16 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "displayAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "figureDate": {
             "format": "date",
@@ -8419,8 +8554,9 @@
             "$ref": "#/components/schemas/ExchangeRateSource"
           },
           "sourceAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "sourceCurrencyCode": {
             "nullable": true,
@@ -8504,9 +8640,10 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -8517,32 +8654,38 @@
             "type": "string"
           },
           "displayEarning": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "displayExpense": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "displayNet": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "earning": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "expense": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "net": {
-            "format": "double",
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
             "readOnly": true,
-            "type": "number"
+            "type": "string"
           },
           "rateDate": {
             "format": "date",
@@ -8712,13 +8855,15 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryId": {
             "format": "uuid",
@@ -8780,9 +8925,10 @@
             "type": "string"
           },
           "importedAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "importedOccurredOn": {
             "format": "date",
@@ -8827,9 +8973,10 @@
             "type": "string"
           },
           "originalAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "originalCurrencyCode": {
             "nullable": true,
@@ -8909,8 +9056,9 @@
             "type": "string"
           },
           "importedAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "importedOccurredOn": {
             "format": "date",
@@ -8921,8 +9069,9 @@
             "type": "integer"
           },
           "transactionAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "transactionOccurredOn": {
             "format": "date",
@@ -9086,19 +9235,22 @@
             "type": "string"
           },
           "displayEarning": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "displayExpense": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "displayNet": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           }
         },
         "type": "object"
@@ -9148,9 +9300,10 @@
         "additionalProperties": false,
         "properties": {
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "createdAt": {
             "format": "date-time",
@@ -9181,8 +9334,9 @@
             "type": "string"
           },
           "inboundAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "inboundCurrencyCode": {
             "nullable": true,
@@ -9213,8 +9367,9 @@
             "type": "string"
           },
           "outboundAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "outboundCurrencyCode": {
             "nullable": true,
@@ -9274,8 +9429,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryIds": {
             "items": {
@@ -9393,8 +9549,9 @@
             "type": "integer"
           },
           "creditLimit": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -9427,8 +9584,9 @@
             "type": "string"
           },
           "creditLimit": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "currencyCode": {
             "nullable": true,
@@ -9511,9 +9669,10 @@
             "type": "string"
           },
           "openingBalance": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "ownerId": {
             "format": "uuid",
@@ -9550,8 +9709,9 @@
             "type": "string"
           },
           "openingBalance": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "updatedAt": {
             "format": "date-time",
@@ -9619,8 +9779,9 @@
             "type": "string"
           },
           "targetAmount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "targetDate": {
             "format": "date",
@@ -9718,8 +9879,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryId": {
             "format": "uuid",
@@ -9770,8 +9932,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliesFrom": {
             "format": "date",
@@ -9900,8 +10063,9 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryId": {
             "format": "uuid",
@@ -9955,13 +10119,15 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "format": "double",
-            "type": "number"
+            "format": "decimal",
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "appliedRate": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "categoryId": {
             "format": "uuid",
@@ -10034,9 +10200,10 @@
             "type": "string"
           },
           "originalAmount": {
-            "format": "double",
+            "format": "decimal",
             "nullable": true,
-            "type": "number"
+            "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+            "type": "string"
           },
           "originalCurrencyCode": {
             "nullable": true,
@@ -15922,16 +16089,18 @@
             "in": "query",
             "name": "MinimumAmount",
             "schema": {
-              "format": "double",
-              "type": "number"
+              "format": "decimal",
+              "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+              "type": "string"
             }
           },
           {
             "in": "query",
             "name": "MaximumAmount",
             "schema": {
-              "format": "double",
-              "type": "number"
+              "format": "decimal",
+              "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+              "type": "string"
             }
           },
           {
@@ -16554,16 +16723,18 @@
             "in": "query",
             "name": "MinimumAmount",
             "schema": {
-              "format": "double",
-              "type": "number"
+              "format": "decimal",
+              "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+              "type": "string"
             }
           },
           {
             "in": "query",
             "name": "MaximumAmount",
             "schema": {
-              "format": "double",
-              "type": "number"
+              "format": "decimal",
+              "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
+              "type": "string"
             }
           },
           {

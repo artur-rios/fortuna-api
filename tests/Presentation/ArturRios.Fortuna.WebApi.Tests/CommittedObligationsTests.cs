@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Globalization;
 using System.Text.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
@@ -54,15 +55,15 @@ public sealed class CommittedObligationsTests : IAsyncLifetime
         // Then
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(2, items.Length);
-        Assert.Equal(110m, data.GetProperty("total").GetDecimal());
+        Assert.Equal(110m, WireDecimal(data.GetProperty("total")));
         Assert.True(data.GetProperty("isFullyConverted").GetBoolean());
         Assert.Equal(2, data.GetProperty("periods").GetArrayLength());
         Assert.Single(data.GetProperty("rates").EnumerateArray());
         Assert.True(items[0].GetProperty("isOverdue").GetBoolean());
         Assert.Equal(2, items[0].GetProperty("daysOverdue").GetInt32());
-        Assert.Equal(100m, items[0].GetProperty("displayAmount").GetDecimal());
+        Assert.Equal(100m, WireDecimal(items[0].GetProperty("displayAmount")));
         Assert.False(items[1].GetProperty("isOverdue").GetBoolean());
-        Assert.Equal(10m, items[1].GetProperty("displayAmount").GetDecimal());
+        Assert.Equal(10m, WireDecimal(items[1].GetProperty("displayAmount")));
         Assert.Equal(Today.AddDays(11).ToString("yyyy-MM-dd"),
             items[1].GetProperty("cycleStart").GetString());
         Assert.Equal(Today.AddDays(25).ToString("yyyy-MM-dd"),
@@ -99,16 +100,16 @@ public sealed class CommittedObligationsTests : IAsyncLifetime
 
         // Then
         Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
-        Assert.Equal(0m, emptyDocument.RootElement.GetProperty("data")
-            .GetProperty("total").GetDecimal());
+        Assert.Equal(0m, WireDecimal(emptyDocument.RootElement.GetProperty("data")
+            .GetProperty("total")));
         Assert.Empty(emptyDocument.RootElement.GetProperty("data")
             .GetProperty("items").EnumerateArray());
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
         Assert.Contains(CommittedObligationMessages.HorizonMaximum(366),
             await invalid.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.OK, missingOwner.StatusCode);
-        Assert.Equal(0m, outsiderDocument.RootElement.GetProperty("data")
-            .GetProperty("total").GetDecimal());
+        Assert.Equal(0m, WireDecimal(outsiderDocument.RootElement.GetProperty("data")
+            .GetProperty("total")));
         Assert.Empty(outsiderDocument.RootElement.GetProperty("data")
             .GetProperty("items").EnumerateArray());
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
@@ -122,6 +123,9 @@ public sealed class CommittedObligationsTests : IAsyncLifetime
         await context.Database.MigrateAsync();
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
+
+    private static decimal WireDecimal(JsonElement value) =>
+        decimal.Parse(value.GetString()!, CultureInfo.InvariantCulture);
 
     public async Task DisposeAsync() => await database.DisposeAsync();
 

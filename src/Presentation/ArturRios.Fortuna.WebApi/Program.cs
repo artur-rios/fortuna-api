@@ -50,6 +50,7 @@ using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Controllers;
 using ArturRios.Fortuna.WebApi.Security;
+using ArturRios.Fortuna.WebApi.Serialization;
 using ArturRios.Fortuna.WebApi.Services;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
@@ -806,7 +807,8 @@ try
         provider.GetRequiredService<IngestionSourceRegistry>());
     RegisterAttachmentStore(builder.Services, options);
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers().AddJsonOptions(json =>
+        json.JsonSerializerOptions.Converters.Add(new ExactDecimalJsonConverter()));
     var jwtConfiguration = BuildJwtConfiguration(options);
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(authentication =>
@@ -849,6 +851,12 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(document =>
     {
+        document.MapType<decimal>(() => new OpenApiSchema
+        {
+            Type = JsonSchemaType.String,
+            Format = "decimal",
+            Pattern = @"^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$"
+        });
         document.SwaggerDoc("v1", new()
         {
             Title = ApiContractMetadata.Service,

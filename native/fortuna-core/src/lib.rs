@@ -578,7 +578,7 @@ pub extern "C" fn fortuna_api_local_accounts_authenticate(
 /// Transport metadata and route values are carried in one JSON object:
 /// `{"token":"...","id":"uuid","includeDeleted":false}`. The response is the
 /// HTTP `DataOutput<FinancialAccountOutput?>` shape. Decimal fields are read from
-/// SQLite TEXT and emitted as arbitrary-precision JSON numbers without a float conversion.
+/// SQLite TEXT and emitted as invariant decimal strings without a float conversion.
 /// The response is library-owned and must be released with `fortuna_string_free`.
 #[unsafe(no_mangle)]
 pub extern "C" fn fortuna_api_accounts_get_by_id(
@@ -843,7 +843,7 @@ mod tests {
         assert!(
             account
                 .body
-                .contains("\"openingBalance\":123456789012345.6789")
+                .contains("\"openingBalance\":\"123456789012345.6789\"")
         );
         stop();
     }
@@ -892,13 +892,13 @@ mod tests {
         assert!(
             account
                 .body
-                .contains("\"openingBalance\":123456789012345.6789")
+                .contains("\"openingBalance\":\"123456789012345.6789\"")
         );
         let account_json: Value = serde_json::from_str(&account.body).unwrap();
         assert_eq!(account_id.to_string(), account_json["data"]["id"]);
         assert_eq!(
             "123456789012345.6789",
-            account_json["data"]["openingBalance"].to_string()
+            account_json["data"]["openingBalance"].as_str().unwrap()
         );
         assert_eq!(
             "Accounts retrieved successfully.",
@@ -1362,7 +1362,7 @@ mod tests {
             ),
         );
         assert_eq!(FORTUNA_STATUS_CREATED, rate.status, "{}", rate.body);
-        assert!(rate.body.contains("\"rate\":1.0001"));
+        assert!(rate.body.contains("\"rate\":\"1.0001\""));
 
         let converted = call(
             fortuna_api_exchange_rates_convert_post,

@@ -110,9 +110,9 @@ graph LR
 | UC-01 … UC-02 | HTTP only. Heimdall token validation and first connected access belong to the server; creating a local account provisions its native profile during UC-03. |
 | UC-03 … UC-07 | HTTP + native. Native local-account creation, authentication, recovery, code regeneration, profile read and currency reference data use the generated offline exports. |
 | UC-08 | HTTP only. Synchronization requires the remote exchange-rate source; native supports manual rates and conversion through UC-09 and UC-10. |
-| UC-09 … UC-53 | HTTP + native. Holdings, money movement, organization, planning, lifecycle and audit operations retain owner scoping and exact decimal behavior in the native core. |
+| UC-09 … UC-53 | HTTP + native. Holdings, money movement, organization, planning, lifecycle and audit operations retain owner scoping and publish exact decimals as invariant JSON strings in both transports. |
 | UC-54 … UC-58 | HTTP only. Pluggy discovery and every connection operation require its remote service and are deliberately absent from the native header. |
-| UC-59 … UC-74 | HTTP + native. File ingestion, attachments, reports, projections and exports are native operations; imports and exports return monitorable jobs instead of blocking the caller. |
+| UC-59 … UC-74 | HTTP + native. File ingestion, attachments, reports, projections and exports are native operations; their JSON decimals use the shared invariant string contract, and imports and exports return monitorable jobs instead of blocking the caller. |
 | UC-75 | HTTP + native through transport-specific health functions: anonymous `GET /healthcheck` identifies `Fortuna API` and its published `v1` contract without probing dependencies; `fortuna_health` reports the in-process native boundary. |
 | UC-76 … UC-77 | HTTP only. Connected authentication and credential management require Heimdall and have no offline export. |
 | UC-78 | HTTP + native owner erasure. The administrator route is HTTP-only because an offline installation has no instance administrator. |

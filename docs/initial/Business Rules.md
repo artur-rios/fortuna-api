@@ -84,7 +84,7 @@ letting the ones below it shift.
 
 | # | Rule | Rationale |
 | --- | --- | --- |
-| **BR-05** | Every monetary amount is an exact decimal value carrying its currency. Binary floating-point representation is never used for money, at any layer, at any point. | `0.1 + 0.2` is the defect that makes a finance system untrustworthy, and it is unrecoverable once it has accumulated across a history. |
+| **BR-05** | Every monetary amount is an exact decimal value carrying its currency. Binary floating-point representation is never used for money, at any layer, at any point; JSON transports publish decimals as invariant strings. | `0.1 + 0.2` is the defect that makes a finance system untrustworthy, and it is unrecoverable once it has accumulated across a history. |
 | **BR-06** | Amounts in different currencies are never summed, compared or netted without an explicit conversion. | An implied conversion is an invented number. |
 | **BR-07** | Every conversion records the rate applied and the date it was taken from, alongside the converted result. | A converted figure that cannot be re-derived cannot be audited. |
 | **BR-08** | An account, card or investment has exactly one currency, set at creation and immutable afterwards. | Changing an account's currency retroactively reinterprets every transaction it holds. |
