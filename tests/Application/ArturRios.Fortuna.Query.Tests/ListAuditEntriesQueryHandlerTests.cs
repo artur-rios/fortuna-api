@@ -43,7 +43,7 @@ public sealed class ListAuditEntriesQueryHandlerTests
         Assert.True(result.Success);
         Assert.Equal(1, result.TotalItems);
         var item = Assert.Single(result.Data!);
-        Assert.Equal(actorUserId, item.ActorUserId);
+        Assert.Equal(actorUserId, item.SubjectReference);
         Assert.Equal("DeleteAccountCommand", item.Operation);
         Assert.Equal("Account", item.EntityType);
         Assert.Equal(targetId, item.EntityId);
@@ -172,6 +172,10 @@ public sealed class ListAuditEntriesQueryHandlerTests
     private sealed class StubAuditEntryReader(params AuditEntry[] entries) : IAuditEntryReader
     {
         public IQueryable<AuditEntry> Query() => entries.AsQueryable();
+
+        public Task<Guid?> FindSubjectReferenceAsync(
+            Guid userId,
+            CancellationToken cancellationToken) => Task.FromResult<Guid?>(userId);
     }
 
     private sealed class StubUserProfileReader(UserProfileSnapshot? profile) : IUserProfileReader

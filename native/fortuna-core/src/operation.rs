@@ -106,6 +106,10 @@ const UNAVAILABLE: &[UnavailableOperation<'_>] = &[
         reason: "An offline local account is recovered with its one-time recovery codes.",
     },
     UnavailableOperation {
+        routes: "DELETE /api/users/{id}",
+        reason: "A single-user offline installation has no instance administrator; its owner uses POST /api/me/erasure.",
+    },
+    UnavailableOperation {
         routes: "GET /healthcheck; GET /healthcheck/detailed",
         reason: "HTTP-host health is represented in-process by fortuna_health.",
     },
@@ -179,6 +183,29 @@ fn execute_authenticated(
                 "User profile retrieved successfully.",
             ),
             Ok(None) => failure(FORTUNA_STATUS_NOT_FOUND, NOT_FOUND),
+            Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
+        };
+    }
+    if operation.path == "/api/me/erasure" {
+        let confirmed = request
+            .body
+            .as_ref()
+            .and_then(|body| body.get("confirmation"))
+            .and_then(Value::as_str)
+            == Some("ERASE");
+        if !confirmed {
+            return failure(
+                FORTUNA_STATUS_BAD_REQUEST,
+                "Confirmation must be exactly 'ERASE'.",
+            );
+        }
+        return match core.store.erase_user(user_id, &timestamp) {
+            Ok(Some(result)) => success(
+                FORTUNA_STATUS_OK,
+                result,
+                "The user account and all owned data were erased permanently.",
+            ),
+            Ok(None) => failure(FORTUNA_STATUS_NOT_FOUND, "The user was not found."),
             Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
         };
     }

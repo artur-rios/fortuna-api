@@ -1,10 +1,6 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
-using ArturRios.Fortuna.Query.Input;
-using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
-using ArturRios.Mediator.Query;
 using ArturRios.Mediator.Command;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
@@ -13,38 +9,23 @@ using Microsoft.AspNetCore.Mvc;
 namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
-[Route("api/me")]
-public sealed class MeController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator,
-    IRequestActorAccessor actorAccessor) : Controller
+[Route("api/users")]
+public sealed class UsersController(CommandMediator commandMediator) : Controller
 {
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
-            [UserProfileMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [UserErasureMessages.ConfirmationInvalid] = StatusCodes.Status400BadRequest,
             [UserErasureMessages.UserNotFound] = StatusCodes.Status404NotFound
         };
 
-    [HttpGet]
-    public async Task<ActionResult<DataOutput<UserProfileOutput?>>> Get()
-    {
-        var query = new GetMyProfileQuery
-        {
-            ExternalSubject = actorAccessor.Actor!.SubjectId,
-            IsLocal = actorAccessor.Actor.IsLocal
-        };
-        var result = await queryMediator.ExecuteQueryAsync<GetMyProfileQuery, UserProfileOutput>(query);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
-    }
-
-    [HttpPost("erasure")]
+    [HttpDelete("{id:guid}")]
     public async Task<ActionResult<DataOutput<EraseUserCommandOutput?>>> Erase(
+        Guid id,
         [FromBody] EraseUserCommand command)
     {
-        command.IsSelfService = true;
+        command.UserId = id;
+        command.IsSelfService = false;
         var result = await commandMediator.ExecuteCommandAsync<
             EraseUserCommand,
             EraseUserCommandOutput>(command);

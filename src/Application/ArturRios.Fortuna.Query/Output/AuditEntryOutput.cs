@@ -5,7 +5,7 @@ namespace ArturRios.Fortuna.Query.Output;
 
 public sealed class AuditEntryOutput : QueryOutput
 {
-    public Guid ActorUserId { get; set; }
+    public Guid SubjectReference { get; set; }
     public string Operation { get; set; } = string.Empty;
     public string? EntityType { get; set; }
     public Guid? EntityId { get; set; }

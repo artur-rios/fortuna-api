@@ -277,6 +277,10 @@ For each endpoint a use case exposes:
       dependents, and the record no longer appears in balances, aggregates or exports.
 - [ ] For a **money-returning** endpoint: that the value is exact, carries its currency, and — where
       converted — reports the rate and rate date.
+- [ ] For **account erasure**: that the explicit dependency order removes every owned row, credential,
+      indirect job payload and stored object; another user's rows remain; the audit rows remain under
+      one opaque reference while its mapping is gone; and an injected mid-cascade failure restores
+      both database and object-store state.
 
 ---
 
@@ -349,6 +353,8 @@ The native command is a required part of the full repository suite. It calls the
 and generated operation functions through their C-compatible signatures, including capability
 discovery, every offline area, success and failure envelopes, owner-scoped CRUD and lifecycle,
 non-blocking job progress, concurrent calls, response ownership and exact decimal serialization.
+It also confirms that local owner erasure removes the native profile, credentials, recovery hashes,
+records and jobs while retaining audit rows after their subject mapping is destroyed.
 The registry test proves that every eligible route in the checked-in HTTP contract has a native
 operation and that connected-only routes are absent. CI runs it on Windows and Linux and separately
 builds each release library; rebuilding must leave the generated header unchanged.

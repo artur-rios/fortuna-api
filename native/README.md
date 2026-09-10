@@ -47,7 +47,7 @@ are synchronized.
 | `fortuna_api_local_accounts_authenticate` | HTTP authentication body: `{"name":"...","secret":"..."}` | `200` |
 | `fortuna_api_accounts_get_by_id` | `{"token":"...","id":"uuid","includeDeleted":false}` | `200` |
 
-The header additionally contains 110 concrete route functions generated from the checked-in OpenAPI
+The header additionally contains 111 concrete route functions generated from the checked-in OpenAPI
 contract. Their deterministic names end in the lowercase HTTP method; for example,
 `fortuna_api_transactions_by_id_put` mirrors `PUT /api/transactions/{id}`. An authenticated call
 wraps transport metadata while leaving the HTTP body unchanged:
@@ -62,8 +62,8 @@ wraps transport metadata while leaving the HTTP body unchanged:
 ```
 
 `fortuna_capabilities` is the machine-readable registry. It includes each function's method, path,
-area and `longRunning` flag and explains why connected identity, Pluggy, remote rate synchronization
-and HTTP-host health routes are absent. Imports and exports return `202` with a persisted job and
+area and `longRunning` flag and explains why connected identity, administrator-only user erasure,
+Pluggy, remote rate synchronization and HTTP-host health routes are absent. Imports and exports return `202` with a persisted job and
 progress; job reads do not block the caller.
 
 Local tokens are opaque, are stored only as SHA-256 hashes, expire at the configured lifetime, and
@@ -77,4 +77,6 @@ amounts retain their decimal JSON lexemes in SQLite `TEXT` documents and are par
 precision, never through binary floating point. The schema contains local profiles, credential and
 recovery-code hashes, owner-keyed offline records, append-only audit entries and monitorable
 operation jobs. Every record query includes the authenticated owner identifier even though a desktop
-installation normally has only one local user.
+installation normally has only one local user. Audit rows carry a separate random subject reference;
+confirmed owner erasure deletes its mapping and all identity/record/job rows atomically while leaving
+the now-unlinkable audit facts intact.

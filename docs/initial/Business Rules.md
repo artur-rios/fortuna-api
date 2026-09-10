@@ -147,9 +147,9 @@ letting the ones below it shift.
 
 | # | Rule | Rationale |
 | --- | --- | --- |
-| **BR-38** | Deletion is two-stage: a record is soft-deleted first, and only a soft-deleted record may then be hard-deleted. Nothing goes from live to gone in one step. | Financial history is deleted by accident exactly once, and the two-stage rule is what makes that recoverable. |
+| **BR-38** | Deletion of an individual record is two-stage: it is soft-deleted first, and only a soft-deleted record may then be hard-deleted. Confirmed whole-account erasure is a separate operation and never reuses this lifecycle. | Financial history is protected from accidental record deletion without turning an intentional data-subject erasure into a recoverable intermediate state. |
 | **BR-39** | A soft-deleted record is excluded from every balance, aggregation, projection and export, but remains retrievable and restorable. | — |
-| **BR-40** | A hard delete is refused while any live record still references the target. | Leaving a transaction pointing at an account that no longer exists corrupts every query that joins them. |
+| **BR-40** | A hard delete is refused while any live record still references the target. Whole-account erasure satisfies this rule by removing every reference and dependent in a declared order, never by disabling the constraint. | Leaving a transaction pointing at an account that no longer exists corrupts every query that joins them. |
 | **BR-41** | Audit log entries are append-only: never edited, never deleted, not even by a hard delete of what they describe. | An audit trail that can be pruned is not one. |
 | **BR-42** | An audit entry identifies its subject by an opaque reference and carries no other personal data — no name, no address, no record contents. Erasing a user destroys the mapping from that reference to the person, so the trail survives while ceasing to be personal data. | Reconciles `BR-41` with the right to erasure under the GDPR and the LGPD: a trail that cannot be pruned and a person who may demand deletion are only compatible if the trail does not identify them once they are gone. |
 
@@ -198,6 +198,7 @@ letting the ones below it shift.
 | Configure the instance and its integrations | No | Yes |
 | Read operational health, logs and import job outcomes across the instance | No | Yes — outcomes and counts, never record contents |
 | Read the audit log for their own records | Yes | Yes, for instance-level events |
+| Erase an account and all data it owns | Yes — their own, with explicit confirmation | Yes — on documented authority, receiving counts and never contents |
 
 Roles and their membership are Heimdall's; Fortuna reads them from the issued token and enforces
 the matrix above. A desktop local account always holds the account-owner role, and there is no
@@ -222,7 +223,9 @@ per-row outcomes; a failed one keeps the reason.
 **Connection states.** `Active` → `RequiresReauthentication` → `Active`, or → `Revoked`. Revoked is
 terminal for synchronization and leaves imported data untouched (`BR-29`).
 
-**Deletion.** Soft delete, then hard delete, in that order and never skipping the first (`BR-38`).
+**Deletion.** Individual records are soft-deleted, then hard-deleted, in that order and never
+skipping the first (`BR-38`). Confirmed account erasure is separate: it removes the person's entire
+ownership graph atomically, destroys the audit-subject mapping, and is irreversible.
 Restoring is available from soft-deleted only. Deleting an account soft-deletes its transactions
 with it; hard-deleting it is refused while any live transaction remains (`BR-40`).
 

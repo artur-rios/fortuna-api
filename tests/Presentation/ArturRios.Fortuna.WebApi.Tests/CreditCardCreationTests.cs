@@ -61,7 +61,8 @@ public sealed class CreditCardCreationTests : IAsyncLifetime
         Assert.False(card.IsDeleted);
         var audit = await context.AuditEntries.SingleAsync(item =>
             item.Operation == "CreateCreditCardCommand");
-        Assert.Equal(card.User.PublicId, audit.ActorUserId);
+        Assert.NotNull(audit.SubjectReference);
+        Assert.NotEqual(card.User.PublicId, audit.SubjectReference);
         Assert.Equal("CreditCard", audit.EntityType);
         Assert.Equal(card.PublicId, audit.EntityPublicId);
         Assert.Equal(AuditOutcome.Succeeded, audit.Outcome);

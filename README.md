@@ -104,7 +104,7 @@ the domain model; changing providers requires no application-code change.
 
 The desktop client can instead embed the native core without starting the HTTP host or opening a
 listening socket. It ships `fortuna_core.dll` on Windows or `libfortuna_core.so` on Linux together
-with the generated C header. Its 110 generated offline route exports cover the local operation
+with the generated C header. Its 111 generated offline route exports cover the local operation
 surface, while capability discovery identifies network-dependent routes that remain HTTP-only. The
 native core owns its Rust domain/persistence implementation and SQLite schema; see
 [`native/README.md`](native/README.md) for the ABI, ownership and build contract.
@@ -149,7 +149,7 @@ and the [project board](https://github.com/users/artur-rios/projects/12) are the
 | Milestone | Delivers | Depends on | Issues | Status |
 |---|---|---|---|---|
 | [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 1 | 1 / 1 closed |
-| [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, the two-stage deletion lifecycle and the audit trail | M-01 | 12 | 12 / 12 closed |
+| [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, lifecycle, account erasure and the audit trail | M-01 | 15 | 15 / 15 closed |
 | [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 19 | 16 / 19 closed |
 | [M-04 — Money movement](https://github.com/artur-rios/fortuna-api/milestone/4) | Transactions, transfers, installment plans, recurring commitments and reconciliation | M-03 | 11 | 0 / 11 closed |
 | [M-05 — Organization and planning](https://github.com/artur-rios/fortuna-api/milestone/5) | Categories, tags, counterparties, budgets and goals | M-04 | 11 | 0 / 11 closed |
@@ -185,6 +185,7 @@ one use case = one branch = one issue = one pull request.
 | [#54](https://github.com/artur-rios/fortuna-api/issues/54) | ✅ UC-53: Read the Audit Trail | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#153](https://github.com/artur-rios/fortuna-api/issues/153) | ✅ UC-76: Authenticate through the Fortuna API | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#154](https://github.com/artur-rios/fortuna-api/issues/154) | ✅ UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#158](https://github.com/artur-rios/fortuna-api/issues/158) | ✅ UC-78: Erase a User Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ### M-03 — Holdings
 
