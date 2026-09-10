@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
@@ -19,7 +20,9 @@ public sealed class CreateConnectionCommandHandler(
     IConnectionStore connections,
     IPluggyConnectionGateway pluggy,
     IConnectionAccessTokenProtector protector,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IProcessingConsentReader consents,
+    ProcessingConsentOptions consentOptions)
     : ICommandHandlerAsync<CreateConnectionCommand, CreateConnectionCommandOutput>
 {
     public async Task<DataOutput<CreateConnectionCommandOutput?>> HandleAsync(
@@ -37,6 +40,16 @@ public sealed class CreateConnectionCommandHandler(
         {
             return DataOutput<CreateConnectionCommandOutput?>.New.WithError(
                 ConnectionMessages.ProfileNotFound);
+        }
+
+        if (!await consents.IsCurrentAsync(
+                profile.Id,
+                ProcessingConsentPurpose.ExternalDataProcessing,
+                consentOptions.ExternalDataProcessingVersion,
+                CancellationToken.None))
+        {
+            return DataOutput<CreateConnectionCommandOutput?>.New.WithError(
+                ProcessingConsentMessages.ExternalDataProcessingRequired);
         }
 
         var externalReference = Guid.Parse(command.ExternalReference.Trim()).ToString();

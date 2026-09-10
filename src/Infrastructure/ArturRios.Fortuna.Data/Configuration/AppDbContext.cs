@@ -33,6 +33,7 @@ public sealed class AppDbContext(
     public DbSet<DataExport> DataExports => Set<DataExport>();
     public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+    public DbSet<ProcessingConsent> ProcessingConsents => Set<ProcessingConsent>();
     public DbSet<LocalAccount> LocalAccounts => Set<LocalAccount>();
     public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();

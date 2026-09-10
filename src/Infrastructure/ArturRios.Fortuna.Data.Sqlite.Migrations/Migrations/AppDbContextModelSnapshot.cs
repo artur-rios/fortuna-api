@@ -2075,6 +2075,56 @@ namespace ArturRios.Fortuna.Data.Sqlite.Migrations.Migrations
                     b.ToTable("local_account", (string)null);
                 });
 
+            modelBuilder.Entity("ArturRios.Fortuna.Domain.Users.ProcessingConsent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<long>("GrantedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("granted_at");
+
+                    b.Property<Guid>("PublicId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("public_id");
+
+                    b.Property<short>("Purpose")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("purpose");
+
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("updated_at");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_processing_consent");
+
+                    b.HasIndex("PublicId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_processing_consent_public_id");
+
+                    b.HasIndex("UserId", "Purpose")
+                        .IsUnique()
+                        .HasDatabaseName("ix_processing_consent_user_id_purpose");
+
+                    b.ToTable("processing_consent", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_processing_consent_purpose", "purpose = 1");
+                        });
+                });
+
             modelBuilder.Entity("ArturRios.Fortuna.Domain.Users.RecoveryCode", b =>
                 {
                     b.Property<long>("Id")
@@ -2796,6 +2846,18 @@ namespace ArturRios.Fortuna.Data.Sqlite.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_local_account_user_profiles_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ArturRios.Fortuna.Domain.Users.ProcessingConsent", b =>
+                {
+                    b.HasOne("ArturRios.Fortuna.Domain.Users.UserProfile", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_processing_consent_user_profiles_user_id");
 
                     b.Navigation("User");
                 });

@@ -145,8 +145,9 @@ extern "C" {
  * Request metadata uses {token, route, query, body}; body is the unchanged HTTP JSON body.
  * Deliberately unavailable: /api/auth/** (Heimdall), /api/connections/** and
  * GET /api/data-sources (Pluggy), POST /api/exchange-rates/sync (remote rate source),
- * DELETE /api/users/{id} (no offline administrator), POST /api/local-accounts/password-reset
- * (use recovery codes), and the HTTP-host health routes.
+ * DELETE /api/users/{id} (no offline administrator), /api/me/consents/** (hosted
+ * external processing only), POST /api/local-accounts/password-reset (use recovery
+ * codes), and the HTTP-host health routes.
  * Call fortuna_capabilities to discover the machine-readable availability contract.
  */
 int fortuna_api_accounts_get(const char *request_json, char **response_json); /* GET /api/accounts */

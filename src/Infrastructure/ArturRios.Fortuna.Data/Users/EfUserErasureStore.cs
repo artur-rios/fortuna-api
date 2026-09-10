@@ -131,6 +131,8 @@ public sealed class EfUserErasureStore(
                 item => item.LocalAccount.UserId == user.Id, cancellationToken),
             ["connections"] = await context.Connections.CountAsync(
                 item => item.UserId == user.Id, cancellationToken) + connectionResourceCount,
+            ["processingConsents"] = await context.ProcessingConsents.CountAsync(
+                item => item.UserId == user.Id, cancellationToken),
             ["financialRecords"] = financialRecordCount,
             ["classificationRecords"] =
                 await context.Categories.CountAsync(item => item.UserId == user.Id, cancellationToken) +
@@ -297,6 +299,8 @@ public sealed class EfUserErasureStore(
         await context.Tags.Where(item => item.UserId == userId).ExecuteDeleteAsync(cancellationToken);
         await context.Counterparties.Where(item => item.UserId == userId).ExecuteDeleteAsync(cancellationToken);
         await context.Connections.Where(item => item.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+        await context.ProcessingConsents.Where(item => item.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken);
         await context.RecoveryCodes
             .Where(item => item.LocalAccount.UserId == userId)
             .ExecuteDeleteAsync(cancellationToken);

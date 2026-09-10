@@ -149,6 +149,12 @@ request validates it locally; token verification never calls Heimdall.
 | FR-ID-35 | The system shall rate-limit anonymous recovery, reset and verification requests and shall never persist or log a password, token, factor or recovery code handled by UC-77 |
 | FR-ID-36 | The system shall irreversibly erase an account only after the account owner or an instance administrator supplies the exact explicit confirmation required by the operation |
 | FR-ID-37 | Account erasure shall remove the user profile, connected subject mapping, local account, secret hash, salt and recovery-code hashes; a missing, already-erased or unauthorized target shall be returned as `404 Not Found` |
+| FR-ID-38 | The hosted API shall recognize the processing-consent purpose `external-data-processing` and report its configured current text version together with the caller's granted version and timestamp, if any |
+| FR-ID-39 | The system shall record processing consent only from an explicit grant naming a recognized purpose and its exact current text version; use of a feature shall never imply consent |
+| FR-ID-40 | Before creating a Pluggy connection, the hosted API shall require the owner's current `external-data-processing` consent and otherwise return `403 Forbidden` naming that purpose without calling Pluggy |
+| FR-ID-41 | Withdrawing `external-data-processing` consent shall immediately remove the decision, revoke every dependent Pluggy connection, destroy its access token and stop unfinished synchronizations while retaining imported records |
+| FR-ID-42 | Processing-consent reads, grants and withdrawals shall be owner-scoped; consent records shall be included in portability archives and removed during whole-account erasure rather than retained as audit entries |
+| FR-ID-43 | Processing consent shall not gate manual entry, Excel import or PDF import; the native core, which has no external processor, shall declare hosted consent routes unavailable |
 
 ### 3.2 Currency and Exchange Rates — `CU`
 
@@ -680,6 +686,14 @@ There is no balance column. A balance is always computed (FR-AC-07, FR-AC-08).
 | AccessTokenCipher | `bytea` | Nullable | The source's access token, encrypted at rest. Never a bank credential (FR-IM-13). |
 | Status | `smallint` | Required | Active, RequiresReauthentication, Revoked. |
 
+| Processing Consent field | Type | Constraints | Description |
+| --- | --- | --- | --- |
+| Id / PublicId | `bigint` / `uuid` | PK / unique | Identifiers. |
+| UserId | `bigint` | FK, required | Owner; unique together with purpose. |
+| Purpose | `smallint` | Required, `ExternalDataProcessing` | The recognized processing purpose (FR-ID-38). |
+| Version | `varchar(50)` | Required | Exact disclosure version explicitly granted (FR-ID-39). |
+| GrantedAt / UpdatedAt | `timestamptz` | Required | The current decision time and its last replacement time. |
+
 | Import Job field | Type | Constraints | Description |
 | --- | --- | --- | --- |
 | Id / PublicId | `bigint` / `uuid` | PK / unique | Identifiers. |
@@ -744,8 +758,9 @@ the matching HTTP numeric status and camel-case output envelope.
 There are 113 generated offline route exports. `fortuna_capabilities` returns their method, path,
 area, symbol and long-running flag plus the unavailable route families. Connected `/api/auth/**`,
 Pluggy data-source and connection routes, remote exchange-rate synchronization and host-only health
-routes, plus the administrator-only `DELETE /api/users/{id}`, are deliberately not generated. The native equivalents for health and local recovery are
-`fortuna_health` and the recovery-code operations.
+routes, hosted processing-consent routes, plus the administrator-only `DELETE /api/users/{id}`, are
+deliberately not generated. The native equivalents for health and local recovery are
+`fortuna_health` and the recovery-code operations; native local and file ingestion need no consent.
 
 ### 5.1 Identity Endpoints
 
@@ -756,6 +771,9 @@ routes, plus the administrator-only `DELETE /api/users/{id}`, are deliberately n
 | POST | `/api/me/data-export` | Queue a complete, expiring personal-data archive | FR-EX-09 … FR-EX-14 |
 | GET | `/api/me/data-export/{jobId}` | Read progress or retrieve the owner's finished archive | FR-EX-15 |
 | POST | `/api/me/erasure` | Irreversibly erase the caller and every record they own after exact confirmation | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
+| GET | `/api/me/consents` | Report recognized purposes, current versions and the caller's decisions | FR-ID-38, FR-ID-42 |
+| POST | `/api/me/consents` | Explicitly grant a named current processing-consent version | FR-ID-39 |
+| DELETE | `/api/me/consents/{purpose}` | Withdraw consent and revoke its dependent external connections | FR-ID-41, FR-ID-42 |
 | DELETE | `/api/users/{id}` | Perform the same count-only erasure on an instance administrator's documented authority | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 | POST | `/api/local-accounts` | Create the desktop local account, returning its recovery codes once — *desktop mode only, anonymous* | FR-ID-09 |
 | POST | `/api/local-accounts/authenticate` | Authenticate a local account — *anonymous* | FR-ID-11 |
@@ -1026,7 +1044,7 @@ outcome and time; deleting the mapping makes all retained entries unlinkable.
 | F-04 Transaction recording | FR-TX-01 through FR-TX-26 |
 | F-05 Classification | FR-CT-01 through FR-CT-12 |
 | F-06 Multi-currency | FR-CU-01 through FR-CU-11 |
-| F-07 Open-banking ingestion | FR-IM-12, FR-IM-13, FR-IM-14, FR-IM-15, FR-IM-16 |
+| F-07 Open-banking ingestion | FR-IM-12, FR-IM-13, FR-IM-14, FR-IM-15, FR-IM-16, FR-ID-38 through FR-ID-43 |
 | F-08 Spreadsheet import | FR-IM-17 |
 | F-09 PDF statement import | FR-IM-18, FR-IM-19, FR-IM-20, FR-IM-24 through FR-IM-38 |
 | F-10 Pluggable ingestion | FR-IM-01, FR-IM-02 |
@@ -1036,7 +1054,7 @@ outcome and time; deleting the mapping makes all retained entries unlinkable.
 | F-14 Export and data portability | FR-EX-01 through FR-EX-15 |
 | F-15 Attachments | FR-AT-01 through FR-AT-10 |
 | F-16 Budgets and goals | FR-PL-01 through FR-PL-07 |
-| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-37 |
+| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-43 |
 | F-18 Desktop offline account | FR-ID-09 through FR-ID-15 |
 | F-19 Asynchronous operations | FR-IM-03, FR-IM-04, FR-IM-05, FR-IM-21, FR-IM-22, FR-CU-05, FR-EX-04, FR-EX-09 |
 | F-20 Two-stage deletion, account erasure and audit | FR-RL-01 through FR-RL-13, FR-IM-23 |
@@ -1087,3 +1105,6 @@ outcome and time; deleting the mapping makes all retained entries unlinkable.
 | BR-40 Hard delete refused while referenced | FR-RL-05, FR-RL-12, NFR-19 |
 | BR-41 Audit entries append-only | FR-RL-06, FR-RL-08, NFR-17 |
 | BR-42 Audit subject becomes unlinkable on erasure | FR-RL-13, FR-ID-37 |
+| BR-43 Processing consent is explicit | FR-ID-39, FR-ID-40 |
+| BR-44 Consent text is versioned | FR-ID-38, FR-ID-39 |
+| BR-45 Withdrawal stops external access, not local use or history | FR-ID-41, FR-ID-43, FR-IM-16 |

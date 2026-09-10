@@ -31,7 +31,12 @@ public sealed class MeController(
             [PersonalDataExportMessages.NotFound] = StatusCodes.Status404NotFound,
             [PersonalDataExportMessages.Expired] = StatusCodes.Status404NotFound,
             [PersonalDataExportMessages.FileNotFound] = StatusCodes.Status404NotFound,
-            [PersonalDataExportMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable
+            [PersonalDataExportMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable,
+            [ProcessingConsentMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
+            [ProcessingConsentMessages.UnknownPurpose] = StatusCodes.Status400BadRequest,
+            [ProcessingConsentMessages.VersionRequired] = StatusCodes.Status400BadRequest,
+            [ProcessingConsentMessages.VersionNotCurrent] = StatusCodes.Status400BadRequest,
+            [ProcessingConsentMessages.NotFound] = StatusCodes.Status404NotFound
         };
 
     [HttpGet]
@@ -98,5 +103,40 @@ public sealed class MeController(
         }
         var response = ResponseResolver.Resolve(result, statusMap: StatusMap);
         return response.Result ?? Ok(response.Value);
+    }
+
+    [HttpGet("consents")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<ProcessingConsentQueryOutput?>>> GetConsents()
+    {
+        var result = await queryMediator.ExecuteQueryAsync<
+            GetMyProcessingConsentsQuery,
+            ProcessingConsentQueryOutput>(new GetMyProcessingConsentsQuery());
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpPost("consents")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<GrantProcessingConsentCommandOutput?>>> GrantConsent(
+        [FromBody] GrantProcessingConsentCommand command)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            GrantProcessingConsentCommand,
+            GrantProcessingConsentCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpDelete("consents/{purpose}")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<DataOutput<WithdrawProcessingConsentCommandOutput?>>> WithdrawConsent(
+        string purpose)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            WithdrawProcessingConsentCommand,
+            WithdrawProcessingConsentCommandOutput>(new WithdrawProcessingConsentCommand
+            {
+                Purpose = purpose
+            });
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

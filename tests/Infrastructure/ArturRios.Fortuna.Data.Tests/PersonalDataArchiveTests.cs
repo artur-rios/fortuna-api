@@ -62,6 +62,9 @@ public sealed class PersonalDataArchiveTests
                 Assert.Contains("123456789012345.6789", accounts, StringComparison.Ordinal);
                 var transactions = await ReadAsync(archive, "data/transactions.json");
                 Assert.Contains("0.0001", transactions, StringComparison.Ordinal);
+                var consents = await ReadAsync(archive, "data/processing-consents.json");
+                Assert.Contains("externalDataProcessing", consents, StringComparison.OrdinalIgnoreCase);
+                Assert.Contains("2026-09", consents, StringComparison.Ordinal);
                 var attachment = archive.Entries.Single(entry =>
                     entry.FullName.StartsWith("attachments/", StringComparison.Ordinal));
                 Assert.Equal("portable attachment", await ReadAsync(attachment));
@@ -189,7 +192,9 @@ public sealed class PersonalDataArchiveTests
             "portable-connection",
             Encoding.UTF8.GetBytes("CONNECTION-TOKEN-SECRET"),
             Now);
-        context.AddRange(subject, local, account, category, connection);
+        var consent = new ProcessingConsent(
+            user, ProcessingConsentPurpose.ExternalDataProcessing, "2026-09", Now);
+        context.AddRange(subject, local, account, category, connection, consent);
         await context.SaveChangesAsync();
 
         var importJob = new ImportJob(user, TransactionSourceType.Excel, Now);

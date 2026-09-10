@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Command.Input.Validation;
 using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
@@ -97,6 +98,24 @@ public sealed class CreateConnectionCommandHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenMissingCurrentConsent_WhenCreated_ThenPluggyIsNotCalled()
+    {
+        var gateway = new StubGateway(new(PluggyConnectionValidationOutcome.Unavailable));
+        var handler = Handler(
+            Profile(),
+            new StubConnectionStore(),
+            gateway,
+            new StubProtector(),
+            consentCurrent: false);
+
+        var result = await handler.HandleAsync(ValidCommand());
+
+        Assert.False(result.Success);
+        Assert.Equal(0, gateway.CallCount);
+        Assert.Contains(ProcessingConsentMessages.ExternalDataProcessingRequired, result.Errors);
+    }
+
+    [UnitFact]
     public async Task GivenConcurrentDuplicate_WhenStored_ThenConflictReturnsWinningConnection()
     {
         var store = new StubConnectionStore
@@ -123,7 +142,8 @@ public sealed class CreateConnectionCommandHandlerTests
         UserProfileSnapshot? profile,
         StubConnectionStore store,
         StubGateway gateway,
-        StubProtector protector) => new(
+        StubProtector protector,
+        bool consentCurrent = true) => new(
             new CreateConnectionCommandValidator(),
             new StubActorAccessor(new RequestActor(
                 profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
@@ -131,7 +151,9 @@ public sealed class CreateConnectionCommandHandlerTests
             store,
             gateway,
             protector,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now),
+            new StubConsentReader(consentCurrent),
+            new ProcessingConsentOptions("1.0"));
 
     private static CreateConnectionCommand ValidCommand(string? reference = null) => new()
     {
@@ -192,6 +214,20 @@ public sealed class CreateConnectionCommandHandlerTests
 
         public Task<UserProfileSnapshot?> FindByPublicIdAsync(
             Guid publicId, CancellationToken cancellationToken) => Task.FromResult(profile);
+    }
+
+    private sealed class StubConsentReader(bool isCurrent) : IProcessingConsentReader
+    {
+        public Task<IReadOnlyCollection<ProcessingConsentSnapshot>> ListAsync(
+            Guid userId,
+            CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyCollection<ProcessingConsentSnapshot>>([]);
+
+        public Task<bool> IsCurrentAsync(
+            Guid userId,
+            ProcessingConsentPurpose purpose,
+            string version,
+            CancellationToken cancellationToken) => Task.FromResult(isCurrent);
     }
 
     private sealed class StubActorAccessor(RequestActor? actor) : IRequestActorAccessor

@@ -52,6 +52,7 @@ public sealed class UserErasureStoreTests
                 Assert.Equal(1, result.Erased["exports"]);
                 Assert.Equal(1, result.Erased["imports"]);
                 Assert.Equal(3, result.Erased["jobs"]);
+                Assert.Equal(1, result.Erased["processingConsents"]);
             }
 
             await using var assertion = CreateContext(path);
@@ -140,7 +141,9 @@ public sealed class UserErasureStoreTests
         var category = new Category(user, "Food", now);
         var connection = new Connection(
             user, TransactionSourceType.Pluggy, "item-1", [4], now);
-        context.AddRange(subject, local, account, otherAccount, category, connection);
+        var consent = new ProcessingConsent(
+            user, ProcessingConsentPurpose.ExternalDataProcessing, "1.0", now);
+        context.AddRange(subject, local, account, otherAccount, category, connection, consent);
         await context.SaveChangesAsync();
 
         var transaction = new FinancialTransaction(
@@ -193,6 +196,7 @@ public sealed class UserErasureStoreTests
                await context.FinancialTransactions.AnyAsync(item => item.UserId == userId) ||
                await context.Categories.AnyAsync(item => item.UserId == userId) ||
                await context.Connections.AnyAsync(item => item.UserId == userId) ||
+               await context.ProcessingConsents.AnyAsync(item => item.UserId == userId) ||
                await context.ImportJobs.AnyAsync(item => item.UserId == userId) ||
                await context.DataExports.AnyAsync(item => item.UserId == userId) ||
                await context.LocalAccounts.AnyAsync(item => item.UserId == userId);
@@ -206,6 +210,7 @@ public sealed class UserErasureStoreTests
                await context.FinancialTransactions.CountAsync(item => item.UserId == id) +
                await context.Categories.CountAsync(item => item.UserId == id) +
                await context.Connections.CountAsync(item => item.UserId == id) +
+               await context.ProcessingConsents.CountAsync(item => item.UserId == id) +
                await context.ImportJobs.CountAsync(item => item.UserId == id) +
                await context.DataExports.CountAsync(item => item.UserId == id) +
                await context.LocalAccounts.CountAsync(item => item.UserId == id);

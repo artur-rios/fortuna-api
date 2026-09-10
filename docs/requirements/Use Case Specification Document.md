@@ -50,7 +50,7 @@ graph LR
     end
 
     subgraph Identity
-        UC01[UC-01 … UC-06, UC-76 … UC-79<br/>Token access, profile,<br/>credentials and data rights]
+        UC01[UC-01 … UC-06, UC-76 … UC-80<br/>Token access, profile,<br/>credentials and data rights]
     end
 
     subgraph Currency
@@ -117,6 +117,7 @@ graph LR
 | UC-76 … UC-77 | HTTP only. Connected authentication and credential management require Heimdall and have no offline export. |
 | UC-78 | HTTP + native owner erasure. The administrator route is HTTP-only because an offline installation has no instance administrator. |
 | UC-79 | HTTP + native. Each transport owns its persistence and archive implementation; both return an owner-scoped asynchronous job and a complete, expiring ZIP without credentials or tokens. |
+| UC-80 | HTTP only. Consent governs the hosted Pluggy processor. Native has no external processor, reports the route family unavailable, and leaves manual, Excel and PDF ingestion ungated. |
 
 `fortuna_capabilities` returns the generated list of available operations and the deliberately absent
 route families. The committed C header contains the same absence note, so a client never has to probe
@@ -1792,9 +1793,9 @@ an unsupported network-dependent operation.
 | **Name** | Connect an Institution through Pluggy |
 | **Actors** | Account Owner, Pluggy |
 | **Description** | Establish an open-banking link, holding a reference to it and never a bank credential |
-| **Preconditions** | The request is authenticated; the aggregator is configured; the user has completed the aggregator's own authorization |
+| **Preconditions** | The request is authenticated; the aggregator is configured; the user has completed the aggregator's own authorization; a current `external-data-processing` consent exists (UC-80) |
 | **Postconditions** | A connection exists, holding only the aggregator's connection reference and access token |
-| **Requirements** | FR-IM-12, FR-IM-13 |
+| **Requirements** | FR-IM-12, FR-IM-13, FR-ID-40 |
 
 **Main Flow**
 
@@ -1813,6 +1814,7 @@ an unsupported network-dependent operation.
 | AF-03 | The request carries anything resembling a bank credential | It is rejected and never persisted or logged |
 | AF-04 | The aggregator is unreachable | `503` for this operation only, with the reason; nothing else in the API is affected |
 | AF-05 | The aggregator is not configured in this deployment | `404 Not Found` — the source is not available here |
+| AF-06 | The current external-processing consent is absent | `403 Forbidden`, naming `external-data-processing`; Pluggy is not called |
 
 ---
 
@@ -2586,6 +2588,48 @@ build instead of silently making future archives incomplete.
 
 ---
 
+### UC-80: Record Processing Consent
+
+| Field | Value |
+| --- | --- |
+| **ID** | UC-80 |
+| **Name** | Record Processing Consent |
+| **Actors** | Account Owner, Fortuna Client |
+| **Description** | Record an explicit, versioned decision before the hosted service gives an external processor access to the owner's data |
+| **Preconditions** | The caller is authenticated |
+| **Postconditions** | The caller's decision is recorded with its purpose, text version and time, or is withdrawn immediately |
+| **Requirements** | FR-ID-38 through FR-ID-43 |
+
+**Main Flow**
+
+1. The client calls `GET /api/me/consents` and receives every recognized purpose, its current text
+   version, and the caller's granted version and time when present.
+2. If `external-data-processing` is absent or outdated, the client presents the current disclosure
+   describing what reaches Pluggy, why, and who receives it.
+3. The owner explicitly accepts that named version through `POST /api/me/consents`; merely using a
+   feature never creates a consent record.
+4. UC-55 verifies that exact current decision before it calls Pluggy.
+5. The owner may call `DELETE /api/me/consents/external-data-processing` as directly as they granted
+   it. Fortuna removes the decision, revokes every dependent Pluggy connection, stops its unfinished
+   synchronizations, and retains all already-imported evidence and transactions under BR-29.
+
+**Alternative Flows**
+
+| ID | Condition | Outcome |
+| --- | --- | --- |
+| AF-01 | A connection is attempted with no current consent | `403 Forbidden`, naming `external-data-processing`; no external call occurs |
+| AF-02 | The configured consent text is newer than the stored decision | The stored version and time remain visible but `isCurrent` is false; a new explicit decision is required |
+| AF-03 | Connections depend on a withdrawn consent | They are revoked, access tokens are destroyed, unfinished synchronizations fail, and imported data remains |
+| AF-04 | The purpose was never granted, or belongs only to another owner | `404 Not Found`, indistinguishable across those cases |
+| AF-05 | The purpose is not recognized, the version is absent, or the version is not current | `400 Bad Request` with the named reason; no decision is stored |
+
+Consent records are owner-scoped portable personal data, not audit entries. Whole-account erasure
+removes them. The only recognized purpose is `external-data-processing`; the native core does not
+implement this hosted-integration decision, and local entry, Excel import and PDF import never ask
+for it.
+
+---
+
 ## 3. Use Case — Requirements Traceability
 
 | Use Case | Requirements |
@@ -2668,6 +2712,7 @@ build instead of silently making future archives incomplete.
 | UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35 |
 | UC-78: Erase a User Account | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 | UC-79: Export All Personal Data | FR-EX-09 through FR-EX-15 |
+| UC-80: Record Processing Consent | FR-ID-38 through FR-ID-43 |
 
 Every `FR-<AREA>-xx` defined in [System Requirements §3](System%20Requirements%20Document.md)
 appears at least once above. The platform requirements `IR-xx` and the health check requirements

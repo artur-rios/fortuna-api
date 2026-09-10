@@ -37,6 +37,7 @@ public sealed record FortunaOptions
     public required string Locale { get; init; }
     public bool LocalAuthEnabled { get; init; }
     public int LocalAuthRecoveryCodeCount { get; init; }
+    public required string ConsentExternalDataProcessingVersion { get; init; }
     public required Uri HeimdallBaseUri { get; init; }
     public Guid HeimdallScopeId { get; init; }
     public string? PluggyClientId { get; init; }
@@ -122,6 +123,8 @@ public sealed record FortunaOptions
                 read("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"),
                 "FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT",
                 10),
+            ConsentExternalDataProcessingVersion = ConsentVersion(
+                read("FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION")),
             HeimdallBaseUri = RequiredHttpsUri(
                 read("FORTUNA_HEIMDALL_BASE_URL"),
                 "FORTUNA_HEIMDALL_BASE_URL"),
@@ -203,6 +206,15 @@ public sealed record FortunaOptions
         string.IsNullOrWhiteSpace(read(key))
             ? throw new InvalidOperationException($"Required environment variable '{key}' is not set.")
             : read(key)!;
+
+    private static string ConsentVersion(string? value)
+    {
+        var version = string.IsNullOrWhiteSpace(value) ? "1.0" : value.Trim();
+        return version.Length <= 50
+            ? version
+            : throw new InvalidOperationException(
+                "FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION cannot exceed 50 characters.");
+    }
 
     private static int PositiveInteger(string? value, string key, int fallback)
     {

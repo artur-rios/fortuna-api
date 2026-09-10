@@ -100,6 +100,10 @@ const UNAVAILABLE: &[UnavailableOperation<'_>] = &[
         reason: "Pluggy discovery, connections, synchronization, reauthentication and revocation require the remote provider.",
     },
     UnavailableOperation {
+        routes: "/api/me/consents/**",
+        reason: "External-processing consent applies to hosted integrations; local entry and file imports remain offline and ungated.",
+    },
+    UnavailableOperation {
         routes: "/api/auth/**",
         reason: "Connected identity and credential management require Heimdall.",
     },

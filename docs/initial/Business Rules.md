@@ -152,6 +152,9 @@ letting the ones below it shift.
 | **BR-40** | A hard delete is refused while any live record still references the target. Whole-account erasure satisfies this rule by removing every reference and dependent in a declared order, never by disabling the constraint. | Leaving a transaction pointing at an account that no longer exists corrupts every query that joins them. |
 | **BR-41** | Audit log entries are append-only: never edited, never deleted, not even by a hard delete of what they describe. | An audit trail that can be pruned is not one. |
 | **BR-42** | An audit entry identifies its subject by an opaque reference and carries no other personal data — no name, no address, no record contents. Erasing a user destroys the mapping from that reference to the person, so the trail survives while ceasing to be personal data. | Reconciles `BR-41` with the right to erasure under the GDPR and the LGPD: a trail that cannot be pruned and a person who may demand deletion are only compatible if the trail does not identify them once they are gone. |
+| **BR-43** | Processing consent is an explicit decision naming a recognized purpose and current disclosure version; feature use never implies it. | Consent must be demonstrable and informed before an external processor receives access. |
+| **BR-44** | A consent decision applies only to the exact disclosure version recorded with its timestamp. | Revised processing terms require a new decision rather than silently extending an old one. |
+| **BR-45** | Withdrawing external-processing consent revokes dependent connections immediately while retaining already-imported history; local and file ingestion are never gated by it. | Withdrawal ends future third-party access without destroying the owner's ledger or obstructing processing that never leaves the installation. |
 
 ## Validation Constraints
 
