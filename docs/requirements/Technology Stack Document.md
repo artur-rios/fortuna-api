@@ -95,7 +95,7 @@ Cargo resolves and locks native dependencies in `native/fortuna-core/Cargo.lock`
 | --- | --- | --- |
 | **rusqlite** | `0.40.2` | SQLite persistence with SQLite compiled into the library for identical Windows/Linux packaging. |
 | **argon2** | `0.6.0` | Argon2id local-secret hashing and constant-work credential verification. |
-| **serde / serde_json** | `1.0.229` / `1.0.151` | HTTP-compatible camel-case JSON envelopes; arbitrary-precision JSON numbers keep money out of floating point. |
+| **serde / serde_json** | `1.0.229` / `1.0.151` | HTTP-compatible camel-case JSON envelopes; schema-driven normalization publishes exact decimals as strings and accepts legacy numeric input without floating-point conversion. |
 | **chrono / uuid / sha2 / zeroize** | versions pinned by `Cargo.lock` | UTC wire timestamps, public identifiers, hashed session tokens and clearing credential-bearing memory. |
 | **cbindgen** | `0.29.4` | Generates the committed public C header directly from exported Rust functions. |
 
@@ -120,8 +120,9 @@ aggregation behavior. Switching between the two is configuration-only.
 The embedded native core uses its **own** SQLite persistence implementation and tables prefixed
 `native_`; it does not load EF Core or the .NET application assemblies. This is an explicit desktop
 architecture boundary adopted after EF Core's NativeAOT path failed the #156 feasibility slice.
-It stores monetary values as SQLite `TEXT` and produces the same JSON data shapes and status meaning
-as the HTTP transport. The .NET SQLite provider remains available for a local HTTP deployment.
+It stores monetary values as SQLite `TEXT` and produces the same JSON data shapes, invariant decimal
+strings and status meaning as the HTTP transport. The .NET SQLite provider remains available for a
+local HTTP deployment.
 
 ### 4.2 Monetary storage
 
@@ -132,6 +133,7 @@ than a preference:
 | --- | --- |
 | Database column | PostgreSQL **`numeric(19, 4)`**; SQLite **`TEXT`** through the provider's lossless decimal mapping. SQLite monetary values must never use `REAL`. |
 | CLR type | **`decimal`**. |
+| JSON wire contract | Every CLR or native decimal is published as an invariant string matching `^-?(?:0\|[1-9][0-9]*)(?:\.[0-9]+)?$`; OpenAPI declares `type: string` and `format: decimal`. Numeric JSON input remains accepted temporarily for compatibility, but output is always a string. |
 | Forbidden | `float`, `double`, `real`, `double precision`, and `System.Single`/`System.Double` anywhere a monetary value can reach — entity, DTO, query projection, export cell, or intermediate calculation. |
 | Exchange rates | PostgreSQL **`numeric(19, 8)`**; SQLite **`TEXT`**, preserving the same CLR `decimal` value. A rate needs more fractional precision than an amount. |
 

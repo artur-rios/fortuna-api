@@ -113,7 +113,7 @@ int fortuna_api_local_accounts_authenticate(const char *request_json, char **res
  * Transport metadata and route values are carried in one JSON object:
  * `{"token":"...","id":"uuid","includeDeleted":false}`. The response is the
  * HTTP `DataOutput<FinancialAccountOutput?>` shape. Decimal fields are read from
- * SQLite TEXT and emitted as arbitrary-precision JSON numbers without a float conversion.
+ * SQLite TEXT and emitted as invariant decimal strings without a float conversion.
  * The response is library-owned and must be released with `fortuna_string_free`.
  */
 int fortuna_api_accounts_get_by_id(const char *request_json, char **response_json);

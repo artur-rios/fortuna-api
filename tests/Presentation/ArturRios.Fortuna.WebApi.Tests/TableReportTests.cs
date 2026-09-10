@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -78,7 +79,9 @@ public sealed class TableReportTests : IAsyncLifetime
         Assert.Equal(1, report.Data.PageSize);
         var row = Assert.Single(report.Data.Rows);
         Assert.Equal(newest, row["id"].GetGuid());
-        Assert.Equal(20m, row["amount"].GetDecimal());
+        Assert.Equal(JsonValueKind.String, row["amount"].ValueKind);
+        Assert.Equal(20m,
+            decimal.Parse(row["amount"].GetString()!, CultureInfo.InvariantCulture));
         Assert.Equal(TableColumnType.Decimal,
             report.Data.Columns.Single(column => column.Name == "amount").Type);
         var total = Assert.Single(report.Data.Totals);

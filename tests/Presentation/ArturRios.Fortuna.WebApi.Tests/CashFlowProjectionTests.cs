@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Globalization;
 using System.Text.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
@@ -47,14 +48,14 @@ public sealed class CashFlowProjectionTests : IAsyncLifetime
         var first = await client.GetAsync(
             "/api/projections/cash-flow?horizonDays=40&includeEstimate=true");
         var firstJson = JsonDocument.Parse(await first.Content.ReadAsStringAsync());
-        var firstBalance = firstJson.RootElement.GetProperty("data")
-            .GetProperty("startingBalance").GetDecimal();
+        var firstBalance = WireDecimal(firstJson.RootElement.GetProperty("data")
+            .GetProperty("startingBalance"));
         await AddCurrentEarningAsync(subject, 7m);
         var second = await client.GetAsync(
             "/api/projections/cash-flow?horizonDays=40&includeEstimate=true");
         var secondJson = JsonDocument.Parse(await second.Content.ReadAsStringAsync());
-        var secondBalance = secondJson.RootElement.GetProperty("data")
-            .GetProperty("startingBalance").GetDecimal();
+        var secondBalance = WireDecimal(secondJson.RootElement.GetProperty("data")
+            .GetProperty("startingBalance"));
 
         // Then
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
@@ -112,6 +113,9 @@ public sealed class CashFlowProjectionTests : IAsyncLifetime
         await context.Database.MigrateAsync();
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
+
+    private static decimal WireDecimal(JsonElement value) =>
+        decimal.Parse(value.GetString()!, CultureInfo.InvariantCulture);
 
     public async Task DisposeAsync() => await database.DisposeAsync();
 

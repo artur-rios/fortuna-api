@@ -166,6 +166,7 @@ one use case = one branch = one issue = one pull request.
 | Issue | Work | Spec |
 |---|---|---|
 | [#1](https://github.com/artur-rios/fortuna-api/issues/1) | ✅ Project scaffold and initial infrastructure | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
+| [#162](https://github.com/artur-rios/fortuna-api/issues/162) | ✅ Publish exact decimal values as JSON strings | [Technology Stack](docs/requirements/Technology%20Stack%20Document.md) |
 
 ### M-02 — Access and cross-cutting mechanisms
 

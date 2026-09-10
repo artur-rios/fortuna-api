@@ -36,12 +36,16 @@ public sealed class FinancialAccountCreationTests : IAsyncLifetime
         using var client = factory.CreateClient();
         Authorize(client, subject, HeimdallRoles.User);
 
-        var response = await client.PostAsJsonAsync("/api/accounts", Command(
-            "  Daily Account  ",
-            "  Example Bank  ",
-            FinancialAccountType.Checking,
-            "brl",
-            -125.45m));
+        var response = await client.PostAsJsonAsync("/api/accounts", new
+        {
+            Name = "  Daily Account  ",
+            Institution = "  Example Bank  ",
+            AccountType = FinancialAccountType.Checking,
+            CurrencyCode = "brl",
+            OpeningBalance = "-125.45"
+        });
+        using var wire = System.Text.Json.JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
         var envelope = await response.Content.ReadFromJsonAsync<AccountEnvelope>();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -52,6 +56,10 @@ public sealed class FinancialAccountCreationTests : IAsyncLifetime
         Assert.Equal(FinancialAccountType.Checking, envelope.Data.AccountType);
         Assert.Equal("BRL", envelope.Data.CurrencyCode);
         Assert.Equal(-125.45m, envelope.Data.OpeningBalance);
+        Assert.Equal(System.Text.Json.JsonValueKind.String,
+            wire.RootElement.GetProperty("data").GetProperty("openingBalance").ValueKind);
+        Assert.Equal("-125.45",
+            wire.RootElement.GetProperty("data").GetProperty("openingBalance").GetString());
         Assert.Equal(envelope.Data.CreatedAt, envelope.Data.UpdatedAt);
         await using var context = CreateContext();
         var account = await context.FinancialAccounts
