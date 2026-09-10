@@ -276,6 +276,7 @@ one use case = one branch = one issue = one pull request.
 | [#75](https://github.com/artur-rios/fortuna-api/issues/75) | ✅ UC-74: Retrieve a Completed Export | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#76](https://github.com/artur-rios/fortuna-api/issues/76) | ✅ UC-75: Check API Health | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
 | [#159](https://github.com/artur-rios/fortuna-api/issues/159) | ✅ UC-79: Export All Personal Data | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#161](https://github.com/artur-rios/fortuna-api/issues/161) | ✅ Report API contract version from liveness | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
 
 ## Contributing
 
