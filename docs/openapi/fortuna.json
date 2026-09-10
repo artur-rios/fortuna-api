@@ -198,7 +198,11 @@
           2
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Succeeded",
+          "Refused"
+        ]
       },
       "AuthenticateLocalAccountCommand": {
         "additionalProperties": false,
@@ -720,7 +724,12 @@
           3
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Monthly",
+          "Quarterly",
+          "Yearly"
+        ]
       },
       "CashFlowFigureKind": {
         "enum": [
@@ -730,7 +739,13 @@
           4
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Recorded",
+          "Projected",
+          "Committed",
+          "Estimated"
+        ]
       },
       "CashFlowFigureOutput": {
         "additionalProperties": false,
@@ -784,7 +799,12 @@
           3
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Daily",
+          "Weekly",
+          "Monthly"
+        ]
       },
       "CashFlowProjectionOutput": {
         "additionalProperties": false,
@@ -1137,7 +1157,11 @@
           2
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Installment",
+          "Statement"
+        ]
       },
       "CommittedObligationListOutput": {
         "additionalProperties": false,
@@ -1513,7 +1537,12 @@
           3
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Active",
+          "RequiresReauthentication",
+          "Revoked"
+        ]
       },
       "ConvertFigureQuery": {
         "additionalProperties": false,
@@ -2870,7 +2899,12 @@
           3
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Open",
+          "Closed",
+          "Settled"
+        ]
       },
       "CreditCardStatementTransactionOutput": {
         "additionalProperties": false,
@@ -2982,7 +3016,11 @@
           2
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Direct",
+          "Queued"
+        ]
       },
       "DataExportFilterInput": {
         "additionalProperties": false,
@@ -3010,7 +3048,13 @@
           4
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Csv",
+          "Excel",
+          "Pdf",
+          "Zip"
+        ]
       },
       "DataExportSortInput": {
         "additionalProperties": false,
@@ -3033,7 +3077,13 @@
           4
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Pending",
+          "Running",
+          "Completed",
+          "Failed"
+        ]
       },
       "DataSourceKind": {
         "enum": [
@@ -3041,7 +3091,11 @@
           2
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Network",
+          "File"
+        ]
       },
       "DataSourceListOutput": {
         "additionalProperties": false,
@@ -3477,7 +3531,11 @@
           2
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Published",
+          "Manual"
+        ]
       },
       "FigureAmountInput": {
         "additionalProperties": false,
@@ -3721,7 +3779,13 @@
           4
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Checking",
+          "Savings",
+          "Cash",
+          "Other"
+        ]
       },
       "GetTwoFactorStatusThroughApiCommandOutput": {
         "additionalProperties": false,
@@ -4241,7 +4305,11 @@
           2
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Account",
+          "Investment"
+        ]
       },
       "GoogleSignInThroughApiCommand": {
         "additionalProperties": false,
@@ -4600,7 +4668,13 @@
           4
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Pending",
+          "Running",
+          "Completed",
+          "Failed"
+        ]
       },
       "ImportPdfInvoiceCommandOutput": {
         "additionalProperties": false,
@@ -4652,7 +4726,11 @@
           2
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Account",
+          "CreditCard"
+        ]
       },
       "ImportedRecordOutcome": {
         "enum": [
@@ -4661,7 +4739,12 @@
           3
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Imported",
+          "Duplicate",
+          "Rejected"
+        ]
       },
       "ImportedRecordOutput": {
         "additionalProperties": false,
@@ -5061,7 +5144,13 @@
           4
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Contribution",
+          "Withdrawal",
+          "Yield",
+          "Fee"
+        ]
       },
       "InvestmentOutput": {
         "additionalProperties": false,
@@ -5234,7 +5323,13 @@
           4
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "FixedIncome",
+          "Equity",
+          "Fund",
+          "Other"
+        ]
       },
       "InvestmentValuationOutput": {
         "additionalProperties": false,
@@ -5391,7 +5486,11 @@
           1
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "InMemory",
+          "OperatingSystem"
+        ]
       },
       "LoginThroughApiCommand": {
         "additionalProperties": false,
@@ -7028,7 +7127,13 @@
           4
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Weekly",
+          "Monthly",
+          "Quarterly",
+          "Yearly"
+        ]
       },
       "RecurringOccurrenceMaterializationCommandOutput": {
         "additionalProperties": false,
@@ -8169,7 +8274,17 @@
           8
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Uuid",
+          "Text",
+          "Integer",
+          "Decimal",
+          "Boolean",
+          "Date",
+          "Timestamp",
+          "Enumeration"
+        ]
       },
       "TableFilterInput": {
         "additionalProperties": false,
@@ -8708,7 +8823,11 @@
           2
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Expense",
+          "Earning"
+        ]
       },
       "TransactionDrillDownOutput": {
         "additionalProperties": false,
@@ -9152,7 +9271,13 @@
           4
         ],
         "format": "int32",
-        "type": "integer"
+        "type": "integer",
+        "x-enum-varnames": [
+          "Manual",
+          "Pluggy",
+          "Excel",
+          "Pdf"
+        ]
       },
       "TransactionTagCommandOutput": {
         "additionalProperties": false,
