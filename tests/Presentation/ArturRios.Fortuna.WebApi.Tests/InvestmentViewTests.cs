@@ -223,6 +223,110 @@ public sealed class InvestmentViewTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await database.DisposeAsync();
 
+    [FunctionalFact]
+    public async Task GivenDeletedInvestment_WhenListed_ThenExplicitInclusionControlsVisibility()
+    {
+        // Given
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var live = await SeedInvestmentAsync(client, subject, "Live", "BRL");
+        var archived = await SeedInvestmentAsync(client, subject, "Archived", "BRL");
+        (await client.DeleteAsync($"/api/investments/{archived.Id}")).EnsureSuccessStatusCode();
+
+        // When
+        var hidden = await client.GetFromJsonAsync<InvestmentPage>("/api/investments");
+        var included = await client.GetFromJsonAsync<InvestmentPage>(
+            "/api/investments?IncludeDeleted=true");
+
+        // Then
+        Assert.Equal(live.Id, Assert.Single(hidden!.Data).Id);
+        Assert.Equal(2, included!.TotalItems);
+        Assert.True(included.Data.Single(item => item.Id == archived.Id).IsDeleted);
+        Assert.False(included.Data.Single(item => item.Id == live.Id).IsDeleted);
+
+        await using var context = CreateContext();
+        Assert.True((await context.Investments.SingleAsync(item => item.PublicId == archived.Id))
+            .IsDeleted);
+    }
+
+    [FunctionalFact]
+    public async Task GivenDeletedInvestment_WhenFoundInAListAndRestored_ThenItReturnsToTheLiveListing()
+    {
+        // Given
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var investment = await SeedInvestmentAsync(client, subject, "Round Trip", "BRL");
+        (await client.DeleteAsync($"/api/investments/{investment.Id}")).EnsureSuccessStatusCode();
+
+        // When
+        var deletedPage = await client.GetFromJsonAsync<InvestmentPage>(
+            "/api/investments?IncludeDeleted=true");
+        var found = deletedPage!.Data.Single(item => item.Id == investment.Id);
+        var restore = await client.PostAsync($"/api/investments/{found.Id}/restore", null);
+        var livePage = await client.GetFromJsonAsync<InvestmentPage>("/api/investments");
+
+        // Then
+        Assert.True(found.IsDeleted);
+        Assert.Equal(HttpStatusCode.OK, restore.StatusCode);
+        Assert.False(Assert.Single(livePage!.Data).IsDeleted);
+        Assert.Equal(investment.Id, livePage.Data.Single().Id);
+
+        await using var context = CreateContext();
+        Assert.False((await context.Investments.SingleAsync(item => item.PublicId == investment.Id))
+            .IsDeleted);
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignDeletedInvestment_WhenListedWithInclusion_ThenItStaysInvisible()
+    {
+        // Given
+        var ownerSubject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var ownerClient = factory.CreateClient();
+        Authorize(ownerClient, ownerSubject, HeimdallRoles.User);
+        var investment = await SeedInvestmentAsync(ownerClient, ownerSubject, "Private", "BRL");
+        (await ownerClient.DeleteAsync($"/api/investments/{investment.Id}"))
+            .EnsureSuccessStatusCode();
+        using var otherClient = factory.CreateClient();
+        Authorize(otherClient, Guid.NewGuid(), HeimdallRoles.User);
+
+        // When
+        var page = await otherClient.GetFromJsonAsync<InvestmentPage>(
+            "/api/investments?IncludeDeleted=true");
+
+        // Then
+        Assert.Empty(page!.Data);
+    }
+
+    [FunctionalFact]
+    public async Task GivenDeletedInvestmentListedWithInclusion_WhenNetPositionRequested_ThenItIsStillExcluded()
+    {
+        // Given
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var investment = await SeedInvestmentAsync(client, subject, "Excluded", "BRL");
+        await SeedValuationsAsync(investment.Id, (250m, Today().AddDays(-1)));
+        (await client.DeleteAsync($"/api/investments/{investment.Id}")).EnsureSuccessStatusCode();
+
+        // When
+        var page = await client.GetFromJsonAsync<InvestmentPage>(
+            "/api/investments?IncludeDeleted=true");
+        var netPosition = await client.GetFromJsonAsync<NetPositionEnvelope>(
+            "/api/reports/net-position?displayCurrencyCode=BRL");
+
+        // Then
+        Assert.True(Assert.Single(page!.Data).IsDeleted);
+        Assert.All(
+            netPosition!.Data!.CurrencyGroups,
+            group => Assert.Equal(0m, group.Investments));
+    }
+
     private async Task<SeededInvestment> SeedInvestmentAsync(
         HttpClient client,
         Guid subject,
@@ -402,6 +506,16 @@ public sealed class InvestmentViewTests : IAsyncLifetime
         decimal? AppliedRate,
         DateOnly? RateDate,
         ExchangeRateSource? RateSource,
-        string? UnconvertedReason);
+        string? UnconvertedReason,
+        bool IsDeleted);
+
+    private sealed record NetPositionEnvelope(NetPositionData? Data);
+
+    private sealed record NetPositionData(
+        IReadOnlyCollection<NetPositionCurrencyData> CurrencyGroups);
+
+    private sealed record NetPositionCurrencyData(
+        string SourceCurrencyCode,
+        decimal Investments);
     private sealed record ValuationData(Guid Id, decimal Value, DateOnly ValuedOn);
 }

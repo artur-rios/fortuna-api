@@ -255,6 +255,105 @@ public sealed class CreditCardViewTests : IAsyncLifetime
             DatabaseDiagnosticsOptions.Disabled);
     }
 
+    [FunctionalFact]
+    public async Task GivenDeletedCard_WhenListed_ThenExplicitInclusionControlsVisibility()
+    {
+        // Given
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var live = await CreateCardAsync(client, "Live");
+        var archived = await CreateCardAsync(client, "Archived");
+        (await client.DeleteAsync($"/api/credit-cards/{archived.Id}")).EnsureSuccessStatusCode();
+
+        // When
+        var hidden = await client.GetFromJsonAsync<CreditCardPage>("/api/credit-cards");
+        var included = await client.GetFromJsonAsync<CreditCardPage>(
+            "/api/credit-cards?IncludeDeleted=true");
+
+        // Then
+        Assert.Equal(live.Id, Assert.Single(hidden!.Data).Id);
+        Assert.Equal(2, included!.TotalItems);
+        Assert.True(included.Data.Single(card => card.Id == archived.Id).IsDeleted);
+        Assert.False(included.Data.Single(card => card.Id == live.Id).IsDeleted);
+
+        await using var context = CreateContext();
+        Assert.True((await context.CreditCards.SingleAsync(item => item.PublicId == archived.Id))
+            .IsDeleted);
+    }
+
+    [FunctionalFact]
+    public async Task GivenDeletedCard_WhenFoundInAListAndRestored_ThenItReturnsToTheLiveListing()
+    {
+        // Given
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Round Trip");
+        (await client.DeleteAsync($"/api/credit-cards/{card.Id}")).EnsureSuccessStatusCode();
+
+        // When
+        var deletedPage = await client.GetFromJsonAsync<CreditCardPage>(
+            "/api/credit-cards?IncludeDeleted=true");
+        var found = deletedPage!.Data.Single(item => item.Id == card.Id);
+        var restore = await client.PostAsync($"/api/credit-cards/{found.Id}/restore", null);
+        var livePage = await client.GetFromJsonAsync<CreditCardPage>("/api/credit-cards");
+
+        // Then
+        Assert.True(found.IsDeleted);
+        Assert.Equal(HttpStatusCode.OK, restore.StatusCode);
+        Assert.False(Assert.Single(livePage!.Data).IsDeleted);
+        Assert.Equal(card.Id, livePage.Data.Single().Id);
+
+        await using var context = CreateContext();
+        Assert.False((await context.CreditCards.SingleAsync(item => item.PublicId == card.Id))
+            .IsDeleted);
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignDeletedCard_WhenListedWithInclusion_ThenItStaysInvisible()
+    {
+        // Given
+        await using var factory = CreateFactory();
+        using var ownerClient = factory.CreateClient();
+        Authorize(ownerClient, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(ownerClient, "Private");
+        (await ownerClient.DeleteAsync($"/api/credit-cards/{card.Id}")).EnsureSuccessStatusCode();
+        using var otherClient = factory.CreateClient();
+        Authorize(otherClient, Guid.NewGuid(), HeimdallRoles.User);
+
+        // When
+        var page = await otherClient.GetFromJsonAsync<CreditCardPage>(
+            "/api/credit-cards?IncludeDeleted=true");
+
+        // Then
+        Assert.Empty(page!.Data);
+    }
+
+    [FunctionalFact]
+    public async Task GivenDeletedCardListedWithInclusion_WhenNetPositionRequested_ThenItIsStillExcluded()
+    {
+        // Given
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var card = await CreateCardAsync(client, "Excluded", creditLimit: 1000m);
+        await AddMovementAsync(card.Id, TransactionDirection.Expense, 120m);
+        (await client.DeleteAsync($"/api/credit-cards/{card.Id}")).EnsureSuccessStatusCode();
+
+        // When
+        var page = await client.GetFromJsonAsync<CreditCardPage>(
+            "/api/credit-cards?IncludeDeleted=true");
+        var netPosition = await client.GetFromJsonAsync<NetPositionEnvelope>(
+            "/api/reports/net-position?displayCurrencyCode=BRL");
+
+        // Then
+        Assert.True(Assert.Single(page!.Data).IsDeleted);
+        Assert.All(
+            netPosition!.Data!.CurrencyGroups,
+            group => Assert.Equal(0m, group.CreditCards));
+    }
+
     private async Task AddMovementAsync(
         Guid cardId,
         TransactionDirection direction,
@@ -366,6 +465,16 @@ public sealed class CreditCardViewTests : IAsyncLifetime
         short ClosingDay,
         short DueDay,
         string? LastFourDigits,
+        bool IsDeleted,
         DateTimeOffset CreatedAt,
         DateTimeOffset UpdatedAt);
+
+    private sealed record NetPositionEnvelope(NetPositionData? Data);
+
+    private sealed record NetPositionData(
+        IReadOnlyCollection<NetPositionCurrencyData> CurrencyGroups);
+
+    private sealed record NetPositionCurrencyData(
+        string SourceCurrencyCode,
+        decimal CreditCards);
 }

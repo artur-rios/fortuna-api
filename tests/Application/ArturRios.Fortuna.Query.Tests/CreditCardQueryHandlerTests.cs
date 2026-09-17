@@ -162,6 +162,48 @@ public sealed class CreditCardQueryHandlerTests
         Assert.Contains(CreditCardMessages.ProfileNotFound, list.Errors);
     }
 
+    [UnitFact]
+    public async Task GivenSoftDeletedCard_WhenListed_ThenItIsAbsentUnlessExplicitlyIncluded()
+    {
+        // Given
+        var actor = Profile();
+        var live = Card(actor.Id, "Live");
+        var deleted = Card(actor.Id, "Archived", isDeleted: true);
+        var handler = ListHandler(actor, new StubCreditCardReader(live, deleted));
+
+        // When
+        var byDefault = await handler.HandleAsync(new ListCreditCardsQuery());
+        var included = await handler.HandleAsync(new ListCreditCardsQuery
+        {
+            IncludeDeleted = true
+        });
+
+        // Then
+        Assert.Equal(live.Id, Assert.Single(byDefault.Data!).Id);
+        Assert.Equal(2, included.TotalItems);
+        Assert.True(included.Data!.Single(card => card.Id == deleted.Id).IsDeleted);
+        Assert.False(included.Data!.Single(card => card.Id == live.Id).IsDeleted);
+    }
+
+    [UnitFact]
+    public async Task GivenForeignDeletedCard_WhenListedWithInclusion_ThenItStaysInvisible()
+    {
+        // Given
+        var actor = Profile();
+        var foreign = Card(Guid.NewGuid(), "Foreign", isDeleted: true);
+        var handler = ListHandler(actor, new StubCreditCardReader(foreign));
+
+        // When
+        var result = await handler.HandleAsync(new ListCreditCardsQuery
+        {
+            IncludeDeleted = true
+        });
+
+        // Then
+        Assert.True(result.Success);
+        Assert.Empty(result.Data!);
+    }
+
     private static GetCreditCardByIdQueryHandler GetHandler(
         UserProfileSnapshot? profile,
         ICreditCardReader cards) => new(

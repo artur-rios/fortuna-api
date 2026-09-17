@@ -34,8 +34,12 @@ public sealed class ListCreditCardsQueryHandler(
             return output.WithError(CreditCardMessages.ProfileNotFound);
         }
 
-        var filtered = cards.QueryLimits().Where(card =>
-            card.UserId == profile.Id && !card.IsDeleted);
+        var filtered = cards.QueryLimits().Where(card => card.UserId == profile.Id);
+        if (!query.IncludeDeleted)
+        {
+            filtered = filtered.Where(card => !card.IsDeleted);
+        }
+
         if (!string.IsNullOrWhiteSpace(query.Name))
         {
             var name = query.Name.Trim().ToLowerInvariant();
@@ -72,6 +76,7 @@ public sealed class ListCreditCardsQueryHandler(
             ClosingDay = card.ClosingDay,
             DueDay = card.DueDay,
             LastFourDigits = card.LastFourDigits,
+            IsDeleted = card.IsDeleted,
             CreatedAt = card.CreatedAt,
             UpdatedAt = card.UpdatedAt
         });

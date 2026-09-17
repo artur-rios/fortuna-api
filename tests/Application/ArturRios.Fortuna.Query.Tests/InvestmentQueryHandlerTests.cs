@@ -274,6 +274,48 @@ public sealed class InvestmentQueryHandlerTests
         Assert.Equal(5, history.Errors.Count);
     }
 
+    [UnitFact]
+    public async Task GivenSoftDeletedInvestment_WhenListed_ThenItIsAbsentUnlessExplicitlyIncluded()
+    {
+        // Given
+        var profile = Profile();
+        var live = Position(profile.Id, "Live Fund", "BRL", 10m);
+        var deleted = Copy(Position(profile.Id, "Archived Fund", "BRL", 30m), isDeleted: true);
+        var handler = ListHandler(profile, new StubInvestmentReader(live, deleted));
+
+        // When
+        var byDefault = await handler.HandleAsync(new ListInvestmentsQuery());
+        var included = await handler.HandleAsync(new ListInvestmentsQuery
+        {
+            IncludeDeleted = true
+        });
+
+        // Then
+        Assert.Equal(live.Id, Assert.Single(byDefault.Data!).Id);
+        Assert.Equal(2, included.TotalItems);
+        Assert.True(included.Data!.Single(item => item.Id == deleted.Id).IsDeleted);
+        Assert.False(included.Data!.Single(item => item.Id == live.Id).IsDeleted);
+    }
+
+    [UnitFact]
+    public async Task GivenForeignDeletedInvestment_WhenListedWithInclusion_ThenItStaysInvisible()
+    {
+        // Given
+        var profile = Profile();
+        var foreign = Copy(Position(Guid.NewGuid(), "Foreign Fund", "BRL", 10m), isDeleted: true);
+        var handler = ListHandler(profile, new StubInvestmentReader(foreign));
+
+        // When
+        var result = await handler.HandleAsync(new ListInvestmentsQuery
+        {
+            IncludeDeleted = true
+        });
+
+        // Then
+        Assert.True(result.Success);
+        Assert.Empty(result.Data!);
+    }
+
     private static GetInvestmentByIdQueryHandler DetailHandler(
         UserProfileSnapshot? profile,
         IInvestmentReader investments,

@@ -207,6 +207,7 @@ request validates it locally; token verification never calls Heimdall.
 | FR-CC-12 | The system shall list a credit card's statements with filtering, sorting and pagination |
 | FR-CC-13 | The system shall update a credit card's issuer, limit, closing day and due day, and shall reject a change to its currency |
 | FR-CC-14 | The system shall apply the record lifecycle of §3.14 to a credit card and its statements |
+| FR-CC-15 | The system shall list a user's credit cards with filtering, sorting and pagination |
 
 ### 3.5 Investment Management — `IV`
 
@@ -820,7 +821,7 @@ deliberately not generated. The native equivalents for health and local recovery
 | Method | Path | Description | Requirement |
 | --- | --- | --- | --- |
 | POST | `/api/credit-cards` | Create a credit card | FR-CC-01 |
-| GET | `/api/credit-cards` | List | FR-CC-14 |
+| GET | `/api/credit-cards` | List, optionally including soft-deleted cards | FR-CC-15, FR-CC-14 |
 | GET | `/api/credit-cards/{id}` | Retrieve one, with used and available limit | FR-CC-10 |
 | PUT | `/api/credit-cards/{id}` | Update | FR-CC-13 |
 | DELETE | `/api/credit-cards/{id}` | Soft delete | FR-CC-14 |
@@ -835,7 +836,7 @@ deliberately not generated. The native equivalents for health and local recovery
 | Method | Path | Description | Requirement |
 | --- | --- | --- | --- |
 | POST | `/api/investments` | Create | FR-IV-01 |
-| GET | `/api/investments` | List | FR-IV-05 |
+| GET | `/api/investments` | List, optionally including soft-deleted investments | FR-IV-05, FR-IV-08 |
 | GET | `/api/investments/{id}` | Retrieve one with its computed position | FR-IV-04 |
 | PUT | `/api/investments/{id}` | Update | FR-IV-07 |
 | DELETE | `/api/investments/{id}` · `/hard` · `POST /restore` | Lifecycle | FR-IV-08 |
@@ -1051,7 +1052,7 @@ outcome and time; deleting the mapping makes all retained entries unlinkable.
 | Feature | Requirements |
 | --- | --- |
 | F-01 Financial account tracking | FR-AC-01 through FR-AC-12 |
-| F-02 Credit card and statement tracking | FR-CC-01 through FR-CC-14 |
+| F-02 Credit card and statement tracking | FR-CC-01 through FR-CC-15 |
 | F-03 Investment tracking | FR-IV-01 through FR-IV-08 |
 | F-04 Transaction recording | FR-TX-01 through FR-TX-26 |
 | F-05 Classification | FR-CT-01 through FR-CT-12 |

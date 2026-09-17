@@ -20,6 +20,7 @@ internal static class InvestmentPositionProjection
             IsIndependentlyValued = investment.IsIndependentlyValued,
             LatestValuationValue = investment.LatestValuationValue,
             LatestValuationDate = investment.LatestValuationDate,
+            IsDeleted = investment.IsDeleted,
             CreatedAt = investment.CreatedAt,
             UpdatedAt = investment.UpdatedAt
         };
@@ -35,6 +36,7 @@ internal static class InvestmentPositionProjection
         IsIndependentlyValued = investment.IsIndependentlyValued,
         LatestValuationValue = investment.LatestValuationValue,
         LatestValuationDate = investment.LatestValuationDate,
+        IsDeleted = investment.IsDeleted,
         CreatedAt = investment.CreatedAt,
         UpdatedAt = investment.UpdatedAt
     };

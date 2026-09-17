@@ -2609,6 +2609,9 @@
             "format": "uuid",
             "type": "string"
           },
+          "isDeleted": {
+            "type": "boolean"
+          },
           "issuer": {
             "nullable": true,
             "type": "string"
@@ -5193,6 +5196,9 @@
           },
           "investmentType": {
             "$ref": "#/components/schemas/InvestmentType"
+          },
+          "isDeleted": {
+            "type": "boolean"
           },
           "isIndependentlyValued": {
             "type": "boolean"
@@ -13100,6 +13106,13 @@
           },
           {
             "in": "query",
+            "name": "IncludeDeleted",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
             "name": "SortBy",
             "schema": {
               "type": "string"
@@ -14727,6 +14740,13 @@
             "schema": {
               "format": "date",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "IncludeDeleted",
+            "schema": {
+              "type": "boolean"
             }
           },
           {
