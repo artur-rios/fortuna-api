@@ -21,6 +21,7 @@ public sealed class InvestmentOutput : QueryOutput
     public DateOnly? RateDate { get; set; }
     public ExchangeRateSource? RateSource { get; set; }
     public string? UnconvertedReason { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }

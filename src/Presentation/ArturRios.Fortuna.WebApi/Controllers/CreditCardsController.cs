@@ -27,6 +27,7 @@ public sealed class CreditCardsController(
         "Name",
         "Issuer",
         "CurrencyCode",
+        "IncludeDeleted",
         "SortBy",
         "Descending"
     };

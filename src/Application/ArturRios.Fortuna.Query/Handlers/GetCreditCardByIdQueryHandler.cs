@@ -61,6 +61,7 @@ public sealed class GetCreditCardByIdQueryHandler(
             ClosingDay = card.ClosingDay,
             DueDay = card.DueDay,
             LastFourDigits = card.LastFourDigits,
+            IsDeleted = card.IsDeleted,
             CreatedAt = card.CreatedAt,
             UpdatedAt = card.UpdatedAt
         };

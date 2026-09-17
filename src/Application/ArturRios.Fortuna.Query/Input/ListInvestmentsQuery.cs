@@ -11,6 +11,7 @@ public sealed class ListInvestmentsQuery : BaseQuery
     public string? CurrencyCode { get; set; }
     public string? DisplayCurrencyCode { get; set; }
     public DateOnly? FigureDate { get; set; }
+    public bool IncludeDeleted { get; set; }
     public string SortBy { get; set; } = "Instrument";
     public bool Descending { get; set; }
 }

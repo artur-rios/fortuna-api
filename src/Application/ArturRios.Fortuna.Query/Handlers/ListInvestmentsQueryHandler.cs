@@ -48,7 +48,12 @@ public sealed class ListInvestmentsQueryHandler(
         }
 
         var filtered = investments.QueryPositions().Where(investment =>
-            investment.UserId == profile.Id && !investment.IsDeleted);
+            investment.UserId == profile.Id);
+        if (!query.IncludeDeleted)
+        {
+            filtered = filtered.Where(investment => !investment.IsDeleted);
+        }
+
         if (!string.IsNullOrWhiteSpace(query.Instrument))
         {
             var instrument = query.Instrument.Trim().ToLowerInvariant();

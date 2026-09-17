@@ -29,6 +29,7 @@ public sealed class InvestmentsController(
         "CurrencyCode",
         "DisplayCurrencyCode",
         "FigureDate",
+        "IncludeDeleted",
         "SortBy",
         "Descending"
     };

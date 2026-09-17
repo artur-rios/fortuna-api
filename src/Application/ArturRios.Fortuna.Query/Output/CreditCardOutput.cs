@@ -15,6 +15,7 @@ public sealed class CreditCardOutput : QueryOutput
     public short ClosingDay { get; set; }
     public short DueDay { get; set; }
     public string? LastFourDigits { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
