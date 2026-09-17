@@ -1111,9 +1111,16 @@ mod tests {
         assert_eq!(FORTUNA_STATUS_OK, response.status);
         let body: Value = serde_json::from_str(&response.body).unwrap();
         let operations = body["data"]["operations"].as_array().unwrap();
-        assert_eq!(113, operations.len());
+        assert_eq!(115, operations.len());
         assert!(operations.iter().any(|operation| {
             operation["method"] == "POST" && operation["path"] == "/api/imports/excel"
+        }));
+        assert!(operations.iter().any(|operation| {
+            operation["method"] == "GET" && operation["path"] == "/api/recurring-transactions"
+        }));
+        assert!(operations.iter().any(|operation| {
+            operation["method"] == "GET"
+                && operation["path"] == "/api/transactions/{id}/attachments"
         }));
         assert!(!operations.iter().any(|operation| {
             operation["path"].as_str().is_some_and(|path| {
@@ -1146,7 +1153,7 @@ mod tests {
     fn given_every_generated_route_when_called_before_initialization_then_each_symbol_is_safe() {
         let _guard = test_guard();
         stop();
-        assert_eq!(113, NATIVE_OPERATION_FUNCTIONS.len());
+        assert_eq!(115, NATIVE_OPERATION_FUNCTIONS.len());
         for function in NATIVE_OPERATION_FUNCTIONS {
             let response = call(*function, "{}");
             assert_eq!(
