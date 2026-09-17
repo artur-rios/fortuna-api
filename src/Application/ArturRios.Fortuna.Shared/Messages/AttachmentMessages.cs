@@ -11,6 +11,7 @@ public static class AttachmentMessages
     public const string StorageUnavailable = "Attachment storage is unavailable.";
     public const string PersistenceFailed = "The attachment metadata could not be saved.";
     public const string DownloadedSuccessfully = "Document downloaded successfully.";
+    public const string ListedSuccessfully = "Attachments retrieved successfully.";
     public const string AttachmentNotFound = "The attachment was not found.";
     public const string StoredObjectNotFound =
         "The stored object for the attachment was not found.";
@@ -19,6 +20,12 @@ public static class AttachmentMessages
         "Attachment permanently deleted successfully.";
     public const string HardDeleteRequiresSoftDeletion =
         "The attachment must be soft-deleted before it can be permanently deleted.";
+
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
+
+    public static string UnsupportedFilter(string field) =>
+        $"The filter '{field}' is not supported by this endpoint.";
 
     public static string FileTooLarge(int maximumBytes) =>
         $"The document exceeds the configured maximum of {maximumBytes} bytes.";

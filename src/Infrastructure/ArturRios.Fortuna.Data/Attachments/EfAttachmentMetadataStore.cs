@@ -23,6 +23,32 @@ public sealed class EfAttachmentMetadataStore(AppDbContext context)
             attachment.StorageKey))
         .SingleOrDefaultAsync(cancellationToken);
 
+    public Task<bool> IsOwnedTransactionAsync(
+        Guid userId,
+        Guid transactionId,
+        CancellationToken cancellationToken) => context.FinancialTransactions.AnyAsync(
+            transaction => transaction.PublicId == transactionId &&
+                transaction.User.PublicId == userId,
+            cancellationToken);
+
+    public IQueryable<AttachmentListSnapshot> QueryForTransaction(
+        Guid userId,
+        Guid transactionId) => context.Attachments
+        .AsNoTracking()
+        .Where(attachment => attachment.Transaction.PublicId == transactionId &&
+            attachment.Transaction.User.PublicId == userId)
+        .Select(attachment => new AttachmentListSnapshot
+        {
+            Id = attachment.PublicId,
+            TransactionId = attachment.Transaction.PublicId,
+            FileName = attachment.FileName,
+            ContentType = attachment.ContentType,
+            SizeInBytes = attachment.SizeInBytes,
+            IsDeleted = attachment.IsDeleted,
+            CreatedAt = attachment.CreatedAt,
+            UpdatedAt = attachment.UpdatedAt
+        });
+
     public Task<bool> IsOwnedLiveTransactionAsync(
         Guid userId,
         Guid transactionId,

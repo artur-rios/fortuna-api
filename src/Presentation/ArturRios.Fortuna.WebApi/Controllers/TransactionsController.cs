@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.Requests;
 using ArturRios.Mediator.Command;
 using ArturRios.Mediator.Query;
 using ArturRios.Output;
@@ -40,6 +41,14 @@ public sealed class TransactionsController(
         "SortBy",
         "Descending"
     };
+
+    private static readonly HashSet<string> AttachmentListQueryFields =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "PageNumber",
+            "PageSize",
+            "IncludeDeleted"
+        };
 
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
@@ -100,6 +109,9 @@ public sealed class TransactionsController(
             [TransactionMessages.DisplayCurrencyInvalid] = StatusCodes.Status400BadRequest,
             [TransactionMessages.SortByUnsupported] = StatusCodes.Status400BadRequest,
             [AttachmentMessages.AttachedSuccessfully] = StatusCodes.Status201Created,
+            [AttachmentMessages.ListedSuccessfully] = StatusCodes.Status200OK,
+            [AttachmentMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [AttachmentMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [AttachmentMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [AttachmentMessages.TransactionNotFound] = StatusCodes.Status404NotFound,
             [AttachmentMessages.FileRequired] = StatusCodes.Status400BadRequest,
@@ -161,6 +173,33 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RecordTransactionCommand,
             RecordTransactionCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
+    [HttpGet("{id:guid}/attachments")]
+    [RoleRequirement((int)HeimdallRoles.User)]
+    public async Task<ActionResult<PaginatedOutput<AttachmentOutput>>> ListAttachments(
+        Guid id,
+        [FromQuery] ListTransactionAttachmentsRequest request)
+    {
+        var unsupported = Request.Query.Keys.FirstOrDefault(key =>
+            !AttachmentListQueryFields.Contains(key));
+        if (unsupported is not null)
+        {
+            return BadRequest(PaginatedOutput<AttachmentOutput>.New
+                .WithError(AttachmentMessages.UnsupportedFilter(unsupported)));
+        }
+
+        var query = new ListTransactionAttachmentsQuery
+        {
+            TransactionId = id,
+            IncludeDeleted = request.IncludeDeleted,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize
+        };
+        var result = await queryMediator.ExecutePaginatedQueryAsync<
+            ListTransactionAttachmentsQuery,
+            AttachmentOutput>(query);
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 

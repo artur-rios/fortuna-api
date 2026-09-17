@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Accounts;
@@ -609,6 +610,198 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             attachment.StorageKey.Replace('/', Path.DirectorySeparatorChar));
     }
 
+    [FunctionalFact]
+    public async Task GivenAttachmentUploadedEarlier_WhenListed_ThenItIsFoundAndItsIdStillServesDownloadAndDelete()
+    {
+        // Given
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+        byte[] document = [37, 80, 68, 70, 45, 49, 46, 55];
+        var attached = await AttachAsync(
+            client,
+            transactionId,
+            document,
+            "receipt.pdf",
+            "application/pdf");
+        attached.EnsureSuccessStatusCode();
+        var uploaded = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!;
+
+        // When — a later request, holding nothing but the transaction id
+        var page = await client.GetFromJsonAsync<AttachmentPage>(
+            $"/api/transactions/{transactionId}/attachments");
+        var listed = Assert.Single(page!.Data);
+        var download = await client.GetAsync($"/api/attachments/{listed.Id}");
+        var delete = await client.DeleteAsync($"/api/attachments/{listed.Id}");
+
+        // Then
+        Assert.Equal(uploaded.Id, listed.Id);
+        Assert.Equal(transactionId, listed.TransactionId);
+        Assert.Equal("receipt.pdf", listed.FileName);
+        Assert.Equal("application/pdf", listed.ContentType);
+        Assert.Equal(document.Length, listed.SizeInBytes);
+        Assert.False(listed.IsDeleted);
+        Assert.Equal(1, page.TotalItems);
+        Assert.Contains(AttachmentMessages.ListedSuccessfully, page.Messages);
+        Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+        Assert.Equal(document, await download.Content.ReadAsByteArrayAsync());
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+
+        await using var context = CreateContext();
+        Assert.True((await context.Attachments.SingleAsync(item => item.PublicId == listed.Id))
+            .IsDeleted);
+    }
+
+    [FunctionalFact]
+    public async Task GivenSoftDeletedAttachment_WhenListed_ThenExplicitInclusionControlsVisibility()
+    {
+        // Given
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+        var live = (await (await AttachAsync(
+            client, transactionId, [1, 2], "live.pdf", "application/pdf"))
+            .Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!;
+        var archived = (await (await AttachAsync(
+            client, transactionId, [3, 4], "archived.pdf", "application/pdf"))
+            .Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!;
+        (await client.DeleteAsync($"/api/attachments/{archived.Id}")).EnsureSuccessStatusCode();
+
+        // When
+        var hidden = await client.GetFromJsonAsync<AttachmentPage>(
+            $"/api/transactions/{transactionId}/attachments");
+        var included = await client.GetFromJsonAsync<AttachmentPage>(
+            $"/api/transactions/{transactionId}/attachments?IncludeDeleted=true");
+
+        // Then
+        Assert.Equal(live.Id, Assert.Single(hidden!.Data).Id);
+        Assert.Equal(2, included!.TotalItems);
+        Assert.True(included.Data.Single(item => item.Id == archived.Id).IsDeleted);
+        Assert.False(included.Data.Single(item => item.Id == live.Id).IsDeleted);
+
+        // The stored object survives a soft delete (FR-AT-09), so the row is still usable.
+        await using var context = CreateContext();
+        var stored = await context.Attachments.SingleAsync(item => item.PublicId == archived.Id);
+        Assert.True(stored.IsDeleted);
+        Assert.True(File.Exists(Path.Combine(
+            storageRoot,
+            stored.StorageKey.Replace('/', Path.DirectorySeparatorChar))));
+    }
+
+    [FunctionalFact]
+    public async Task GivenForeignOrMissingTransaction_WhenAttachmentsListed_ThenNotFoundIsIndistinguishable()
+    {
+        // Given
+        var ownerSubject = Guid.NewGuid();
+        var otherSubject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var owner = factory.CreateClient();
+        using var other = factory.CreateClient();
+        Authorize(owner, ownerSubject, HeimdallRoles.User);
+        Authorize(other, otherSubject, HeimdallRoles.User);
+        (await owner.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        (await other.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(ownerSubject);
+        (await AttachAsync(owner, transactionId, [1], "private.pdf", "application/pdf"))
+            .EnsureSuccessStatusCode();
+
+        // When
+        var foreign = await other.GetAsync($"/api/transactions/{transactionId}/attachments");
+        var missing = await other.GetAsync($"/api/transactions/{Guid.NewGuid()}/attachments");
+        var foreignBody = await foreign.Content.ReadAsStringAsync();
+        var missingBody = await missing.Content.ReadAsStringAsync();
+
+        // Then — the two answers differ in nothing but the envelope's own timestamp,
+        // which every response carries, so a caller cannot tell a transaction that is
+        // not theirs from one that does not exist.
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal(WithoutTimestamp(foreignBody), WithoutTimestamp(missingBody));
+        Assert.Contains(
+            AttachmentMessages.TransactionNotFound,
+            foreignBody,
+            StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenTransactionWithNoAttachments_WhenListed_ThenAnEmptyPageIsReturned()
+    {
+        // Given
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+
+        // When
+        var response = await client.GetAsync($"/api/transactions/{transactionId}/attachments");
+        var page = await response.Content.ReadFromJsonAsync<AttachmentPage>();
+
+        // Then
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Empty(page!.Data);
+        Assert.Equal(0, page.TotalItems);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAnonymousOrAdministrator_WhenAttachmentsListed_ThenAccessIsRefused()
+    {
+        // Given
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var owner = factory.CreateClient();
+        Authorize(owner, subject, HeimdallRoles.User);
+        (await owner.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+        using var anonymous = factory.CreateClient();
+        using var administrator = factory.CreateClient();
+        Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+
+        // When
+        var anonymousResponse = await anonymous.GetAsync(
+            $"/api/transactions/{transactionId}/attachments");
+        var administratorResponse = await administrator.GetAsync(
+            $"/api/transactions/{transactionId}/attachments");
+
+        // Then
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, administratorResponse.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenUnsupportedFilter_WhenAttachmentsListed_ThenBadRequestNamesTheField()
+    {
+        // Given
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+
+        // When
+        var response = await client.GetAsync(
+            $"/api/transactions/{transactionId}/attachments?FileName=receipt.pdf");
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Then
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(
+            AttachmentMessages.UnsupportedFilter("FileName"),
+            body,
+            StringComparison.Ordinal);
+    }
+
+    private static string WithoutTimestamp(string body) =>
+        Regex.Replace(body, "\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"\"");
+
     private static async Task<HttpResponseMessage> AttachAsync(
         HttpClient client,
         Guid transactionId,
@@ -695,4 +888,19 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         string FileName,
         string ContentType,
         long SizeInBytes);
+    private sealed record AttachmentPage(
+        IReadOnlyList<AttachmentListData> Data,
+        IReadOnlyCollection<string> Messages,
+        int PageNumber,
+        int PageSize,
+        int TotalItems,
+        int TotalPages);
+    private sealed record AttachmentListData(
+        Guid Id,
+        Guid TransactionId,
+        string FileName,
+        string ContentType,
+        long SizeInBytes,
+        bool IsDeleted,
+        DateTimeOffset CreatedAt);
 }
