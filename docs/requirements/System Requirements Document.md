@@ -352,6 +352,7 @@ imported; the payment-option and regulatory pages are ignored by design.
 | FR-AT-08 | The system shall serve an attachment only to the user who owns the transaction it is filed against |
 | FR-AT-09 | The system shall remove the stored object when an attachment is hard-deleted, and shall leave it in place when the attachment is only soft-deleted |
 | FR-AT-10 | The system shall never write attachment content to a log or include it in an export |
+| FR-AT-11 | The system shall list the attachments filed against a transaction owned by the acting user, with pagination, including soft-deleted attachments only on explicit request |
 
 ### 3.11 Reporting and Analytics — `RP`
 
@@ -899,6 +900,7 @@ deliberately not generated. The native equivalents for health and local recovery
 | Method | Path | Description | Requirement |
 | --- | --- | --- | --- |
 | POST | `/api/transactions/{id}/attachments` | Attach a file | FR-AT-01 |
+| GET | `/api/transactions/{id}/attachments` | List the transaction's attachments | FR-AT-11 |
 | GET | `/api/attachments/{id}` | Download an attachment | FR-AT-08 |
 | DELETE | `/api/attachments/{id}` · `/hard` | Lifecycle | FR-AT-09 |
 | POST | `/api/reports/table` | Query an owner-scoped record set as a typed table | FR-RP-01 |
@@ -1066,7 +1068,7 @@ outcome and time; deleting the mapping makes all retained entries unlinkable.
 | F-12 Chart aggregations with drill-down | FR-RP-02 through FR-RP-11 |
 | F-13 Forward projections | FR-PJ-01 through FR-PJ-06 |
 | F-14 Export and data portability | FR-EX-01 through FR-EX-15 |
-| F-15 Attachments | FR-AT-01 through FR-AT-10 |
+| F-15 Attachments | FR-AT-01 through FR-AT-11 |
 | F-16 Budgets and goals | FR-PL-01 through FR-PL-07 |
 | F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-43 |
 | F-18 Desktop offline account | FR-ID-09 through FR-ID-15 |

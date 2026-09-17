@@ -711,6 +711,10 @@ try
         DownloadAttachmentQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<DownloadAttachmentQuery,
         DownloadAttachmentQueryOutput>, DownloadAttachmentQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListTransactionAttachmentsQuery>,
+        ListTransactionAttachmentsQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListTransactionAttachmentsQuery,
+        AttachmentOutput>, ListTransactionAttachmentsQueryHandler>();
     builder.Services.AddScoped<IValidator<SearchTransactionsQuery>,
         SearchTransactionsQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<SearchTransactionsQuery, TransactionSearchOutput>,
