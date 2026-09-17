@@ -155,6 +155,7 @@ request validates it locally; token verification never calls Heimdall.
 | FR-ID-41 | Withdrawing `external-data-processing` consent shall immediately remove the decision, revoke every dependent Pluggy connection, destroy its access token and stop unfinished synchronizations while retaining imported records |
 | FR-ID-42 | Processing-consent reads, grants and withdrawals shall be owner-scoped; consent records shall be included in portability archives and removed during whole-account erasure rather than retained as audit entries |
 | FR-ID-43 | Processing consent shall not gate manual entry, Excel import or PDF import; the native core, which has no external processor, shall declare hosted consent routes unavailable |
+| FR-ID-44 | The system shall reissue the emailed second-factor code for an outstanding challenge, authorized by the challenge token alone, and shall answer identically whether the challenge is valid, unknown, forged, expired, or names a person without the email method |
 
 ### 3.2 Currency and Exchange Rates — `CU`
 
@@ -784,6 +785,7 @@ deliberately not generated. The native equivalents for health and local recovery
 | POST | `/api/auth/login` | Exchange email/password credentials for a token or two-factor challenge — *anonymous* | FR-ID-17, FR-ID-21 through FR-ID-24 |
 | POST | `/api/auth/google` | Exchange a Google ID token for a Heimdall token — *anonymous* | FR-ID-18, FR-ID-21 through FR-ID-24 |
 | POST | `/api/auth/2fa/verify` | Complete a two-factor challenge — *anonymous* | FR-ID-19, FR-ID-21 through FR-ID-24 |
+| POST | `/api/auth/2fa/challenge/resend` | Reissue an outstanding challenge's emailed code without disclosing whether it exists — *anonymous* | FR-ID-44, FR-ID-35 |
 | POST | `/api/auth/google/sign-out` | End the caller's Google-authenticated session | FR-ID-20, FR-ID-23 |
 | POST | `/api/auth/password-recovery` | Request password-recovery instructions without disclosing registration — *anonymous* | FR-ID-25, FR-ID-35 |
 | POST | `/api/auth/password-reset` | Set a new password with a reset token — *anonymous* | FR-ID-26, FR-ID-35 |

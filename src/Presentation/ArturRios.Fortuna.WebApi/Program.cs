@@ -368,6 +368,11 @@ try
         VerifyTwoFactorThroughApiCommandValidator>();
     builder.Services.AddScoped<ICommandHandlerAsync<VerifyTwoFactorThroughApiCommand,
         VerifyTwoFactorThroughApiCommandOutput>, VerifyTwoFactorThroughApiCommandHandler>();
+    builder.Services.AddScoped<IValidator<ResendTwoFactorChallengeCodeThroughApiCommand>,
+        ResendTwoFactorChallengeCodeThroughApiCommandValidator>();
+    builder.Services.AddScoped<ICommandHandlerAsync<ResendTwoFactorChallengeCodeThroughApiCommand,
+        ResendTwoFactorChallengeCodeThroughApiCommandOutput>,
+        ResendTwoFactorChallengeCodeThroughApiCommandHandler>();
     builder.Services.AddScoped<ICommandHandlerAsync<GoogleSignOutThroughApiCommand,
         GoogleSignOutThroughApiCommandOutput>, GoogleSignOutThroughApiCommandHandler>();
     builder.Services.AddScoped<IValidator<RequestPasswordRecoveryThroughApiCommand>,

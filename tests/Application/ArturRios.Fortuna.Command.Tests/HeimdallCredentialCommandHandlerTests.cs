@@ -345,6 +345,16 @@ public sealed class HeimdallCredentialCommandHandlerTests
         public (string? AppCode, string? EmailCode)? ConfirmationCodes { get; private set; }
         public (string Password, string? Code, string? RecoveryCode)? DisableRequest { get; private set; }
         public (string? Code, string? RecoveryCode)? RegenerationFactor { get; private set; }
+        public HeimdallAuthResult<object> ResendResult { get; init; } =
+            new(HeimdallAuthOutcome.Rejected);
+        public string? ResendChallengeToken { get; private set; }
+
+        public Task<HeimdallAuthResult<object>> ResendTwoFactorChallengeCodeAsync(
+            string challengeToken, CancellationToken cancellationToken)
+        {
+            ResendChallengeToken = challengeToken;
+            return Task.FromResult(ResendResult);
+        }
 
         public Task<HeimdallAuthResult<object>> RequestPasswordRecoveryAsync(
             string email, Guid scopeId, CancellationToken cancellationToken)

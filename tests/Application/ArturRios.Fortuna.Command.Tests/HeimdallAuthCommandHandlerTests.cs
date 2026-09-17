@@ -162,6 +162,72 @@ public sealed class HeimdallAuthCommandHandlerTests
         Assert.Null(gateway.TwoFactorRequest);
     }
 
+    [UnitTheory]
+    [InlineData(HeimdallAuthOutcome.Succeeded)]
+    [InlineData(HeimdallAuthOutcome.Rejected)]
+    [InlineData(HeimdallAuthOutcome.NotFound)]
+    [InlineData(HeimdallAuthOutcome.InvalidRequest)]
+    public async Task GivenAnyChallengeOutcome_WhenResendingTheCode_ThenTheAnswerIsAlwaysTheSame(
+        HeimdallAuthOutcome outcome)
+    {
+        // Given — a valid challenge, an unknown one, an expired one and one with no email
+        // method are exactly the cases Heimdall reports through these outcomes.
+        var gateway = new StubGateway
+        {
+            ResendResult = new(outcome, outcome == HeimdallAuthOutcome.Succeeded ? new object() : null)
+        };
+        var handler = new ResendTwoFactorChallengeCodeThroughApiCommandHandler(
+            new ResendTwoFactorChallengeCodeThroughApiCommandValidator(), gateway);
+
+        // When
+        var result = await handler.HandleAsync(new() { ChallengeToken = "challenge" });
+
+        // Then — nothing here may vary with the outcome, or it becomes an oracle for whether
+        // an address is registered and has email two-factor enabled.
+        Assert.True(result.Success);
+        Assert.Empty(result.Errors);
+        Assert.NotNull(result.Data);
+        Assert.Equal([HeimdallAuthMessages.ChallengeCodeResent], result.Messages);
+        Assert.Equal("challenge", gateway.ResendChallengeToken);
+    }
+
+    [UnitFact]
+    public async Task GivenIdentityServiceIsDown_WhenResendingTheCode_ThenUnavailableIsReported()
+    {
+        // Given — unavailability says nothing about any account, so unlike every other
+        // outcome it is reported rather than collapsed.
+        var gateway = new StubGateway
+        {
+            ResendResult = new(HeimdallAuthOutcome.Unavailable)
+        };
+        var handler = new ResendTwoFactorChallengeCodeThroughApiCommandHandler(
+            new ResendTwoFactorChallengeCodeThroughApiCommandValidator(), gateway);
+
+        // When
+        var result = await handler.HandleAsync(new() { ChallengeToken = "challenge" });
+
+        // Then
+        Assert.False(result.Success);
+        Assert.Contains(HeimdallAuthMessages.ServiceUnavailable, result.Errors);
+        Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenNoChallengeToken_WhenResendingTheCode_ThenHeimdallIsNotCalled()
+    {
+        // Given
+        var gateway = new StubGateway();
+        var handler = new ResendTwoFactorChallengeCodeThroughApiCommandHandler(
+            new ResendTwoFactorChallengeCodeThroughApiCommandValidator(), gateway);
+
+        // When
+        var result = await handler.HandleAsync(new() { ChallengeToken = "  " });
+
+        // Then
+        Assert.Contains(HeimdallAuthMessages.ChallengeTokenRequired, result.Errors);
+        Assert.Equal(0, gateway.ResendCalls);
+    }
+
     [UnitFact]
     public async Task GivenAuthenticatedGoogleSession_WhenSigningOut_ThenBearerTokenIsForwarded()
     {
@@ -192,6 +258,18 @@ public sealed class HeimdallAuthCommandHandlerTests
         public (string IdToken, Guid ScopeId)? GoogleRequest { get; private set; }
         public (string Challenge, string? Code, string? RecoveryCode)? TwoFactorRequest { get; private set; }
         public string? SignOutToken { get; private set; }
+        public HeimdallAuthResult<object> ResendResult { get; init; } =
+            new(HeimdallAuthOutcome.Rejected);
+        public string? ResendChallengeToken { get; private set; }
+        public int ResendCalls { get; private set; }
+
+        public Task<HeimdallAuthResult<object>> ResendTwoFactorChallengeCodeAsync(
+            string challengeToken, CancellationToken cancellationToken)
+        {
+            ResendChallengeToken = challengeToken;
+            ResendCalls++;
+            return Task.FromResult(ResendResult);
+        }
 
         public Task<HeimdallAuthResult<HeimdallLoginResult>> LoginAsync(
             string email, string password, Guid scopeId, CancellationToken cancellationToken)

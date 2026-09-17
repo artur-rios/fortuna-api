@@ -7817,6 +7817,51 @@
         },
         "type": "object"
       },
+      "ResendTwoFactorChallengeCodeThroughApiCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "challengeToken": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ResendTwoFactorChallengeCodeThroughApiCommandOutput": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "ResendTwoFactorChallengeCodeThroughApiCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ResendVerificationThroughApiCommandOutput": {
         "additionalProperties": false,
         "type": "object"
@@ -11416,6 +11461,54 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GetTwoFactorStatusThroughApiCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/2fa/challenge/resend": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutputDataOutput"
                 }
               }
             },

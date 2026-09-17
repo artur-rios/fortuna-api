@@ -21,6 +21,17 @@ public sealed class VerifyTwoFactorThroughApiCommand : BaseCommand
     public string? RecoveryCode { get; set; }
 }
 
+/// <summary>
+///     Intent to have Heimdall reissue the email code for a two-factor challenge that is still
+///     outstanding (UC-77), so a caller who never received the first one can ask for another
+///     without restarting sign-in. Carries only the challenge token — the address the code goes to
+///     is resolved by Heimdall from the token itself and is never the caller's to choose.
+/// </summary>
+public sealed class ResendTwoFactorChallengeCodeThroughApiCommand : BaseCommand
+{
+    public string ChallengeToken { get; set; } = string.Empty;
+}
+
 public sealed class GoogleSignOutThroughApiCommand : BaseCommand
 {
     [JsonIgnore]

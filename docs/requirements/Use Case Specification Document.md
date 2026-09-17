@@ -2468,13 +2468,14 @@ is issued, Fortuna validates it locally and does not call Heimdall to authorize 
 | **Description** | Recover a connected identity and manage its email verification and two-factor configuration through Fortuna |
 | **Preconditions** | The Heimdall base address and Fortuna scope public identifier are configured; authenticated operations carry a valid token |
 | **Postconditions** | Heimdall has applied the requested identity change; Fortuna state is unchanged |
-| **Requirements** | FR-ID-25 through FR-ID-35 |
+| **Requirements** | FR-ID-25 through FR-ID-35, FR-ID-44 |
 
 **Main Flow**
 
-1. An anonymous caller requests password recovery, resets a password with a token, or verifies an
-   address with a token; Fortuna rate-limits the request and attaches the configured scope where
-   Heimdall requires it.
+1. An anonymous caller requests password recovery, resets a password with a token, verifies an
+   address with a token, or asks for an outstanding two-factor challenge's emailed code to be
+   reissued; Fortuna rate-limits the request and attaches the configured scope where Heimdall
+   requires it.
 2. An authenticated caller may resend verification, inspect two-factor status, begin setup, confirm
    it, disable it, or regenerate recovery codes.
 3. Fortuna forwards authenticated bearer tokens only as authorization headers and credentials only
@@ -2495,10 +2496,20 @@ is issued, Fortuna validates it locally and does not call Heimdall to authorize 
 | AF-05 | Disabling or recovery-code regeneration is requested with no active setup | `404 Not Found` |
 | AF-06 | Heimdall is unreachable or returns a server error | `503 Service Unavailable`; upstream details are not returned |
 | AF-07 | A request is malformed | `400 Bad Request`, and Heimdall is not called |
+| AF-08 | A challenge-code reissue is requested for a challenge that is valid, unknown, forged, expired, or names a person without the email method | `200 OK` with one message identical across all five, since a response that varied would reveal whether an address is registered and has email two-factor enabled |
 
 The connected Heimdall identity and the desktop local account remain separate. UC-77 does not add a
 password-reset route to `api/local-accounts`. Every anonymous UC-77 endpoint uses the same limit of
 ten attempts per source address per minute as UC-76.
+
+`POST /api/auth/2fa/challenge/resend` is authorized by the challenge token rather than a bearer
+token, which is what makes it reachable at all. FR-ID-33 requires local bearer authentication for
+the connected credential-management endpoints, and a caller holding an outstanding challenge has
+none — the challenge is precisely the state before a bearer token exists — so the other five
+two-factor routes are unusable at exactly the moment this operation is needed. It never lengthens
+the challenge: returning a new challenge token would only be possible for a genuine one, which is
+exactly the disclosure AF-08 refuses. Heimdall owns how many reissues a challenge may authorize and
+what that does to its own guessing bound.
 
 ---
 
@@ -2709,7 +2720,7 @@ for it.
 | UC-73: Export a Data Set | FR-EX-01, FR-EX-02, FR-EX-03, FR-EX-05, FR-EX-06, FR-EX-07 |
 | UC-74: Retrieve a Completed Export | FR-EX-04, FR-EX-08 |
 | UC-76: Authenticate through the Fortuna API | FR-ID-17 through FR-ID-24 |
-| UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35 |
+| UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35, FR-ID-44 |
 | UC-78: Erase a User Account | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 | UC-79: Export All Personal Data | FR-EX-09 through FR-EX-15 |
 | UC-80: Record Processing Consent | FR-ID-38 through FR-ID-43 |

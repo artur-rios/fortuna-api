@@ -26,6 +26,11 @@ public sealed class HeimdallAuthGateway(
         SendAsync<object, HeimdallTwoFactorVerificationResult>(HttpMethod.Post,
             "api/auth/2fa/verify", new { challengeToken, code, recoveryCode }, null, cancellationToken);
 
+    public Task<HeimdallAuthResult<object>> ResendTwoFactorChallengeCodeAsync(
+        string challengeToken, CancellationToken cancellationToken) =>
+        SendAsync<object, object>(HttpMethod.Post,
+            "api/auth/2fa/challenge/resend", new { challengeToken }, null, cancellationToken);
+
     public Task<HeimdallAuthResult<object>> GoogleSignOutAsync(
         string bearerToken, CancellationToken cancellationToken) =>
         SendAsync<object, object>(HttpMethod.Post,

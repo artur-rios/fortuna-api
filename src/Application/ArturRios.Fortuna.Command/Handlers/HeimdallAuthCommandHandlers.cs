@@ -167,6 +167,44 @@ public sealed class RequestPasswordRecoveryThroughApiCommandHandler(
     }
 }
 
+/// <summary>
+///     Forwards a challenge-token-authorized resend to Heimdall (UC-77). Answers the same way on
+///     every path Heimdall can take — a valid challenge, an unknown one, a forged one, an expired
+///     one, one naming a person with no email method, and one whose reissues are spent — because a
+///     response that varied would tell an anonymous caller whether an address is registered and has
+///     email two-factor enabled. Only Heimdall being unreachable is reported differently, and that
+///     says nothing about any account.
+/// </summary>
+public sealed class ResendTwoFactorChallengeCodeThroughApiCommandHandler(
+    IValidator<ResendTwoFactorChallengeCodeThroughApiCommand> validator,
+    IHeimdallAuthGateway gateway)
+    : ICommandHandlerAsync<ResendTwoFactorChallengeCodeThroughApiCommand,
+        ResendTwoFactorChallengeCodeThroughApiCommandOutput>
+{
+    public async Task<DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>> HandleAsync(
+        ResendTwoFactorChallengeCodeThroughApiCommand command)
+    {
+        var validation = await validator.ValidateAsync(command);
+        if (!validation.IsValid)
+        {
+            return DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New.WithErrors(
+                validation.Errors.Select(error => error.ErrorMessage));
+        }
+
+        var result = await gateway.ResendTwoFactorChallengeCodeAsync(
+            command.ChallengeToken, CancellationToken.None);
+
+        // Every Heimdall outcome but unavailability collapses to the one answer: a rejection
+        // distinguishable from a success is the oracle this endpoint must not be.
+        return result.Outcome == HeimdallAuthOutcome.Unavailable
+            ? DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New.WithError(
+                HeimdallAuthMessages.ServiceUnavailable)
+            : DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New
+                .WithData(new ResendTwoFactorChallengeCodeThroughApiCommandOutput())
+                .WithMessage(HeimdallAuthMessages.ChallengeCodeResent);
+    }
+}
+
 public sealed class ResetPasswordThroughApiCommandHandler(
     IValidator<ResetPasswordThroughApiCommand> validator,
     IHeimdallAuthGateway gateway)
