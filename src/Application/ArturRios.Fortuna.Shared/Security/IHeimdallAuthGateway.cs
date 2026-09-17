@@ -19,6 +19,10 @@ public interface IHeimdallAuthGateway
         string? recoveryCode,
         CancellationToken cancellationToken);
 
+    Task<HeimdallAuthResult<object>> ResendTwoFactorChallengeCodeAsync(
+        string challengeToken,
+        CancellationToken cancellationToken);
+
     Task<HeimdallAuthResult<object>> GoogleSignOutAsync(
         string bearerToken,
         CancellationToken cancellationToken);

@@ -18,6 +18,8 @@ public static class HeimdallAuthMessages
     public const string PasswordReset = "Password reset successfully.";
     public const string EmailVerified = "Email verified successfully.";
     public const string VerificationResent = "Verification message sent successfully.";
+    public const string ChallengeCodeResent =
+        "If the challenge is still valid, a new code has been sent.";
     public const string TwoFactorStatusReturned = "Two-factor status returned successfully.";
     public const string TwoFactorSetupStarted = "Two-factor setup started successfully.";
     public const string TwoFactorEnabled = "Two-factor authentication enabled successfully.";

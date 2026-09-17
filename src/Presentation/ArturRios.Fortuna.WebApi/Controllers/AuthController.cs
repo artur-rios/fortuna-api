@@ -58,6 +58,19 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
+    [HttpPost("2fa/challenge/resend")]
+    [AllowAnonymous]
+    [EnableRateLimiting(AnonymousRateLimitPolicy)]
+    public async Task<ActionResult<DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>>>
+        ResendTwoFactorChallengeCode(
+            [FromBody] ResendTwoFactorChallengeCodeThroughApiCommand command)
+    {
+        var result = await commandMediator.ExecuteCommandAsync<
+            ResendTwoFactorChallengeCodeThroughApiCommand,
+            ResendTwoFactorChallengeCodeThroughApiCommandOutput>(command);
+        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+    }
+
     [HttpPost("google/sign-out")]
     public async Task<ActionResult<DataOutput<GoogleSignOutThroughApiCommandOutput?>>> GoogleSignOut()
     {

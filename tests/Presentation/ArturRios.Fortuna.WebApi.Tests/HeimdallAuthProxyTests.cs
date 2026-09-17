@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
@@ -157,6 +158,118 @@ public sealed class HeimdallAuthProxyTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("full-token", envelope?.Data?.Token);
+    }
+
+    [FunctionalFact]
+    public async Task GivenEveryChallengeOutcome_WhenResendingTheCode_ThenResponsesAreIndistinguishable()
+    {
+        // Given — the four cases a caller must not be able to tell apart: a real challenge, an
+        // unknown or forged one, an expired one, and one naming a person with no email method.
+        HeimdallAuthOutcome[] outcomes =
+        [
+            HeimdallAuthOutcome.Succeeded,
+            HeimdallAuthOutcome.Rejected,
+            HeimdallAuthOutcome.NotFound,
+            HeimdallAuthOutcome.InvalidRequest
+        ];
+        var answers = new List<(HttpStatusCode Status, string Body)>();
+
+        // When
+        foreach (var outcome in outcomes)
+        {
+            var gateway = new StubGateway
+            {
+                ResendResult = new(
+                    outcome,
+                    outcome == HeimdallAuthOutcome.Succeeded ? new object() : null)
+            };
+            await using var factory = CreateFactory(gateway);
+            using var client = factory.CreateClient();
+
+            var response = await client.PostAsJsonAsync("/api/auth/2fa/challenge/resend", new
+            {
+                challengeToken = "challenge"
+            });
+            answers.Add((response.StatusCode, WithoutTimestamp(await response.Content.ReadAsStringAsync())));
+            Assert.Equal("challenge", gateway.ResendChallengeToken);
+        }
+
+        // Then — every answer is the same one, down to the body. This is the property the whole
+        // operation exists to hold, and the one most easily lost in a later refactor.
+        Assert.All(answers, answer => Assert.Equal(HttpStatusCode.OK, answer.Status));
+        Assert.Single(answers.Select(answer => answer.Body).Distinct());
+        Assert.Contains(
+            HeimdallAuthMessages.ChallengeCodeResent,
+            answers[0].Body,
+            StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenNoChallengeToken_WhenResendingTheCode_ThenBadRequestNamesTheField()
+    {
+        // Given
+        var gateway = new StubGateway();
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        // When
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/challenge/resend", new
+        {
+            challengeToken = string.Empty
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Then — a malformed request is refused before Heimdall is reached (UC-77 AF-07).
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(
+            HeimdallAuthMessages.ChallengeTokenRequired,
+            body,
+            StringComparison.Ordinal);
+        Assert.Null(gateway.ResendChallengeToken);
+    }
+
+    [FunctionalFact]
+    public async Task GivenIdentityServiceIsDown_WhenResendingTheCode_ThenServiceUnavailableIsReturned()
+    {
+        // Given
+        var gateway = new StubGateway
+        {
+            ResendResult = new(HeimdallAuthOutcome.Unavailable)
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        // When
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/challenge/resend", new
+        {
+            challengeToken = "challenge"
+        });
+
+        // Then — UC-77 AF-06; unavailability discloses nothing about any account.
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenNoBearerToken_WhenResendingTheCode_ThenTheRouteIsStillReachable()
+    {
+        // Given — a caller holding a challenge has no bearer token by definition (FR-SE-04),
+        // so this route must not sit behind authentication the way the rest of /2fa does.
+        var gateway = new StubGateway
+        {
+            ResendResult = new(HeimdallAuthOutcome.Succeeded, new object())
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        // When
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/challenge/resend", new
+        {
+            challengeToken = "challenge"
+        });
+
+        // Then
+        Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [FunctionalFact]
@@ -639,6 +752,9 @@ public sealed class HeimdallAuthProxyTests
         ["FORTUNA_HEIMDALL_SCOPE_ID"] = "00000000-0000-0000-0000-000000000076"
     };
 
+    private static string WithoutTimestamp(string body) =>
+        Regex.Replace(body, "\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"\"");
+
     private sealed class StubGateway : IHeimdallAuthGateway
     {
         public HeimdallAuthResult<HeimdallLoginResult> LoginResult { get; init; } =
@@ -664,6 +780,16 @@ public sealed class HeimdallAuthProxyTests
         public string? AuthenticatedToken { get; private set; }
         public (string Email, Guid ScopeId)? RecoveryRequest { get; private set; }
         public int RecoveryCalls { get; private set; }
+        public HeimdallAuthResult<object> ResendResult { get; init; } =
+            new(HeimdallAuthOutcome.Rejected);
+        public string? ResendChallengeToken { get; private set; }
+
+        public Task<HeimdallAuthResult<object>> ResendTwoFactorChallengeCodeAsync(
+            string challengeToken, CancellationToken cancellationToken)
+        {
+            ResendChallengeToken = challengeToken;
+            return Task.FromResult(ResendResult);
+        }
 
         public Task<HeimdallAuthResult<HeimdallLoginResult>> LoginAsync(
             string email, string password, Guid scopeId, CancellationToken cancellationToken)

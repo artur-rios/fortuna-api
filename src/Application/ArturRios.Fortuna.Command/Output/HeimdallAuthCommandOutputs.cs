@@ -26,6 +26,13 @@ public sealed class VerifyTwoFactorThroughApiCommandOutput : CommandOutput
     public bool EmailVerified { get; set; }
 }
 
+/// <summary>
+///     Deliberately empty. Any field describing what happened — whether the challenge was real,
+///     whether the person has the email method, whether a code went out — would answer the question
+///     this operation exists to leave unanswered.
+/// </summary>
+public sealed class ResendTwoFactorChallengeCodeThroughApiCommandOutput : CommandOutput;
+
 public sealed class GoogleSignOutThroughApiCommandOutput : CommandOutput;
 
 public sealed class RequestPasswordRecoveryThroughApiCommandOutput : CommandOutput;

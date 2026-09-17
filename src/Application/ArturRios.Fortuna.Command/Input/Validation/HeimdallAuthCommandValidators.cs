@@ -40,6 +40,14 @@ public sealed class VerifyTwoFactorThroughApiCommandValidator : AbstractValidato
     }
 }
 
+public sealed class ResendTwoFactorChallengeCodeThroughApiCommandValidator
+    : AbstractValidator<ResendTwoFactorChallengeCodeThroughApiCommand>
+{
+    public ResendTwoFactorChallengeCodeThroughApiCommandValidator() =>
+        RuleFor(command => command.ChallengeToken)
+            .NotEmpty().WithMessage(HeimdallAuthMessages.ChallengeTokenRequired);
+}
+
 public sealed class RequestPasswordRecoveryThroughApiCommandValidator
     : AbstractValidator<RequestPasswordRecoveryThroughApiCommand>
 {
