@@ -76,6 +76,43 @@ public sealed class EfRecurringTransactionStore(
             : Snapshot(rule, DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime));
     }
 
+    public async Task<RecurringTransactionListPage> ListAsync(
+        RecurringTransactionListCriteria criteria,
+        CancellationToken cancellationToken)
+    {
+        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
+        var filtered = context.RecurringTransactions.AsNoTracking()
+            .Where(rule => rule.User.PublicId == criteria.UserId);
+        if (!criteria.IncludeDeleted)
+        {
+            filtered = filtered.Where(rule => !rule.IsDeleted);
+        }
+
+        if (criteria.Active == true)
+        {
+            filtered = filtered.Where(rule => rule.EndsOn == null || rule.EndsOn >= today);
+        }
+        else if (criteria.Active == false)
+        {
+            filtered = filtered.Where(rule => rule.EndsOn != null && rule.EndsOn < today);
+        }
+
+        var totalItems = await filtered.CountAsync(cancellationToken);
+        var rules = await Order(filtered, criteria.SortBy.Trim(), criteria.Descending)
+            .Skip((criteria.PageNumber - 1) * criteria.PageSize)
+            .Take(criteria.PageSize)
+            .Include(rule => rule.FinancialAccount)
+            .Include(rule => rule.CreditCard)
+            .Include(rule => rule.Category)
+            .Include(rule => rule.Counterparty)
+            .Include(rule => rule.Currency)
+            .ToArrayAsync(cancellationToken);
+
+        return new RecurringTransactionListPage(
+            rules.Select(rule => Snapshot(rule, today)).ToArray(),
+            totalItems);
+    }
+
     public async Task<RecurringTransactionUpdateResult> UpdateAsync(
         RecurringTransactionUpdate update,
         CancellationToken cancellationToken)
@@ -401,10 +438,42 @@ public sealed class EfRecurringTransactionStore(
             CounterpartyId = rule.Counterparty?.PublicId,
             CounterpartyName = rule.Counterparty?.Name,
             NextOccurrences = rule.NextOccurrences(occurrenceFrom),
+            IsDeleted = rule.IsDeleted,
             CreatedAt = rule.CreatedAt,
             UpdatedAt = rule.UpdatedAt
         };
     }
+
+    private static IOrderedQueryable<RecurringTransaction> Order(
+        IQueryable<RecurringTransaction> rules,
+        string sortBy,
+        bool descending) => (sortBy.ToLowerInvariant(), descending) switch
+        {
+            ("endson", false) => rules.OrderBy(rule => rule.EndsOn)
+                .ThenBy(rule => rule.PublicId),
+            ("endson", true) => rules.OrderByDescending(rule => rule.EndsOn)
+                .ThenByDescending(rule => rule.PublicId),
+            ("amount", false) => rules.OrderBy(rule => rule.Amount)
+                .ThenBy(rule => rule.PublicId),
+            ("amount", true) => rules.OrderByDescending(rule => rule.Amount)
+                .ThenByDescending(rule => rule.PublicId),
+            ("frequency", false) => rules.OrderBy(rule => rule.Frequency)
+                .ThenBy(rule => rule.PublicId),
+            ("frequency", true) => rules.OrderByDescending(rule => rule.Frequency)
+                .ThenByDescending(rule => rule.PublicId),
+            ("createdat", false) => rules.OrderBy(rule => rule.CreatedAt)
+                .ThenBy(rule => rule.PublicId),
+            ("createdat", true) => rules.OrderByDescending(rule => rule.CreatedAt)
+                .ThenByDescending(rule => rule.PublicId),
+            ("updatedat", false) => rules.OrderBy(rule => rule.UpdatedAt)
+                .ThenBy(rule => rule.PublicId),
+            ("updatedat", true) => rules.OrderByDescending(rule => rule.UpdatedAt)
+                .ThenByDescending(rule => rule.PublicId),
+            (_, false) => rules.OrderBy(rule => rule.StartsOn)
+                .ThenBy(rule => rule.PublicId),
+            _ => rules.OrderByDescending(rule => rule.StartsOn)
+                .ThenByDescending(rule => rule.PublicId)
+        };
 
     private static RecurringTransactionRecordResult Result(
         RecurringTransactionRecordOutcome outcome,

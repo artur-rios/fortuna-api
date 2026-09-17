@@ -727,6 +727,10 @@ try
         GetRecurringTransactionByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetRecurringTransactionByIdQuery,
         RecurringTransactionOutput>, GetRecurringTransactionByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListRecurringTransactionsQuery>,
+        ListRecurringTransactionsQueryValidator>();
+    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListRecurringTransactionsQuery,
+        RecurringTransactionOutput>, ListRecurringTransactionsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListDataSourcesQuery, DataSourceListOutput>,
         ListDataSourcesQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetConnectionByIdQuery, ConnectionOutput>,

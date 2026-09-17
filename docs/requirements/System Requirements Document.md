@@ -859,6 +859,7 @@ deliberately not generated. The native equivalents for health and local recovery
 | POST | `/api/installment-plans` | Record an installment purchase | FR-TX-18 |
 | GET | `/api/installment-plans/{id}` | Retrieve a plan with its installments | FR-TX-20 |
 | POST | `/api/recurring-transactions` | Define a recurring rule | FR-TX-21 |
+| GET | `/api/recurring-transactions` | List the user's recurring rules | FR-TX-21 |
 | GET · PUT · DELETE | `/api/recurring-transactions/{id}` | Retrieve, update, delete a rule | FR-TX-24 |
 | POST | `/api/recurring-transactions/materialize` | Materialize every due occurrence | FR-TX-22 |
 

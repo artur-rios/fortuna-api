@@ -15,7 +15,24 @@ public interface IRecurringTransactionReader
         Guid userId,
         Guid id,
         CancellationToken cancellationToken);
+
+    Task<RecurringTransactionListPage> ListAsync(
+        RecurringTransactionListCriteria criteria,
+        CancellationToken cancellationToken);
 }
+
+public sealed record RecurringTransactionListCriteria(
+    Guid UserId,
+    bool? Active,
+    bool IncludeDeleted,
+    string SortBy,
+    bool Descending,
+    int PageNumber,
+    int PageSize);
+
+public sealed record RecurringTransactionListPage(
+    IReadOnlyList<RecurringTransactionSnapshot> Rules,
+    int TotalItems);
 
 public interface IRecurringTransactionUpdater
 {
@@ -168,6 +185,7 @@ public sealed class RecurringTransactionSnapshot
     public Guid? CounterpartyId { get; init; }
     public string? CounterpartyName { get; init; }
     public IReadOnlyCollection<DateOnly> NextOccurrences { get; init; } = [];
+    public bool IsDeleted { get; init; }
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
 }

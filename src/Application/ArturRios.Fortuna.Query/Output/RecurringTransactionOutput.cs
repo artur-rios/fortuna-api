@@ -20,6 +20,7 @@ public sealed class RecurringTransactionOutput : QueryOutput
     public Guid? CounterpartyId { get; set; }
     public string? CounterpartyName { get; set; }
     public IReadOnlyCollection<DateOnly> NextOccurrences { get; set; } = [];
+    public bool IsDeleted { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
