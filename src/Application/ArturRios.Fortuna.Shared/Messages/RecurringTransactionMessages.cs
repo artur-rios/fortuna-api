@@ -4,6 +4,7 @@ public static class RecurringTransactionMessages
 {
     public const string RecordedSuccessfully = "Recurring transaction defined successfully.";
     public const string RetrievedSuccessfully = "Recurring transaction retrieved successfully.";
+    public const string ListedSuccessfully = "Recurring transactions retrieved successfully.";
     public const string MaterializedSuccessfully = "Recurring transactions materialized successfully.";
     public const string UpdatedSuccessfully =
         "Recurring transaction updated successfully. Changes apply from the next occurrence; materialized transactions were not changed.";
@@ -30,4 +31,11 @@ public static class RecurringTransactionMessages
     public const string CounterpartyTooLong = "Counterparty cannot exceed 200 characters.";
     public const string OwnerImmutable = "OwnerId cannot be supplied; ownership is fixed.";
     public const string IdRequired = "Recurring transaction id is required.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
+    public const string SortByUnsupported =
+        "SortBy must be one of StartsOn, EndsOn, Amount, Frequency, CreatedAt, or UpdatedAt.";
+
+    public static string UnsupportedFilter(string field) =>
+        $"The filter '{field}' is not supported by this endpoint.";
 }

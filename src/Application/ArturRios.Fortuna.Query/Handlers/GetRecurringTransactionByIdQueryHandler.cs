@@ -47,25 +47,8 @@ public sealed class GetRecurringTransactionByIdQueryHandler(
             return output.WithError(RecurringTransactionMessages.NotFound);
         }
 
-        return output.WithData(new RecurringTransactionOutput
-        {
-            Id = rule.Id,
-            FinancialAccountId = rule.FinancialAccountId,
-            CreditCardId = rule.CreditCardId,
-            CategoryId = rule.CategoryId,
-            Direction = rule.Direction,
-            Amount = rule.Amount,
-            CurrencyCode = rule.CurrencyCode,
-            Frequency = rule.Frequency,
-            StartsOn = rule.StartsOn,
-            EndsOn = rule.EndsOn,
-            LastMaterializedOn = rule.LastMaterializedOn,
-            Description = rule.Description,
-            CounterpartyId = rule.CounterpartyId,
-            CounterpartyName = rule.CounterpartyName,
-            NextOccurrences = rule.NextOccurrences,
-            CreatedAt = rule.CreatedAt,
-            UpdatedAt = rule.UpdatedAt
-        }).WithMessage(RecurringTransactionMessages.RetrievedSuccessfully);
+        return output
+            .WithData(RecurringTransactionProjection.Project(rule))
+            .WithMessage(RecurringTransactionMessages.RetrievedSuccessfully);
     }
 }
