@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Jobs;
@@ -78,10 +79,25 @@ public interface IExcelImportStore
 public interface IExcelWorkbookParser
 {
     ExcelWorkbookValidation Validate(byte[] content, ExcelColumnMapping mapping);
-    IReadOnlyCollection<ExcelWorkbookRow> Parse(byte[] content, ExcelColumnMapping mapping);
+    /// <summary>Reads the mapped rows; an unreadable workbook is a failed result, not an exception.</summary>
+    ExcelWorkbookParseResult Parse(byte[] content, ExcelColumnMapping mapping);
 }
 
 public sealed record ExcelWorkbookValidation(bool IsValid, string? Error);
+
+public sealed record ExcelWorkbookParseResult(
+    IReadOnlyCollection<ExcelWorkbookRow>? Rows,
+    string? Error)
+{
+    [MemberNotNullWhen(true, nameof(Rows))]
+    [MemberNotNullWhen(false, nameof(Error))]
+    public bool IsSuccess => Rows is not null;
+
+    public static ExcelWorkbookParseResult Success(IReadOnlyCollection<ExcelWorkbookRow> rows) =>
+        new(rows ?? throw new ArgumentNullException(nameof(rows)), null);
+
+    public static ExcelWorkbookParseResult Failure(string error) => new(null, error);
+}
 
 public sealed record ExcelWorkbookRow(
     int RowNumber,

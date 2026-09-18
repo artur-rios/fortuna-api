@@ -29,14 +29,10 @@ public sealed class ExcelImportJobHandler(
 
         try
         {
-            IReadOnlyCollection<ExcelWorkbookRow> rows;
-            try
+            var parsed = parser.Parse(request.Content, request.Mapping);
+            if (!parsed.IsSuccess)
             {
-                rows = parser.Parse(request.Content, request.Mapping);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                return await FailAsync(request.ImportJobId, ExcelImportMessages.WorkbookInvalid);
+                return await FailAsync(request.ImportJobId, parsed.Error);
             }
 
             var completion = await imports.CompleteAsync(
@@ -45,7 +41,7 @@ public sealed class ExcelImportJobHandler(
                 request.TargetId,
                 request.TargetType,
                 request.CreateMissingCategories,
-                rows,
+                parsed.Rows,
                 timeProvider.GetUtcNow(),
                 cancellationToken);
 

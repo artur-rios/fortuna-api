@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 
@@ -57,7 +58,20 @@ public interface IPdfInvoiceImportStore
 
 public interface IPdfInvoiceParser
 {
-    ParsedPdfInvoice Parse(byte[] content);
+    /// <summary>Parses an invoice; an unreadable or unsupported file is a failed result, not an exception.</summary>
+    PdfInvoiceParseResult Parse(byte[] content);
+}
+
+public sealed record PdfInvoiceParseResult(ParsedPdfInvoice? Invoice, string? Error)
+{
+    [MemberNotNullWhen(true, nameof(Invoice))]
+    [MemberNotNullWhen(false, nameof(Error))]
+    public bool IsSuccess => Invoice is not null;
+
+    public static PdfInvoiceParseResult Success(ParsedPdfInvoice invoice) =>
+        new(invoice ?? throw new ArgumentNullException(nameof(invoice)), null);
+
+    public static PdfInvoiceParseResult Failure(string error) => new(null, error);
 }
 
 public enum PdfInvoiceLineKind
@@ -102,8 +116,6 @@ public sealed record ParsedPdfInvoice(
     decimal ParsedAmountDue,
     decimal ReconciliationDifference,
     IReadOnlyCollection<ParsedPdfInvoiceLine> Lines);
-
-public sealed class PdfInvoiceParseException(string message) : Exception(message);
 
 public static class PdfInvoiceImportJob
 {

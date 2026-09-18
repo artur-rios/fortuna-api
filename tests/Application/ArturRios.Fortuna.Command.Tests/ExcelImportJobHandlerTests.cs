@@ -33,7 +33,7 @@ public sealed class ExcelImportJobHandlerTests
     public async Task GivenParserFailure_WhenExecuted_ThenImportJobIsFailed()
     {
         var store = new StubStore();
-        var parser = new StubParser(new InvalidOperationException("broken workbook"));
+        var parser = new StubParser(ExcelImportMessages.WorkbookInvalid);
 
         var result = await new ExcelImportJobHandler(store, parser, new FixedTimeProvider(Now))
             .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
@@ -94,7 +94,7 @@ public sealed class ExcelImportJobHandlerTests
         new ExcelColumnMapping("Date", "Amount", "Direction", null, null, null),
         false);
 
-    private sealed class StubParser(Exception? exception = null) : IExcelWorkbookParser
+    private sealed class StubParser(string? error = null) : IExcelWorkbookParser
     {
         public IReadOnlyCollection<ExcelWorkbookRow> Rows { get; } =
         [new(2, "{\"Amount\":\"10\"}", new DateOnly(2026, 9, 1), 10m,
@@ -103,17 +103,11 @@ public sealed class ExcelImportJobHandlerTests
         public ExcelWorkbookValidation Validate(byte[] content, ExcelColumnMapping mapping) =>
             throw new NotSupportedException();
 
-        public IReadOnlyCollection<ExcelWorkbookRow> Parse(
+        public ExcelWorkbookParseResult Parse(
             byte[] content,
-            ExcelColumnMapping mapping)
-        {
-            if (exception is not null)
-            {
-                throw exception;
-            }
-
-            return Rows;
-        }
+            ExcelColumnMapping mapping) => error is null
+            ? ExcelWorkbookParseResult.Success(Rows)
+            : ExcelWorkbookParseResult.Failure(error);
     }
 
     private sealed class StubStore : IExcelImportStore

@@ -170,7 +170,7 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
                 valid ? null : ExcelImportMessages.WorkbookInvalid);
         }
 
-        public IReadOnlyCollection<ExcelWorkbookRow> Parse(
+        public ExcelWorkbookParseResult Parse(
             byte[] content, ExcelColumnMapping mapping) => throw new NotSupportedException();
     }
 

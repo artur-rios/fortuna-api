@@ -29,25 +29,17 @@ public sealed class PdfInvoiceImportJobHandler(
 
         try
         {
-            ParsedPdfInvoice invoice;
-            try
+            var parsed = parser.Parse(request.Content);
+            if (!parsed.IsSuccess)
             {
-                invoice = parser.Parse(request.Content);
-            }
-            catch (PdfInvoiceParseException exception)
-            {
-                return await FailAsync(request.ImportJobId, exception.Message);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                return await FailAsync(request.ImportJobId, PdfInvoiceImportMessages.FileInvalid);
+                return await FailAsync(request.ImportJobId, parsed.Error);
             }
 
             var completion = await imports.CompleteAsync(
                 request.ImportJobId,
                 request.UserId,
                 request.CreditCardId,
-                invoice,
+                parsed.Invoice,
                 timeProvider.GetUtcNow(),
                 cancellationToken);
 

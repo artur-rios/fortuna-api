@@ -32,8 +32,7 @@ public sealed class PdfInvoiceImportJobHandlerTests
     public async Task GivenUnsupportedLayout_WhenExecuted_ThenExactReasonFailsTheJob()
     {
         var store = new StubStore();
-        var parser = new StubParser(new PdfInvoiceParseException(
-            PdfInvoiceImportMessages.UnsupportedLayout));
+        var parser = new StubParser(PdfInvoiceImportMessages.UnsupportedLayout);
 
         var result = await new PdfInvoiceImportJobHandler(store, parser, new FixedTimeProvider(Now))
             .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
@@ -105,7 +104,7 @@ public sealed class PdfInvoiceImportJobHandlerTests
     {
         var store = new StubStore();
         var reason = PdfInvoiceImportMessages.ReconciliationFailed(99m, 100m, -1m);
-        var parser = new StubParser(new PdfInvoiceParseException(reason));
+        var parser = new StubParser(reason);
 
         var result = await new PdfInvoiceImportJobHandler(store, parser, new FixedTimeProvider(Now))
             .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
@@ -118,7 +117,7 @@ public sealed class PdfInvoiceImportJobHandlerTests
     private static PdfInvoiceImportJobPayload Payload() => new(
         Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), [1, 2, 3]);
 
-    private sealed class StubParser(Exception? exception = null) : IPdfInvoiceParser
+    private sealed class StubParser(string? error = null) : IPdfInvoiceParser
     {
         public ParsedPdfInvoice Invoice { get; } = new(
             "Nubank credit card invoice",
@@ -130,15 +129,9 @@ public sealed class PdfInvoiceImportJobHandlerTests
             [new(1, "{}", new DateOnly(2026, 8, 1), null, "Purchase", 10m,
                 PdfInvoiceLineKind.Purchase)]);
 
-        public ParsedPdfInvoice Parse(byte[] content)
-        {
-            if (exception is not null)
-            {
-                throw exception;
-            }
-
-            return Invoice;
-        }
+        public PdfInvoiceParseResult Parse(byte[] content) => error is null
+            ? PdfInvoiceParseResult.Success(Invoice)
+            : PdfInvoiceParseResult.Failure(error);
     }
 
     private sealed class StubStore : IPdfInvoiceImportStore
