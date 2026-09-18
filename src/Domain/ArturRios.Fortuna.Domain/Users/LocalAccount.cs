@@ -3,6 +3,8 @@ namespace ArturRios.Fortuna.Domain.Users;
 /// <summary>The single offline identity owned by a desktop Fortuna installation.</summary>
 public sealed class LocalAccount
 {
+    private readonly List<RecoveryCode> _recoveryCodes = [];
+
     private LocalAccount()
     {
     }
@@ -39,8 +41,8 @@ public sealed class LocalAccount
         User = user ?? throw new ArgumentNullException(nameof(user));
         UserId = user.Id;
         Name = name;
-        SecretHash = secretHash;
-        Salt = salt;
+        SecretHash = secretHash.ToArray();
+        Salt = salt.ToArray();
         StorageMode = storageMode;
         CreatedAt = createdAt;
         UpdatedAt = createdAt;
@@ -56,10 +58,10 @@ public sealed class LocalAccount
     public LocalAccountStorageMode StorageMode { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
-    public ICollection<RecoveryCode> RecoveryCodes { get; private set; } = [];
+    public IReadOnlyCollection<RecoveryCode> RecoveryCodes => _recoveryCodes;
 
     public void AddRecoveryCode(byte[] codeHash, DateTimeOffset createdAt) =>
-        RecoveryCodes.Add(new RecoveryCode(this, codeHash, createdAt));
+        _recoveryCodes.Add(new RecoveryCode(this, codeHash, createdAt));
 
     public void ReplaceSecret(byte[] secretHash, byte[] salt, DateTimeOffset updatedAt)
     {
@@ -73,8 +75,8 @@ public sealed class LocalAccount
             throw new ArgumentException("A salt is required.", nameof(salt));
         }
 
-        SecretHash = secretHash;
-        Salt = salt;
+        SecretHash = secretHash.ToArray();
+        Salt = salt.ToArray();
         UpdatedAt = updatedAt;
     }
 
@@ -82,7 +84,7 @@ public sealed class LocalAccount
         IEnumerable<byte[]> recoveryCodeHashes,
         DateTimeOffset updatedAt)
     {
-        RecoveryCodes.Clear();
+        _recoveryCodes.Clear();
         foreach (var codeHash in recoveryCodeHashes)
         {
             AddRecoveryCode(codeHash, updatedAt);

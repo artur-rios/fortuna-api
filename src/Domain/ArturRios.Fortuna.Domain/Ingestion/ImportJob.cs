@@ -21,6 +21,8 @@ public enum ImportedRecordOutcome : short
 
 public sealed class ImportJob
 {
+    private readonly List<ImportedRecord> _records = [];
+
     private ImportJob()
     {
     }
@@ -98,7 +100,7 @@ public sealed class ImportJob
     public string? FailureReason { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
-    public ICollection<ImportedRecord> Records { get; } = [];
+    public IReadOnlyCollection<ImportedRecord> Records => _records;
 
     public void Start(DateTimeOffset updatedAt)
     {

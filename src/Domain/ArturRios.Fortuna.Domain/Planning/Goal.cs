@@ -8,6 +8,9 @@ namespace ArturRios.Fortuna.Domain.Planning;
 
 public sealed class Goal : RecordLifecycleEntity
 {
+    private readonly List<FinancialAccount> _accounts = [];
+    private readonly List<Investment> _investments = [];
+
     private Goal()
     {
     }
@@ -31,8 +34,8 @@ public sealed class Goal : RecordLifecycleEntity
         TargetAmount = targetAmount;
         CurrencyId = currency.Id;
         TargetDate = targetDate;
-        Accounts = accounts.DistinctBy(item => item.PublicId).ToList();
-        Investments = investments.DistinctBy(item => item.PublicId).ToList();
+        _accounts.AddRange(accounts.DistinctBy(item => item.PublicId));
+        _investments.AddRange(investments.DistinctBy(item => item.PublicId));
     }
 
     public long Id { get; private set; }
@@ -43,8 +46,8 @@ public sealed class Goal : RecordLifecycleEntity
     public long CurrencyId { get; private set; }
     public Currency Currency { get; private set; } = null!;
     public DateOnly TargetDate { get; private set; }
-    public ICollection<FinancialAccount> Accounts { get; private set; } = [];
-    public ICollection<Investment> Investments { get; private set; } = [];
+    public IReadOnlyCollection<FinancialAccount> Accounts => _accounts;
+    public IReadOnlyCollection<Investment> Investments => _investments;
 
     public void UpdateDetails(
         string name,
@@ -63,17 +66,10 @@ public sealed class Goal : RecordLifecycleEntity
         Currency = currency;
         CurrencyId = currency.Id;
         TargetDate = targetDate;
-        Accounts.Clear();
-        foreach (var account in accounts.DistinctBy(item => item.PublicId))
-        {
-            Accounts.Add(account);
-        }
-
-        Investments.Clear();
-        foreach (var investment in investments.DistinctBy(item => item.PublicId))
-        {
-            Investments.Add(investment);
-        }
+        _accounts.Clear();
+        _accounts.AddRange(accounts.DistinctBy(item => item.PublicId));
+        _investments.Clear();
+        _investments.AddRange(investments.DistinctBy(item => item.PublicId));
 
         MarkUpdated(updatedAt);
     }

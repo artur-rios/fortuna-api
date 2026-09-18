@@ -16,7 +16,7 @@ public sealed class RecoveryCode
 
         LocalAccount = localAccount ?? throw new ArgumentNullException(nameof(localAccount));
         LocalAccountId = localAccount.Id;
-        CodeHash = codeHash;
+        CodeHash = codeHash.ToArray();
         CreatedAt = createdAt;
     }
 

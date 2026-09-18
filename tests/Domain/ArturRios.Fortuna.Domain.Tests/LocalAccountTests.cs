@@ -99,6 +99,31 @@ public sealed class LocalAccountTests
         Assert.Equal(updatedAt, account.UpdatedAt);
     }
 
+    [UnitFact]
+    public void GivenCallerOwnedArrays_WhenMutatedAfterUse_ThenAccountKeepsItsOwnCopies()
+    {
+        var createdAt = DateTimeOffset.Parse("2026-09-03T00:00:00Z");
+        byte[] secretHash = [1, 2, 3];
+        byte[] salt = [4, 5, 6];
+        byte[] codeHash = [7, 8, 9];
+        var account = new LocalAccount(
+            new UserProfile("Local User", Currency, createdAt),
+            "Local User",
+            secretHash,
+            salt,
+            LocalAccountStorageMode.InMemory,
+            createdAt);
+        account.AddRecoveryCode(codeHash, createdAt);
+
+        secretHash[0] = 0;
+        salt[0] = 0;
+        codeHash[0] = 0;
+
+        Assert.Equal([1, 2, 3], account.SecretHash);
+        Assert.Equal([4, 5, 6], account.Salt);
+        Assert.Equal([7, 8, 9], account.RecoveryCodes.Single().CodeHash);
+    }
+
     private static LocalAccount Account(DateTimeOffset createdAt) => new(
         new UserProfile("Local User", Currency, createdAt),
         "Local User",

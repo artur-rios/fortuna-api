@@ -14,6 +14,8 @@ public enum BudgetPeriodType : short
 
 public sealed class Budget : RecordLifecycleEntity
 {
+    private readonly List<Category> _categories = [];
+
     private Budget()
     {
     }
@@ -38,7 +40,7 @@ public sealed class Budget : RecordLifecycleEntity
         PeriodType = periodType;
         PeriodStart = periodStart;
         IncludeDescendants = includeDescendants;
-        Categories = categories.DistinctBy(category => category.PublicId).ToList();
+        _categories.AddRange(categories.DistinctBy(category => category.PublicId));
     }
 
     public long Id { get; private set; }
@@ -50,7 +52,7 @@ public sealed class Budget : RecordLifecycleEntity
     public BudgetPeriodType PeriodType { get; private set; }
     public DateOnly PeriodStart { get; private set; }
     public bool IncludeDescendants { get; private set; }
-    public ICollection<Category> Categories { get; private set; } = [];
+    public IReadOnlyCollection<Category> Categories => _categories;
 
     public void UpdateDetails(
         decimal amount,
@@ -70,11 +72,8 @@ public sealed class Budget : RecordLifecycleEntity
         PeriodType = periodType;
         PeriodStart = periodStart;
         IncludeDescendants = includeDescendants;
-        Categories.Clear();
-        foreach (var category in categories.DistinctBy(item => item.PublicId))
-        {
-            Categories.Add(category);
-        }
+        _categories.Clear();
+        _categories.AddRange(categories.DistinctBy(item => item.PublicId));
 
         MarkUpdated(updatedAt);
     }

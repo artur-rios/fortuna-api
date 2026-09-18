@@ -25,6 +25,9 @@ public enum TransactionSourceType : short
 
 public sealed class FinancialTransaction : RecordLifecycleEntity
 {
+    private readonly List<Tag> _tags = [];
+    private readonly List<Attachment> _attachments = [];
+
     private FinancialTransaction()
     {
     }
@@ -170,7 +173,7 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         SourceType = TransactionSourceType.Manual;
         foreach (var tag in labels)
         {
-            Tags.Add(tag);
+            _tags.Add(tag);
         }
     }
 
@@ -210,8 +213,8 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public bool IsManuallyCorrected { get; private set; }
     public bool IsLateArriving { get; private set; }
     public bool IsPossibleDuplicate { get; private set; }
-    public ICollection<Tag> Tags { get; } = [];
-    public ICollection<Attachment> Attachments { get; } = [];
+    public IReadOnlyCollection<Tag> Tags => _tags;
+    public IReadOnlyCollection<Attachment> Attachments => _attachments;
 
     public bool AttachTag(Tag tag, DateTimeOffset updatedAt)
     {
@@ -228,7 +231,7 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
             return false;
         }
 
-        Tags.Add(tag);
+        _tags.Add(tag);
         MarkUpdated(updatedAt);
 
         return true;
@@ -243,7 +246,7 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
             return false;
         }
 
-        Tags.Remove(attached);
+        _tags.Remove(attached);
         MarkUpdated(updatedAt);
 
         return true;
@@ -404,10 +407,10 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         Amount = amount;
         OccurredOn = occurredOn;
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-        Tags.Clear();
+        _tags.Clear();
         foreach (var tag in labels)
         {
-            Tags.Add(tag);
+            _tags.Add(tag);
         }
 
         if (SourceType != TransactionSourceType.Manual)
