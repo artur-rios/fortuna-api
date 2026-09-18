@@ -67,8 +67,13 @@ public sealed class CreateConnectionCommandHandler(
                 protector.Protect(verified.AccessToken!),
                 timeProvider.GetUtcNow()),
             CancellationToken.None);
+        if (result.Outcome == ConnectionMutationOutcome.ProfileNotFound)
+        {
+            return DataOutput<CreateConnectionCommandOutput?>.New
+                .WithError(ConnectionMessages.ProfileNotFound);
+        }
 
-        return Result(result.Connection, verified.Institution!, result.Outcome);
+        return Result(result.Connection!, verified.Institution!, result.Outcome);
     }
 
     private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>

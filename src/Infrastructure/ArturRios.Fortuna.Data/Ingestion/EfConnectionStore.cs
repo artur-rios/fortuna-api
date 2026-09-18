@@ -26,9 +26,14 @@ public sealed class EfConnectionStore(AppDbContext context)
             return new ConnectionMutationResult(existing, ConnectionMutationOutcome.Duplicate);
         }
 
-        var user = await context.UserProfiles.SingleAsync(
+        var user = await context.UserProfiles.SingleOrDefaultAsync(
             item => item.PublicId == creation.UserId,
             cancellationToken);
+        if (user is null)
+        {
+            return new ConnectionMutationResult(null, ConnectionMutationOutcome.ProfileNotFound);
+        }
+
         var connection = new Connection(
             user,
             creation.DataSourceType,
