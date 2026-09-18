@@ -155,7 +155,8 @@ public enum RecurringMaterializationSkipReason
 {
     FinancialAccountDeleted = 1,
     CreditCardDeleted = 2,
-    CategoryDeleted = 3
+    CategoryDeleted = 3,
+    RuleDeleted = 4
 }
 
 public static class RecurringMaterializationJob

@@ -128,6 +128,8 @@ internal static class CategoryLifecycleHandler
                 .WithError(CategoryMessages.DuplicateSiblingName),
             CategoryLifecycleOutcome.AttachmentStorageUnavailable => output
                 .WithError(AttachmentMessages.StorageUnavailable),
+            CategoryLifecycleOutcome.HardDeleteHasDependents => output
+                .WithError(CategoryMessages.HardDeleteHasDependents),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
     }

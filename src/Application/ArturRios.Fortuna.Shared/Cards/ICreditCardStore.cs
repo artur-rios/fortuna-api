@@ -52,7 +52,8 @@ public enum CreditCardLifecycleOutcome
     HardDeleteRequiresSoftDeletion = 4,
     HardDeleteHasLiveTransactions = 5,
     DuplicateName = 6,
-    AttachmentStorageUnavailable = 7
+    AttachmentStorageUnavailable = 7,
+    HardDeleteHasDependents = 8
 }
 
 public sealed record CreditCardLifecycleResult(

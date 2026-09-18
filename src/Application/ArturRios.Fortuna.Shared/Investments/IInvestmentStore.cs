@@ -57,7 +57,9 @@ public enum InvestmentLifecycleOutcome
     RestoreRequiresSoftDeletion = 3,
     HardDeleteRequiresSoftDeletion = 4,
     HardDeleteHasLiveGoal = 5,
-    DuplicateInstrument = 6
+    DuplicateInstrument = 6,
+    HardDeleteHasDependents = 7,
+    AttachmentStorageUnavailable = 8
 }
 
 public sealed record InvestmentLifecycleResult(

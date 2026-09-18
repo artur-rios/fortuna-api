@@ -39,6 +39,9 @@ public static class InvestmentMessages
         "Investment must be soft-deleted before permanent deletion.";
     public const string HardDeleteHasLiveGoal =
         "Investment cannot be permanently deleted while a live goal references it.";
+    public const string HardDeleteHasDependents =
+        "Investment cannot be permanently deleted while deleted goals or live transfers still " +
+        "reference it.";
     public const string InvestmentIdRequired = "InvestmentId is required.";
     public const string MovementTypeInvalid =
         "MovementType must be Contribution, Withdrawal, Yield or Fee.";

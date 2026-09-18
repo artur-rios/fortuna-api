@@ -52,19 +52,9 @@ public sealed class EfAttachmentLifecycleStore(
             return new AttachmentLifecycleResult(AttachmentLifecycleOutcome.StorageUnavailable);
         }
 
-        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
-            cancellationToken);
         context.Attachments.Remove(attachment);
         await context.SaveChangesAsync(cancellationToken);
-        if (!await DeleteObjectAsync(attachment.StorageKey, cancellationToken))
-        {
-            await databaseTransaction.RollbackAsync(cancellationToken);
-            context.Entry(attachment).State = EntityState.Unchanged;
-
-            return new AttachmentLifecycleResult(AttachmentLifecycleOutcome.StorageUnavailable);
-        }
-
-        await databaseTransaction.CommitAsync(cancellationToken);
+        await DeleteObjectsAsync([attachment.StorageKey], CancellationToken.None);
 
         return new AttachmentLifecycleResult(
             AttachmentLifecycleOutcome.Succeeded,
@@ -116,13 +106,13 @@ public sealed class EfAttachmentLifecycleStore(
         }
     }
 
-    public async Task<bool> HardDeleteForTransactionsAsync(
+    public async Task<AttachmentRemoval> RemoveForTransactionsAsync(
         IReadOnlyCollection<long> transactionIds,
         CancellationToken cancellationToken)
     {
         if (transactionIds.Count == 0)
         {
-            return true;
+            return AttachmentRemoval.Empty;
         }
 
         var attachments = await context.Attachments
@@ -130,30 +120,35 @@ public sealed class EfAttachmentLifecycleStore(
             .ToListAsync(cancellationToken);
         if (attachments.Count == 0)
         {
-            return true;
+            return AttachmentRemoval.Empty;
         }
 
         if (!await StorageIsHealthyAsync(cancellationToken))
         {
-            return false;
+            return AttachmentRemoval.Unavailable;
         }
 
         context.Attachments.RemoveRange(attachments);
-        await context.SaveChangesAsync(cancellationToken);
-        foreach (var attachment in attachments)
-        {
-            if (!await DeleteObjectAsync(attachment.StorageKey, cancellationToken))
-            {
-                foreach (var tracked in attachments)
-                {
-                    context.Entry(tracked).State = EntityState.Unchanged;
-                }
 
-                return false;
+        return new AttachmentRemoval(
+            true,
+            attachments.Select(attachment => attachment.StorageKey).ToArray());
+    }
+
+    public async Task<AttachmentObjectDeletion> DeleteObjectsAsync(
+        IReadOnlyCollection<string> storageKeys,
+        CancellationToken cancellationToken)
+    {
+        var orphaned = new List<string>();
+        foreach (var key in storageKeys)
+        {
+            if (!await DeleteObjectAsync(key, cancellationToken))
+            {
+                orphaned.Add(key);
             }
         }
 
-        return true;
+        return new AttachmentObjectDeletion(storageKeys.Count - orphaned.Count, orphaned);
     }
 
     private Task<Attachment?> FindOwnedAsync(
@@ -170,7 +165,7 @@ public sealed class EfAttachmentLifecycleStore(
         {
             return await storage.IsHealthyAsync(cancellationToken);
         }
-        catch (Exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return false;
         }
@@ -190,7 +185,7 @@ public sealed class EfAttachmentLifecycleStore(
         {
             return true;
         }
-        catch (Exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return false;
         }

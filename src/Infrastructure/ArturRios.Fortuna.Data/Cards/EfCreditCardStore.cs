@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.EntityMaps;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Cards;
@@ -274,22 +275,40 @@ public sealed class EfCreditCardStore(
                     : CreditCardLifecycleOutcome.HardDeleteHasLiveTransactions);
         }
 
+        if (await HasDependentsAsync(card.Id, cancellationToken))
+        {
+            return LifecycleResult(CreditCardLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var deletion = await TransactionHardDeletion.PlanAsync(
+            context,
+            transactions,
+            statements.Select(statement => statement.Id).ToArray(),
+            cancellationToken);
+        if (deletion.LiveReferences.Count > 0)
+        {
+            return LifecycleResult(CreditCardLifecycleOutcome.HardDeleteHasDependents);
+        }
+
         var outstandingAmount = CalculateOutstandingAmount(transactions);
         var currencyCode = card.Currency.Code;
-        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+        var removal = await attachments.RemoveForTransactionsAsync(
+            deletion.TransactionIds,
             cancellationToken);
-        if (!await attachments.HardDeleteForTransactionsAsync(
-                transactions.Select(transaction => transaction.Id).ToArray(),
-                cancellationToken))
+        if (!removal.StorageAvailable)
         {
             return LifecycleResult(CreditCardLifecycleOutcome.AttachmentStorageUnavailable);
         }
 
-        context.FinancialTransactions.RemoveRange(transactions);
+        var plans = await context.InstallmentPlans
+            .Where(plan => plan.CreditCardId == card.Id)
+            .ToListAsync(cancellationToken);
+        deletion.Remove(context);
+        context.InstallmentPlans.RemoveRange(plans);
         context.CreditCardStatements.RemoveRange(statements);
         context.CreditCards.Remove(card);
         await context.SaveChangesAsync(cancellationToken);
-        await databaseTransaction.CommitAsync(cancellationToken);
+        await attachments.DeleteObjectsAsync(removal.StorageKeys, CancellationToken.None);
 
         return LifecycleResult(
             CreditCardLifecycleOutcome.Succeeded,
@@ -297,6 +316,16 @@ public sealed class EfCreditCardStore(
             currencyCode,
             outstandingAmount);
     }
+
+    private async Task<bool> HasDependentsAsync(
+        long cardId,
+        CancellationToken cancellationToken) =>
+        await context.RecurringTransactions.AnyAsync(
+            rule => rule.CreditCardId == cardId,
+            cancellationToken) ||
+        await context.ConnectionResources.AnyAsync(
+            resource => resource.CreditCardId == cardId,
+            cancellationToken);
 
     private Task<CreditCard?> FindTrackedAsync(
         Guid userId,

@@ -62,10 +62,35 @@ public interface IAttachmentLifecycleStore
         DateTimeOffset changedAt,
         CancellationToken cancellationToken);
 
-    Task<bool> HardDeleteForTransactionsAsync(
+    /// <summary>
+    /// Marks the attachments of the given transactions for removal in the caller's unit of
+    /// work without touching storage. The caller deletes the returned objects through
+    /// <see cref="DeleteObjectsAsync"/> only after its database transaction commits.
+    /// </summary>
+    Task<AttachmentRemoval> RemoveForTransactionsAsync(
         IReadOnlyCollection<long> transactionIds,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Deletes stored objects whose metadata was already removed and committed. Failures leave
+    /// orphaned objects behind instead of failing the committed deletion.
+    /// </summary>
+    Task<AttachmentObjectDeletion> DeleteObjectsAsync(
+        IReadOnlyCollection<string> storageKeys,
+        CancellationToken cancellationToken);
 }
+
+public sealed record AttachmentRemoval(
+    bool StorageAvailable,
+    IReadOnlyCollection<string> StorageKeys)
+{
+    public static AttachmentRemoval Unavailable { get; } = new(false, []);
+    public static AttachmentRemoval Empty { get; } = new(true, []);
+}
+
+public sealed record AttachmentObjectDeletion(
+    int Deleted,
+    IReadOnlyCollection<string> Orphaned);
 
 public sealed record AttachmentMetadataWrite(
     Guid UserId,

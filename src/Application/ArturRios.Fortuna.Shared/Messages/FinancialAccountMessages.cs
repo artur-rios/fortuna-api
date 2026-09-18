@@ -32,6 +32,9 @@ public static class FinancialAccountMessages
         "Financial account must be soft-deleted before permanent deletion.";
     public const string HardDeleteHasLiveTransactions =
         "Financial account cannot be permanently deleted while live transactions reference it.";
+    public const string HardDeleteHasDependents =
+        "Financial account cannot be permanently deleted while goals, recurring transactions, " +
+        "connections, live transfers or statement settlements still reference it.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SortByUnsupported =

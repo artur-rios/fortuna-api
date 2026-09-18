@@ -128,6 +128,10 @@ internal static class InvestmentLifecycleHandler
                 .WithMessage(InvestmentMessages.ReferencingGoal(result.ReferencingGoal!)),
             InvestmentLifecycleOutcome.DuplicateInstrument => output
                 .WithError(InvestmentMessages.DuplicateInstrument),
+            InvestmentLifecycleOutcome.HardDeleteHasDependents => output
+                .WithError(InvestmentMessages.HardDeleteHasDependents),
+            InvestmentLifecycleOutcome.AttachmentStorageUnavailable => output
+                .WithError(AttachmentMessages.StorageUnavailable),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
     }

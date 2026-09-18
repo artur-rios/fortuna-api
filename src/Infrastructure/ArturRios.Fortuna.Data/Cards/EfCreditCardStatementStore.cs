@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Currencies;
@@ -97,17 +98,22 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
     {
         await using var databaseTransaction = await context.Database.BeginTransactionAsync(
             cancellationToken);
-        var statement = await context.CreditCardStatements
-            .Include(item => item.CreditCard)
-            .ThenInclude(item => item.User)
-            .Include(item => item.CreditCard)
-            .ThenInclude(item => item.Currency)
-            .SingleOrDefaultAsync(item =>
-                item.PublicId == settlement.StatementId &&
-                item.CreditCard.User.PublicId == settlement.UserId &&
-                !item.IsDeleted &&
-                !item.CreditCard.IsDeleted,
-                cancellationToken);
+        var statementId = await LockOwnedStatementAsync(
+            settlement.UserId,
+            settlement.StatementId,
+            cancellationToken);
+        var statement = statementId is null
+            ? null
+            : await context.CreditCardStatements
+                .Include(item => item.CreditCard)
+                .ThenInclude(item => item.User)
+                .Include(item => item.CreditCard)
+                .ThenInclude(item => item.Currency)
+                .SingleOrDefaultAsync(item =>
+                    item.Id == statementId.Value &&
+                    !item.IsDeleted &&
+                    !item.CreditCard.IsDeleted,
+                    cancellationToken);
         if (statement is null)
         {
             return SettlementResult(CreditCardStatementSettlementOutcome.StatementNotFound);
@@ -142,16 +148,12 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
         var appliedAmount = settlement.Amount;
         if (account.Currency.Code != statement.CreditCard.Currency.Code)
         {
-            exchangeRate = await context.ExchangeRates
-                .Include(rate => rate.BaseCurrency)
-                .Include(rate => rate.QuoteCurrency)
-                .Where(rate =>
-                    rate.BaseCurrency.Code == account.Currency.Code &&
-                    rate.QuoteCurrency.Code == statement.CreditCard.Currency.Code &&
-                    rate.RateDate <= settlement.PaymentDate)
-                .OrderByDescending(rate => rate.RateDate)
-                .ThenByDescending(rate => rate.Source)
-                .FirstOrDefaultAsync(cancellationToken);
+            exchangeRate = await ExchangeRateLookup.FindLatestAsync(
+                context,
+                account.Currency.Code,
+                statement.CreditCard.Currency.Code,
+                settlement.PaymentDate,
+                cancellationToken);
             if (exchangeRate is null)
             {
                 return SettlementResult(
@@ -207,39 +209,7 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
         CreditCardStatement? carryStatement = null;
         if (remainingBalance > 0m)
         {
-            var cycle = BillingCycle.Containing(
-                statement.PeriodEnd.AddDays(1),
-                statement.CreditCard.ClosingDay,
-                statement.CreditCard.DueDay);
-            while (true)
-            {
-                carryStatement = await context.CreditCardStatements.SingleOrDefaultAsync(item =>
-                    item.CreditCardId == statement.CreditCardId &&
-                    item.PeriodStart == cycle.PeriodStart &&
-                    item.PeriodEnd == cycle.PeriodEnd &&
-                    !item.IsDeleted,
-                    cancellationToken);
-                if (carryStatement is null)
-                {
-                    carryStatement = new CreditCardStatement(
-                        statement.CreditCard,
-                        cycle,
-                        settlement.CreatedAt);
-                    context.CreditCardStatements.Add(carryStatement);
-
-                    break;
-                }
-
-                if (carryStatement.Status != CreditCardStatementStatus.Settled)
-                {
-                    break;
-                }
-
-                cycle = cycle.Next(
-                    statement.CreditCard.ClosingDay,
-                    statement.CreditCard.DueDay);
-            }
-
+            carryStatement = await CarryStatementAsync(statement, settlement.CreatedAt, cancellationToken);
             carryStatement.SetPreviousBalance(
                 carryStatement.PreviousBalance + remainingBalance,
                 settlement.CreatedAt);
@@ -281,15 +251,19 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
         DateTimeOffset changedAt,
         CancellationToken cancellationToken)
     {
-        var statement = await context.CreditCardStatements
-            .Include(item => item.CreditCard)
-            .ThenInclude(item => item.User)
-            .SingleOrDefaultAsync(item =>
-                item.PublicId == statementId &&
-                item.CreditCard.User.PublicId == userId &&
-                !item.IsDeleted &&
-                !item.CreditCard.IsDeleted,
-                cancellationToken);
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        var lockedId = await LockOwnedStatementAsync(userId, statementId, cancellationToken);
+        var statement = lockedId is null
+            ? null
+            : await context.CreditCardStatements
+                .Include(item => item.CreditCard)
+                .ThenInclude(item => item.User)
+                .SingleOrDefaultAsync(item =>
+                    item.Id == lockedId.Value &&
+                    !item.IsDeleted &&
+                    !item.CreditCard.IsDeleted,
+                    cancellationToken);
         if (statement is null)
         {
             return new CreditCardStatementCloseResult(
@@ -318,8 +292,65 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
         statement.RecalculatePurchaseTotal(purchaseTotal, changedAt);
         statement.Close(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
 
         return Result(statement, CreditCardStatementCloseOutcome.Succeeded);
+    }
+
+    // Serializes settlement and closing of one statement: the row lock is held until the
+    // caller's transaction ends, so a second settlement sees the first one's Settled status.
+    private async Task<long?> LockOwnedStatementAsync(
+        Guid userId,
+        Guid statementId,
+        CancellationToken cancellationToken)
+    {
+        var id = await context.CreditCardStatements
+            .AsNoTracking()
+            .Where(item =>
+                item.PublicId == statementId &&
+                item.CreditCard.User.PublicId == userId)
+            .Select(item => (long?)item.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (id.HasValue)
+        {
+            await RowLock.LockForUpdateAsync<CreditCardStatement>(context, [id.Value], cancellationToken);
+        }
+
+        return id;
+    }
+
+    // The unpaid balance carries to the first later statement that is not settled yet. It is
+    // locked and re-read so concurrent carries into the same statement add up.
+    private async Task<CreditCardStatement> CarryStatementAsync(
+        CreditCardStatement statement,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        var card = statement.CreditCard;
+        var cycle = BillingCycle.Containing(
+            statement.PeriodEnd.AddDays(1),
+            card.ClosingDay,
+            card.DueDay);
+        while (true)
+        {
+            var carry = await CreditCardStatementResolver.GetOrCreateAsync(
+                context,
+                card,
+                cycle,
+                changedAt,
+                cancellationToken);
+            await RowLock.LockForUpdateAsync<CreditCardStatement>(
+                context,
+                [carry.Id],
+                cancellationToken);
+            await context.Entry(carry).ReloadAsync(cancellationToken);
+            if (carry.Status != CreditCardStatementStatus.Settled)
+            {
+                return carry;
+            }
+
+            cycle = cycle.Next(card.ClosingDay, card.DueDay);
+        }
     }
 
     private static CreditCardStatementCloseResult Result(

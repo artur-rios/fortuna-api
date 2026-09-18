@@ -34,4 +34,7 @@ public static class CategoryMessages
     public const string HardDeleteHasLiveTransactions =
         "The category cannot be permanently deleted while live transactions reference it. " +
         "Reassign them first.";
+    public const string HardDeleteHasDependents =
+        "The category cannot be permanently deleted while budgets, live transfers, installment " +
+        "plans or statement settlements still reference it.";
 }

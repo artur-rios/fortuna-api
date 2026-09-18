@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Planning;
@@ -330,14 +331,11 @@ public sealed class EfBudgetStore(AppDbContext context)
                 continue;
             }
 
-            var rate = await context.ExchangeRates
-                .AsNoTracking()
-                .Where(item =>
-                    item.BaseCurrency.Code == figure.CurrencyCode &&
-                    item.QuoteCurrency.Code == budget.Currency.Code &&
-                    item.RateDate <= figure.OccurredOn)
-                .OrderByDescending(item => item.RateDate)
-                .ThenByDescending(item => item.Source)
+            var rate = await ExchangeRateLookup.Applicable(
+                    context,
+                    figure.CurrencyCode,
+                    budget.Currency.Code,
+                    figure.OccurredOn)
                 .Select(item => new AppliedRate(
                     item.Rate,
                     item.RateDate,

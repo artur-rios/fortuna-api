@@ -6,6 +6,9 @@ namespace ArturRios.Fortuna.Data.EntityMaps;
 
 public sealed class CategoryMap : IEntityTypeConfiguration<Category>
 {
+    public const string RootNameIndex = "ix_category_user_id_normalized_name";
+    public const string NestedNameIndex = "ix_category_user_id_parent_id_normalized_name";
+
     public void Configure(EntityTypeBuilder<Category> builder)
     {
         builder.ToTable("category", table => table.HasCheckConstraint(
@@ -24,6 +27,7 @@ public sealed class CategoryMap : IEntityTypeConfiguration<Category>
         builder.Property(category => category.UpdatedAt).IsRequired();
         builder.HasIndex(category => category.PublicId).IsUnique();
         builder.HasIndex(category => new { category.UserId, category.NormalizedName })
+            .HasDatabaseName(RootNameIndex)
             .IsUnique()
             .HasFilter("parent_id IS NULL AND NOT is_deleted");
         builder.HasIndex(category => new
@@ -32,6 +36,7 @@ public sealed class CategoryMap : IEntityTypeConfiguration<Category>
             category.ParentId,
             category.NormalizedName
         })
+            .HasDatabaseName(NestedNameIndex)
             .IsUnique()
             .HasFilter("parent_id IS NOT NULL AND NOT is_deleted");
         builder.HasIndex(category => new { category.UserId, category.IsDeleted });

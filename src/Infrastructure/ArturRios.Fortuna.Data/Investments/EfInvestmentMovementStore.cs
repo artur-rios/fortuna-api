@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Currencies;
@@ -50,16 +51,12 @@ public sealed class EfInvestmentMovementStore(AppDbContext context) : IInvestmen
 
             if (account.Currency.Code != investment.Currency.Code)
             {
-                exchangeRate = await context.ExchangeRates
-                    .Include(rate => rate.BaseCurrency)
-                    .Include(rate => rate.QuoteCurrency)
-                    .Where(rate =>
-                        rate.BaseCurrency.Code == account.Currency.Code &&
-                        rate.QuoteCurrency.Code == investment.Currency.Code &&
-                        rate.RateDate <= record.OccurredOn)
-                    .OrderByDescending(rate => rate.RateDate)
-                    .ThenByDescending(rate => rate.Source)
-                    .FirstOrDefaultAsync(cancellationToken);
+                exchangeRate = await ExchangeRateLookup.FindLatestAsync(
+                    context,
+                    account.Currency.Code,
+                    investment.Currency.Code,
+                    record.OccurredOn,
+                    cancellationToken);
                 if (exchangeRate is null)
                 {
                     return Result(InvestmentMovementRecordOutcome.ExchangeRateUnavailable);
