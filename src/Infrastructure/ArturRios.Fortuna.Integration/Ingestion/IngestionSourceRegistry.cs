@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ArturRios.Fortuna.Shared.Ingestion;
 
 namespace ArturRios.Fortuna.Integration.Ingestion;
@@ -28,7 +29,6 @@ public sealed class IngestionSourceRegistry : IDataSourceCatalog
         .ThenBy(source => source.Name)
         .ToArray();
 
-    public IIngestionSource Get(string name) => sources.TryGetValue(name, out var source)
-        ? source
-        : throw new KeyNotFoundException($"No ingestion source named '{name}' is registered.");
+    public bool TryGet(string name, [NotNullWhen(true)] out IIngestionSource? source) =>
+        sources.TryGetValue(name, out source);
 }
