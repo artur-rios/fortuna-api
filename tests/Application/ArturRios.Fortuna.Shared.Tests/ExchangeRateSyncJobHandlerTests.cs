@@ -54,10 +54,9 @@ public sealed class ExchangeRateSyncJobHandlerTests
     {
         var handler = Handler(new StubClient(new HttpRequestException("host leaked")), new StubRateStore());
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            handler.ExecuteAsync("{\"RequestedDate\":\"2026-09-01\"}", CancellationToken.None));
+        var result = await handler.ExecuteAsync("{\"RequestedDate\":\"2026-09-01\"}", CancellationToken.None);
 
-        Assert.Equal(ExchangeRateSyncMessages.SourceUnavailable, exception.Message);
+        Assert.Equal([ExchangeRateSyncMessages.SourceUnavailable], result.Errors);
     }
 
     private static ExchangeRateSyncJobHandler Handler(IPtaxRateClient client, IExchangeRateStore store) =>

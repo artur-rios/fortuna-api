@@ -149,7 +149,7 @@ public sealed class DataExport
             throw new InvalidOperationException("Only an unfinished export can fail.");
         }
 
-        FailureReason = Required(reason, 1000, nameof(reason));
+        FailureReason = JobFailureReason.Normalize(reason);
         Status = DataExportStatus.Failed;
         UpdatedAt = updatedAt;
     }

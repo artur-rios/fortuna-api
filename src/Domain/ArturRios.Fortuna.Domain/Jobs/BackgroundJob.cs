@@ -65,7 +65,7 @@ public sealed class BackgroundJob
     {
         EnsureState(BackgroundJobState.Running);
         State = BackgroundJobState.Failed;
-        FailureReason = string.IsNullOrWhiteSpace(reason) ? "The job failed." : reason;
+        FailureReason = JobFailureReason.Normalize(reason);
         CompletedAt = now;
     }
 

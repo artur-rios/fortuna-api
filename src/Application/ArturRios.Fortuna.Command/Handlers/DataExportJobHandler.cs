@@ -3,6 +3,7 @@ using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Output;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
@@ -17,14 +18,21 @@ public sealed class DataExportJobHandler(
 
     public string JobType => DataExportJob.Type;
 
-    public async Task ExecuteAsync(string payload, CancellationToken cancellationToken)
+    public async Task<ProcessOutput> ExecuteAsync(string payload, CancellationToken cancellationToken)
     {
-        var job = JsonSerializer.Deserialize<DataExportJobPayload>(payload, JsonOptions) ??
-            throw new InvalidOperationException("The export job payload is invalid.");
+        if (!JobPayload.TryRead<DataExportJobPayload>(payload, out var job, JsonOptions))
+        {
+            return ProcessOutput.New.WithError(BackgroundJobMessages.PayloadInvalid);
+        }
+
         var work = await exports.StartAsync(
             job.ExportId,
             timeProvider.GetUtcNow(),
-            cancellationToken) ?? throw new InvalidOperationException("The export was not found.");
+            cancellationToken);
+        if (work is null)
+        {
+            return ProcessOutput.New.WithError(DataExportMessages.NotFound);
+        }
 
         try
         {
@@ -49,6 +57,8 @@ public sealed class DataExportJobHandler(
                 storageKey,
                 timeProvider.GetUtcNow(),
                 cancellationToken);
+
+            return ProcessOutput.New;
         }
         catch (Exception)
         {

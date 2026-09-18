@@ -21,8 +21,9 @@ public sealed class PluggySynchronizationJobHandlerTests
             store,
             new StubGateway(new(PluggySynchronizationFetchOutcome.Succeeded, batch)));
 
-        await handler.ExecuteAsync(Payload(store.JobId), CancellationToken.None);
+        var result = await handler.ExecuteAsync(Payload(store.JobId), CancellationToken.None);
 
+        Assert.True(result.Success);
         Assert.Equal(batch, store.CompletedBatch);
         Assert.Null(store.FailureReason);
     }
@@ -40,10 +41,9 @@ public sealed class PluggySynchronizationJobHandlerTests
         var store = new StubStore();
         var handler = Handler(store, new StubGateway(new(outcome)));
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            handler.ExecuteAsync(Payload(store.JobId), CancellationToken.None));
+        var result = await handler.ExecuteAsync(Payload(store.JobId), CancellationToken.None);
 
-        Assert.Equal(expectedReason, exception.Message);
+        Assert.Equal([expectedReason], result.Errors);
         Assert.Equal(expectedReason, store.FailureReason);
         Assert.Equal(reauthentication, store.RequiresReauthentication);
     }

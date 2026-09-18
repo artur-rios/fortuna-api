@@ -1,6 +1,6 @@
-using System.Text.Json;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Output;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Shared.Currencies;
@@ -13,10 +13,12 @@ public sealed class ExchangeRateSyncJobHandler(
 {
     public string JobType => ExchangeRateSyncJob.Type;
 
-    public async Task ExecuteAsync(string payload, CancellationToken cancellationToken)
+    public async Task<ProcessOutput> ExecuteAsync(string payload, CancellationToken cancellationToken)
     {
-        var request = JsonSerializer.Deserialize<ExchangeRateSyncJobPayload>(payload)
-            ?? throw new InvalidOperationException("The exchange-rate synchronization payload is invalid.");
+        if (!JobPayload.TryRead<ExchangeRateSyncJobPayload>(payload, out var request))
+        {
+            return ProcessOutput.New.WithError(BackgroundJobMessages.PayloadInvalid);
+        }
 
         try
         {
@@ -51,14 +53,20 @@ public sealed class ExchangeRateSyncJobHandler(
                 result.StoredCount,
                 result.UnchangedCount,
                 rejected);
+
+            return ProcessOutput.New;
         }
         catch (HttpRequestException exception)
         {
-            throw new InvalidOperationException(ExchangeRateSyncMessages.SourceUnavailable, exception);
+            logger.LogWarning(exception, "The exchange-rate source is unavailable");
+
+            return ProcessOutput.New.WithError(ExchangeRateSyncMessages.SourceUnavailable);
         }
         catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new InvalidOperationException(ExchangeRateSyncMessages.SourceUnavailable, exception);
+            logger.LogWarning(exception, "The exchange-rate source timed out");
+
+            return ProcessOutput.New.WithError(ExchangeRateSyncMessages.SourceUnavailable);
         }
     }
 }
