@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
@@ -29,6 +30,11 @@ public sealed class ProjectCashFlowQueryHandler(
         if (!validation.IsValid)
         {
             return output.WithErrors(validation.Errors.Select(item => item.ErrorMessage));
+        }
+
+        if (!Enum.IsDefined(query.Periodicity))
+        {
+            return output.WithError(CashFlowProjectionMessages.PeriodicityInvalid);
         }
 
         var profile = await ResolveProfileAsync(actorAccessor.Actor);
@@ -241,7 +247,7 @@ public sealed class ProjectCashFlowQueryHandler(
                 CashFlowPeriodicity.Weekly => start.AddDays(6),
                 CashFlowPeriodicity.Monthly => new DateOnly(
                     start.Year, start.Month, DateTime.DaysInMonth(start.Year, start.Month)),
-                _ => throw new InvalidOperationException("Unsupported cash-flow periodicity.")
+                _ => throw new UnreachableException()
             };
             var end = candidate > through ? through : candidate;
             ranges.Add((start, end));

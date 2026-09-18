@@ -1,7 +1,9 @@
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Globalization;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Shared.Reporting;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,19 +11,26 @@ namespace ArturRios.Fortuna.Data.Reporting;
 
 public sealed class EfTableReportReader(AppDbContext context) : ITableReportReader
 {
-    private static readonly IReadOnlyDictionary<string, RecordSetDefinition> RecordSets =
-        BuildRecordSets().ToDictionary(definition => definition.Name, StringComparer.OrdinalIgnoreCase);
+    private static readonly IReadOnlyDictionary<string, RecordSetDefinition> PostgreSqlRecordSets =
+        IndexRecordSets(ReportingSqlDialect.PostgreSql);
+
+    private static readonly IReadOnlyDictionary<string, RecordSetDefinition> SqliteRecordSets =
+        IndexRecordSets(ReportingSqlDialect.Sqlite);
 
     public async Task<TableReportReadResult> ReadAsync(
         TableReportCriteria criteria,
         CancellationToken cancellationToken)
     {
-        if (!RecordSets.TryGetValue(criteria.RecordSet, out var recordSet))
+        var dialect = ReportingSqlDialect.For(context.Database);
+        var recordSets = ReferenceEquals(dialect, ReportingSqlDialect.Sqlite)
+            ? SqliteRecordSets
+            : PostgreSqlRecordSets;
+        if (!recordSets.TryGetValue(criteria.RecordSet, out var recordSet))
         {
             return new TableReportReadResult(
                 TableReportReadOutcome.RecordSetUnknown,
                 InvalidName: criteria.RecordSet,
-                SupportedValues: RecordSets.Keys.ToArray());
+                SupportedValues: recordSets.Keys.ToArray());
         }
 
         var selected = new List<ColumnDefinition>();
@@ -48,7 +57,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             }
 
             var normalizedOperator = NormalizeOperator(filter.Operator);
-            if (normalizedOperator is null || !Supports(column.Type, normalizedOperator))
+            if (normalizedOperator is null || !Supports(column.Type, normalizedOperator.Value))
             {
                 return new TableReportReadResult(
                     TableReportReadOutcome.FilterOperatorUnknown,
@@ -64,7 +73,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
                     InvalidValue: filter.Value);
             }
 
-            preparedFilters.Add(new PreparedFilter(column, normalizedOperator, value!));
+            preparedFilters.Add(new PreparedFilter(column, normalizedOperator.Value, value!));
         }
 
         var sorts = new List<(ColumnDefinition Column, bool Descending)>();
@@ -89,12 +98,13 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
 
         try
         {
-            var where = BuildWhere(recordSet, preparedFilters);
+            var where = BuildWhere(recordSet, preparedFilters, dialect);
             var totalCount = await CountAsync(
                 connection,
                 recordSet,
                 where,
                 criteria.UserId,
+                dialect,
                 cancellationToken);
             var rows = await ReadRowsAsync(
                 connection,
@@ -103,6 +113,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
                 sorts,
                 where,
                 criteria,
+                dialect,
                 cancellationToken);
             var totals = await ReadTotalsAsync(
                 connection,
@@ -110,6 +121,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
                 selected,
                 where,
                 criteria.UserId,
+                dialect,
                 cancellationToken);
 
             return new TableReportReadResult(
@@ -141,10 +153,12 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
         RecordSetDefinition recordSet,
         PreparedWhere where,
         Guid userId,
+        ReportingSqlDialect dialect,
         CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT COUNT(*) FROM {recordSet.From} WHERE {where.Sql}";
+        command.CommandText = dialect.QualifyTables(
+            $"SELECT COUNT(*) FROM {recordSet.From} WHERE {where.Sql}");
         AddParameters(command, userId, where.Parameters);
         var value = await command.ExecuteScalarAsync(cancellationToken);
 
@@ -158,6 +172,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
         IReadOnlyCollection<(ColumnDefinition Column, bool Descending)> sorts,
         PreparedWhere where,
         TableReportCriteria criteria,
+        ReportingSqlDialect dialect,
         CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
@@ -166,15 +181,15 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
         var order = sorts.Count == 0
             ? recordSet.DefaultOrder
             : string.Join(", ", sorts.Select(sort =>
-                $"{sort.Column.FilterExpression} {(sort.Descending ? "DESC" : "ASC")}")) +
+                $"{OrderExpression(sort.Column, dialect)} {(sort.Descending ? "DESC" : "ASC")}")) +
               $", {recordSet.TieBreaker}";
-        command.CommandText = $"""
+        command.CommandText = dialect.QualifyTables($"""
             SELECT {select}
             FROM {recordSet.From}
             WHERE {where.Sql}
             ORDER BY {order}
             LIMIT @pageSize OFFSET @offset
-            """;
+            """);
         AddParameters(command, criteria.UserId, where.Parameters);
         AddParameter(command, "pageSize", criteria.PageSize);
         AddParameter(command, "offset", checked((criteria.PageNumber - 1) * criteria.PageSize));
@@ -187,9 +202,11 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             var index = 0;
             foreach (var column in selected)
             {
-                row[column.Name] = await reader.IsDBNullAsync(index, cancellationToken)
-                    ? null
-                    : reader.GetValue(index);
+                row[column.Name] = await dialect.ReadValueAsync(
+                    reader,
+                    index,
+                    column.Type,
+                    cancellationToken);
                 index++;
             }
 
@@ -205,23 +222,24 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
         IReadOnlyCollection<ColumnDefinition> selected,
         PreparedWhere where,
         Guid userId,
+        ReportingSqlDialect dialect,
         CancellationToken cancellationToken)
     {
         var totals = new List<TableTotalGroupSnapshot>();
         foreach (var column in selected.Where(column => column.TotalExpression is not null))
         {
             await using var command = connection.CreateCommand();
-            var currency = column.CurrencyExpression ?? "NULL::text";
-            var figureDate = column.FigureDateExpression ?? "NULL::date";
-            command.CommandText = $"""
+            var currency = column.CurrencyExpression ?? dialect.NullText;
+            var figureDate = column.FigureDateExpression ?? dialect.NullDate;
+            command.CommandText = dialect.QualifyTables($"""
                 SELECT {currency} AS currency_code,
                        {figureDate} AS figure_date,
-                       COALESCE(SUM({column.TotalExpression}), 0) AS total_value
+                       COALESCE({dialect.Sum(column.TotalExpression!)}, 0) AS total_value
                 FROM {recordSet.From}
                 WHERE {where.Sql}
                 GROUP BY {currency}, {figureDate}
                 ORDER BY {currency}, {figureDate}
-                """;
+                """);
             AddParameters(command, userId, where.Parameters);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
@@ -243,74 +261,86 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
 
     private static PreparedWhere BuildWhere(
         RecordSetDefinition recordSet,
-        IReadOnlyCollection<PreparedFilter> filters)
+        IReadOnlyCollection<PreparedFilter> filters,
+        ReportingSqlDialect dialect)
     {
         var clauses = new List<string> { recordSet.OwnerPredicate, recordSet.LivePredicate };
         var parameters = new List<(string Name, object Value)>();
         var index = 0;
         foreach (var filter in filters)
         {
-            var parameter = $"filter{index++}";
-            var expression = filter.Operator switch
+            var parameter = $"@filter{index++}";
+            var column = filter.Column;
+            var (expression, value) = filter.Operator switch
             {
-                "eq" => $"{filter.Column.FilterExpression} = @{parameter}",
-                "ne" => $"{filter.Column.FilterExpression} <> @{parameter}",
-                "gt" => $"{filter.Column.FilterExpression} > @{parameter}",
-                "gte" => $"{filter.Column.FilterExpression} >= @{parameter}",
-                "lt" => $"{filter.Column.FilterExpression} < @{parameter}",
-                "lte" => $"{filter.Column.FilterExpression} <= @{parameter}",
-                "contains" => $"{filter.Column.FilterExpression} ILIKE @{parameter}",
-                "startsWith" => $"{filter.Column.FilterExpression} ILIKE @{parameter}",
-                "endsWith" => $"{filter.Column.FilterExpression} ILIKE @{parameter}",
-                _ => throw new InvalidOperationException("A filter operator was not normalized.")
+                FilterOperator.Contains => (
+                    dialect.Like(column.FilterExpression, parameter),
+                    SqlLike.Contains((string)filter.Value)),
+                FilterOperator.StartsWith => (
+                    dialect.Like(column.FilterExpression, parameter),
+                    $"{SqlLike.Escape((string)filter.Value)}%"),
+                FilterOperator.EndsWith => (
+                    dialect.Like(column.FilterExpression, parameter),
+                    $"%{SqlLike.Escape((string)filter.Value)}"),
+                _ when column.Type == TableColumnType.Decimal => (
+                    dialect.CompareDecimal(
+                        column.FilterExpression,
+                        SqlOperator(filter.Operator),
+                        parameter),
+                    filter.Value),
+                _ => (
+                    $"{column.FilterExpression} {SqlOperator(filter.Operator)} {parameter}",
+                    dialect.Parameter(column.Type, filter.Value))
             };
-            var value = filter.Operator switch
-            {
-                "contains" => $"%{EscapeLike((string)filter.Value)}%",
-                "startsWith" => $"{EscapeLike((string)filter.Value)}%",
-                "endsWith" => $"%{EscapeLike((string)filter.Value)}",
-                _ => filter.Value
-            };
-            if (filter.Operator is "contains" or "startsWith" or "endsWith")
-            {
-                expression += " ESCAPE E'\\\\'";
-            }
-
             clauses.Add(expression);
-            parameters.Add((parameter, value));
+            parameters.Add((parameter[1..], value));
         }
 
         return new PreparedWhere(string.Join(" AND ", clauses), parameters);
     }
 
-    private static string EscapeLike(string value) => value
-        .Replace("\\", "\\\\", StringComparison.Ordinal)
-        .Replace("%", "\\%", StringComparison.Ordinal)
-        .Replace("_", "\\_", StringComparison.Ordinal);
-
-    private static string? NormalizeOperator(string value) => value.Trim().ToLowerInvariant() switch
+    private static string SqlOperator(FilterOperator operation) => operation switch
     {
-        "eq" or "equals" => "eq",
-        "ne" or "notequals" => "ne",
-        "gt" => "gt",
-        "gte" => "gte",
-        "lt" => "lt",
-        "lte" => "lte",
-        "contains" => "contains",
-        "startswith" => "startsWith",
-        "endswith" => "endsWith",
-        _ => null
+        FilterOperator.Equal => "=",
+        FilterOperator.NotEqual => "<>",
+        FilterOperator.Greater => ">",
+        FilterOperator.GreaterOrEqual => ">=",
+        FilterOperator.Less => "<",
+        FilterOperator.LessOrEqual => "<=",
+        _ => throw new UnreachableException()
     };
 
-    private static bool Supports(TableColumnType type, string operation) => type switch
+    private static string OrderExpression(ColumnDefinition column, ReportingSqlDialect dialect) =>
+        column.Type == TableColumnType.Decimal
+            ? dialect.DecimalOrder(column.FilterExpression)
+            : column.FilterExpression;
+
+    private static FilterOperator? NormalizeOperator(string value) =>
+        value.Trim().ToLowerInvariant() switch
+        {
+            "eq" or "equals" => FilterOperator.Equal,
+            "ne" or "notequals" => FilterOperator.NotEqual,
+            "gt" => FilterOperator.Greater,
+            "gte" => FilterOperator.GreaterOrEqual,
+            "lt" => FilterOperator.Less,
+            "lte" => FilterOperator.LessOrEqual,
+            "contains" => FilterOperator.Contains,
+            "startswith" => FilterOperator.StartsWith,
+            "endswith" => FilterOperator.EndsWith,
+            _ => null
+        };
+
+    private static bool Supports(TableColumnType type, FilterOperator operation) => type switch
     {
-        TableColumnType.Text => operation is "eq" or "ne" or "contains" or "startsWith" or
-            "endsWith",
+        TableColumnType.Text => operation is FilterOperator.Equal or FilterOperator.NotEqual or
+            FilterOperator.Contains or FilterOperator.StartsWith or FilterOperator.EndsWith,
         TableColumnType.Uuid or TableColumnType.Boolean or TableColumnType.Enumeration =>
-            operation is "eq" or "ne",
+            operation is FilterOperator.Equal or FilterOperator.NotEqual,
         TableColumnType.Integer or TableColumnType.Decimal or TableColumnType.Date or
-            TableColumnType.Timestamp => operation is "eq" or "ne" or "gt" or "gte" or "lt" or
-                "lte",
+            TableColumnType.Timestamp => operation is FilterOperator.Equal or
+                FilterOperator.NotEqual or FilterOperator.Greater or
+                FilterOperator.GreaterOrEqual or FilterOperator.Less or
+                FilterOperator.LessOrEqual,
         _ => false
     };
 
@@ -394,7 +424,11 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
         command.Parameters.Add(parameter);
     }
 
-    private static IEnumerable<RecordSetDefinition> BuildRecordSets()
+    private static IReadOnlyDictionary<string, RecordSetDefinition> IndexRecordSets(
+        ReportingSqlDialect dialect) => BuildRecordSets(dialect)
+        .ToDictionary(definition => definition.Name, StringComparer.OrdinalIgnoreCase);
+
+    private static IEnumerable<RecordSetDefinition> BuildRecordSets(ReportingSqlDialect dialect)
     {
         yield return Define("transactions",
             "fortuna.financial_transaction r " +
@@ -404,7 +438,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             "JOIN fortuna.category category ON category.id = r.category_id " +
             "LEFT JOIN fortuna.counterparty counterparty ON counterparty.id = r.counterparty_id",
             "r.user_id = (SELECT id FROM fortuna.\"user\" WHERE public_id = @userId)",
-            "NOT r.is_deleted",
+            TransactionVisibility.LiveSql("r", "category", "account", "card"),
             "r.occurred_on DESC, r.public_id",
             "r.public_id",
             Uuid("id", "r.public_id"),
@@ -421,10 +455,11 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             Text("currencyCode", "currency.code"),
             Date("occurredOn", "r.occurred_on"),
             Text("description", "r.description"),
-            Text("attachmentNames",
-                "(SELECT COALESCE(string_agg(a.file_name, ', ' ORDER BY a.file_name), '') " +
-                "FROM fortuna.attachment a " +
-                "WHERE a.transaction_id = r.id AND NOT a.is_deleted)"),
+            Text("attachmentNames", dialect.OrderedTextJoin(
+                "a.file_name",
+                ", ",
+                "fortuna.attachment a WHERE a.transaction_id = r.id AND NOT a.is_deleted",
+                "a.file_name")),
             Enum("sourceType", "r.source_type", (1, "Manual"), (2, "Pluggy"),
                 (3, "Excel"), (4, "Pdf")),
             Boolean("isReconciled", "r.is_reconciled"),
@@ -452,7 +487,8 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             Uuid("id", "r.public_id"), Text("name", "r.name"), Text("issuer", "r.issuer"),
             Text("currencyCode", "currency.code"),
             Money("creditLimit", "r.credit_limit", "currency.code", "CURRENT_DATE", "currencyCode"),
-            Integer("closingDay", "r.closing_day"), Integer("dueDay", "r.due_day"),
+            Integer("closingDay", "r.closing_day", dialect),
+            Integer("dueDay", "r.due_day", dialect),
             Text("lastFourDigits", "r.last_four_digits"),
             Timestamp("createdAt", "r.created_at"), Timestamp("updatedAt", "r.updated_at"));
 
@@ -594,7 +630,8 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             Text("creditCardName", "card.name"),
             Money("totalAmount", "r.total_amount", "currency.code", "r.purchased_on",
                 "currencyCode"),
-            Text("currencyCode", "currency.code"), Integer("installmentCount", "r.installment_count"),
+            Text("currencyCode", "currency.code"),
+            Integer("installmentCount", "r.installment_count", dialect),
             Date("purchasedOn", "r.purchased_on"), Timestamp("createdAt", "r.created_at"),
             Timestamp("updatedAt", "r.updated_at"));
 
@@ -623,7 +660,8 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             "r.created_at DESC, r.public_id", "r.public_id",
             Uuid("id", "r.public_id"), Uuid("transactionId", "tx.public_id"),
             Text("fileName", "r.file_name"), Text("contentType", "r.content_type"),
-            Integer("sizeInBytes", "r.size_in_bytes"), Timestamp("createdAt", "r.created_at"),
+            Integer("sizeInBytes", "r.size_in_bytes", dialect),
+            Timestamp("createdAt", "r.created_at"),
             Timestamp("updatedAt", "r.updated_at"));
 
         yield return Define("connections", "fortuna.connection r", Owner(), "TRUE",
@@ -646,9 +684,9 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             Enum("status", "r.status", (1, "Pending"), (2, "Running"),
                 (3, "Completed"), (4, "Failed")),
             Date("periodStart", "r.period_start"), Date("periodEnd", "r.period_end"),
-            Integer("importedCount", "r.imported_count"),
-            Integer("duplicateCount", "r.duplicate_count"),
-            Integer("rejectedCount", "r.rejected_count"),
+            Integer("importedCount", "r.imported_count", dialect),
+            Integer("duplicateCount", "r.duplicate_count", dialect),
+            Integer("rejectedCount", "r.rejected_count", dialect),
             Text("failureReason", "r.failure_reason"), Timestamp("createdAt", "r.created_at"),
             Timestamp("updatedAt", "r.updated_at"));
     }
@@ -680,13 +718,16 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
     private static ColumnDefinition Text(string name, string expression) =>
         new(name, expression, expression, TableColumnType.Text);
 
-    private static ColumnDefinition Integer(string name, string expression) =>
+    private static ColumnDefinition Integer(
+        string name,
+        string expression,
+        ReportingSqlDialect dialect) =>
         new(
             name,
             expression,
             expression,
             TableColumnType.Integer,
-            TotalExpression: $"({expression})::numeric");
+            TotalExpression: dialect.IntegerTotal(expression));
 
     private static ColumnDefinition Decimal(string name, string expression) =>
         new(
@@ -761,8 +802,21 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
 
     private sealed record PreparedFilter(
         ColumnDefinition Column,
-        string Operator,
+        FilterOperator Operator,
         object Value);
+
+    private enum FilterOperator
+    {
+        Equal,
+        NotEqual,
+        Greater,
+        GreaterOrEqual,
+        Less,
+        LessOrEqual,
+        Contains,
+        StartsWith,
+        EndsWith
+    }
 
     private sealed record PreparedWhere(
         string Sql,

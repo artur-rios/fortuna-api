@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
@@ -52,10 +54,31 @@ public sealed class AggregateTransactionsQueryHandler(
                 .WithMessage(TransactionAggregationMessages.UnknownCurrency(displayCurrencyCode));
         }
 
-        var dimension = query.Dimension.Trim().ToLowerInvariant();
-        var granularity = string.IsNullOrWhiteSpace(query.Granularity)
-            ? null
-            : query.Granularity.Trim().ToLowerInvariant();
+        if (!AggregationModes.TryParseDimension(query.Dimension, out var dimension))
+        {
+            return output.WithError(TransactionAggregationMessages.UnknownDimension(
+                query.Dimension,
+                AggregateTransactionsQueryValidator.SupportedDimensions));
+        }
+
+        AggregationGranularity? granularity = null;
+        if (!string.IsNullOrWhiteSpace(query.Granularity))
+        {
+            if (!AggregationModes.TryParseGranularity(query.Granularity, out var parsed))
+            {
+                return output.WithError(TransactionAggregationMessages.UnknownGranularity(
+                    query.Granularity,
+                    AggregateTransactionsQueryValidator.SupportedGranularities));
+            }
+
+            granularity = parsed;
+        }
+
+        if (dimension == AggregationDimension.Period && granularity is null)
+        {
+            return output.WithError(TransactionAggregationMessages.GranularityRequired);
+        }
+
         var from = query.From!.Value;
         var to = query.To!.Value;
         var snapshotAt = timeProvider.GetUtcNow();
@@ -87,8 +110,8 @@ public sealed class AggregateTransactionsQueryHandler(
         return output
             .WithData(new TransactionAggregationOutput
             {
-                Dimension = dimension,
-                Granularity = granularity,
+                Dimension = dimension.Name(),
+                Granularity = granularity?.Name(),
                 From = from,
                 To = to,
                 DisplayCurrencyCode = displayCurrency.Code,
@@ -107,24 +130,27 @@ public sealed class AggregateTransactionsQueryHandler(
         var source = figures
             .GroupBy(figure => new BucketIdentity(
                 figure.DimensionValue,
-                figure.BucketStart.HasValue && criteria.Dimension == "period"
-                    ? PeriodLabel(figure.BucketStart.Value, criteria.Granularity!)
+                figure.BucketStart.HasValue && criteria.Dimension == AggregationDimension.Period
+                    ? PeriodLabel(figure.BucketStart.Value, criteria.Granularity!.Value)
                     : figure.Label,
                 figure.BucketStart))
             .ToDictionary(group => group.Key, group => group.ToArray());
-        if (criteria.Dimension == "period")
+        if (criteria.Dimension == AggregationDimension.Period)
         {
-            foreach (var start in PeriodStarts(criteria.From, criteria.To, criteria.Granularity!))
+            foreach (var start in PeriodStarts(
+                         criteria.From,
+                         criteria.To,
+                         criteria.Granularity!.Value))
             {
                 var identity = new BucketIdentity(
                     start.ToString("yyyy-MM-dd"),
-                    PeriodLabel(start, criteria.Granularity!),
+                    PeriodLabel(start, criteria.Granularity.Value),
                     start);
                 source.TryAdd(identity, []);
             }
         }
 
-        var ordered = criteria.Dimension == "period"
+        var ordered = criteria.Dimension == AggregationDimension.Period
             ? source.OrderBy(item => item.Key.BucketStart)
             : source.OrderBy(item => item.Key.Label, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(item => item.Key.DimensionValue, StringComparer.Ordinal);
@@ -160,13 +186,13 @@ public sealed class AggregateTransactionsQueryHandler(
                 : (DateOnly?)null;
             var periodEnd = identity.BucketStart.HasValue
                 ? DateOnly.FromDayNumber(Math.Min(
-                    PeriodEnd(identity.BucketStart.Value, criteria.Granularity!).DayNumber,
+                    PeriodEnd(identity.BucketStart.Value, criteria.Granularity!.Value).DayNumber,
                     criteria.To.DayNumber))
                 : (DateOnly?)null;
             result.Add(new TransactionAggregationBucketOutput
             {
                 Label = identity.BucketStart.HasValue
-                    ? PeriodLabel(identity.BucketStart.Value, criteria.Granularity!)
+                    ? PeriodLabel(identity.BucketStart.Value, criteria.Granularity!.Value)
                     : identity.Label,
                 Total = fullyConverted
                     ? decimal.Round(
@@ -253,7 +279,7 @@ public sealed class AggregateTransactionsQueryHandler(
     private static IEnumerable<DateOnly> PeriodStarts(
         DateOnly from,
         DateOnly to,
-        string granularity)
+        AggregationGranularity granularity)
     {
         for (var current = PeriodStart(from, granularity);
              current <= to;
@@ -263,27 +289,30 @@ public sealed class AggregateTransactionsQueryHandler(
         }
     }
 
-    private static DateOnly PeriodStart(DateOnly date, string granularity) => granularity switch
-    {
-        "day" => date,
-        "week" => date.AddDays(-WeekdayOffset(date)),
-        "month" => new DateOnly(date.Year, date.Month, 1),
-        "quarter" => new DateOnly(date.Year, ((date.Month - 1) / 3 * 3) + 1, 1),
-        "year" => new DateOnly(date.Year, 1, 1),
-        _ => throw new InvalidOperationException("The aggregation granularity was not normalized.")
-    };
+    private static DateOnly PeriodStart(DateOnly date, AggregationGranularity granularity) =>
+        granularity switch
+        {
+            AggregationGranularity.Day => date,
+            AggregationGranularity.Week => date.AddDays(-WeekdayOffset(date)),
+            AggregationGranularity.Month => new DateOnly(date.Year, date.Month, 1),
+            AggregationGranularity.Quarter =>
+                new DateOnly(date.Year, ((date.Month - 1) / 3 * 3) + 1, 1),
+            AggregationGranularity.Year => new DateOnly(date.Year, 1, 1),
+            _ => throw new UnreachableException()
+        };
 
-    private static DateOnly NextPeriod(DateOnly start, string granularity) => granularity switch
-    {
-        "day" => start.AddDays(1),
-        "week" => start.AddDays(7),
-        "month" => start.AddMonths(1),
-        "quarter" => start.AddMonths(3),
-        "year" => start.AddYears(1),
-        _ => throw new InvalidOperationException("The aggregation granularity was not normalized.")
-    };
+    private static DateOnly NextPeriod(DateOnly start, AggregationGranularity granularity) =>
+        granularity switch
+        {
+            AggregationGranularity.Day => start.AddDays(1),
+            AggregationGranularity.Week => start.AddDays(7),
+            AggregationGranularity.Month => start.AddMonths(1),
+            AggregationGranularity.Quarter => start.AddMonths(3),
+            AggregationGranularity.Year => start.AddYears(1),
+            _ => throw new UnreachableException()
+        };
 
-    private static DateOnly PeriodEnd(DateOnly start, string granularity) =>
+    private static DateOnly PeriodEnd(DateOnly start, AggregationGranularity granularity) =>
         NextPeriod(start, granularity).AddDays(-1);
 
     private static int WeekdayOffset(DateOnly date) => date.DayOfWeek switch
@@ -292,15 +321,16 @@ public sealed class AggregateTransactionsQueryHandler(
         _ => (int)date.DayOfWeek - 1
     };
 
-    private static string PeriodLabel(DateOnly start, string granularity) => granularity switch
-    {
-        "day" => start.ToString("yyyy-MM-dd"),
-        "week" => $"{start:yyyy-MM-dd} - {start.AddDays(6):yyyy-MM-dd}",
-        "month" => start.ToString("yyyy-MM"),
-        "quarter" => $"{start.Year}-Q{((start.Month - 1) / 3) + 1}",
-        "year" => start.ToString("yyyy"),
-        _ => throw new InvalidOperationException("The aggregation granularity was not normalized.")
-    };
+    private static string PeriodLabel(DateOnly start, AggregationGranularity granularity) =>
+        granularity switch
+        {
+            AggregationGranularity.Day => start.ToString("yyyy-MM-dd"),
+            AggregationGranularity.Week => $"{start:yyyy-MM-dd} - {start.AddDays(6):yyyy-MM-dd}",
+            AggregationGranularity.Month => start.ToString("yyyy-MM"),
+            AggregationGranularity.Quarter => $"{start.Year}-Q{((start.Month - 1) / 3) + 1}",
+            AggregationGranularity.Year => start.ToString("yyyy"),
+            _ => throw new UnreachableException()
+        };
 
     private string EncodeKey(
         TransactionAggregationCriteria criteria,
@@ -314,7 +344,7 @@ public sealed class AggregateTransactionsQueryHandler(
         var selection = new TransactionAggregationSelection(
             criteria.Dimension,
             dimensionValue,
-            criteria.Dimension == "category" && criteria.RollupCategories,
+            criteria.Dimension == AggregationDimension.Category && criteria.RollupCategories,
             periodStart,
             periodEnd);
 

@@ -8,6 +8,7 @@ public static class CashFlowProjectionMessages
     public const string DisplayCurrencyInvalid =
         "DisplayCurrencyCode must be a three-letter currency code.";
     public const string DisplayCurrencyUnsupported = "The display currency is not supported.";
+    public const string PeriodicityInvalid = "Periodicity is not supported.";
     public const string ExchangeRateUnavailable =
         "An exchange rate required by the projection is unavailable.";
     public const string NoProjectionInputs =

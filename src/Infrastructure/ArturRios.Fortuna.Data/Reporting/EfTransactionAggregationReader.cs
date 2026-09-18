@@ -1,6 +1,8 @@
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Shared.Reporting;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +15,8 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
         TransactionAggregationCriteria criteria,
         CancellationToken cancellationToken)
     {
-        var dimension = ResolveDimension(criteria);
+        var dialect = ReportingSqlDialect.For(context.Database);
+        var dimension = ResolveDimension(criteria, dialect);
         var connection = context.Database.GetDbConnection();
         var closeConnection = connection.State != ConnectionState.Open;
         if (closeConnection)
@@ -24,7 +27,7 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
         try
         {
             await using var command = connection.CreateCommand();
-            command.CommandText = BuildSql(dimension, criteria.Selections);
+            command.CommandText = BuildSql(dimension, criteria.Selections, dialect);
             AddParameters(command, criteria);
             var figures = new List<TransactionAggregationFigureSnapshot>();
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -53,78 +56,80 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
         }
     }
 
-    private static DimensionSql ResolveDimension(TransactionAggregationCriteria criteria) =>
+    private static DimensionSql ResolveDimension(
+        TransactionAggregationCriteria criteria,
+        ReportingSqlDialect dialect) =>
         criteria.Dimension switch
         {
-            "period" => Period(criteria.Granularity!),
-            "category" when criteria.RollupCategories => new DimensionSql(
-                "bucket_category.public_id::text",
+            AggregationDimension.Period => Period(criteria.Granularity!.Value, dialect),
+            AggregationDimension.Category when criteria.RollupCategories => new DimensionSql(
+                dialect.UuidText("bucket_category.public_id"),
                 "bucket_category.name",
-                "NULL::date",
+                dialect.NullDate,
                 "JOIN category_roots root ON root.id = category.id " +
                 "JOIN fortuna.category bucket_category ON bucket_category.id = root.root_id",
                 "NOT bucket_category.is_deleted"),
-            "category" => new DimensionSql(
-                "category.public_id::text",
+            AggregationDimension.Category => new DimensionSql(
+                dialect.UuidText("category.public_id"),
                 "category.name",
-                "NULL::date"),
-            "account" => new DimensionSql(
-                "account.public_id::text",
+                dialect.NullDate),
+            AggregationDimension.Account => new DimensionSql(
+                dialect.UuidText("account.public_id"),
                 "account.name",
-                "NULL::date",
+                dialect.NullDate,
                 Where: "account.id IS NOT NULL AND NOT account.is_deleted"),
-            "card" => new DimensionSql(
-                "card.public_id::text",
+            AggregationDimension.Card => new DimensionSql(
+                dialect.UuidText("card.public_id"),
                 "card.name",
-                "NULL::date",
+                dialect.NullDate,
                 Where: "card.id IS NOT NULL AND NOT card.is_deleted"),
-            "counterparty" => new DimensionSql(
-                "COALESCE(counterparty.public_id::text, 'none')",
+            AggregationDimension.Counterparty => new DimensionSql(
+                $"COALESCE({dialect.UuidText("counterparty.public_id")}, 'none')",
                 "COALESCE(counterparty.name, 'No counterparty')",
-                "NULL::date",
+                dialect.NullDate,
                 Where: "counterparty.id IS NULL OR NOT counterparty.is_deleted"),
-            "tag" => new DimensionSql(
-                "dimension_tag.public_id::text",
+            AggregationDimension.Tag => new DimensionSql(
+                dialect.UuidText("dimension_tag.public_id"),
                 "dimension_tag.name",
-                "NULL::date",
+                dialect.NullDate,
                 "JOIN fortuna.financial_transaction_tag dimension_link " +
                 "ON dimension_link.financial_transaction_id = item.id " +
                 "JOIN fortuna.tag dimension_tag ON dimension_tag.id = dimension_link.tag_id",
                 "NOT dimension_tag.is_deleted"),
-            _ => throw new InvalidOperationException("The aggregation dimension was not normalized.")
+            _ => throw new UnreachableException()
         };
 
-    private static DimensionSql Period(string granularity)
+    private static DimensionSql Period(
+        AggregationGranularity granularity,
+        ReportingSqlDialect dialect)
     {
-        var unit = granularity switch
-        {
-            "day" => "day",
-            "week" => "week",
-            "month" => "month",
-            "quarter" => "quarter",
-            "year" => "year",
-            _ => throw new InvalidOperationException(
-                "The aggregation granularity was not normalized.")
-        };
-        var expression = $"date_trunc('{unit}', item.occurred_on::timestamp)::date";
+        var expression = dialect.PeriodStart("item.occurred_on", granularity);
+        var text = dialect.DateText(expression);
 
-        return new DimensionSql($"({expression})::text", $"({expression})::text", expression);
+        return new DimensionSql(text, text, expression);
     }
 
     private static string BuildSql(
         DimensionSql dimension,
-        IReadOnlyCollection<TransactionAggregationSelection> selections)
+        IReadOnlyCollection<TransactionAggregationSelection> selections,
+        ReportingSqlDialect dialect)
     {
         var extraWhere = string.IsNullOrWhiteSpace(dimension.Where)
             ? string.Empty
             : $"AND ({dimension.Where})";
         var selectionWhere = BuildSelectionWhere(selections);
+        var live = TransactionVisibility.LiveSql("item", "category", "account", "card");
+        var notTransfer = TransactionVisibility.NotTransferSql("item", "fortuna.transfer");
+        var minimum = dialect.CompareDecimal("item.amount", ">=", "@minimumAmount");
+        var maximum = dialect.CompareDecimal("item.amount", "<=", "@maximumAmount");
 
-        return $"""
+        return dialect.QualifyTables($"""
             WITH RECURSIVE category_roots AS (
                 SELECT item.id, item.id AS root_id
                 FROM fortuna.category item
                 WHERE item.parent_id IS NULL
+                  AND item.user_id = (
+                      SELECT id FROM fortuna."user" WHERE public_id = @userId)
                 UNION ALL
                 SELECT child.id, parent.root_id
                 FROM fortuna.category child
@@ -137,7 +142,7 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                        item.occurred_on AS figure_date,
                        CASE item.direction
                            WHEN 2 THEN item.amount
-                           ELSE -item.amount
+                           ELSE {dialect.Negate("item.amount")}
                        END AS signed_amount
                 FROM fortuna.financial_transaction item
                 JOIN fortuna."user" owner ON owner.id = item.user_id
@@ -150,36 +155,32 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                     ON counterparty.id = item.counterparty_id
                 {dimension.Joins}
                 WHERE owner.public_id = @userId
-                  AND NOT item.is_deleted
-                  AND NOT category.is_deleted
-                  AND (account.id IS NULL OR NOT account.is_deleted)
-                  AND (card.id IS NULL OR NOT card.is_deleted)
+                  AND {live}
+                  AND {notTransfer}
                   AND item.occurred_on BETWEEN @from AND @to
-                  AND NOT EXISTS (
-                      SELECT 1
-                      FROM fortuna.transfer transfer
-                      WHERE transfer.outbound_transaction_id = item.id
-                         OR transfer.inbound_transaction_id = item.id)
-                  AND (@financialAccountId::uuid IS NULL OR
+                  AND ({dialect.TypedParameter("financialAccountId", "uuid")} IS NULL OR
                        account.public_id = @financialAccountId)
-                  AND (@creditCardId::uuid IS NULL OR card.public_id = @creditCardId)
-                  AND (@categoryId::uuid IS NULL OR category.public_id = @categoryId)
-                  AND (@counterpartyId::uuid IS NULL OR
+                  AND ({dialect.TypedParameter("creditCardId", "uuid")} IS NULL OR
+                       card.public_id = @creditCardId)
+                  AND ({dialect.TypedParameter("categoryId", "uuid")} IS NULL OR
+                       category.public_id = @categoryId)
+                  AND ({dialect.TypedParameter("counterpartyId", "uuid")} IS NULL OR
                        counterparty.public_id = @counterpartyId)
-                  AND (@tagId::uuid IS NULL OR EXISTS (
+                  AND ({dialect.TypedParameter("tagId", "uuid")} IS NULL OR EXISTS (
                       SELECT 1
                       FROM fortuna.financial_transaction_tag filter_link
                       JOIN fortuna.tag filter_tag ON filter_tag.id = filter_link.tag_id
                       WHERE filter_link.financial_transaction_id = item.id
                         AND filter_tag.public_id = @tagId
                         AND NOT filter_tag.is_deleted))
-                  AND (@direction::smallint IS NULL OR item.direction = @direction)
-                  AND (@minimumAmount::numeric IS NULL OR
-                       item.amount >= @minimumAmount)
-                  AND (@maximumAmount::numeric IS NULL OR
-                       item.amount <= @maximumAmount)
-                  AND (@text::text IS NULL OR
-                       item.description ILIKE '%' || @text || '%')
+                  AND ({dialect.TypedParameter("direction", "smallint")} IS NULL OR
+                       item.direction = @direction)
+                  AND ({dialect.TypedParameter("minimumAmount", "numeric")} IS NULL OR
+                       {minimum})
+                  AND ({dialect.TypedParameter("maximumAmount", "numeric")} IS NULL OR
+                       {maximum})
+                  AND ({dialect.TypedParameter("text", "text")} IS NULL OR
+                       {dialect.Like("item.description", "@text")})
                   {extraWhere}
                   {selectionWhere}
             )
@@ -188,12 +189,12 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                    bucket_start,
                    currency_code,
                    figure_date,
-                   SUM(signed_amount) AS amount,
-                   COUNT(*)::int AS record_count
+                   {dialect.Sum("signed_amount")} AS amount,
+                   {dialect.Count} AS record_count
             FROM figures
             GROUP BY dimension_value, label, bucket_start, currency_code, figure_date
             ORDER BY bucket_start NULLS LAST, label, dimension_value, currency_code, figure_date
-            """;
+            """);
     }
 
     private static void AddParameters(
@@ -213,16 +214,19 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
             : null);
         AddParameter(command, "minimumAmount", criteria.MinimumAmount);
         AddParameter(command, "maximumAmount", criteria.MaximumAmount);
-        AddParameter(command, "text", criteria.Text);
+        AddParameter(command, "text", criteria.Text is null
+            ? null
+            : SqlLike.Contains(criteria.Text));
         var index = 0;
         foreach (var selection in criteria.Selections)
         {
-            if (selection.Dimension == "period")
+            if (selection.Dimension == AggregationDimension.Period)
             {
                 AddParameter(command, $"selection{index}From", selection.From);
                 AddParameter(command, $"selection{index}To", selection.To);
             }
-            else if (selection.Dimension != "counterparty" || selection.Value != "none")
+            else if (selection.Dimension != AggregationDimension.Counterparty ||
+                     selection.Value != "none")
             {
                 AddParameter(command, $"selection{index}Value", Guid.Parse(selection.Value));
             }
@@ -241,22 +245,24 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
             var value = $"@selection{index}Value";
             clauses.Add(selection.Dimension switch
             {
-                "period" => $"item.occurred_on BETWEEN @selection{index}From AND @selection{index}To",
-                "category" when selection.RollupCategories =>
+                AggregationDimension.Period =>
+                    $"item.occurred_on BETWEEN @selection{index}From AND @selection{index}To",
+                AggregationDimension.Category when selection.RollupCategories =>
                     $"category.id IN (SELECT root.id FROM category_roots root " +
                     $"WHERE root.root_id = (SELECT id FROM fortuna.category " +
                     $"WHERE public_id = {value}))",
-                "category" => $"category.public_id = {value}",
-                "account" => $"account.public_id = {value}",
-                "card" => $"card.public_id = {value}",
-                "counterparty" when selection.Value == "none" => "counterparty.id IS NULL",
-                "counterparty" => $"counterparty.public_id = {value}",
-                "tag" => $"EXISTS (SELECT 1 FROM fortuna.financial_transaction_tag key_link " +
+                AggregationDimension.Category => $"category.public_id = {value}",
+                AggregationDimension.Account => $"account.public_id = {value}",
+                AggregationDimension.Card => $"card.public_id = {value}",
+                AggregationDimension.Counterparty when selection.Value == "none" =>
+                    "counterparty.id IS NULL",
+                AggregationDimension.Counterparty => $"counterparty.public_id = {value}",
+                AggregationDimension.Tag =>
+                    $"EXISTS (SELECT 1 FROM fortuna.financial_transaction_tag key_link " +
                     $"JOIN fortuna.tag key_tag ON key_tag.id = key_link.tag_id " +
                     $"WHERE key_link.financial_transaction_id = item.id " +
                     $"AND key_tag.public_id = {value} AND NOT key_tag.is_deleted)",
-                _ => throw new InvalidOperationException(
-                    "The drill-down selection dimension was not normalized.")
+                _ => throw new UnreachableException()
             });
             index++;
         }

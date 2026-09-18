@@ -147,6 +147,22 @@ public sealed class CashFlowProjectionQueryHandlerTests
         Assert.Contains(CashFlowProjectionMessages.ExchangeRateUnavailable, missingRate.Errors);
     }
 
+    [UnitFact]
+    public async Task GivenUndefinedPeriodicity_WhenProjecting_ThenErrorReturnsWithoutReading()
+    {
+        var reader = new StubProjectionReader(new CashFlowProjectionSnapshot([], [], [], null));
+
+        var result = await Handler(reader).HandleAsync(new ProjectCashFlowQuery
+        {
+            HorizonDays = 30,
+            Periodicity = (CashFlowPeriodicity)99
+        });
+
+        Assert.False(result.Success);
+        Assert.Contains(CashFlowProjectionMessages.PeriodicityInvalid, result.Errors);
+        Assert.Null(reader.UserId);
+    }
+
     private static ProjectCashFlowQueryHandler Handler(
         StubProjectionReader reader,
         StubRateReader? rates = null,
