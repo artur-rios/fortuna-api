@@ -17,7 +17,7 @@ public static class InvestmentPositionCalculator
         var movementPosition = movements
             .Where(movement =>
                 !movement.IsDeleted &&
-                (latestValuation is null || movement.OccurredOn > latestValuation.ValuedOn))
+                (latestValuation is null || FollowsValuation(movement, latestValuation)))
             .Sum(movement =>
                 movement.MovementType == InvestmentMovementType.Contribution ||
                 movement.MovementType == InvestmentMovementType.Yield
@@ -30,6 +30,20 @@ public static class InvestmentPositionCalculator
             latestValuation is not null,
             latestValuation?.Value,
             latestValuation?.ValuedOn);
+    }
+
+    /// <summary>
+    /// Whether a movement is not yet reflected in a valuation. A valuation reflects every
+    /// movement dated before it; a movement on the valuation day is reflected only when it was
+    /// recorded before the valuation was last set.
+    /// </summary>
+    public static bool FollowsValuation(InvestmentMovement movement, InvestmentValuation valuation)
+    {
+        ArgumentNullException.ThrowIfNull(movement);
+        ArgumentNullException.ThrowIfNull(valuation);
+
+        return movement.OccurredOn > valuation.ValuedOn ||
+            (movement.OccurredOn == valuation.ValuedOn && movement.CreatedAt > valuation.UpdatedAt);
     }
 }
 

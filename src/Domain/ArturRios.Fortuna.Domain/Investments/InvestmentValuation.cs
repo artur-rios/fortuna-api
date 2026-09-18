@@ -15,6 +15,18 @@ public sealed class InvestmentValuation : RecordLifecycleEntity
         DateTimeOffset createdAt) : base(createdAt)
     {
         Investment = investment ?? throw new ArgumentNullException(nameof(investment));
+        if (investment.IsDeleted)
+        {
+            throw new ArgumentException(
+                "A deleted investment cannot be valued.",
+                nameof(investment));
+        }
+
+        if (valuedOn == default)
+        {
+            throw new ArgumentException("A valuation date is required.", nameof(valuedOn));
+        }
+
         InvestmentId = investment.Id;
         Value = value;
         ValuedOn = valuedOn;
