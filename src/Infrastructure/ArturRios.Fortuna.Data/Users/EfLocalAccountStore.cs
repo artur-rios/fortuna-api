@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Users;
 using Microsoft.EntityFrameworkCore;
@@ -99,7 +100,10 @@ public sealed class EfLocalAccountStore(
                     account.CreatedAt),
                 false);
         }
-        catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(exception))
+        catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(
+            exception,
+            LocalAccountMap.UserIndex,
+            LocalAccountMap.NameIndex))
         {
             return new LocalAccountCreationResult(null, true);
         }

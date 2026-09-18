@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Shared.Classification;
 using Microsoft.EntityFrameworkCore;
@@ -13,8 +14,6 @@ public sealed class EfCounterpartyStore(AppDbContext context)
         ICounterpartyMerger,
         ICounterpartyCategorySuggester
 {
-    private const string LiveNameIndex = "ix_counterparty_user_id_normalized_name";
-
     public async Task<CounterpartyCreationResult> CreateAsync(
         CounterpartyCreation creation,
         CancellationToken cancellationToken)
@@ -247,7 +246,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
     }
 
     private static bool IsDuplicateName(DbUpdateException exception) =>
-        DatabaseException.IsUniqueViolation(exception, LiveNameIndex);
+        DatabaseException.IsUniqueViolation(exception, CounterpartyMap.LiveNameIndex);
 
     private static CounterpartySnapshot Snapshot(Counterparty counterparty) => new(
         counterparty.PublicId,

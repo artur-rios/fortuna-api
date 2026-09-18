@@ -6,6 +6,9 @@ namespace ArturRios.Fortuna.Data.EntityMaps;
 
 public sealed class LocalAccountMap : IEntityTypeConfiguration<LocalAccount>
 {
+    public const string UserIndex = "ix_local_account_user_id";
+    public const string NameIndex = "ix_local_account_name";
+
     public void Configure(EntityTypeBuilder<LocalAccount> builder)
     {
         builder.ToTable("local_account");
@@ -18,8 +21,8 @@ public sealed class LocalAccountMap : IEntityTypeConfiguration<LocalAccount>
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.Property(x => x.UpdatedAt).IsRequired();
         builder.HasIndex(x => x.PublicId).IsUnique();
-        builder.HasIndex(x => x.UserId).IsUnique();
-        builder.HasIndex(x => x.Name).IsUnique();
+        builder.HasIndex(x => x.UserId).HasDatabaseName(UserIndex).IsUnique();
+        builder.HasIndex(x => x.Name).HasDatabaseName(NameIndex).IsUnique();
         builder.HasOne(x => x.User)
             .WithOne()
             .HasForeignKey<LocalAccount>(x => x.UserId)

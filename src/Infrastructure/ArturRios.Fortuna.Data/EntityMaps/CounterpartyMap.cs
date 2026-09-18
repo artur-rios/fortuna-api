@@ -6,6 +6,8 @@ namespace ArturRios.Fortuna.Data.EntityMaps;
 
 public sealed class CounterpartyMap : IEntityTypeConfiguration<Counterparty>
 {
+    public const string LiveNameIndex = "ix_counterparty_user_id_normalized_name";
+
     public void Configure(EntityTypeBuilder<Counterparty> builder)
     {
         builder.ToTable("counterparty", table => table.HasCheckConstraint(
@@ -31,6 +33,7 @@ public sealed class CounterpartyMap : IEntityTypeConfiguration<Counterparty>
             counterparty.UserId,
             counterparty.NormalizedName
         })
+            .HasDatabaseName(LiveNameIndex)
             .IsUnique()
             .HasFilter("NOT is_deleted");
         builder.HasIndex(counterparty => new { counterparty.UserId, counterparty.IsDeleted });

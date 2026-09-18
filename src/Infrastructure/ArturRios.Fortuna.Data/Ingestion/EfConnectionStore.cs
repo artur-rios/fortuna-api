@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Ingestion;
@@ -41,7 +42,7 @@ public sealed class EfConnectionStore(AppDbContext context)
         }
         catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(
             exception,
-            "ix_connection_user_id_data_source_type_external_reference"))
+            ConnectionMap.ExternalReferenceIndex))
         {
             context.Entry(connection).State = EntityState.Detached;
             var duplicate = await FindByExternalReferenceAsync(
@@ -111,7 +112,7 @@ public sealed class EfConnectionStore(AppDbContext context)
         }
         catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(
             exception,
-            "ix_connection_user_id_data_source_type_external_reference"))
+            ConnectionMap.ExternalReferenceIndex))
         {
             await transaction.RollbackAsync(cancellationToken);
             context.Entry(connection).State = EntityState.Detached;
