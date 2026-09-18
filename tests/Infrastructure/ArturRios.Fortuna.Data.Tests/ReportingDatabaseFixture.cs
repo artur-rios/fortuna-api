@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Testcontainers.PostgreSql;
@@ -56,4 +57,24 @@ public sealed class PostgreSqlReportingFixture : ReportingDatabaseFixture
     public override async Task DisposeAsync() => await database.DisposeAsync();
 
     protected override Task CreateDatabaseAsync() => database.StartAsync();
+}
+
+public sealed class SqliteReportingFixture : ReportingDatabaseFixture
+{
+    private readonly string path = Path.Combine(
+        Path.GetTempPath(),
+        $"fortuna-reporting-{Guid.NewGuid():N}.db");
+
+    public override AppDbContext CreateContext() =>
+        CreateContext(DatabaseProvider.SQLite, path);
+
+    public override Task DisposeAsync()
+    {
+        SqliteConnection.ClearAllPools();
+        File.Delete(path);
+
+        return Task.CompletedTask;
+    }
+
+    protected override Task CreateDatabaseAsync() => Task.CompletedTask;
 }
