@@ -29,25 +29,13 @@ public sealed class PluggyConnectionGateway(
 
         try
         {
-            using var authentication = await client.PostAsJsonAsync(
-                "auth",
-                new AuthenticationRequest(options.ClientId, options.ClientSecret),
-                JsonOptions,
-                cancellationToken);
-            if (authentication.StatusCode == HttpStatusCode.Unauthorized)
+            var credential = await PluggyApiKeyClient.RequestAsync(client, options, cancellationToken);
+            if (credential.Outcome is PluggyApiKeyOutcome.NotConfigured or PluggyApiKeyOutcome.Rejected)
             {
                 return Result(PluggyConnectionValidationOutcome.NotConfigured);
             }
 
-            if (!authentication.IsSuccessStatusCode)
-            {
-                return Result(PluggyConnectionValidationOutcome.Unavailable);
-            }
-
-            var credential = await authentication.Content.ReadFromJsonAsync<AuthenticationResponse>(
-                JsonOptions,
-                cancellationToken);
-            if (string.IsNullOrWhiteSpace(credential?.AccessToken))
+            if (credential.Outcome != PluggyApiKeyOutcome.Issued)
             {
                 return Result(PluggyConnectionValidationOutcome.Unavailable);
             }
@@ -55,7 +43,7 @@ public sealed class PluggyConnectionGateway(
             using var request = new HttpRequestMessage(
                 HttpMethod.Get,
                 $"items/{Uri.EscapeDataString(externalReference)}");
-            request.Headers.Add("X-API-KEY", credential.AccessToken);
+            request.Headers.Add("X-API-KEY", credential.ApiKey);
             using var response = await client.SendAsync(request, cancellationToken);
             if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.NotFound)
             {
@@ -78,7 +66,7 @@ public sealed class PluggyConnectionGateway(
                 : new PluggyConnectionValidation(
                     PluggyConnectionValidationOutcome.Succeeded,
                     item.Connector.Name.Trim(),
-                    credential.AccessToken);
+                    credential.ApiKey);
         }
         catch (HttpRequestException)
         {
@@ -97,8 +85,6 @@ public sealed class PluggyConnectionGateway(
     private static PluggyConnectionValidation Result(PluggyConnectionValidationOutcome outcome) =>
         new(outcome);
 
-    private sealed record AuthenticationRequest(string ClientId, string ClientSecret);
-    private sealed record AuthenticationResponse(string? AccessToken);
     private sealed record ItemResponse(string? Id, ConnectorResponse? Connector);
     private sealed record ConnectorResponse(string? Name);
 }

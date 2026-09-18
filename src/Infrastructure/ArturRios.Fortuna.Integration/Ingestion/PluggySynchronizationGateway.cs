@@ -10,29 +10,37 @@ namespace ArturRios.Fortuna.Integration.Ingestion;
 public sealed class PluggySynchronizationGateway(
     HttpClient client,
     PluggySourceOptions options,
-    IRateLimitDelay delay) : IPluggySynchronizationGateway
+    IRateLimitDelay delay,
+    TimeProvider timeProvider) : IPluggySynchronizationGateway
 {
     private const int PageSize = 500;
-    private const int MaximumAttempts = 4;
+    private const string LoginErrorStatus = "LOGIN_ERROR";
 
     public async Task<PluggySynchronizationFetchResult> FetchAsync(
         string externalReference,
-        string accessToken,
         DateOnly? periodStart,
         DateOnly? periodEnd,
         CancellationToken cancellationToken)
     {
-        if (!options.IsNetworkAvailable || options.BaseUri is null ||
-            string.IsNullOrWhiteSpace(accessToken))
+        if (!options.IsNetworkAvailable || options.BaseUri is null)
         {
             return Result(PluggySynchronizationFetchOutcome.Unavailable);
         }
 
         try
         {
+            // API keys expire after two hours, so each synchronization requests a fresh one from
+            // the application credentials instead of reusing the key stored with the connection.
+            var credential = await PluggyApiKeyClient.RequestAsync(client, options, cancellationToken);
+            if (credential.Outcome != PluggyApiKeyOutcome.Issued)
+            {
+                return Result(PluggySynchronizationFetchOutcome.Unavailable);
+            }
+
+            var apiKey = credential.ApiKey!;
             var item = await ReadAsync(
                 $"items/{Uri.EscapeDataString(externalReference)}",
-                accessToken,
+                apiKey,
                 cancellationToken);
             if (item.Outcome != PluggySynchronizationFetchOutcome.Succeeded)
             {
@@ -40,16 +48,25 @@ public sealed class PluggySynchronizationGateway(
             }
 
             using var itemDocument = item.Document!;
+            if (string.Equals(
+                    ReadString(itemDocument.RootElement, "status"),
+                    LoginErrorStatus,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                // Pluggy stopped syncing the item until the user provides new credentials.
+                return Result(PluggySynchronizationFetchOutcome.RequiresReauthentication);
+            }
+
             var institution = ReadPath(itemDocument.RootElement, "connector", "name") ?? "Pluggy";
             var resources = new List<PluggyResourceRecord>();
             var transactions = new List<PluggyTransactionRecord>();
             var accounts = await ReadPagesAsync(
                 $"accounts?itemId={Uri.EscapeDataString(externalReference)}",
-                accessToken,
+                apiKey,
                 cancellationToken);
             if (accounts.Outcome != PluggySynchronizationFetchOutcome.Succeeded)
             {
-                return Result(accounts.Outcome);
+                return Result(Unavailable(accounts.Outcome));
             }
 
             foreach (var account in accounts.Items)
@@ -62,10 +79,10 @@ public sealed class PluggySynchronizationGateway(
 
                 resources.Add(ToResource(account, accountId, institution));
                 var path = BuildTransactionPath(accountId, periodStart, periodEnd);
-                var transactionPage = await ReadPagesAsync(path, accessToken, cancellationToken);
+                var transactionPage = await ReadPagesAsync(path, apiKey, cancellationToken);
                 if (transactionPage.Outcome != PluggySynchronizationFetchOutcome.Succeeded)
                 {
-                    return Result(transactionPage.Outcome);
+                    return Result(Unavailable(transactionPage.Outcome));
                 }
 
                 transactions.AddRange(transactionPage.Items.Select(transaction =>
@@ -82,21 +99,28 @@ public sealed class PluggySynchronizationGateway(
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            // HttpClient reports its own timeout as a cancellation.
             return Result(PluggySynchronizationFetchOutcome.Unavailable);
         }
         catch (JsonException)
         {
-            return Result(PluggySynchronizationFetchOutcome.Unavailable);
-        }
-        catch (FormatException)
-        {
+            // Raised by the JSON parser for a malformed response body.
             return Result(PluggySynchronizationFetchOutcome.Unavailable);
         }
     }
 
+    /// <summary>
+    /// A 404 below the item (an account or its transactions) is not the item being gone; only the
+    /// item lookup itself reports <see cref="PluggySynchronizationFetchOutcome.ItemNotFound"/>.
+    /// </summary>
+    private static PluggySynchronizationFetchOutcome Unavailable(PluggySynchronizationFetchOutcome outcome) =>
+        outcome == PluggySynchronizationFetchOutcome.ItemNotFound
+            ? PluggySynchronizationFetchOutcome.Unavailable
+            : outcome;
+
     private async Task<PageResult> ReadPagesAsync(
         string path,
-        string accessToken,
+        string apiKey,
         CancellationToken cancellationToken)
     {
         var items = new List<JsonElement>();
@@ -105,7 +129,7 @@ public sealed class PluggySynchronizationGateway(
             var separator = path.Contains('?', StringComparison.Ordinal) ? '&' : '?';
             var response = await ReadAsync(
                 $"{path}{separator}page={page}&pageSize={PageSize}",
-                accessToken,
+                apiKey,
                 cancellationToken);
             if (response.Outcome != PluggySynchronizationFetchOutcome.Succeeded)
             {
@@ -118,7 +142,8 @@ public sealed class PluggySynchronizationGateway(
             if (!document.RootElement.TryGetProperty("results", out var results) ||
                 results.ValueKind != JsonValueKind.Array)
             {
-                throw new JsonException("The Pluggy response does not contain a results array.");
+                // The response is not the documented page shape.
+                return new PageResult(PluggySynchronizationFetchOutcome.Unavailable, []);
             }
 
             var pageItems = results.EnumerateArray().Select(item => item.Clone()).ToArray();
@@ -133,42 +158,40 @@ public sealed class PluggySynchronizationGateway(
 
     private async Task<DocumentResult> ReadAsync(
         string path,
-        string accessToken,
+        string apiKey,
         CancellationToken cancellationToken)
     {
         for (var attempt = 1; ; attempt++)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, path);
-            request.Headers.Add("X-API-KEY", accessToken);
-            var response = await client.SendAsync(request, cancellationToken);
-            if (response.StatusCode == HttpStatusCode.TooManyRequests && attempt < MaximumAttempts)
+            request.Headers.Add("X-API-KEY", apiKey);
+            using var response = await client.SendAsync(request, cancellationToken);
+            if (HttpRetryPolicy.IsTransient(response.StatusCode) &&
+                attempt < HttpRetryPolicy.MaximumAttempts)
             {
-                var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(attempt);
-                response.Dispose();
-                await delay.WaitAsync(retryAfter, cancellationToken);
+                await delay.WaitAsync(
+                    HttpRetryPolicy.RetryDelay(response, attempt, timeProvider.GetUtcNow()),
+                    cancellationToken);
                 continue;
             }
 
-            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or
-                HttpStatusCode.NotFound)
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
-                response.Dispose();
+                return new DocumentResult(PluggySynchronizationFetchOutcome.RequiresReauthentication, null);
+            }
 
-                return new DocumentResult(
-                    PluggySynchronizationFetchOutcome.RequiresReauthentication,
-                    null);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return new DocumentResult(PluggySynchronizationFetchOutcome.ItemNotFound, null);
             }
 
             if (!response.IsSuccessStatusCode)
             {
-                response.Dispose();
-
                 return new DocumentResult(PluggySynchronizationFetchOutcome.Unavailable, null);
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            response.Dispose();
 
             return new DocumentResult(PluggySynchronizationFetchOutcome.Succeeded, document);
         }
@@ -250,7 +273,9 @@ public sealed class PluggySynchronizationGateway(
             : null;
 
     private static decimal? ReadDecimal(JsonElement element, string name) =>
-        element.TryGetProperty(name, out var property) && property.TryGetDecimal(out var value)
+        element.TryGetProperty(name, out var property) &&
+        property.ValueKind == JsonValueKind.Number &&
+        property.TryGetDecimal(out var value)
             ? value
             : null;
 
@@ -271,7 +296,9 @@ public sealed class PluggySynchronizationGateway(
     }
 
     private static int? ReadInt32(JsonElement element, string name) =>
-        element.TryGetProperty(name, out var property) && property.TryGetInt32(out var value)
+        element.TryGetProperty(name, out var property) &&
+        property.ValueKind == JsonValueKind.Number &&
+        property.TryGetInt32(out var value)
             ? value
             : null;
 

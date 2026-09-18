@@ -125,7 +125,6 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
             job.PublicId,
             job.Connection.PublicId,
             job.Connection.ExternalReference,
-            job.Connection.AccessTokenCipher.ToArray(),
             job.PeriodStart,
             job.PeriodEnd);
     }

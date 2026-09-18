@@ -1,6 +1,5 @@
 using System.Text.Json;
 using ArturRios.Fortuna.Command.Handlers;
-using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
@@ -34,6 +33,8 @@ public sealed class PluggySynchronizationJobHandlerTests
         PluggySynchronizationMessages.ReauthenticationRequired)]
     [InlineData(PluggySynchronizationFetchOutcome.Unavailable, false,
         PluggySynchronizationMessages.SourceUnavailable)]
+    [InlineData(PluggySynchronizationFetchOutcome.ItemNotFound, false,
+        PluggySynchronizationMessages.ItemNotFound)]
     public async Task GivenFetchFailure_WhenJobRuns_ThenFailureStateIsPersisted(
         PluggySynchronizationFetchOutcome outcome,
         bool reauthentication,
@@ -49,12 +50,43 @@ public sealed class PluggySynchronizationJobHandlerTests
         Assert.Equal(reauthentication, store.RequiresReauthentication);
     }
 
+    [UnitFact]
+    public async Task GivenConnectionRevokedDuringFetch_WhenCompleting_ThenStoreReasonIsReturned()
+    {
+        var store = new StubStore
+        {
+            CompletionResult = ImportCompletionResult.Stopped(ConnectionMessages.SynchronizationStoppedByRevocation)
+        };
+        var handler = Handler(
+            store,
+            new StubGateway(new(PluggySynchronizationFetchOutcome.Succeeded, new PluggySynchronizationBatch([], []))));
+
+        var result = await handler.ExecuteAsync(Payload(store.JobId), CancellationToken.None);
+
+        Assert.Equal([ConnectionMessages.SynchronizationStoppedByRevocation], result.Errors);
+        Assert.Null(store.FailureReason);
+    }
+
+    [UnitFact]
+    public async Task GivenStoreFailure_WhenCompleting_ThenImportJobIsFailedAndFailurePropagates()
+    {
+        var store = new StubStore { CompleteFailure = new IOException("database unavailable") };
+        var handler = Handler(
+            store,
+            new StubGateway(new(PluggySynchronizationFetchOutcome.Succeeded, new PluggySynchronizationBatch([], []))));
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            handler.ExecuteAsync(Payload(store.JobId), CancellationToken.None));
+
+        Assert.Equal(PluggySynchronizationMessages.SourceUnavailable, store.FailureReason);
+        Assert.False(store.RequiresReauthentication);
+    }
+
     private static PluggySynchronizationJobHandler Handler(
         StubStore store,
         StubGateway gateway) => new(
         store,
         gateway,
-        new StubProtector(),
         new FixedTimeProvider(Now));
 
     private static string Payload(Guid jobId) => JsonSerializer.Serialize(
@@ -64,6 +96,7 @@ public sealed class PluggySynchronizationJobHandlerTests
     {
         public ImportCompletionResult CompletionResult { get; init; } =
             ImportCompletionResult.Completed;
+        public Exception? CompleteFailure { get; init; }
         public Guid JobId { get; } = Guid.NewGuid();
         public PluggySynchronizationBatch? CompletedBatch { get; private set; }
         public string? FailureReason { get; private set; }
@@ -77,7 +110,7 @@ public sealed class PluggySynchronizationJobHandlerTests
         public Task<PluggySynchronizationContext?> BeginAsync(
             Guid importJobId, DateTimeOffset startedAt, CancellationToken cancellationToken) =>
             Task.FromResult<PluggySynchronizationContext?>(new(
-                JobId, Guid.NewGuid(), "item-1", [1, 2, 3], null, null));
+                JobId, Guid.NewGuid(), "item-1", null, null));
 
         public Task<ImportCompletionResult> CompleteAsync(
             Guid importJobId,
@@ -85,6 +118,11 @@ public sealed class PluggySynchronizationJobHandlerTests
             DateTimeOffset completedAt,
             CancellationToken cancellationToken)
         {
+            if (CompleteFailure is not null)
+            {
+                return Task.FromException<ImportCompletionResult>(CompleteFailure);
+            }
+
             CompletedBatch = batch;
 
             return Task.FromResult(CompletionResult);
@@ -108,15 +146,8 @@ public sealed class PluggySynchronizationJobHandlerTests
         : IPluggySynchronizationGateway
     {
         public Task<PluggySynchronizationFetchResult> FetchAsync(
-            string externalReference, string accessToken, DateOnly? periodStart,
+            string externalReference, DateOnly? periodStart,
             DateOnly? periodEnd, CancellationToken cancellationToken) => Task.FromResult(result);
-    }
-
-    private sealed class StubProtector : IConnectionAccessTokenProtector
-    {
-        public byte[] Protect(string accessToken) => throw new NotSupportedException();
-
-        public string Unprotect(byte[] protectedAccessToken) => "plain-token";
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider

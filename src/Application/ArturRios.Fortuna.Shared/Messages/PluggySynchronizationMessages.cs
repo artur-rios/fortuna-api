@@ -10,6 +10,8 @@ public static class PluggySynchronizationMessages
     public const string PeriodInvalid = "PeriodStart cannot follow PeriodEnd.";
     public const string ReauthenticationRequired = "The connection requires reauthentication.";
     public const string SourceUnavailable = "Pluggy is temporarily unavailable.";
+    public const string ItemNotFound =
+        "Pluggy no longer has the connected item. Remove this connection and connect the institution again.";
     public const string AccountNotMapped = "The source account could not be mapped.";
     public const string TransactionInvalid = "The source transaction is invalid.";
 }
