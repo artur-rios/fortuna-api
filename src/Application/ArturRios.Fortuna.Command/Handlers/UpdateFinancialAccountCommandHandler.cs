@@ -59,6 +59,7 @@ public sealed class UpdateFinancialAccountCommandHandler(
         }
 
         var account = updated.Account;
+
         return output
             .WithData(new UpdateFinancialAccountCommandOutput
             {

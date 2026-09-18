@@ -216,6 +216,7 @@ public sealed class RecurringTransactionQueryHandlerTests
         public Task<RecurringTransactionSnapshot?> FindByIdAsync(Guid userId, Guid id, CancellationToken token)
         {
             UserId = userId;
+
             return Task.FromResult(snapshot);
         }
 
@@ -224,6 +225,7 @@ public sealed class RecurringTransactionQueryHandlerTests
             CancellationToken token)
         {
             Criteria = criteria;
+
             return Task.FromResult(new RecurringTransactionListPage(page, page.Length));
         }
     }

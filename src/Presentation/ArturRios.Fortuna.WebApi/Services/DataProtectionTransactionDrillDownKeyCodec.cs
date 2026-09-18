@@ -24,6 +24,7 @@ public sealed class DataProtectionTransactionDrillDownKeyCodec : ITransactionDri
         {
             payload = JsonSerializer.Deserialize<TransactionDrillDownKeyPayload>(
                 protector.Unprotect(key));
+
             return payload is not null;
         }
         catch (Exception exception) when (exception is CryptographicException or

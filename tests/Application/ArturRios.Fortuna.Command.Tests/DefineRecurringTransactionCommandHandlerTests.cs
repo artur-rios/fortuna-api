@@ -100,6 +100,7 @@ public sealed class DefineRecurringTransactionCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Record = record;
+
             return Task.FromResult(result);
         }
     }

@@ -67,6 +67,7 @@ public sealed class CreateConnectionCommandHandler(
                 protector.Protect(verified.AccessToken!),
                 timeProvider.GetUtcNow()),
             CancellationToken.None);
+
         return Result(result.Connection, verified.Institution!, result.Outcome);
     }
 
@@ -87,6 +88,7 @@ public sealed class CreateConnectionCommandHandler(
             PluggyConnectionValidationOutcome.NotConfigured => ConnectionMessages.SourceNotAvailable,
             _ => throw new ArgumentOutOfRangeException(nameof(outcome))
         };
+
         return DataOutput<CreateConnectionCommandOutput?>.New.WithError(message);
     }
 
@@ -106,6 +108,7 @@ public sealed class CreateConnectionCommandHandler(
                 CreatedAt = connection.CreatedAt,
                 UpdatedAt = connection.UpdatedAt
             });
+
         return outcome == ConnectionMutationOutcome.Succeeded
             ? output.WithMessage(ConnectionMessages.CreatedSuccessfully)
             : output.WithError(ConnectionMessages.Duplicate);

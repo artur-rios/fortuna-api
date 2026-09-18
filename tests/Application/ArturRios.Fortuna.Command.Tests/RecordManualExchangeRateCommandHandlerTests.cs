@@ -119,6 +119,7 @@ public sealed class RecordManualExchangeRateCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Candidate = rate;
+
             return Task.FromResult(result);
         }
     }

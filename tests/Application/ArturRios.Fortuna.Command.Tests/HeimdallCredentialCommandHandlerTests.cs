@@ -353,6 +353,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string challengeToken, CancellationToken cancellationToken)
         {
             ResendChallengeToken = challengeToken;
+
             return Task.FromResult(ResendResult);
         }
 
@@ -360,6 +361,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string email, Guid scopeId, CancellationToken cancellationToken)
         {
             RecoveryRequest = (email, scopeId);
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -367,6 +369,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string token, string newPassword, CancellationToken cancellationToken)
         {
             ResetRequest = (token, newPassword);
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -374,6 +377,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string token, CancellationToken cancellationToken)
         {
             VerificationToken = token;
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -381,6 +385,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string bearerToken, CancellationToken cancellationToken)
         {
             BearerToken = bearerToken;
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -388,6 +393,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string bearerToken, CancellationToken cancellationToken)
         {
             BearerToken = bearerToken;
+
             return Task.FromResult(StatusResult);
         }
 
@@ -397,6 +403,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
         {
             Methods = methods;
             BearerToken = bearerToken;
+
             return Task.FromResult(SetupResult);
         }
 
@@ -406,6 +413,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
         {
             ConfirmationCodes = (appCode, emailCode);
             BearerToken = bearerToken;
+
             return Task.FromResult(RecoveryCodesResult);
         }
 
@@ -415,6 +423,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
         {
             DisableRequest = (password, code, recoveryCode);
             BearerToken = bearerToken;
+
             return Task.FromResult(DisabledResult);
         }
 
@@ -424,6 +433,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
         {
             RegenerationFactor = (code, recoveryCode);
             BearerToken = bearerToken;
+
             return Task.FromResult(RecoveryCodesResult);
         }
 

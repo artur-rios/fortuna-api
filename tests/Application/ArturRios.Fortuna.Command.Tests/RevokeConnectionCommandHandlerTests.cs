@@ -106,6 +106,7 @@ public sealed class RevokeConnectionCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Request = revocation;
+
             return Task.FromResult(result);
         }
     }

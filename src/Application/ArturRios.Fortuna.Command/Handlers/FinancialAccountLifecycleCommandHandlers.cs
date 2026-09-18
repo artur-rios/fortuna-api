@@ -32,6 +32,7 @@ public sealed class DeleteFinancialAccountCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return FinancialAccountLifecycleHandler.Resolve(
             result,
             FinancialAccountMessages.DeletedSuccessfully);
@@ -61,6 +62,7 @@ public sealed class RestoreFinancialAccountCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return FinancialAccountLifecycleHandler.Resolve(
             result,
             FinancialAccountMessages.RestoredSuccessfully);
@@ -88,6 +90,7 @@ public sealed class HardDeleteFinancialAccountCommandHandler(
             profile.Id,
             command.Id,
             CancellationToken.None);
+
         return FinancialAccountLifecycleHandler.Resolve(
             result,
             FinancialAccountMessages.HardDeletedSuccessfully);
@@ -113,6 +116,7 @@ internal static class FinancialAccountLifecycleHandler
         string successMessage)
     {
         var output = DataOutput<FinancialAccountLifecycleCommandOutput?>.New;
+
         return result.Outcome switch
         {
             FinancialAccountLifecycleOutcome.Succeeded => output

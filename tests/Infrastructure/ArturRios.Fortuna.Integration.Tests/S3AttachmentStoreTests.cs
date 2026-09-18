@@ -88,6 +88,7 @@ public sealed class S3AttachmentStoreTests
             CancellationToken cancellationToken = default)
         {
             PutRequest = request;
+
             return Task.FromResult(new PutObjectResponse());
         }
 
@@ -117,6 +118,7 @@ public sealed class S3AttachmentStoreTests
             CancellationToken cancellationToken = default)
         {
             DeleteRequest = (bucketName, key);
+
             return Task.FromResult(new DeleteObjectResponse());
         }
 
@@ -125,6 +127,7 @@ public sealed class S3AttachmentStoreTests
             CancellationToken cancellationToken = default)
         {
             HealthBucket = request.BucketName;
+
             return FailHealth
                 ? Task.FromException<GetBucketAclResponse>(new AmazonS3Exception("offline"))
                 : Task.FromResult(new GetBucketAclResponse());

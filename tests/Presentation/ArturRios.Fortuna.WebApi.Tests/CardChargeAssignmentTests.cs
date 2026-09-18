@@ -814,6 +814,7 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -833,6 +834,7 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         var envelope = await response.Content.ReadFromJsonAsync<ChargeEnvelope>();
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Contains(TransactionMessages.RecordedSuccessfully, envelope!.Messages);
+
         return envelope.Data!;
     }
 
@@ -884,6 +886,7 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<CardEnvelope>())!.Data!;
     }
 
@@ -902,6 +905,7 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
             OpeningBalance = openingBalance
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<AccountEnvelope>())!.Data!;
     }
 
@@ -919,6 +923,7 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
             PaymentDate = paymentDate
         });
         var envelope = await response.Content.ReadFromJsonAsync<SettlementEnvelope>();
+
         return new SettlementResponse(response, envelope?.Data!);
     }
 

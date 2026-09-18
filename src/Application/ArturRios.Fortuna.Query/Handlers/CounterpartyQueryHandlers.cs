@@ -31,6 +31,7 @@ public sealed class ListCounterpartiesQueryHandler(
             profile.Id,
             query.IncludeDeleted,
             CancellationToken.None);
+
         return DataOutput<CounterpartyListOutput?>.New
             .WithData(new CounterpartyListOutput
             {

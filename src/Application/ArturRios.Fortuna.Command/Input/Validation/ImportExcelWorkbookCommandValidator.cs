@@ -45,6 +45,7 @@ public sealed class ImportExcelWorkbookCommandValidator
             mapping.Category,
             mapping.ExternalId
         }.Where(column => !string.IsNullOrWhiteSpace(column)).Select(column => column!.Trim());
+
         return columns.Distinct(StringComparer.OrdinalIgnoreCase).Count() == columns.Count();
     }
 }

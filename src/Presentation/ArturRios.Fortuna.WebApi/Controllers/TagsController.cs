@@ -41,6 +41,7 @@ public sealed class TagsController(
         var result = await commandMediator.ExecuteCommandAsync<
             CreateTagCommand,
             TagCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -52,6 +53,7 @@ public sealed class TagsController(
         var result = await queryMediator.ExecuteQueryAsync<
             ListTagsQuery,
             TagListOutput>(new ListTagsQuery { IncludeDeleted = includeDeleted });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -65,6 +67,7 @@ public sealed class TagsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateTagCommand,
             TagCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -75,6 +78,7 @@ public sealed class TagsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteTagCommand,
             TagCommandOutput>(new DeleteTagCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

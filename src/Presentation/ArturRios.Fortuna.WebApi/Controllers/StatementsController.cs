@@ -44,6 +44,7 @@ public sealed class StatementsController(
         var result = await queryMediator.ExecuteQueryAsync<
             GetCreditCardStatementByIdQuery,
             CreditCardStatementOutput>(new GetCreditCardStatementByIdQuery { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -54,6 +55,7 @@ public sealed class StatementsController(
         var result = await commandMediator.ExecuteCommandAsync<
             CloseCreditCardStatementCommand,
             CloseCreditCardStatementCommandOutput>(new CloseCreditCardStatementCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -67,6 +69,7 @@ public sealed class StatementsController(
         var result = await commandMediator.ExecuteCommandAsync<
             SettleCreditCardStatementCommand,
             SettleCreditCardStatementCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

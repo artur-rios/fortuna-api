@@ -47,6 +47,7 @@ public sealed class DefineRecurringTransactionCommandHandler(
         }
 
         var rule = result.Rule;
+
         return output.WithData(new DefineRecurringTransactionCommandOutput
         {
             Id = rule.Id,

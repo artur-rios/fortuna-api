@@ -268,6 +268,7 @@ public sealed class HeimdallAuthCommandHandlerTests
         {
             ResendChallengeToken = challengeToken;
             ResendCalls++;
+
             return Task.FromResult(ResendResult);
         }
 
@@ -275,6 +276,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             string email, string password, Guid scopeId, CancellationToken cancellationToken)
         {
             LoginRequest = (email, password, scopeId);
+
             return Task.FromResult(LoginResult);
         }
 
@@ -282,6 +284,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             string idToken, Guid scopeId, CancellationToken cancellationToken)
         {
             GoogleRequest = (idToken, scopeId);
+
             return Task.FromResult(GoogleResult);
         }
 
@@ -290,6 +293,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             CancellationToken cancellationToken)
         {
             TwoFactorRequest = (challengeToken, code, recoveryCode);
+
             return Task.FromResult(TwoFactorResult);
         }
 
@@ -297,6 +301,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             string bearerToken, CancellationToken cancellationToken)
         {
             SignOutToken = bearerToken;
+
             return Task.FromResult(SignOutResult);
         }
 

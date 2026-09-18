@@ -378,6 +378,7 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
         }
 
         context.ConnectionResources.Add(mapping);
+
         return mapping;
     }
 
@@ -447,6 +448,7 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
 
         var category = new Category(user, name, createdAt);
         context.Categories.Add(category);
+
         return category;
     }
 
@@ -463,6 +465,7 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
             item.Amount == amount &&
             item.FinancialAccountId == target.FinancialAccountId &&
             item.CreditCardId == target.CreditCardId);
+
         return string.IsNullOrWhiteSpace(externalId)
             ? await matches.AnyAsync(cancellationToken)
             : await matches.AnyAsync(item =>
@@ -538,6 +541,7 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
     private static string? SafeName(string? value, string? fallback)
     {
         var name = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+
         return name?[..Math.Min(name.Length, 200)];
     }
 

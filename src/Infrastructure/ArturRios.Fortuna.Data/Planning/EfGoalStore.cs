@@ -49,6 +49,7 @@ public sealed class EfGoalStore(AppDbContext context)
             creation.CreatedAt);
         context.Goals.Add(goal);
         await context.SaveChangesAsync(cancellationToken);
+
         return new GoalMutationResult(
             await SnapshotAsync(
                 goal,
@@ -89,6 +90,7 @@ public sealed class EfGoalStore(AppDbContext context)
             item.PublicId == id &&
             (includeDeleted || !item.IsDeleted),
             cancellationToken);
+
         return goal is null ? null : await SnapshotAsync(goal, asOf, cancellationToken);
     }
 
@@ -133,6 +135,7 @@ public sealed class EfGoalStore(AppDbContext context)
             resources.Value.Investments,
             update.UpdatedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new GoalMutationResult(
             await SnapshotAsync(
                 goal,
@@ -152,6 +155,7 @@ public sealed class EfGoalStore(AppDbContext context)
             item.PublicId == id &&
             !item.IsDeleted,
             cancellationToken);
+
         return goal is null
             ? new GoalProgressResult(null, GoalProgressOutcome.NotFound)
             : new GoalProgressResult(
@@ -176,6 +180,7 @@ public sealed class EfGoalStore(AppDbContext context)
 
         goal.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new GoalMutationResult(
             await SnapshotAsync(goal, asOf, cancellationToken),
             GoalMutationOutcome.Succeeded);
@@ -212,6 +217,7 @@ public sealed class EfGoalStore(AppDbContext context)
                 requestedInvestments.Contains(item.PublicId) &&
                 !item.IsDeleted)
             .ToListAsync(cancellationToken);
+
         return accounts.Count == requestedAccounts.Length &&
             investments.Count == requestedInvestments.Length
                 ? (accounts, investments)
@@ -230,6 +236,7 @@ public sealed class EfGoalStore(AppDbContext context)
             detail.ProportionReached,
             detail.IsReached,
             detail.IsFullyConverted);
+
         return new GoalSnapshot(
             goal.PublicId,
             goal.Name,
@@ -335,6 +342,7 @@ public sealed class EfGoalStore(AppDbContext context)
             ? Round(included.Sum(item => item.ConvertedAmount!.Value), goal)
             : null;
         var daysRemaining = goal.TargetDate.DayNumber - asOf.DayNumber;
+
         return new GoalProgressDetailSnapshot(
             goal.PublicId,
             goal.TargetAmount,
@@ -389,6 +397,7 @@ public sealed class EfGoalStore(AppDbContext context)
             .ThenByDescending(item => item.Source)
             .Select(item => new AppliedRate(item.Rate, item.RateDate, item.Source))
             .FirstOrDefaultAsync(cancellationToken);
+
         return new GoalResourceProgressSnapshot(
             id,
             name,

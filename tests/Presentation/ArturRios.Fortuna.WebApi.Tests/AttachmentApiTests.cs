@@ -570,6 +570,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
 
         context.AddRange(account, category, transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
@@ -594,6 +595,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -605,6 +607,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         await using var context = CreateContext();
         var attachment = await context.Attachments.SingleAsync(item =>
             item.PublicId == attachmentId);
+
         return Path.Combine(
             storageRoot,
             attachment.StorageKey.Replace('/', Path.DirectorySeparatorChar));
@@ -813,6 +816,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         var file = new ByteArrayContent(document);
         file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         form.Add(file, "File", fileName);
+
         return await client.PostAsync($"/api/transactions/{transactionId}/attachments", form);
     }
 

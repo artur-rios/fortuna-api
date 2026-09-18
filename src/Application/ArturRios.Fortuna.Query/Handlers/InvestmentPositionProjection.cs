@@ -58,6 +58,7 @@ internal static class InvestmentPositionProjection
             investment.DisplayPosition = Round(
                 investment.Position,
                 displayCurrency.MinorUnitDigits);
+
             return;
         }
 
@@ -69,6 +70,7 @@ internal static class InvestmentPositionProjection
         if (rate is null)
         {
             investment.UnconvertedReason = FigureConversionMessages.RateUnavailable;
+
             return;
         }
 

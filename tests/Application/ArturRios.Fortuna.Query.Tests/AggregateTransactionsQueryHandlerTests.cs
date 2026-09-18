@@ -122,6 +122,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
         ExchangeRateSnapshot? rate = null)
     {
         var resolved = missingProfile ? null : Profile();
+
         return new AggregateTransactionsQueryHandler(
             new AggregateTransactionsQueryValidator(new TransactionAggregationOptions(366)),
             profiles ?? new StubProfileReader(resolved),
@@ -163,6 +164,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
             CancellationToken cancellationToken)
         {
             Criteria = criteria;
+
             return Task.FromResult(figures);
         }
     }
@@ -201,6 +203,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }
@@ -217,12 +220,14 @@ public sealed class AggregateTransactionsQueryHandlerTests
         public string Encode(TransactionDrillDownKeyPayload payload)
         {
             Payloads.Add(payload);
+
             return $"key-{Payloads.Count}";
         }
 
         public bool TryDecode(string key, out TransactionDrillDownKeyPayload? payload)
         {
             payload = null;
+
             return false;
         }
     }

@@ -51,6 +51,7 @@ public sealed class ImportJobsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RetryImportJobCommand,
             RetryImportJobCommandOutput>(new RetryImportJobCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -61,6 +62,7 @@ public sealed class ImportJobsController(
         var result = await queryMediator.ExecuteQueryAsync<
             GetImportJobByIdQuery,
             ImportJobOutput>(new GetImportJobByIdQuery { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -79,6 +81,7 @@ public sealed class ImportJobsController(
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListImportJobsQuery,
             ImportJobOutput>(query);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -99,6 +102,7 @@ public sealed class ImportJobsController(
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListImportedRecordsQuery,
             ImportedRecordOutput>(query);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

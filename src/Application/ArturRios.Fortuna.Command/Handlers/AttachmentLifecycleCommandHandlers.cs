@@ -32,6 +32,7 @@ public sealed class DeleteAttachmentCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return AttachmentLifecycleHandler.Resolve(
             result,
             AttachmentMessages.DeletedSuccessfully);
@@ -59,6 +60,7 @@ public sealed class HardDeleteAttachmentCommandHandler(
             profile.Id,
             command.Id,
             CancellationToken.None);
+
         return AttachmentLifecycleHandler.Resolve(
             result,
             AttachmentMessages.HardDeletedSuccessfully);
@@ -84,6 +86,7 @@ internal static class AttachmentLifecycleHandler
         string successMessage)
     {
         var output = DataOutput<AttachmentLifecycleCommandOutput?>.New;
+
         return result.Outcome switch
         {
             AttachmentLifecycleOutcome.Succeeded => output

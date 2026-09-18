@@ -33,6 +33,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     {
         var result = await commandMediator.ExecuteCommandAsync<
             LoginThroughApiCommand, LoginThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -44,6 +45,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     {
         var result = await commandMediator.ExecuteCommandAsync<
             GoogleSignInThroughApiCommand, GoogleSignInThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -55,6 +57,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     {
         var result = await commandMediator.ExecuteCommandAsync<
             VerifyTwoFactorThroughApiCommand, VerifyTwoFactorThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -68,6 +71,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         var result = await commandMediator.ExecuteCommandAsync<
             ResendTwoFactorChallengeCodeThroughApiCommand,
             ResendTwoFactorChallengeCodeThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -80,6 +84,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         };
         var result = await commandMediator.ExecuteCommandAsync<
             GoogleSignOutThroughApiCommand, GoogleSignOutThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -92,6 +97,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         var result = await commandMediator.ExecuteCommandAsync<
             RequestPasswordRecoveryThroughApiCommand,
             RequestPasswordRecoveryThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -103,6 +109,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     {
         var result = await commandMediator.ExecuteCommandAsync<
             ResetPasswordThroughApiCommand, ResetPasswordThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -114,6 +121,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     {
         var result = await commandMediator.ExecuteCommandAsync<
             VerifyEmailThroughApiCommand, VerifyEmailThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -124,6 +132,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         var result = await commandMediator.ExecuteCommandAsync<
             ResendVerificationThroughApiCommand, ResendVerificationThroughApiCommandOutput>(
                 new() { BearerToken = BearerToken() });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -134,6 +143,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         var result = await commandMediator.ExecuteCommandAsync<
             GetTwoFactorStatusThroughApiCommand, GetTwoFactorStatusThroughApiCommandOutput>(
                 new() { BearerToken = BearerToken() });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -144,6 +154,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         command.BearerToken = BearerToken();
         var result = await commandMediator.ExecuteCommandAsync<
             EnableTwoFactorThroughApiCommand, EnableTwoFactorThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -154,6 +165,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         command.BearerToken = BearerToken();
         var result = await commandMediator.ExecuteCommandAsync<
             ConfirmTwoFactorThroughApiCommand, ConfirmTwoFactorThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -164,6 +176,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         command.BearerToken = BearerToken();
         var result = await commandMediator.ExecuteCommandAsync<
             DisableTwoFactorThroughApiCommand, DisableTwoFactorThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -175,6 +188,7 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         var result = await commandMediator.ExecuteCommandAsync<
             RegenerateRecoveryCodesThroughApiCommand,
             RegenerateRecoveryCodesThroughApiCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 

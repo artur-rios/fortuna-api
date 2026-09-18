@@ -204,6 +204,7 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
             export.Fail(PersonalDataExportMessages.GenerationFailed, created.AddMinutes(2));
         }
         await context.SaveChangesAsync();
+
         return export.PublicId;
     }
 
@@ -213,6 +214,7 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
         {
             Environment.SetEnvironmentVariable(setting.Key, setting.Value);
         }
+
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(Environments.Development);
@@ -234,6 +236,7 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -286,6 +289,7 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {
             values.Remove(key);
+
             return Task.CompletedTask;
         }
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) => Task.FromResult(true);

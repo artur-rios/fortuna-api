@@ -224,6 +224,7 @@ public sealed class CreditCardStatementTests
     {
         var currency = new Currency("BRL", "Brazilian real", 2);
         var user = new UserProfile(Guid.NewGuid(), "Owner", currency, Now);
+
         return new CreditCard(user, "Rewards", "Bank", currency, 1000m, 20, 5, null, Now);
     }
 }

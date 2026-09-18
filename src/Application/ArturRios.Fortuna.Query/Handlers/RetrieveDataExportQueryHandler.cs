@@ -83,6 +83,7 @@ public sealed class RetrieveDataExportQueryHandler(
             var content = await storage.OpenReadAsync(
                 export.StorageKey,
                 CancellationToken.None);
+
             return output.WithData(Project(export, content)).WithMessage(
                 DataExportMessages.RetrievedSuccessfully);
         }
@@ -93,6 +94,7 @@ public sealed class RetrieveDataExportQueryHandler(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Export storage read failed");
+
             return output.WithError(DataExportMessages.StorageUnavailable);
         }
     }

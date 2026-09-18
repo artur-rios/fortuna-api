@@ -41,6 +41,7 @@ public sealed class AttachmentsController(
         if (!result.Success || result.Data is null)
         {
             var response = ResponseResolver.Resolve(result, statusMap: StatusMap);
+
             return response.Result ?? Ok(response.Value);
         }
 
@@ -59,6 +60,7 @@ public sealed class AttachmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteAttachmentCommand,
             AttachmentLifecycleCommandOutput>(new DeleteAttachmentCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -70,6 +72,7 @@ public sealed class AttachmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             HardDeleteAttachmentCommand,
             AttachmentLifecycleCommandOutput>(new HardDeleteAttachmentCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

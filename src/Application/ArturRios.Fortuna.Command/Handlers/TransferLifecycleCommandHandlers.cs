@@ -32,6 +32,7 @@ public sealed class DeleteTransferCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return TransferLifecycleHandler.Resolve(result, TransferMessages.DeletedSuccessfully);
     }
 }
@@ -59,6 +60,7 @@ public sealed class RestoreTransferCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return TransferLifecycleHandler.Resolve(result, TransferMessages.RestoredSuccessfully);
     }
 }
@@ -82,6 +84,7 @@ internal static class TransferLifecycleHandler
         string successMessage)
     {
         var output = DataOutput<TransferLifecycleCommandOutput?>.New;
+
         return result.Outcome switch
         {
             TransferLifecycleOutcome.Succeeded => output

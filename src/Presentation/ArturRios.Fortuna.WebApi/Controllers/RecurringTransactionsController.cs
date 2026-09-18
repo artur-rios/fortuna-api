@@ -75,6 +75,7 @@ public sealed class RecurringTransactionsController(
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListRecurringTransactionsQuery,
             RecurringTransactionOutput>(query);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -85,6 +86,7 @@ public sealed class RecurringTransactionsController(
         var result = await queryMediator.ExecuteQueryAsync<
             GetRecurringTransactionByIdQuery,
             RecurringTransactionOutput>(new GetRecurringTransactionByIdQuery { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -96,6 +98,7 @@ public sealed class RecurringTransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DefineRecurringTransactionCommand,
             DefineRecurringTransactionCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -109,6 +112,7 @@ public sealed class RecurringTransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateRecurringTransactionCommand,
             UpdateRecurringTransactionCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -119,6 +123,7 @@ public sealed class RecurringTransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteRecurringTransactionCommand,
             RecurringTransactionLifecycleCommandOutput>(new DeleteRecurringTransactionCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -130,6 +135,7 @@ public sealed class RecurringTransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             MaterializeRecurringTransactionsCommand,
             MaterializeRecurringTransactionsCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

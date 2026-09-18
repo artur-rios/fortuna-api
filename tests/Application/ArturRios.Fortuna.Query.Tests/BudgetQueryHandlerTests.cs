@@ -277,6 +277,7 @@ public sealed class BudgetQueryHandlerTests
             UserId = userId;
             IncludeDeleted = includeDeleted;
             AsOf = asOf;
+
             return Task.FromResult(budgets);
         }
 
@@ -291,6 +292,7 @@ public sealed class BudgetQueryHandlerTests
             BudgetId = id;
             IncludeDeleted = includeDeleted;
             AsOf = asOf;
+
             return Task.FromResult(budget);
         }
 
@@ -303,6 +305,7 @@ public sealed class BudgetQueryHandlerTests
             UserId = userId;
             BudgetId = id;
             AsOf = periodDate;
+
             return Task.FromResult(ConsumptionResult);
         }
     }

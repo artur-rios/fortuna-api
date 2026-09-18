@@ -32,6 +32,7 @@ public sealed class DeleteCreditCardCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return CreditCardLifecycleHandler.Resolve(result, CreditCardMessages.DeletedSuccessfully);
     }
 }
@@ -59,6 +60,7 @@ public sealed class RestoreCreditCardCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return CreditCardLifecycleHandler.Resolve(result, CreditCardMessages.RestoredSuccessfully);
     }
 }
@@ -84,6 +86,7 @@ public sealed class HardDeleteCreditCardCommandHandler(
             profile.Id,
             command.Id,
             CancellationToken.None);
+
         return CreditCardLifecycleHandler.Resolve(result, CreditCardMessages.HardDeletedSuccessfully);
     }
 }
@@ -107,6 +110,7 @@ internal static class CreditCardLifecycleHandler
         string successMessage)
     {
         var output = DataOutput<CreditCardLifecycleCommandOutput?>.New;
+
         return result.Outcome switch
         {
             CreditCardLifecycleOutcome.Succeeded => output

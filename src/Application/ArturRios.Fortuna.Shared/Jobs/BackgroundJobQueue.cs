@@ -34,6 +34,7 @@ public sealed class BackgroundJobQueue : IBackgroundJobQueue
     {
         var id = await channel.Reader.ReadAsync(cancellationToken);
         Interlocked.Decrement(ref depth);
+
         return id;
     }
 }

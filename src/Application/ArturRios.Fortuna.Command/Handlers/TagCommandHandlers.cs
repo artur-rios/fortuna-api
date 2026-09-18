@@ -36,6 +36,7 @@ public sealed class CreateTagCommandHandler(
         var result = await tags.CreateAsync(
             new TagCreation(profile.Id, command.Name, timeProvider.GetUtcNow()),
             CancellationToken.None);
+
         return TagHandler.Resolve(result.Tag, result.Outcome, TagMessages.CreatedSuccessfully);
     }
 }
@@ -66,6 +67,7 @@ public sealed class UpdateTagCommandHandler(
         var result = await tags.UpdateAsync(
             new TagUpdate(profile.Id, command.Id, command.Name, timeProvider.GetUtcNow()),
             CancellationToken.None);
+
         return TagHandler.Resolve(result.Tag, result.Outcome, TagMessages.UpdatedSuccessfully);
     }
 }
@@ -90,6 +92,7 @@ public sealed class DeleteTagCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return TagHandler.Resolve(
             result.Tag,
             result.Outcome,
@@ -227,6 +230,7 @@ internal static class TagHandler
         int detachedTransactionCount = 0)
     {
         var output = DataOutput<TagCommandOutput?>.New;
+
         return outcome switch
         {
             TagMutationOutcome.Succeeded => output

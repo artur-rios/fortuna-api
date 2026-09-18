@@ -42,6 +42,7 @@ public sealed class RecordTransferCommandHandler(
         }
 
         var createdAt = timeProvider.GetUtcNow();
+
         return command.DestinationStatementId.HasValue
             ? await RecordStatementSettlementAsync(command, profile.Id, createdAt, output)
             : await RecordAccountTransferAsync(command, profile.Id, createdAt, output);
@@ -80,6 +81,7 @@ public sealed class RecordTransferCommandHandler(
         }
 
         var transfer = result.Transfer;
+
         return output
             .WithData(new RecordTransferCommandOutput
             {
@@ -134,6 +136,7 @@ public sealed class RecordTransferCommandHandler(
         }
 
         var settlement = result.Settlement;
+
         return output
             .WithData(new RecordTransferCommandOutput
             {

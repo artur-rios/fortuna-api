@@ -73,6 +73,7 @@ public sealed class ListInvestmentValuationsQueryHandler(
             pageSize,
             orderBy: null,
             cancellationToken: CancellationToken.None);
+
         return page.WithMessage(InvestmentMessages.ValuationHistoryRetrievedSuccessfully);
     }
 

@@ -159,6 +159,7 @@ public sealed class ReassignCategoryTransactionsCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Reassignment = reassignment;
+
             return Task.FromResult(result);
         }
     }
@@ -176,6 +177,7 @@ public sealed class ReassignCategoryTransactionsCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

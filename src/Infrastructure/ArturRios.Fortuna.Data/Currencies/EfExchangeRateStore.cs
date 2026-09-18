@@ -73,6 +73,7 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
 
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
         return new PublishedRateUpsertResult(stored, unchanged);
     }
 
@@ -119,6 +120,7 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
 
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
         return new ManualRateUpsertResult(current.Rate, replacedExisting);
     }
 

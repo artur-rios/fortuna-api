@@ -45,6 +45,7 @@ public sealed class MaterializeRecurringTransactionsCommandHandler(
         var result = await materializer.MaterializeAsync(
             new RecurringMaterializationRun(profile.Id, through, now),
             CancellationToken.None);
+
         return output.WithData(new MaterializeRecurringTransactionsCommandOutput
         {
             MaterializedThrough = through,

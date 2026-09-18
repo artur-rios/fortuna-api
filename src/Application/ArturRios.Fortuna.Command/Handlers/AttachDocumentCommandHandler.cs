@@ -60,6 +60,7 @@ public sealed class AttachDocumentCommandHandler(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Attachment storage health check failed");
+
             return output.WithError(AttachmentMessages.StorageUnavailable);
         }
 
@@ -73,6 +74,7 @@ public sealed class AttachDocumentCommandHandler(
         {
             logger.LogWarning(exception, "Attachment storage write failed");
             await TryDeleteAsync(key);
+
             return output.WithError(AttachmentMessages.StorageUnavailable);
         }
 
@@ -94,16 +96,19 @@ public sealed class AttachDocumentCommandHandler(
         {
             logger.LogWarning(exception, "Attachment metadata persistence failed");
             await TryDeleteAsync(key);
+
             return output.WithError(AttachmentMessages.PersistenceFailed);
         }
 
         if (result.Outcome != AttachmentMetadataOutcome.Succeeded || result.Attachment is null)
         {
             await TryDeleteAsync(key);
+
             return output.WithError(AttachmentMessages.TransactionNotFound);
         }
 
         var attachment = result.Attachment;
+
         return output
             .WithData(new AttachDocumentCommandOutput
             {

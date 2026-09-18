@@ -239,6 +239,7 @@ public sealed class ExcelImportTests : IAsyncLifetime
             currency, 0, Now);
         context.AddRange(user, account);
         await context.SaveChangesAsync();
+
         return account.PublicId;
     }
 
@@ -247,6 +248,7 @@ public sealed class ExcelImportTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -279,6 +281,7 @@ public sealed class ExcelImportTests : IAsyncLifetime
         form.Add(new StringContent("Id"), "ExternalIdColumn");
         form.Add(new StringContent(createCategories.ToString()), "CreateMissingCategories");
         form.Add(new ByteArrayContent(workbook), "File", "transactions.xlsx");
+
         return await client.PostAsync("/api/imports/excel", form);
     }
 
@@ -295,6 +298,7 @@ public sealed class ExcelImportTests : IAsyncLifetime
         populate(sheet);
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
+
         return stream.ToArray();
     }
 

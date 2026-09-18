@@ -50,6 +50,7 @@ public sealed class CloseCreditCardStatementCommandHandler(
         }
 
         var statement = result.Statement!;
+
         return output
             .WithData(new CloseCreditCardStatementCommandOutput
             {

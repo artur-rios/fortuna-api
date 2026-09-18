@@ -141,6 +141,7 @@ public sealed class SettleCreditCardStatementCommandHandlerTests
         {
             Called = true;
             Request = settlement;
+
             return Task.FromResult(result);
         }
     }

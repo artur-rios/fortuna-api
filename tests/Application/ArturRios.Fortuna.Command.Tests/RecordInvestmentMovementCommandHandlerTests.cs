@@ -181,6 +181,7 @@ public sealed class RecordInvestmentMovementCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Record = record;
+
             return Task.FromResult(result);
         }
     }
@@ -198,6 +199,7 @@ public sealed class RecordInvestmentMovementCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

@@ -41,6 +41,7 @@ public sealed class CreateGoalCommandHandler(
             command.AccountIds,
             command.InvestmentIds,
             timeProvider.GetUtcNow()), CancellationToken.None);
+
         return GoalHandler.Resolve(result, GoalMessages.CreatedSuccessfully);
     }
 }
@@ -77,6 +78,7 @@ public sealed class UpdateGoalCommandHandler(
             command.AccountIds,
             command.InvestmentIds,
             timeProvider.GetUtcNow()), CancellationToken.None);
+
         return GoalHandler.Resolve(result, GoalMessages.UpdatedSuccessfully);
     }
 }
@@ -102,6 +104,7 @@ public sealed class DeleteGoalCommandHandler(
             now,
             DateOnly.FromDateTime(now.UtcDateTime),
             CancellationToken.None);
+
         return GoalHandler.Resolve(result, GoalMessages.DeletedSuccessfully);
     }
 }
@@ -121,6 +124,7 @@ internal static class GoalHandler
         string message)
     {
         var output = DataOutput<GoalCommandOutput?>.New;
+
         return result.Outcome switch
         {
             GoalMutationOutcome.Succeeded => output.WithData(ToOutput(result.Goal!))

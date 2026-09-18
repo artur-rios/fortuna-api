@@ -41,6 +41,7 @@ public sealed class RecurringMaterializationJobHandlerTests
             CancellationToken cancellationToken)
         {
             Run = run;
+
             return Task.FromResult(new RecurringMaterializationResult([]));
         }
     }

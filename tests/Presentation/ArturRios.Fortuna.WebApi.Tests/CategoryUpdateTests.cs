@@ -286,6 +286,7 @@ public sealed class CategoryUpdateTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -319,6 +320,7 @@ public sealed class CategoryUpdateTests : IAsyncLifetime
         context.FinancialAccounts.Add(account);
         context.FinancialTransactions.Add(transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
@@ -331,6 +333,7 @@ public sealed class CategoryUpdateTests : IAsyncLifetime
             "/api/categories",
             new { Name = name, ParentId = parentId });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<CategoryEnvelope>())!.Data!;
     }
 

@@ -98,6 +98,7 @@ public sealed class PdfInvoiceImportJobHandlerTests
             Guid importJobId, DateTimeOffset startedAt, CancellationToken cancellationToken)
         {
             BegunJobId = importJobId;
+
             return Task.FromResult(true);
         }
 
@@ -107,6 +108,7 @@ public sealed class PdfInvoiceImportJobHandlerTests
         {
             CompletedJobId = importJobId;
             Invoice = invoice;
+
             return Task.CompletedTask;
         }
 
@@ -115,6 +117,7 @@ public sealed class PdfInvoiceImportJobHandlerTests
             CancellationToken cancellationToken)
         {
             FailedReason = reason;
+
             return Task.CompletedTask;
         }
     }

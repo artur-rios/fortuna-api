@@ -59,6 +59,7 @@ public sealed class UpdateInvestmentCommandHandler(
         }
 
         var investment = updated.Investment;
+
         return output
             .WithData(new UpdateInvestmentCommandOutput
             {

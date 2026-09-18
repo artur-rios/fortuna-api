@@ -379,6 +379,7 @@ public sealed class DataExportTests : IAsyncLifetime
 
         context.AddRange(job, export);
         await context.SaveChangesAsync();
+
         return export.PublicId;
     }
 
@@ -420,6 +421,7 @@ public sealed class DataExportTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
             DatabaseDiagnosticsOptions.Disabled);

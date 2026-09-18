@@ -226,6 +226,7 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
                         cycle,
                         settlement.CreatedAt);
                     context.CreditCardStatements.Add(carryStatement);
+
                     break;
                 }
 
@@ -317,6 +318,7 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
         statement.RecalculatePurchaseTotal(purchaseTotal, changedAt);
         statement.Close(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return Result(statement, CreditCardStatementCloseOutcome.Succeeded);
     }
 

@@ -85,6 +85,7 @@ public sealed class RetryImportJobCommandHandlerTests
     private static RetryImportJobResult Result(RetryImportJobOutcome outcome)
     {
         var hasJob = outcome != RetryImportJobOutcome.NotFound;
+
         return new RetryImportJobResult(
             outcome,
             hasJob ? new RetryImportJobSnapshot(
@@ -117,6 +118,7 @@ public sealed class RetryImportJobCommandHandlerTests
         {
             UserId = userId;
             ImportJobId = importJobId;
+
             return Task.FromResult(result);
         }
     }
@@ -129,6 +131,7 @@ public sealed class RetryImportJobCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 

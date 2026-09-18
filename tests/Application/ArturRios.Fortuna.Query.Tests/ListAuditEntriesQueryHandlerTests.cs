@@ -137,6 +137,7 @@ public sealed class ListAuditEntriesQueryHandlerTests
         IAuditEntryReader entries)
     {
         var subject = profile?.ExternalSubject ?? Guid.NewGuid();
+
         return new ListAuditEntriesQueryHandler(
             new ListAuditEntriesQueryValidator(),
             new StubUserProfileReader(profile),
@@ -191,6 +192,7 @@ public sealed class ListAuditEntriesQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

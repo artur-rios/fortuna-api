@@ -178,6 +178,7 @@ public sealed class CreateConnectionCommandHandlerTests
             ConnectionCreation creation, CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(Result);
         }
     }
@@ -190,6 +191,7 @@ public sealed class CreateConnectionCommandHandlerTests
             string externalReference, CancellationToken cancellationToken)
         {
             CallCount++;
+
             return Task.FromResult(result);
         }
     }
@@ -201,6 +203,7 @@ public sealed class CreateConnectionCommandHandlerTests
         public byte[] Protect(string accessToken)
         {
             ProtectedValue = accessToken;
+
             return [7, 8, 9];
         }
 

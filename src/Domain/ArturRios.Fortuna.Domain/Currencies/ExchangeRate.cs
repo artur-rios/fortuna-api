@@ -58,6 +58,7 @@ public sealed class ExchangeRate
         }
 
         Rate = rate;
+
         return true;
     }
 
@@ -79,6 +80,7 @@ public sealed class ExchangeRate
         }
 
         Rate = rate;
+
         return true;
     }
 }

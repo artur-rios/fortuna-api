@@ -209,6 +209,7 @@ public sealed class FinancialAccountLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Capture(userId, id, changedAt);
+
             return Task.FromResult(SoftDeleteResult);
         }
 
@@ -219,6 +220,7 @@ public sealed class FinancialAccountLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Capture(userId, id, changedAt);
+
             return Task.FromResult(RestoreResult);
         }
 
@@ -228,6 +230,7 @@ public sealed class FinancialAccountLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Capture(userId, id, null);
+
             return Task.FromResult(HardDeleteResult);
         }
 
@@ -252,6 +255,7 @@ public sealed class FinancialAccountLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

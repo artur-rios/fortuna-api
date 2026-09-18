@@ -62,6 +62,7 @@ public sealed class DownloadAttachmentQueryHandler(
             var content = await storage.OpenReadAsync(
                 attachment.StorageKey,
                 CancellationToken.None);
+
             return output
                 .WithData(new DownloadAttachmentQueryOutput
                 {
@@ -76,11 +77,13 @@ public sealed class DownloadAttachmentQueryHandler(
         catch (AttachmentObjectNotFoundException)
         {
             await RecordDiscrepancyAsync(attachment.Id);
+
             return output.WithError(AttachmentMessages.StoredObjectNotFound);
         }
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Attachment storage read failed");
+
             return output.WithError(AttachmentMessages.StorageUnavailable);
         }
     }

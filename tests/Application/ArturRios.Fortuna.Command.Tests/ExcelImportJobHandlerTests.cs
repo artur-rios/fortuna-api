@@ -88,6 +88,7 @@ public sealed class ExcelImportJobHandlerTests
             Guid importJobId, DateTimeOffset startedAt, CancellationToken cancellationToken)
         {
             BegunJobId = importJobId;
+
             return Task.FromResult(true);
         }
 
@@ -98,6 +99,7 @@ public sealed class ExcelImportJobHandlerTests
         {
             CompletedJobId = importJobId;
             Rows = rows;
+
             return Task.CompletedTask;
         }
 
@@ -106,6 +108,7 @@ public sealed class ExcelImportJobHandlerTests
             CancellationToken cancellationToken)
         {
             FailedReason = reason;
+
             return Task.CompletedTask;
         }
     }

@@ -147,6 +147,7 @@ public sealed class RetrieveDataExportQueryHandlerTests
                 ExportId,
                 CancellationToken.None))
             .ReturnsAsync(snapshot);
+
         return reader;
     }
 
@@ -155,6 +156,7 @@ public sealed class RetrieveDataExportQueryHandlerTests
         var storage = new Mock<IAttachmentStore>();
         storage.Setup(item => item.IsHealthyAsync(CancellationToken.None))
             .ReturnsAsync(healthy);
+
         return storage;
     }
 

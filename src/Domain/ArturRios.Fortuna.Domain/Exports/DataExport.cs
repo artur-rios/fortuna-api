@@ -162,6 +162,7 @@ public sealed class DataExport
         }
 
         var normalized = value.Trim();
+
         return normalized.Length <= maximumLength
             ? normalized
             : throw new ArgumentException(

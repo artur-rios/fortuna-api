@@ -243,6 +243,7 @@ public sealed class InvestmentUpdateTests : IAsyncLifetime
 
         context.Investments.Add(investment);
         await context.SaveChangesAsync();
+
         return new InvestmentData(
             investment.PublicId,
             investment.Instrument,
@@ -285,6 +286,7 @@ public sealed class InvestmentUpdateTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

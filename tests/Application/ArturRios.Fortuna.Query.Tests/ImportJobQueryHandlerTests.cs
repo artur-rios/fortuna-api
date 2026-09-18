@@ -246,6 +246,7 @@ public sealed class ImportJobQueryHandlerTests
         {
             var job = jobs.SingleOrDefault(item =>
                 item.User.PublicId == userId && item.PublicId == id);
+
             return Task.FromResult(job is null ? null : Snapshot(job));
         }
 

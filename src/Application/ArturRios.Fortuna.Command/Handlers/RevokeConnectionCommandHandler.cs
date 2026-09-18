@@ -45,6 +45,7 @@ public sealed class RevokeConnectionCommandHandler(
             CreatedAt = result.Connection.CreatedAt,
             UpdatedAt = result.Connection.UpdatedAt
         });
+
         return result.Outcome switch
         {
             ConnectionRevocationOutcome.Succeeded => output.WithMessage(

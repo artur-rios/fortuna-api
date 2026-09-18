@@ -61,6 +61,7 @@ public sealed class InstallmentPlansController(
                 Id = id,
                 IncludeDeleted = includeDeleted
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -72,6 +73,7 @@ public sealed class InstallmentPlansController(
         var result = await commandMediator.ExecuteCommandAsync<
             RecordInstallmentPlanCommand,
             RecordInstallmentPlanCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -83,6 +85,7 @@ public sealed class InstallmentPlansController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteInstallmentPlanCommand,
             InstallmentPlanLifecycleCommandOutput>(new DeleteInstallmentPlanCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -94,6 +97,7 @@ public sealed class InstallmentPlansController(
         var result = await commandMediator.ExecuteCommandAsync<
             RestoreInstallmentPlanCommand,
             InstallmentPlanLifecycleCommandOutput>(new RestoreInstallmentPlanCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

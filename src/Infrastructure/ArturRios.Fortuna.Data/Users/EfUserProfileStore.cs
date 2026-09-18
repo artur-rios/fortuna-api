@@ -71,6 +71,7 @@ public sealed class EfUserProfileStore(
         try
         {
             await context.SaveChangesAsync(cancellationToken);
+
             return Snapshot(profile);
         }
         catch (DbUpdateException exception) when (

@@ -29,6 +29,7 @@ public sealed class GetImportJobByIdQueryHandler(
         }
 
         var job = await jobs.FindByIdAsync(profile.Id, query.Id, CancellationToken.None);
+
         return job is null
             ? output.WithError(ImportJobMessages.NotFound)
             : output.WithData(ImportJobProjection.Project(job)).WithMessage(
@@ -78,6 +79,7 @@ public sealed class ListImportJobsQueryHandler(
             Math.Min(query.PageSize, paginationOptions.MaximumPageSize),
             orderBy: null,
             cancellationToken: CancellationToken.None);
+
         return result.WithMessage(ImportJobMessages.ListedSuccessfully);
     }
 
@@ -162,6 +164,7 @@ public sealed class ListImportedRecordsQueryHandler(
             Math.Min(query.PageSize, paginationOptions.MaximumPageSize),
             orderBy: null,
             cancellationToken: CancellationToken.None);
+
         return result.WithMessage(ImportJobMessages.RecordsListedSuccessfully);
     }
 }

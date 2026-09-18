@@ -28,6 +28,7 @@ public sealed class ListBudgetsQueryHandler(
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
             CancellationToken.None);
+
         return DataOutput<BudgetListOutput?>.New
             .WithData(new BudgetListOutput
             {
@@ -58,6 +59,7 @@ public sealed class GetBudgetByIdQueryHandler(
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
             CancellationToken.None);
+
         return snapshot is null
             ? output.WithError(BudgetMessages.NotFound)
             : output
@@ -107,6 +109,7 @@ public sealed class GetBudgetConsumptionQueryHandler(
             .WithMessage(result.Outcome == BudgetConsumptionOutcome.PeriodPrecedesBudget
                 ? BudgetMessages.PeriodPrecedesBudget
                 : BudgetMessages.ConsumptionRetrievedSuccessfully);
+
         return consumption.IsFullyConverted
             ? response
             : response.WithMessage(FigureConversionMessages.PartiallyConverted);

@@ -32,6 +32,7 @@ public sealed class DeleteTransactionCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return TransactionLifecycleHandler.Resolve(
             result,
             TransactionMessages.DeletedSuccessfully);
@@ -61,6 +62,7 @@ public sealed class RestoreTransactionCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return TransactionLifecycleHandler.Resolve(
             result,
             TransactionMessages.RestoredSuccessfully);
@@ -88,6 +90,7 @@ public sealed class HardDeleteTransactionCommandHandler(
             profile.Id,
             command.Id,
             CancellationToken.None);
+
         return TransactionLifecycleHandler.Resolve(
             result,
             TransactionMessages.HardDeletedSuccessfully);
@@ -113,6 +116,7 @@ internal static class TransactionLifecycleHandler
         string successMessage)
     {
         var output = DataOutput<TransactionLifecycleCommandOutput?>.New;
+
         return result.Outcome switch
         {
             TransactionLifecycleOutcome.Succeeded => output

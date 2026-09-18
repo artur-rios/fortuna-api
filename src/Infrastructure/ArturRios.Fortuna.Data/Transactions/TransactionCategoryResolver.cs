@@ -30,6 +30,7 @@ internal static class TransactionCategoryResolver
 
         category = new Category(user, name, createdAt);
         context.Categories.Add(category);
+
         return category;
     }
 }

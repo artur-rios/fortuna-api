@@ -56,6 +56,7 @@ public sealed class EfNetPositionReader(AppDbContext context) : INetPositionRead
             .ToArrayAsync(cancellationToken);
 
         var investments = await ReadInvestmentsAsync(userId, asOf, endOfDay, cancellationToken);
+
         return accounts.Select(item => (item.CurrencyCode, Accounts: item.Amount,
                 Investments: 0m, Cards: 0m))
             .Concat(investments.Select(item => (item.CurrencyCode, Accounts: 0m,

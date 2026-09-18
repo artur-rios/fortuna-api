@@ -953,6 +953,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -973,6 +974,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         Guid? externalReference = null)
     {
         await GrantConsentAsync(client);
+
         return await client.PostAsJsonAsync("/api/connections", new
         {
             DataSource = "pluggy",
@@ -1081,6 +1083,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
             CancellationToken cancellationToken)
         {
             CallCount++;
+
             return Task.FromResult(result);
         }
     }

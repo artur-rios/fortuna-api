@@ -146,6 +146,7 @@ public sealed class TransactionsController(
         var result = await queryMediator.ExecuteQueryAsync<
             SearchTransactionsQuery,
             TransactionSearchOutput>(query);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -162,6 +163,7 @@ public sealed class TransactionsController(
                 Id = id,
                 IncludeDeleted = includeDeleted
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -173,6 +175,7 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RecordTransactionCommand,
             RecordTransactionCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -200,6 +203,7 @@ public sealed class TransactionsController(
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListTransactionAttachmentsQuery,
             AttachmentOutput>(query);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -244,6 +248,7 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateTransactionCommand,
             UpdateTransactionCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -260,6 +265,7 @@ public sealed class TransactionsController(
                 Id = id,
                 TagId = tagId
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -276,6 +282,7 @@ public sealed class TransactionsController(
                 Id = id,
                 TagId = tagId
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -289,6 +296,7 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             ReconcileTransactionCommand,
             ReconcileTransactionCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -299,6 +307,7 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteTransactionCommand,
             TransactionLifecycleCommandOutput>(new DeleteTransactionCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -309,6 +318,7 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RestoreTransactionCommand,
             TransactionLifecycleCommandOutput>(new RestoreTransactionCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -320,6 +330,7 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             HardDeleteTransactionCommand,
             TransactionLifecycleCommandOutput>(new HardDeleteTransactionCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

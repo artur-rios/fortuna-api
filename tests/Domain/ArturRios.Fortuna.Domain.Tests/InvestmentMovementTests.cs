@@ -73,6 +73,7 @@ public sealed class InvestmentMovementTests
     {
         var currency = new Currency("BRL", "Brazilian real", 2);
         var user = new UserProfile(Guid.NewGuid(), "Owner", currency, Now);
+
         return new Investment(
             user,
             "Treasury Bond",

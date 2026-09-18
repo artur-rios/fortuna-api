@@ -128,6 +128,7 @@ public sealed class ExcelWorkbookParser : IExcelWorkbookParser
         }
 
         var value = Text(row.Cell(columns[mappedColumn.Trim()])).Trim();
+
         return value.Length == 0 ? null : value;
     }
 
@@ -162,6 +163,7 @@ public sealed class ExcelWorkbookParser : IExcelWorkbookParser
         var firstCulture = text.Contains(',')
             ? CultureInfo.GetCultureInfo("pt-BR")
             : CultureInfo.InvariantCulture;
+
         return decimal.TryParse(text, NumberStyles.Number, firstCulture, out var amount) ||
             decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out amount)
             ? amount

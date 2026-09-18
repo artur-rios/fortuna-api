@@ -180,6 +180,7 @@ public sealed class CashFlowProjectionTests : IAsyncLifetime
     private async Task<int> TransactionCountAsync()
     {
         await using var context = CreateContext();
+
         return await context.FinancialTransactions.CountAsync();
     }
 
@@ -213,6 +214,7 @@ public sealed class CashFlowProjectionTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
             DatabaseDiagnosticsOptions.Disabled);

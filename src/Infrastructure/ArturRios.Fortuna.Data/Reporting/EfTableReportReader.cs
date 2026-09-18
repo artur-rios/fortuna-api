@@ -147,6 +147,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
         command.CommandText = $"SELECT COUNT(*) FROM {recordSet.From} WHERE {where.Sql}";
         AddParameters(command, userId, where.Parameters);
         var value = await command.ExecuteScalarAsync(cancellationToken);
+
         return checked(Convert.ToInt32(value, CultureInfo.InvariantCulture));
     }
 
@@ -320,9 +321,11 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
         {
             case TableColumnType.Text:
                 parsed = value;
+
                 return true;
             case TableColumnType.Uuid when Guid.TryParse(value, out var guid):
                 parsed = guid;
+
                 return true;
             case TableColumnType.Integer when long.TryParse(
                 value,
@@ -330,6 +333,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
                 CultureInfo.InvariantCulture,
                 out var integer):
                 parsed = integer;
+
                 return true;
             case TableColumnType.Decimal when decimal.TryParse(
                 value,
@@ -337,9 +341,11 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
                 CultureInfo.InvariantCulture,
                 out var number):
                 parsed = number;
+
                 return true;
             case TableColumnType.Boolean when bool.TryParse(value, out var boolean):
                 parsed = boolean;
+
                 return true;
             case TableColumnType.Date when DateOnly.TryParseExact(
                 value,
@@ -348,6 +354,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
                 DateTimeStyles.None,
                 out var date):
                 parsed = date;
+
                 return true;
             case TableColumnType.Timestamp when DateTimeOffset.TryParse(
                 value,
@@ -355,10 +362,12 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
                 DateTimeStyles.AssumeUniversal,
                 out var timestamp):
                 parsed = timestamp;
+
                 return true;
             case TableColumnType.Enumeration when column.EnumValues is not null &&
                                                   column.EnumValues.TryGetValue(value, out var item):
                 parsed = item;
+
                 return true;
             default:
                 return false;
@@ -718,6 +727,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
     {
         var select = "CASE " + expression + " " + string.Join(" ", values.Select(value =>
             $"WHEN {value.Value} THEN '{value.Name}'")) + " END";
+
         return new ColumnDefinition(
             name,
             select,

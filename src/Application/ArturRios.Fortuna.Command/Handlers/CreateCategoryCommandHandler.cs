@@ -62,6 +62,7 @@ public sealed class CreateCategoryCommandHandler(
         }
 
         var category = result.Category!;
+
         return output
             .WithData(new CreateCategoryCommandOutput
             {

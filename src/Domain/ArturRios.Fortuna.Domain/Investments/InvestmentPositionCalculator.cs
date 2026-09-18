@@ -24,6 +24,7 @@ public static class InvestmentPositionCalculator
                     ? movement.Amount
                     : -movement.Amount);
         var position = (latestValuation?.Value ?? 0m) + movementPosition;
+
         return new InvestmentPosition(
             position,
             latestValuation is not null,

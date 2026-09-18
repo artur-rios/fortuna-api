@@ -71,6 +71,7 @@ public sealed class ReauthenticateConnectionCommandHandler(
                 protector.Protect(verified.AccessToken!),
                 timeProvider.GetUtcNow()),
             CancellationToken.None);
+
         return Resolve(result, verified.Institution!);
     }
 
@@ -91,6 +92,7 @@ public sealed class ReauthenticateConnectionCommandHandler(
             PluggyConnectionValidationOutcome.NotConfigured => ConnectionMessages.SourceNotAvailable,
             _ => throw new ArgumentOutOfRangeException(nameof(outcome))
         };
+
         return Output().WithError(message);
     }
 

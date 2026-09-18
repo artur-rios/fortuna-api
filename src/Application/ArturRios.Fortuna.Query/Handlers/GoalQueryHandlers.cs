@@ -28,6 +28,7 @@ public sealed class ListGoalsQueryHandler(
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
             CancellationToken.None);
+
         return DataOutput<GoalListOutput?>.New.WithData(new GoalListOutput
         {
             Goals = snapshots.Select(GoalQueryHandler.ToOutput).ToArray()
@@ -56,6 +57,7 @@ public sealed class GetGoalByIdQueryHandler(
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
             CancellationToken.None);
+
         return goal is null
             ? output.WithError(GoalMessages.NotFound)
             : output.WithData(GoalQueryHandler.ToOutput(goal))
@@ -120,6 +122,7 @@ public sealed class GetGoalProgressQueryHandler(
                 UnconvertedReason = item.UnconvertedReason
             }).ToArray()
         }).WithMessage(GoalMessages.ProgressRetrievedSuccessfully);
+
         return progress.IsFullyConverted
             ? response
             : response.WithMessage(FigureConversionMessages.PartiallyConverted);

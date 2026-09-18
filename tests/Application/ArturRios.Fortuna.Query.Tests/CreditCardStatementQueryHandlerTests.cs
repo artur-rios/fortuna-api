@@ -227,6 +227,7 @@ public sealed class CreditCardStatementQueryHandlerTests
         DateOnly? periodStart = null)
     {
         var start = periodStart ?? new DateOnly(2026, 8, 21);
+
         return new CreditCardStatementReadSnapshot
         {
             Id = Guid.NewGuid(),

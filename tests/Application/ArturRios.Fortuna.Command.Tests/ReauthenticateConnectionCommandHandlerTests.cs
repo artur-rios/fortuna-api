@@ -115,6 +115,7 @@ public sealed class ReauthenticateConnectionCommandHandlerTests
     {
         var profile = new UserProfileSnapshot(
             Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now);
+
         return new ReauthenticateConnectionCommandHandler(
             new ReauthenticateConnectionCommandValidator(),
             new StubActorAccessor(new RequestActor(profile.ExternalSubject!.Value, 3, null, [])),
@@ -155,6 +156,7 @@ public sealed class ReauthenticateConnectionCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Request = reauthentication;
+
             return Task.FromResult(new ConnectionReauthenticationResult(
                 connection with
                 {
@@ -174,6 +176,7 @@ public sealed class ReauthenticateConnectionCommandHandlerTests
             string externalReference, CancellationToken cancellationToken)
         {
             CallCount++;
+
             return Task.FromResult(result);
         }
     }
@@ -185,6 +188,7 @@ public sealed class ReauthenticateConnectionCommandHandlerTests
         public byte[] Protect(string accessToken)
         {
             Value = accessToken;
+
             return [7, 8, 9];
         }
 

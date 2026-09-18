@@ -202,6 +202,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         var envelope = await response.Content.ReadFromJsonAsync<CreationEnvelope>();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return envelope!.Data!;
     }
 
@@ -248,6 +249,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

@@ -81,6 +81,7 @@ public sealed class RequestDataExportCommandHandler(
                 now.Add(options.Retention)),
                 CancellationToken.None);
             await queue.EnqueueAsync(queued.BackgroundJobId, CancellationToken.None);
+
             return output
                 .WithData(new RequestDataExportCommandOutput
                 {
@@ -95,6 +96,7 @@ public sealed class RequestDataExportCommandHandler(
         }
 
         var rendered = renderer.Render(built.Document!, format);
+
         return output
             .WithData(new RequestDataExportCommandOutput
             {
@@ -136,6 +138,7 @@ public sealed class RequestDataExportCommandHandler(
             DataExportFormat.Pdf => "pdf",
             _ => throw new ArgumentOutOfRangeException(nameof(format))
         };
+
         return $"fortuna-{recordSet.ToLowerInvariant()}-{createdAt:yyyyMMddHHmmss}.{extension}";
     }
 }

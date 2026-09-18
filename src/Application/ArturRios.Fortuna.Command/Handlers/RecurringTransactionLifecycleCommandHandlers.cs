@@ -28,6 +28,7 @@ public sealed class DeleteRecurringTransactionCommandHandler(
 
         var result = await rules.SoftDeleteAsync(
             profile.Id, command.Id, timeProvider.GetUtcNow(), CancellationToken.None);
+
         return result.Outcome switch
         {
             RecurringTransactionLifecycleOutcome.Succeeded => output

@@ -135,6 +135,7 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
             var job = outcome == QueueExcelImportOutcome.Succeeded
                 ? new ExcelImportJobSnapshot(JobId, ImportJobStatus.Pending, Now, Now)
                 : null;
+
             return Task.FromResult(new QueueExcelImportResult(
                 job,
                 job is null ? null : BackgroundJobId,
@@ -163,6 +164,7 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
         public ExcelWorkbookValidation Validate(byte[] content, ExcelColumnMapping mapping)
         {
             ValidationCount++;
+
             return new ExcelWorkbookValidation(
                 valid,
                 valid ? null : ExcelImportMessages.WorkbookInvalid);
@@ -180,6 +182,7 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 

@@ -165,6 +165,7 @@ public sealed class GetPersonalDataExportQueryHandlerTests
             {
                 throw new AttachmentObjectNotFoundException(key);
             }
+
             return Task.FromResult<Stream>(new MemoryStream(Content, writable: false));
         }
         public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken) =>

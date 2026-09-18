@@ -133,6 +133,7 @@ public sealed class DownloadAttachmentQueryHandlerTests
                     "application/pdf",
                     3,
                     "attachments/key"));
+
         return metadata;
     }
 
@@ -140,6 +141,7 @@ public sealed class DownloadAttachmentQueryHandlerTests
     {
         var storage = new Mock<IAttachmentStore>();
         storage.Setup(item => item.IsHealthyAsync(CancellationToken.None)).ReturnsAsync(healthy);
+
         return storage;
     }
 

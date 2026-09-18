@@ -99,6 +99,7 @@ public sealed class MaterializeRecurringTransactionsCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Run = run;
+
             return Task.FromResult(result);
         }
     }

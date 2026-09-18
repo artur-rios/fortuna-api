@@ -120,6 +120,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
             DatabaseException.IsUniqueViolation(exception, InvestmentMap.LiveInstrumentIndex))
         {
             context.Entry(investment).State = EntityState.Detached;
+
             return new InvestmentCreationResult(null, DuplicateInstrument: true);
         }
 
@@ -168,6 +169,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
             DatabaseException.IsUniqueViolation(exception, InvestmentMap.LiveInstrumentIndex))
         {
             context.Entry(investment).State = EntityState.Detached;
+
             return new InvestmentUpdateResult(null, DuplicateInstrument: true);
         }
 
@@ -215,6 +217,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
         return LifecycleResult(InvestmentLifecycleOutcome.Succeeded, investment.PublicId);
     }
 
@@ -307,6 +310,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
         context.InvestmentValuations.RemoveRange(valuations);
         context.Investments.Remove(investment);
         await context.SaveChangesAsync(cancellationToken);
+
         return LifecycleResult(InvestmentLifecycleOutcome.Succeeded, investment.PublicId);
     }
 

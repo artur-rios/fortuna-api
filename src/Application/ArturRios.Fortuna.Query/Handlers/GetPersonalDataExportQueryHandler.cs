@@ -72,6 +72,7 @@ public sealed class GetPersonalDataExportQueryHandler(
                     PersonalDataExportMessages.StorageUnavailable);
             }
             var content = await storage.OpenReadAsync(export.StorageKey, CancellationToken.None);
+
             return DataOutput<PersonalDataExportQueryOutput?>.New
                 .WithData(Project(export, content))
                 .WithMessage(PersonalDataExportMessages.RetrievedSuccessfully);
@@ -84,6 +85,7 @@ public sealed class GetPersonalDataExportQueryHandler(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Personal data archive storage read failed");
+
             return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
                 PersonalDataExportMessages.StorageUnavailable);
         }

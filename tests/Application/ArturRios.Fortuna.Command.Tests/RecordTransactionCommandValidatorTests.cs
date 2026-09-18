@@ -141,54 +141,63 @@ public sealed class RecordTransactionCommandValidatorTests
     private static string SetCategoryInvalid(RecordTransactionCommand command)
     {
         command.CategoryId = Guid.Empty;
+
         return TransactionMessages.CategoryIdRequired;
     }
 
     private static string SetDirectionInvalid(RecordTransactionCommand command)
     {
         command.Direction = (TransactionDirection)99;
+
         return TransactionMessages.DirectionInvalid;
     }
 
     private static string SetOwnerInvalid(RecordTransactionCommand command)
     {
         command.OwnerId = Guid.NewGuid();
+
         return TransactionMessages.OwnerImmutable;
     }
 
     private static string SetDescriptionInvalid(RecordTransactionCommand command)
     {
         command.Description = new string('x', 501);
+
         return TransactionMessages.DescriptionTooLong;
     }
 
     private static string SetCounterpartyInvalid(RecordTransactionCommand command)
     {
         command.Counterparty = new string('x', 201);
+
         return TransactionMessages.CounterpartyTooLong;
     }
 
     private static string SetTagInvalid(RecordTransactionCommand command)
     {
         command.Tags = [new string('x', 201)];
+
         return TransactionMessages.TagTooLong;
     }
 
     private static string SetEmptyTag(RecordTransactionCommand command)
     {
         command.Tags = [string.Empty];
+
         return TransactionMessages.TagRequired;
     }
 
     private static string SetTooManyTags(RecordTransactionCommand command)
     {
         command.Tags = Enumerable.Range(1, 51).Select(index => $"Tag {index}").ToArray();
+
         return TransactionMessages.TooManyTags;
     }
 
     private static string SetCurrencyInvalid(RecordTransactionCommand command)
     {
         command.CurrencyCode = "US";
+
         return TransactionMessages.CurrencyInvalid;
     }
 

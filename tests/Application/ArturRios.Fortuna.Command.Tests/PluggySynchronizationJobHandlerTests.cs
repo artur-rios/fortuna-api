@@ -83,6 +83,7 @@ public sealed class PluggySynchronizationJobHandlerTests
             CancellationToken cancellationToken)
         {
             CompletedBatch = batch;
+
             return Task.CompletedTask;
         }
 
@@ -95,6 +96,7 @@ public sealed class PluggySynchronizationJobHandlerTests
         {
             FailureReason = reason;
             RequiresReauthentication = requiresReauthentication;
+
             return Task.CompletedTask;
         }
     }

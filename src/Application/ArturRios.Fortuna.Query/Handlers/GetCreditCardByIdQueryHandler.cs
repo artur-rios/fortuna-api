@@ -48,6 +48,7 @@ public sealed class GetCreditCardByIdQueryHandler(
     internal static CreditCardOutput Project(CreditCardLimitSnapshot card)
     {
         var used = Math.Max(card.OutstandingAmount, 0m);
+
         return new CreditCardOutput
         {
             Id = card.Id,

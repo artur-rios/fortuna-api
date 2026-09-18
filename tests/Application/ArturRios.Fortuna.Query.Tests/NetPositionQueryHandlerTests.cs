@@ -151,6 +151,7 @@ public sealed class NetPositionQueryHandlerTests
         RequestActor? actor = null)
     {
         var profile = missingProfile ? null : Profile;
+
         return new GetNetPositionQueryHandler(
             new GetNetPositionQueryValidator(),
             profiles ?? new StubProfileReader(profile),
@@ -176,6 +177,7 @@ public sealed class NetPositionQueryHandlerTests
         {
             UserId = userId;
             AsOf = asOf;
+
             return Task.FromResult(positions);
         }
     }
@@ -191,6 +193,7 @@ public sealed class NetPositionQueryHandlerTests
             CancellationToken cancellationToken)
         {
             CallCount++;
+
             return Task.FromResult(rate);
         }
     }
@@ -220,6 +223,7 @@ public sealed class NetPositionQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

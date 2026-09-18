@@ -51,6 +51,7 @@ public sealed class GoalsController(
         var result = await commandMediator.ExecuteCommandAsync<
             CreateGoalCommand,
             GoalCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -61,6 +62,7 @@ public sealed class GoalsController(
     {
         var result = await queryMediator.ExecuteQueryAsync<ListGoalsQuery, GoalListOutput>(
             new ListGoalsQuery { IncludeDeleted = includeDeleted });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -72,6 +74,7 @@ public sealed class GoalsController(
     {
         var result = await queryMediator.ExecuteQueryAsync<GetGoalByIdQuery, GoalOutput>(
             new GetGoalByIdQuery { Id = id, IncludeDeleted = includeDeleted });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -85,6 +88,7 @@ public sealed class GoalsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateGoalCommand,
             GoalCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -95,6 +99,7 @@ public sealed class GoalsController(
         var result = await queryMediator.ExecuteQueryAsync<
             GetGoalProgressQuery,
             GoalProgressDetailOutput>(new GetGoalProgressQuery { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -105,6 +110,7 @@ public sealed class GoalsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteGoalCommand,
             GoalCommandOutput>(new DeleteGoalCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

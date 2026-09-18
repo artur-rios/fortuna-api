@@ -193,6 +193,7 @@ public sealed class BudgetCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(Result);
         }
 
@@ -201,6 +202,7 @@ public sealed class BudgetCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(Result);
         }
 
@@ -213,6 +215,7 @@ public sealed class BudgetCommandHandlerTests
         {
             DeletedAt = changedAt;
             AsOf = asOf;
+
             return Task.FromResult(Result);
         }
     }

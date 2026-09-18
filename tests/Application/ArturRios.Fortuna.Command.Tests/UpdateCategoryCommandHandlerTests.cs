@@ -160,6 +160,7 @@ public sealed class UpdateCategoryCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(result);
         }
     }
@@ -177,6 +178,7 @@ public sealed class UpdateCategoryCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

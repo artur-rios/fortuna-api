@@ -264,6 +264,7 @@ public sealed class CounterpartyCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(CreationResult);
         }
 
@@ -272,6 +273,7 @@ public sealed class CounterpartyCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(MutationResult);
         }
 
@@ -282,6 +284,7 @@ public sealed class CounterpartyCommandHandlerTests
             CancellationToken cancellationToken)
         {
             DeletedAt = changedAt;
+
             return Task.FromResult(MutationResult);
         }
 
@@ -290,6 +293,7 @@ public sealed class CounterpartyCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Merge = merge;
+
             return Task.FromResult(MergeResult);
         }
     }

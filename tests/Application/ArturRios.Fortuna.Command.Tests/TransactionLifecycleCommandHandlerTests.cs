@@ -181,6 +181,7 @@ public sealed class TransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             SoftDelete = (userId, id, changedAt);
+
             return Task.FromResult(new TransactionLifecycleResult(resultId, outcome));
         }
 
@@ -191,6 +192,7 @@ public sealed class TransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Restore = (userId, id, changedAt);
+
             return Task.FromResult(new TransactionLifecycleResult(resultId, outcome));
         }
 
@@ -200,6 +202,7 @@ public sealed class TransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             HardDelete = (userId, id);
+
             return Task.FromResult(new TransactionLifecycleResult(resultId, outcome));
         }
     }
@@ -217,6 +220,7 @@ public sealed class TransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

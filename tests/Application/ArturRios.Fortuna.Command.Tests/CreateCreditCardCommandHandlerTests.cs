@@ -202,6 +202,7 @@ public sealed class CreateCreditCardCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(result);
         }
     }
@@ -232,6 +233,7 @@ public sealed class CreateCreditCardCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

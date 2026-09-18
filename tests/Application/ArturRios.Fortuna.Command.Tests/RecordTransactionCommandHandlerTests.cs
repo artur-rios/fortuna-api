@@ -164,6 +164,7 @@ public sealed class RecordTransactionCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Record = record;
+
             return Task.FromResult(result);
         }
     }
@@ -181,6 +182,7 @@ public sealed class RecordTransactionCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

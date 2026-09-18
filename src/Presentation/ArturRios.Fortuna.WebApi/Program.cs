@@ -939,6 +939,7 @@ static void RegisterAttachmentStore(IServiceCollection services, FortunaOptions 
     if (string.Equals(options.StorageProvider, "Filesystem", StringComparison.OrdinalIgnoreCase))
     {
         services.AddSingleton<IAttachmentStore>(new FilesystemAttachmentStore(options.StoragePath!));
+
         return;
     }
 

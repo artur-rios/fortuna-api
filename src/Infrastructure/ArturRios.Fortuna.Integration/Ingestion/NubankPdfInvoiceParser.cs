@@ -324,6 +324,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         {
             line.OriginalCurrencyCode = rateMatch.Groups["currency"].Value.ToUpperInvariant();
             line.AppliedRate = statedRate;
+
             return line.OriginalCurrencyCode != "BRL";
         }
 
@@ -340,6 +341,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         line.OriginalCurrencyCode = detailMatch.Groups["currency"].Value.ToUpperInvariant();
         line.OriginalAmount = originalAmount;
         line.AppliedRate ??= decimal.Round(convertedAmount / originalAmount, 8);
+
         return line.OriginalCurrencyCode != "BRL";
     }
 
@@ -363,6 +365,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
                 candidate >= periodStart && candidate <= periodEnd)
             {
                 date = candidate;
+
                 return true;
             }
         }
@@ -373,6 +376,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     private static bool TryDate(string day, string month, string year, out DateOnly date)
     {
         date = default;
+
         return int.TryParse(day, out var parsedDay) && Month(month, out var parsedMonth) &&
             int.TryParse(year, out var parsedYear) &&
             TryDate(parsedDay, parsedMonth, parsedYear, out date);
@@ -387,6 +391,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         }
 
         date = new DateOnly(year, month, day);
+
         return true;
     }
 
@@ -397,6 +402,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     {
         var normalized = Clean(value).Replace("R$", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace('−', '-').Replace(" ", string.Empty, StringComparison.Ordinal);
+
         return decimal.TryParse(
             normalized,
             NumberStyles.AllowLeadingSign | NumberStyles.AllowThousands | NumberStyles.AllowDecimalPoint,
@@ -407,6 +413,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     private static bool TryUnsignedForeignNumber(string value, out decimal amount)
     {
         var culture = value.Contains(',') ? BrazilianCulture : CultureInfo.InvariantCulture;
+
         return decimal.TryParse(value, NumberStyles.Number, culture, out amount) && amount > 0m;
     }
 
@@ -419,6 +426,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         }
 
         var digits = new string(value.Where(char.IsDigit).ToArray());
+
         return digits.Length == 0 ? value.Trim() : digits;
     }
 
@@ -440,6 +448,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         }
 
         var value = ReferencePrefixRegex().Replace(description, string.Empty).Trim(' ', ':', '-', '–');
+
         return value.Length == 0 ? null : value;
     }
 
@@ -461,6 +470,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     private static string RemoveDiacritics(string value)
     {
         var normalized = value.Normalize(NormalizationForm.FormD);
+
         return new string(normalized.Where(character =>
             CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
             .ToArray()).Normalize(NormalizationForm.FormC);

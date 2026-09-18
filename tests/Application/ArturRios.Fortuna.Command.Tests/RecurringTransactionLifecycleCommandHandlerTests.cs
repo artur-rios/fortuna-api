@@ -69,6 +69,7 @@ public sealed class RecurringTransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Id = id;
+
             return Task.FromResult(result);
         }
     }

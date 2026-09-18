@@ -205,6 +205,7 @@ public sealed class CategoryQueryHandlerTests
             Called = true;
             IncludeDeleted = includeDeleted;
             IncludeUsageCounts = includeUsageCounts;
+
             return Task.FromResult(categories);
         }
     }
@@ -222,6 +223,7 @@ public sealed class CategoryQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

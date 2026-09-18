@@ -191,6 +191,7 @@ public sealed class CreateFinancialAccountCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(result);
         }
     }
@@ -221,6 +222,7 @@ public sealed class CreateFinancialAccountCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

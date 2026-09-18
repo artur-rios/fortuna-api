@@ -70,6 +70,7 @@ public sealed class UpdateTransactionCommandHandler(
         }
 
         var transaction = result.Transaction;
+
         return output
             .WithData(new UpdateTransactionCommandOutput
             {

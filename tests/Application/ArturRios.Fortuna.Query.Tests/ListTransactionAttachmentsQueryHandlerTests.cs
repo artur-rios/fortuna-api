@@ -211,6 +211,7 @@ public sealed class ListTransactionAttachmentsQueryHandlerTests
             Guid transactionId)
         {
             Queried = true;
+
             return attachments.AsQueryable();
         }
     }

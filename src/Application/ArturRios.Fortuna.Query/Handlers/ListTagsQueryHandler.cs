@@ -33,6 +33,7 @@ public sealed class ListTagsQueryHandler(
             profile.Id,
             query.IncludeDeleted,
             CancellationToken.None);
+
         return DataOutput<TagListOutput?>.New
             .WithData(new TagListOutput
             {

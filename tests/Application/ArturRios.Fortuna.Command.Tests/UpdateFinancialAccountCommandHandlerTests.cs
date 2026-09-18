@@ -199,6 +199,7 @@ public sealed class UpdateFinancialAccountCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = value;
+
             return Task.FromResult(update(value));
         }
     }
@@ -216,6 +217,7 @@ public sealed class UpdateFinancialAccountCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

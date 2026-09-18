@@ -65,6 +65,7 @@ public sealed class OperationalHealthCheckUnitTests
         using var client = Client(_ =>
         {
             calls++;
+
             return new HttpResponseMessage(HttpStatusCode.OK);
         });
 

@@ -185,6 +185,7 @@ public sealed class CreateInvestmentCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(result);
         }
     }
@@ -215,6 +216,7 @@ public sealed class CreateInvestmentCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

@@ -96,6 +96,7 @@ public sealed class ImportsController(CommandMediator commandMediator) : Control
         var result = await commandMediator.ExecuteCommandAsync<
             ImportPdfInvoiceCommand,
             ImportPdfInvoiceCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

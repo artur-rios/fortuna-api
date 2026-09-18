@@ -62,6 +62,7 @@ public sealed class SqliteOfflineApiTests
     {
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         DatabaseProvider.Configure(builder, DatabaseProvider.SQLite, path);
+
         return new AppDbContext(
             builder.Options,
             NullLoggerFactory.Instance,

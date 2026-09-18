@@ -120,6 +120,7 @@ public sealed class PluggySynchronizationGatewayTests
         {
             Paths.Add(request.RequestUri!.PathAndQuery);
             ApiKeys.Add(request.Headers.GetValues("X-API-KEY").Single());
+
             return Task.FromResult(queue.Dequeue());
         }
     }
@@ -131,6 +132,7 @@ public sealed class PluggySynchronizationGatewayTests
         public Task WaitAsync(TimeSpan delay, CancellationToken cancellationToken)
         {
             Delays.Add(delay);
+
             return Task.CompletedTask;
         }
     }

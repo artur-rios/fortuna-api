@@ -70,6 +70,7 @@ public sealed class PluggyConnectionGateway(
             var item = await response.Content.ReadFromJsonAsync<ItemResponse>(
                 JsonOptions,
                 cancellationToken);
+
             return item is null ||
                 !string.Equals(item.Id, externalReference, StringComparison.OrdinalIgnoreCase) ||
                 string.IsNullOrWhiteSpace(item.Connector?.Name)

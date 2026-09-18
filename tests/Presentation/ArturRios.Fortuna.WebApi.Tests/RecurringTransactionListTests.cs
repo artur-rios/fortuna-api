@@ -273,6 +273,7 @@ public sealed class RecurringTransactionListTests : IAsyncLifetime
             Description = description
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<RuleEnvelope>())!.Data!;
     }
 
@@ -284,6 +285,7 @@ public sealed class RecurringTransactionListTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -298,6 +300,7 @@ public sealed class RecurringTransactionListTests : IAsyncLifetime
             OpeningBalance = 1000m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 

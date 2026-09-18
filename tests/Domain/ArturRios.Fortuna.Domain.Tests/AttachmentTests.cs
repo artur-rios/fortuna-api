@@ -74,6 +74,7 @@ public sealed class AttachmentTests
             currency,
             0m,
             Now);
+
         return new FinancialTransaction(
             user,
             account,

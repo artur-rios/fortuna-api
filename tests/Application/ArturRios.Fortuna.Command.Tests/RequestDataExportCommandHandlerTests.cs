@@ -104,6 +104,7 @@ public sealed class RequestDataExportCommandHandlerTests
             queue,
             new DataExportOptions(threshold, TimeSpan.FromHours(24), "pt-BR"),
             new FixedTimeProvider());
+
         return new TestContext(handler, reader, store, queue);
     }
 
@@ -148,6 +149,7 @@ public sealed class RequestDataExportCommandHandlerTests
                     ["amount"] = 12.34m,
                     ["currencyCode"] = "BRL"
                 }];
+
             return Task.FromResult(new TableReportReadResult(
                 TableReportReadOutcome.Succeeded,
                 new TableReportSnapshot(
@@ -193,6 +195,7 @@ public sealed class RequestDataExportCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Request = request;
+
             return Task.FromResult(new QueueDataExportResult(ExportId, JobId));
         }
 
@@ -216,6 +219,7 @@ public sealed class RequestDataExportCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 

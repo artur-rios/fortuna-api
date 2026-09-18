@@ -76,6 +76,7 @@ public sealed class RecordTransactionCommandHandler(
         }
 
         var transaction = result.Transaction;
+
         return output
             .WithData(new RecordTransactionCommandOutput
             {

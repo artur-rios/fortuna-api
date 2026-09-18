@@ -371,6 +371,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -432,6 +433,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
             OpeningBalance = 0m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<AccountEnvelope>())!.Data!;
     }
 
@@ -448,6 +450,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<CardEnvelope>())!.Data!;
     }
 
@@ -476,6 +479,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
             Tags = tags
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<TransactionEnvelope>())!.Data!;
     }
 
@@ -505,6 +509,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

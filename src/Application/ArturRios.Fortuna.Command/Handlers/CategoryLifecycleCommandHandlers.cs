@@ -32,6 +32,7 @@ public sealed class DeleteCategoryCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return CategoryLifecycleHandler.Resolve(result, CategoryMessages.DeletedSuccessfully);
     }
 }
@@ -59,6 +60,7 @@ public sealed class RestoreCategoryCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return CategoryLifecycleHandler.Resolve(result, CategoryMessages.RestoredSuccessfully);
     }
 }
@@ -84,6 +86,7 @@ public sealed class HardDeleteCategoryCommandHandler(
             profile.Id,
             command.Id,
             CancellationToken.None);
+
         return CategoryLifecycleHandler.Resolve(result, CategoryMessages.HardDeletedSuccessfully);
     }
 }
@@ -107,6 +110,7 @@ internal static class CategoryLifecycleHandler
         string successMessage)
     {
         var output = DataOutput<CategoryLifecycleCommandOutput?>.New;
+
         return result.Outcome switch
         {
             CategoryLifecycleOutcome.Succeeded => output

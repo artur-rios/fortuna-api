@@ -58,6 +58,7 @@ public sealed class EfRecurringTransactionStore(
         context.RecurringTransactions.Add(rule);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return Result(RecurringTransactionRecordOutcome.Succeeded, Snapshot(rule, record.PreviewFrom));
     }
 
@@ -71,6 +72,7 @@ public sealed class EfRecurringTransactionStore(
             .Include(item => item.Category).Include(item => item.Counterparty).Include(item => item.Currency)
             .SingleOrDefaultAsync(item => item.PublicId == id && item.User.PublicId == userId && !item.IsDeleted,
                 cancellationToken);
+
         return rule is null
             ? null
             : Snapshot(rule, DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime));
@@ -165,6 +167,7 @@ public sealed class EfRecurringTransactionStore(
             update.StartsOn, update.EndsOn, update.Description, counterparty, update.UpdatedAt);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return UpdateResult(
             RecurringTransactionUpdateOutcome.Succeeded,
             Snapshot(rule, update.PreviewFrom));
@@ -187,6 +190,7 @@ public sealed class EfRecurringTransactionStore(
 
         rule.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new RecurringTransactionLifecycleResult(
             rule.PublicId, RecurringTransactionLifecycleOutcome.Succeeded);
     }
@@ -293,6 +297,7 @@ public sealed class EfRecurringTransactionStore(
         context.ChangeTracker.Clear();
         rule = await FindRuleAsync(run.UserId, ruleId, cancellationToken)
             ?? throw new InvalidOperationException("A recurring transaction disappeared during materialization.");
+
         return new RecurringRuleMaterializationResult(
             rule.PublicId,
             occurrenceResults,
@@ -369,6 +374,7 @@ public sealed class EfRecurringTransactionStore(
                 {
                     statement = new CreditCardStatement(card, cycle, changedAt);
                     context.CreditCardStatements.Add(statement);
+
                     break;
                 }
 
@@ -412,6 +418,7 @@ public sealed class EfRecurringTransactionStore(
         if (existing is not null) return existing;
         var counterparty = new Counterparty(user, name, createdAt);
         context.Counterparties.Add(counterparty);
+
         return counterparty;
     }
 
@@ -421,6 +428,7 @@ public sealed class EfRecurringTransactionStore(
             rule.LastMaterializedOn.Value >= previewFrom
                 ? rule.LastMaterializedOn.Value.AddDays(1)
                 : previewFrom;
+
         return new RecurringTransactionSnapshot
         {
             Id = rule.PublicId,

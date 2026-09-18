@@ -230,6 +230,7 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
 
         Tags.Add(tag);
         MarkUpdated(updatedAt);
+
         return true;
     }
 
@@ -244,6 +245,7 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
 
         Tags.Remove(attached);
         MarkUpdated(updatedAt);
+
         return true;
     }
 

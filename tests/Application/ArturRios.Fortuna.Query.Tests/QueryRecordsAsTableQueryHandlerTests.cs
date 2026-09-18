@@ -173,6 +173,7 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
         int maximumPageSize = 100)
     {
         var resolvedProfile = missingProfile ? null : Profile();
+
         return new QueryRecordsAsTableQueryHandler(
             new QueryRecordsAsTableQueryValidator(),
             profiles ?? new StubProfileReader(resolvedProfile),
@@ -224,6 +225,7 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
             CancellationToken cancellationToken)
         {
             Criteria = criteria;
+
             return Task.FromResult(result);
         }
     }
@@ -262,6 +264,7 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

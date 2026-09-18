@@ -68,6 +68,7 @@ public sealed class RecordInvestmentMovementCommandHandler(
         }
 
         var movement = result.Movement;
+
         return output
             .WithData(new RecordInvestmentMovementCommandOutput
             {

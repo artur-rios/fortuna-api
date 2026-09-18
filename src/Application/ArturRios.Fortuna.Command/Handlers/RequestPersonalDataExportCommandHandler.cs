@@ -47,6 +47,7 @@ public sealed class RequestPersonalDataExportCommandHandler(
                 expiresAt),
             CancellationToken.None);
         await queue.EnqueueAsync(queued.BackgroundJobId, CancellationToken.None);
+
         return DataOutput<RequestPersonalDataExportCommandOutput?>.New
             .WithData(new RequestPersonalDataExportCommandOutput
             {

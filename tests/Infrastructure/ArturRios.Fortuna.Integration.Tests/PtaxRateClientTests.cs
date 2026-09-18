@@ -80,6 +80,7 @@ public sealed class PtaxRateClientTests
             var fixture = path.Contains("EUR", StringComparison.Ordinal)
                 ? "ptax-eur-weekend.json"
                 : "ptax-usd-weekend.json";
+
             return Task.FromResult(JsonResponse(Fixture(fixture)));
         }
     }
@@ -97,6 +98,7 @@ public sealed class PtaxRateClientTests
             {
                 var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
                 limited.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(3));
+
                 return Task.FromResult(limited);
             }
 
@@ -112,6 +114,7 @@ public sealed class PtaxRateClientTests
         {
             var isEur = request.RequestUri!.PathAndQuery.Contains("EUR", StringComparison.Ordinal);
             var date = isEur ? "2026-09-04" : "2026-09-03";
+
             return Task.FromResult(JsonResponse($$"""
                 {"value":[{"cotacaoVenda":5.0,"dataHoraCotacao":"{{date}} 13:00:00.000","tipoBoletim":"Fechamento PTAX"}]}
                 """));
@@ -125,6 +128,7 @@ public sealed class PtaxRateClientTests
         public Task WaitAsync(TimeSpan delay, CancellationToken cancellationToken)
         {
             Delays.Add(delay);
+
             return Task.CompletedTask;
         }
     }

@@ -61,6 +61,7 @@ public sealed class UpdateCreditCardCommandHandler(
         }
 
         var card = updated.Card;
+
         return output
             .WithData(new UpdateCreditCardCommandOutput
             {

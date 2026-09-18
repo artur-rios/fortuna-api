@@ -73,6 +73,7 @@ public sealed class QueryRecordsAsTableQueryHandler(
             result.Report.TotalGroups,
             displayCurrency,
             displayCurrencyDefinition?.MinorUnitDigits);
+
         return output
             .WithData(new TableReportOutput
             {

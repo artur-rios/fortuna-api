@@ -36,6 +36,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
         catch (DbUpdateException exception) when (IsDuplicateName(exception))
         {
             context.Entry(tag).State = EntityState.Detached;
+
             return CreationResult(TagMutationOutcome.DuplicateName);
         }
 
@@ -89,6 +90,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
         catch (DbUpdateException exception) when (IsDuplicateName(exception))
         {
             context.Entry(tag).State = EntityState.Detached;
+
             return UpdateResult(TagMutationOutcome.DuplicateName);
         }
 
@@ -118,6 +120,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
 
         tag.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new TagDeletionResult(
             Snapshot(tag),
             transactions.Count,
@@ -158,6 +161,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
 
         var changed = entities.Transaction.AttachTag(entities.Tag, assignment.ChangedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return AssignmentResult(
             TransactionTagAssignmentOutcome.Succeeded,
             entities.Transaction.PublicId,
@@ -213,6 +217,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
                 item.PublicId == assignment.TagId &&
                 !item.IsDeleted,
                 cancellationToken);
+
         return (transaction, tag);
     }
 

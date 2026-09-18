@@ -215,6 +215,7 @@ public sealed record FortunaOptions
     private static string ConsentVersion(string? value)
     {
         var version = string.IsNullOrWhiteSpace(value) ? "1.0" : value.Trim();
+
         return version.Length <= 50
             ? version
             : throw new InvalidOperationException(
@@ -374,6 +375,7 @@ public sealed record FortunaOptions
     private static Uri RequiredHttpsUri(string? value, string key)
     {
         var uri = RequiredAbsoluteUri(value, key);
+
         return uri.Scheme == Uri.UriSchemeHttps
             ? uri
             : throw new InvalidOperationException(

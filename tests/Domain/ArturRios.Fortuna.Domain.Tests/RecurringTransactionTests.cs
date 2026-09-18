@@ -281,6 +281,7 @@ public sealed class RecurringTransactionTests
             "Owner",
             new Currency("BRL", "Brazilian real", 2),
             Now);
+
         return new RecurringTransaction(
             user,
             new FinancialAccount(

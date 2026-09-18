@@ -69,6 +69,7 @@ public sealed class SettleCreditCardStatementCommandHandler(
         }
 
         var settlement = result.Settlement;
+
         return output
             .WithData(new SettleCreditCardStatementCommandOutput
             {

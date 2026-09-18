@@ -79,6 +79,7 @@ public sealed class CurrencyQueryHandlerTests
             CancellationToken cancellationToken)
         {
             RequestedCode = code;
+
             return Task.FromResult(currency);
         }
     }

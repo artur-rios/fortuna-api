@@ -206,6 +206,7 @@ public sealed class UserErasureStoreTests
     {
         var id = await context.UserProfiles.Where(item => item.PublicId == userId)
             .Select(item => item.Id).SingleAsync();
+
         return await context.FinancialAccounts.CountAsync(item => item.UserId == id) +
                await context.FinancialTransactions.CountAsync(item => item.UserId == id) +
                await context.Categories.CountAsync(item => item.UserId == id) +
@@ -220,6 +221,7 @@ public sealed class UserErasureStoreTests
     {
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         DatabaseProvider.Configure(builder, DatabaseProvider.SQLite, path);
+
         return new AppDbContext(
             builder.Options,
             NullLoggerFactory.Instance,
@@ -246,6 +248,7 @@ public sealed class UserErasureStoreTests
         public Task PutAsync(string key, string value)
         {
             objects[key] = System.Text.Encoding.UTF8.GetBytes(value);
+
             return Task.CompletedTask;
         }
 
@@ -275,6 +278,7 @@ public sealed class UserErasureStoreTests
             }
 
             objects.Remove(key);
+
             return Task.CompletedTask;
         }
 

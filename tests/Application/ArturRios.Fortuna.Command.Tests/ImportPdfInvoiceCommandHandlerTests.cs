@@ -111,6 +111,7 @@ public sealed class ImportPdfInvoiceCommandHandlerTests
             var job = outcome == QueuePdfInvoiceImportOutcome.Succeeded
                 ? new PdfInvoiceImportJobSnapshot(JobId, ImportJobStatus.Pending, Now, Now)
                 : null;
+
             return Task.FromResult(new QueuePdfInvoiceImportResult(
                 job,
                 job is null ? null : BackgroundJobId,
@@ -139,6 +140,7 @@ public sealed class ImportPdfInvoiceCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 

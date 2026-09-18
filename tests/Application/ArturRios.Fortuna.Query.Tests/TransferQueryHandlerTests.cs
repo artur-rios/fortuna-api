@@ -127,6 +127,7 @@ public sealed class TransferQueryHandlerTests
             Called = true;
             UserId = userId;
             IncludeDeleted = includeDeleted;
+
             return Task.FromResult(snapshot);
         }
     }

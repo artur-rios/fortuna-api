@@ -93,6 +93,7 @@ public sealed class CloseCreditCardStatementCommandHandlerTests
             Called = true;
             ExplicitRequest = explicitRequest;
             AsOf = asOf;
+
             return Task.FromResult(result);
         }
     }

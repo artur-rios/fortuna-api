@@ -31,6 +31,7 @@ public sealed record BillingCycle(
         var periodStart = InMonth(previousMonth.Year, previousMonth.Month, closingDay).AddDays(1);
         var dueMonth = dueDay > closingDay ? closingDate : closingDate.AddMonths(1);
         var dueDate = InMonth(dueMonth.Year, dueMonth.Month, dueDay);
+
         return new BillingCycle(periodStart, closingDate, closingDate, dueDate);
     }
 

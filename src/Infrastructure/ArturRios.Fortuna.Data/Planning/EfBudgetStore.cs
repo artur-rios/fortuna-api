@@ -51,6 +51,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             creation.CreatedAt);
         context.Budgets.Add(budget);
         await context.SaveChangesAsync(cancellationToken);
+
         return new BudgetMutationResult(
             await SnapshotAsync(
                 budget,
@@ -93,6 +94,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             item.PublicId == id &&
             (includeDeleted || !item.IsDeleted),
             cancellationToken);
+
         return budget is null ? null : await SnapshotAsync(budget, asOf, cancellationToken);
     }
 
@@ -136,6 +138,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             budget,
             periodDate,
             cancellationToken);
+
         return new BudgetConsumptionResult(
             new BudgetConsumptionDetailSnapshot(
                 budget.PublicId,
@@ -194,6 +197,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             update.IncludeDescendants,
             update.UpdatedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new BudgetMutationResult(
             await SnapshotAsync(
                 budget,
@@ -219,6 +223,7 @@ public sealed class EfBudgetStore(AppDbContext context)
 
         budget.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new BudgetMutationResult(
             await SnapshotAsync(budget, asOf, cancellationToken),
             BudgetMutationOutcome.Succeeded);
@@ -242,6 +247,7 @@ public sealed class EfBudgetStore(AppDbContext context)
                 requested.Contains(item.PublicId) &&
                 !item.IsDeleted)
             .ToListAsync(cancellationToken);
+
         return categories.Count == requested.Length ? categories : null;
     }
 
@@ -259,6 +265,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             calculation.IsExceeded,
             calculation.Overage,
             calculation.IsFullyConverted);
+
         return new BudgetSnapshot(
             budget.PublicId,
             budget.Amount,
@@ -385,6 +392,7 @@ public sealed class EfBudgetStore(AppDbContext context)
         decimal? roundedSpent = fullyConverted
             ? Round(figures.Sum(item => item.ConvertedAmount!.Value), budget)
             : null;
+
         return new ConsumptionCalculation(
             period.Start,
             period.End,

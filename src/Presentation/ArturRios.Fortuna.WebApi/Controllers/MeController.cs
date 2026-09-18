@@ -60,6 +60,7 @@ public sealed class MeController(
         var result = await commandMediator.ExecuteCommandAsync<
             EraseUserCommand,
             EraseUserCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -76,6 +77,7 @@ public sealed class MeController(
         var result = await commandMediator.ExecuteCommandAsync<
             RequestPersonalDataExportCommand,
             RequestPersonalDataExportCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
         {
             [PersonalDataExportMessages.Accepted] = StatusCodes.Status202Accepted,
@@ -102,6 +104,7 @@ public sealed class MeController(
                 enableRangeProcessing: true);
         }
         var response = ResponseResolver.Resolve(result, statusMap: StatusMap);
+
         return response.Result ?? Ok(response.Value);
     }
 
@@ -112,6 +115,7 @@ public sealed class MeController(
         var result = await queryMediator.ExecuteQueryAsync<
             GetMyProcessingConsentsQuery,
             ProcessingConsentQueryOutput>(new GetMyProcessingConsentsQuery());
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -123,6 +127,7 @@ public sealed class MeController(
         var result = await commandMediator.ExecuteCommandAsync<
             GrantProcessingConsentCommand,
             GrantProcessingConsentCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -137,6 +142,7 @@ public sealed class MeController(
             {
                 Purpose = purpose
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

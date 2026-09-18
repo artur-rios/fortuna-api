@@ -107,6 +107,7 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                 "The aggregation granularity was not normalized.")
         };
         var expression = $"date_trunc('{unit}', item.occurred_on::timestamp)::date";
+
         return new DimensionSql($"({expression})::text", $"({expression})::text", expression);
     }
 
@@ -118,6 +119,7 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
             ? string.Empty
             : $"AND ({dimension.Where})";
         var selectionWhere = BuildSelectionWhere(selections);
+
         return $"""
             WITH RECURSIVE category_roots AS (
                 SELECT item.id, item.id AS root_id

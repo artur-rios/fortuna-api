@@ -236,6 +236,7 @@ public sealed class PersonalDataArchiveTests
             Now));
         await context.SaveChangesAsync();
         await objects.PutAsync(storageKey, "portable attachment");
+
         return user.PublicId;
     }
 
@@ -246,6 +247,7 @@ public sealed class PersonalDataArchiveTests
     {
         await using var stream = entry.Open();
         using var reader = new StreamReader(stream, Encoding.UTF8);
+
         return await reader.ReadToEndAsync();
     }
 
@@ -253,6 +255,7 @@ public sealed class PersonalDataArchiveTests
     {
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         DatabaseProvider.Configure(builder, DatabaseProvider.SQLite, path);
+
         return new AppDbContext(
             builder.Options,
             NullLoggerFactory.Instance,
@@ -269,6 +272,7 @@ public sealed class PersonalDataArchiveTests
         public Task PutAsync(string key, string value)
         {
             objects[key] = Encoding.UTF8.GetBytes(value);
+
             return Task.CompletedTask;
         }
 
@@ -285,6 +289,7 @@ public sealed class PersonalDataArchiveTests
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {
             objects.Remove(key);
+
             return Task.CompletedTask;
         }
 

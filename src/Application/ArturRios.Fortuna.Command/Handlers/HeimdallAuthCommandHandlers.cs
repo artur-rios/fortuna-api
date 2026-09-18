@@ -34,6 +34,7 @@ public sealed class LoginThroughApiCommandHandler(
         }
 
         var data = result.Data!;
+
         return DataOutput<LoginThroughApiCommandOutput?>.New.WithData(new()
         {
             Token = data.Token,
@@ -130,6 +131,7 @@ public sealed class GoogleSignOutThroughApiCommandHandler(IHeimdallAuthGateway g
         GoogleSignOutThroughApiCommand command)
     {
         var result = await gateway.GoogleSignOutAsync(command.BearerToken, CancellationToken.None);
+
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<GoogleSignOutThroughApiCommandOutput?>.New
                 .WithData(new GoogleSignOutThroughApiCommandOutput())
@@ -158,6 +160,7 @@ public sealed class RequestPasswordRecoveryThroughApiCommandHandler(
 
         var result = await gateway.RequestPasswordRecoveryAsync(
             command.Email.Trim(), options.ScopeId, CancellationToken.None);
+
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<RequestPasswordRecoveryThroughApiCommandOutput?>.New
                 .WithData(new RequestPasswordRecoveryThroughApiCommandOutput())
@@ -222,6 +225,7 @@ public sealed class ResetPasswordThroughApiCommandHandler(
 
         var result = await gateway.ResetPasswordAsync(
             command.Token, command.NewPassword, CancellationToken.None);
+
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<ResetPasswordThroughApiCommandOutput?>.New
                 .WithData(new ResetPasswordThroughApiCommandOutput())
@@ -247,6 +251,7 @@ public sealed class VerifyEmailThroughApiCommandHandler(
         }
 
         var result = await gateway.VerifyEmailAsync(command.Token, CancellationToken.None);
+
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<VerifyEmailThroughApiCommandOutput?>.New
                 .WithData(new VerifyEmailThroughApiCommandOutput())
@@ -265,6 +270,7 @@ public sealed class ResendVerificationThroughApiCommandHandler(IHeimdallAuthGate
     {
         var result = await gateway.ResendVerificationAsync(
             command.BearerToken, CancellationToken.None);
+
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<ResendVerificationThroughApiCommandOutput?>.New
                 .WithData(new ResendVerificationThroughApiCommandOutput())

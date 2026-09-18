@@ -66,6 +66,7 @@ public sealed class UpdateRecurringTransactionCommandHandler(
         }
 
         var rule = result.Rule;
+
         return output.WithData(new UpdateRecurringTransactionCommandOutput
         {
             Id = rule.Id,

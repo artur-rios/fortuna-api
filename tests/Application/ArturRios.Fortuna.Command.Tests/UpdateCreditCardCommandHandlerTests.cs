@@ -166,6 +166,7 @@ public sealed class UpdateCreditCardCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = value;
+
             return Task.FromResult(update(value));
         }
     }

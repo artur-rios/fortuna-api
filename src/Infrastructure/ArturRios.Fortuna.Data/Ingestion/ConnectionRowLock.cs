@@ -27,6 +27,7 @@ internal static class ConnectionRowLock
             .Where(user => user.PublicId == userId)
             .Select(user => (long?)user.Id)
             .SingleOrDefaultAsync(cancellationToken);
+
         return ownerId is null
             ? null
             : context.Database.IsSqlite()

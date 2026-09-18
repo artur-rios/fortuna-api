@@ -95,6 +95,7 @@ public sealed class ExchangeRateSyncJobHandlerTests
             CancellationToken cancellationToken)
         {
             Rates = rates;
+
             return Task.FromResult(new PublishedRateUpsertResult(rates.Count, 0));
         }
 

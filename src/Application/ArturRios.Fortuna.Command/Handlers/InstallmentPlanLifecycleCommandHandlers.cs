@@ -32,6 +32,7 @@ public sealed class DeleteInstallmentPlanCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return InstallmentPlanHandler.Resolve(
             result,
             InstallmentPlanMessages.DeletedSuccessfully);
@@ -61,6 +62,7 @@ public sealed class RestoreInstallmentPlanCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return InstallmentPlanHandler.Resolve(
             result,
             InstallmentPlanMessages.RestoredSuccessfully);
@@ -86,6 +88,7 @@ internal static class InstallmentPlanHandler
         string successMessage)
     {
         var output = DataOutput<InstallmentPlanLifecycleCommandOutput?>.New;
+
         return result.Outcome switch
         {
             InstallmentPlanLifecycleOutcome.Succeeded => output

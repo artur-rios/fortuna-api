@@ -320,6 +320,7 @@ public sealed class InvestmentMovementRecordingTests : IAsyncLifetime
 
         context.Investments.Add(investment);
         await context.SaveChangesAsync();
+
         return investment.PublicId;
     }
 
@@ -343,6 +344,7 @@ public sealed class InvestmentMovementRecordingTests : IAsyncLifetime
             DateTimeOffset.UtcNow);
         context.FinancialAccounts.Add(account);
         await context.SaveChangesAsync();
+
         return account.PublicId;
     }
 
@@ -383,6 +385,7 @@ public sealed class InvestmentMovementRecordingTests : IAsyncLifetime
             Command(movementType, amount, occurredOn, accountId));
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, body);
+
         return (await response.Content.ReadFromJsonAsync<MovementEnvelope>())!;
     }
 
@@ -412,6 +415,7 @@ public sealed class InvestmentMovementRecordingTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

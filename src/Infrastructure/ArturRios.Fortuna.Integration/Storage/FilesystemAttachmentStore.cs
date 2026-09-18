@@ -37,6 +37,7 @@ public sealed class FilesystemAttachmentStore : IAttachmentStore
                 FileShare.Read,
                 81920,
                 useAsync: true);
+
             return Task.FromResult(stream);
         }
         catch (Exception exception) when (
@@ -50,12 +51,14 @@ public sealed class FilesystemAttachmentStore : IAttachmentStore
     {
         cancellationToken.ThrowIfCancellationRequested();
         File.Delete(Resolve(key));
+
         return Task.CompletedTask;
     }
 
     public Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
         return Task.FromResult(Directory.Exists(root));
     }
 

@@ -27,6 +27,7 @@ public sealed class EfBackgroundJobStore(AppDbContext context)
         var job = BackgroundJob.Create(type, payload, idempotencyKey, correlationId, DateTimeOffset.UtcNow);
         context.BackgroundJobs.Add(job);
         await context.SaveChangesAsync(cancellationToken);
+
         return job;
     }
 
@@ -51,6 +52,7 @@ public sealed class EfBackgroundJobStore(AppDbContext context)
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
         return jobs;
     }
 

@@ -46,6 +46,7 @@ public sealed class Attachment : RecordLifecycleEntity
         }
 
         var normalized = value.Trim();
+
         return normalized.Length <= maximumLength
             ? normalized
             : throw new ArgumentException(

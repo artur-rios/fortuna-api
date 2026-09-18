@@ -143,6 +143,7 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandlerTests
     private static LocalAccountCredentialSnapshot Credentials(Guid userId, string secret)
     {
         var hash = Hash.EncodeWithRandomSalt(secret, out var salt);
+
         return new LocalAccountCredentialSnapshot(userId, "Local User", hash, salt);
     }
 
@@ -163,6 +164,7 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandlerTests
             CancellationToken cancellationToken)
         {
             FindCount++;
+
             return Task.FromResult(credentials);
         }
 
@@ -171,6 +173,7 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Regeneration = regeneration;
+
             return Task.FromResult(regenerated);
         }
 
@@ -197,6 +200,7 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandlerTests
         public IReadOnlyCollection<GeneratedRecoveryCode> Generate(int count)
         {
             CallCount++;
+
             return codes;
         }
     }

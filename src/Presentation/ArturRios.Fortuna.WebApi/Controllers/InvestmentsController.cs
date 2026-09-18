@@ -99,6 +99,7 @@ public sealed class InvestmentsController(
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListInvestmentsQuery,
             InvestmentOutput>(query);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -117,6 +118,7 @@ public sealed class InvestmentsController(
                 DisplayCurrencyCode = displayCurrencyCode,
                 FigureDate = figureDate
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -137,6 +139,7 @@ public sealed class InvestmentsController(
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListInvestmentValuationsQuery,
             InvestmentValuationOutput>(query);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -148,6 +151,7 @@ public sealed class InvestmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             CreateInvestmentCommand,
             CreateInvestmentCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -161,6 +165,7 @@ public sealed class InvestmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateInvestmentCommand,
             UpdateInvestmentCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -171,6 +176,7 @@ public sealed class InvestmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteInvestmentCommand,
             InvestmentLifecycleCommandOutput>(new DeleteInvestmentCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -181,6 +187,7 @@ public sealed class InvestmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RestoreInvestmentCommand,
             InvestmentLifecycleCommandOutput>(new RestoreInvestmentCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -191,6 +198,7 @@ public sealed class InvestmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             HardDeleteInvestmentCommand,
             InvestmentLifecycleCommandOutput>(new HardDeleteInvestmentCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -204,6 +212,7 @@ public sealed class InvestmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RecordInvestmentMovementCommand,
             RecordInvestmentMovementCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -217,6 +226,7 @@ public sealed class InvestmentsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RecordInvestmentValuationCommand,
             RecordInvestmentValuationCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

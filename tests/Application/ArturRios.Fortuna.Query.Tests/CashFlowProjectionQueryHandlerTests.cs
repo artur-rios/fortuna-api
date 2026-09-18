@@ -154,6 +154,7 @@ public sealed class CashFlowProjectionQueryHandlerTests
         bool supportsCurrency = true)
     {
         var options = new CashFlowProjectionOptions(366, 90, 30);
+
         return new ProjectCashFlowQueryHandler(
             new ProjectCashFlowQueryValidator(options),
             new StubProfileReader(missingProfile ? null : Profile),
@@ -178,6 +179,7 @@ public sealed class CashFlowProjectionQueryHandlerTests
         {
             UserId = userId;
             Through = through;
+
             return Task.FromResult(snapshot);
         }
     }

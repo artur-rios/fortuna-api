@@ -60,6 +60,7 @@ public sealed class RecordInvestmentValuationCommandHandler(
         }
 
         var valuation = result.Valuation;
+
         return output
             .WithData(new RecordInvestmentValuationCommandOutput
             {

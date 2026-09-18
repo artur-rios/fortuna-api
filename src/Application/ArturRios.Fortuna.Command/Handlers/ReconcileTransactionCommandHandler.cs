@@ -83,6 +83,7 @@ public sealed class ReconcileTransactionCommandHandler(
 
         var transaction = result.Transaction;
         var reconciliation = CreateReconciliation(transaction);
+
         return output
             .WithData(new ReconcileTransactionCommandOutput
             {
@@ -116,6 +117,7 @@ public sealed class ReconcileTransactionCommandHandler(
         var dateDiffers = Math.Abs(
             transaction.OccurredOn.DayNumber - transaction.ImportedOccurredOn.Value.DayNumber) >
             options.DateToleranceDays;
+
         return new TransactionReconciliationOutput
         {
             ImportJobId = transaction.ImportJobId.Value,

@@ -59,6 +59,7 @@ public sealed class DataExportBuilder(
             displayCurrency,
             displayDefinition?.MinorUnitDigits,
             cancellationToken);
+
         return DataExportBuildResult.Succeeded(new DataExportDocument(
             result.Report.RecordSet,
             result.Report.Columns,

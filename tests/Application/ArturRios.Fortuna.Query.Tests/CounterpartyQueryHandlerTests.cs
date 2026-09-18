@@ -149,6 +149,7 @@ public sealed class CounterpartyQueryHandlerTests
         {
             UserId = userId;
             IncludeDeleted = includeDeleted;
+
             return Task.FromResult(counterparties);
         }
     }
@@ -164,6 +165,7 @@ public sealed class CounterpartyQueryHandlerTests
             CancellationToken cancellationToken)
         {
             UserId = userId;
+
             return Task.FromResult(result);
         }
     }

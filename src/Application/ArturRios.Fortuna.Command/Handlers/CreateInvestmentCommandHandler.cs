@@ -64,6 +64,7 @@ public sealed class CreateInvestmentCommandHandler(
         }
 
         var investment = created.Investment!;
+
         return output
             .WithData(new CreateInvestmentCommandOutput
             {

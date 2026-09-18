@@ -26,6 +26,7 @@ public sealed class GetConnectionByIdQueryHandler(
 
         var connection = await connections.FindByIdAsync(
             profile.Id, query.Id, CancellationToken.None);
+
         return connection is null
             ? output.WithError(ConnectionMessages.NotFound)
             : output.WithData(Project(connection)).WithMessage(

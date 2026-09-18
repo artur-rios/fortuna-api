@@ -43,6 +43,7 @@ public sealed class GrantProcessingConsentCommandHandler(
             currentVersion,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return DataOutput<GrantProcessingConsentCommandOutput?>.New
             .WithData(new GrantProcessingConsentCommandOutput
             {
@@ -97,6 +98,7 @@ public sealed class WithdrawProcessingConsentCommandHandler(
         {
             return Failure(ProcessingConsentMessages.NotFound);
         }
+
         return DataOutput<WithdrawProcessingConsentCommandOutput?>.New
             .WithData(new WithdrawProcessingConsentCommandOutput
             {

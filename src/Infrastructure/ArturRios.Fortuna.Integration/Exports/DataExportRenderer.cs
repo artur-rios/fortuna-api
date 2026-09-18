@@ -31,6 +31,7 @@ public sealed class DataExportRenderer : IDataExportRenderer
         }
 
         AppendCsvTotals(output, document.Totals, culture, separator);
+
         return new RenderedDataExport(
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(output.ToString()),
             "text/csv; charset=utf-8",
@@ -65,6 +66,7 @@ public sealed class DataExportRenderer : IDataExportRenderer
         worksheet.ColumnsUsed().AdjustToContents();
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
+
         return new RenderedDataExport(
             stream.ToArray(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -220,6 +222,7 @@ public sealed class DataExportRenderer : IDataExportRenderer
 
             WriteText(stream, $"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\n" +
                 $"startxref\n{xref}\n%%EOF");
+
             return stream.ToArray();
         }
 

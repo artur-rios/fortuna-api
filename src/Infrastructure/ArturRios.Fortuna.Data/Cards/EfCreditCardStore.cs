@@ -78,6 +78,7 @@ public sealed class EfCreditCardStore(
             DatabaseException.IsUniqueViolation(exception, CreditCardMap.LiveNameIndex))
         {
             context.Entry(card).State = EntityState.Detached;
+
             return new CreditCardCreationResult(null, DuplicateName: true);
         }
 
@@ -129,6 +130,7 @@ public sealed class EfCreditCardStore(
             DatabaseException.IsUniqueViolation(exception, CreditCardMap.LiveNameIndex))
         {
             context.Entry(card).State = EntityState.Detached;
+
             return new CreditCardUpdateResult(null, DuplicateName: true);
         }
 
@@ -162,6 +164,7 @@ public sealed class EfCreditCardStore(
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
         return LifecycleResult(
             CreditCardLifecycleOutcome.Succeeded,
             card.PublicId,

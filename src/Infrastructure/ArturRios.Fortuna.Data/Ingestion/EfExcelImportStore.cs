@@ -50,6 +50,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         context.ImportJobs.Add(importJob);
         context.BackgroundJobs.Add(backgroundJob);
         await context.SaveChangesAsync(cancellationToken);
+
         return new QueueExcelImportResult(
             Snapshot(importJob),
             backgroundJob.Id,
@@ -260,6 +261,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
 
         category = new Category(user, name, createdAt);
         context.Categories.Add(category);
+
         return category;
     }
 
@@ -272,6 +274,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         var local = context.Categories.Local.SingleOrDefault(item =>
             item.UserId == userId && item.ParentId == null &&
             item.NormalizedName == normalized && !item.IsDeleted);
+
         return local is not null
             ? Task.FromResult<Category?>(local)
             : context.Categories.Include(item => item.User).SingleOrDefaultAsync(item =>
@@ -292,6 +295,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
             !item.IsDeleted && item.OccurredOn == occurredOn && item.Amount == amount &&
             item.FinancialAccountId == (account == null ? null : account.Id) &&
             item.CreditCardId == (card == null ? null : card.Id));
+
         return string.IsNullOrWhiteSpace(externalId)
             ? await matches.AnyAsync(cancellationToken)
             : await matches.AnyAsync(item =>

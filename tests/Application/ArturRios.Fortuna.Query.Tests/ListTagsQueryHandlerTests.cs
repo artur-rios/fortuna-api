@@ -75,6 +75,7 @@ public sealed class ListTagsQueryHandlerTests
         {
             UserId = userId;
             IncludeDeleted = includeDeleted;
+
             return Task.FromResult(tags);
         }
     }

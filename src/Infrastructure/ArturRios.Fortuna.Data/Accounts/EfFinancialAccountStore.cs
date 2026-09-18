@@ -67,6 +67,7 @@ public sealed class EfFinancialAccountStore(
             DatabaseException.IsUniqueViolation(exception, FinancialAccountMap.LiveNameIndex))
         {
             context.Entry(account).State = EntityState.Detached;
+
             return new FinancialAccountCreationResult(null, DuplicateName: true);
         }
 
@@ -154,6 +155,7 @@ public sealed class EfFinancialAccountStore(
             DatabaseException.IsUniqueViolation(exception, FinancialAccountMap.LiveNameIndex))
         {
             context.Entry(account).State = EntityState.Detached;
+
             return new FinancialAccountUpdateResult(null, DuplicateName: true);
         }
 
@@ -182,6 +184,7 @@ public sealed class EfFinancialAccountStore(
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
         return LifecycleResult(FinancialAccountLifecycleOutcome.Succeeded, account.PublicId);
     }
 

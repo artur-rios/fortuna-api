@@ -91,6 +91,7 @@ public sealed class GetNetPositionQueryHandler(
         }
 
         var fullyConverted = groups.All(item => item.DisplayNet.HasValue);
+
         return output
             .WithData(new NetPositionOutput
             {

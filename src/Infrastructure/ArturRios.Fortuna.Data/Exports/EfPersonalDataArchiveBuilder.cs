@@ -305,6 +305,7 @@ public sealed class EfPersonalDataArchiveBuilder(
             output[currencyName] = id.HasValue && currencies.TryGetValue(id.Value, out var code)
                 ? code
                 : null;
+
             return;
         }
 
@@ -436,6 +437,7 @@ public sealed class EfPersonalDataArchiveBuilder(
             : underlying == typeof(string) || underlying == typeof(char)
                 ? "string"
                 : "integer";
+
         return new Dictionary<string, object?>
         {
             ["type"] = nullable ? new[] { jsonType, "null" } : jsonType
@@ -452,6 +454,7 @@ public sealed class EfPersonalDataArchiveBuilder(
         {
             schema["format"] = format;
         }
+
         return schema;
     }
 
@@ -470,6 +473,7 @@ public sealed class EfPersonalDataArchiveBuilder(
         {
             return Enum.GetName(type, value);
         }
+
         return value;
     }
 
@@ -477,6 +481,7 @@ public sealed class EfPersonalDataArchiveBuilder(
     {
         var root = JsonNode.Parse(payload) ?? JsonValue.Create((string?)null)!;
         RedactSensitiveValues(root);
+
         return root;
     }
 
@@ -495,6 +500,7 @@ public sealed class EfPersonalDataArchiveBuilder(
                     RedactSensitiveValues(property.Value);
                 }
             }
+
             return;
         }
 
@@ -513,6 +519,7 @@ public sealed class EfPersonalDataArchiveBuilder(
             .Where(char.IsLetterOrDigit)
             .Select(char.ToLowerInvariant)
             .ToArray());
+
         return normalized.Contains("password", StringComparison.Ordinal) ||
                normalized.Contains("secret", StringComparison.Ordinal) ||
                normalized.Contains("token", StringComparison.Ordinal) ||
@@ -538,6 +545,7 @@ public sealed class EfPersonalDataArchiveBuilder(
                     (Guid)publicId.GetValue(record)!;
             }
         }
+
         return lookup;
     }
 
@@ -573,6 +581,7 @@ public sealed class EfPersonalDataArchiveBuilder(
         {
             name = name.Replace(character, '_');
         }
+
         return string.IsNullOrWhiteSpace(name) ? "attachment" : name;
     }
 

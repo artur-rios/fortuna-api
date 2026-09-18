@@ -29,6 +29,7 @@ public sealed class UsersController(CommandMediator commandMediator) : Controlle
         var result = await commandMediator.ExecuteCommandAsync<
             EraseUserCommand,
             EraseUserCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

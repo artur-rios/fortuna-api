@@ -151,6 +151,7 @@ public sealed class ConnectionQueryHandlerTests
         {
             var connection = connections.SingleOrDefault(item =>
                 item.User.PublicId == userId && item.PublicId == id);
+
             return Task.FromResult(connection is null ? null : new ConnectionSnapshot(
                 connection.PublicId,
                 connection.DataSourceType,

@@ -64,6 +64,7 @@ public sealed class TransfersController(
                 Id = id,
                 IncludeDeleted = includeDeleted
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -75,6 +76,7 @@ public sealed class TransfersController(
         var result = await commandMediator.ExecuteCommandAsync<
             RecordTransferCommand,
             RecordTransferCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -85,6 +87,7 @@ public sealed class TransfersController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteTransferCommand,
             TransferLifecycleCommandOutput>(new DeleteTransferCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -95,6 +98,7 @@ public sealed class TransfersController(
         var result = await commandMediator.ExecuteCommandAsync<
             RestoreTransferCommand,
             TransferLifecycleCommandOutput>(new RestoreTransferCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

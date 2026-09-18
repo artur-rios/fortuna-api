@@ -93,36 +93,42 @@ public sealed class RecordTransferCommandValidatorTests
     private static string InvalidateOrigin(RecordTransferCommand command)
     {
         command.OriginFinancialAccountId = Guid.Empty;
+
         return TransferMessages.OriginFinancialAccountIdRequired;
     }
 
     private static string InvalidateAmount(RecordTransferCommand command)
     {
         command.Amount = 0m;
+
         return TransferMessages.AmountPositive;
     }
 
     private static string InvalidatePrecision(RecordTransferCommand command)
     {
         command.Amount = 1.00001m;
+
         return TransferMessages.AmountPrecisionInvalid;
     }
 
     private static string InvalidateDate(RecordTransferCommand command)
     {
         command.OccurredOn = default;
+
         return TransferMessages.OccurredOnRequired;
     }
 
     private static string InvalidateFutureDate(RecordTransferCommand command)
     {
         command.OccurredOn = new DateOnly(2026, 9, 7);
+
         return TransferMessages.OccurredOnTooFarInFuture;
     }
 
     private static string InvalidateOwner(RecordTransferCommand command)
     {
         command.OwnerId = Guid.NewGuid();
+
         return TransferMessages.OwnerImmutable;
     }
 

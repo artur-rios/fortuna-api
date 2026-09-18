@@ -72,6 +72,7 @@ public sealed class PrometheusMetricsUnitTests
         var context = new DefaultHttpContext();
         context.Request.Path = path;
         context.Connection.LocalPort = localPort;
+
         return context;
     }
 }

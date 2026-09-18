@@ -142,6 +142,7 @@ public sealed class SynchronizeConnectionCommandHandlerTests
                     ImportJobStatus.Pending, periodStart, periodEnd,
                     0, 0, 0, null, createdAt, createdAt)
                 : null;
+
             return Task.FromResult(new QueueSynchronizationResult(
                 job,
                 outcome == QueueSynchronizationOutcome.Succeeded ? BackgroundJobId : null,
@@ -171,6 +172,7 @@ public sealed class SynchronizeConnectionCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 

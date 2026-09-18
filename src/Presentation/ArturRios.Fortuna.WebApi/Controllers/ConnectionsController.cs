@@ -64,6 +64,7 @@ public sealed class ConnectionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             CreateConnectionCommand,
             CreateConnectionCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -77,6 +78,7 @@ public sealed class ConnectionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             ReauthenticateConnectionCommand,
             ReauthenticateConnectionCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -87,6 +89,7 @@ public sealed class ConnectionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             RevokeConnectionCommand,
             RevokeConnectionCommandOutput>(new RevokeConnectionCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -97,6 +100,7 @@ public sealed class ConnectionsController(
         var result = await queryMediator.ExecuteQueryAsync<
             GetConnectionByIdQuery,
             ConnectionOutput>(new GetConnectionByIdQuery { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -115,6 +119,7 @@ public sealed class ConnectionsController(
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListConnectionsQuery,
             ConnectionOutput>(query);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

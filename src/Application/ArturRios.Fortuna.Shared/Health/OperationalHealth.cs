@@ -47,6 +47,7 @@ public sealed class OperationalHealthEvaluator(IEnumerable<IOperationalHealthChe
             : optionalDown
                 ? OperationalHealthStatus.Degraded
                 : OperationalHealthStatus.Healthy;
+
         return new OperationalHealthReport(status, services);
     }
 }

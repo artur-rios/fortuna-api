@@ -59,6 +59,7 @@ public sealed class ExportsController(
             [DataExportMessages.Accepted] = StatusCodes.Status202Accepted,
             [DataExportMessages.ProfileNotFound] = StatusCodes.Status404NotFound
         });
+
         return response.Result ?? Ok(response.Value);
     }
 
@@ -82,6 +83,7 @@ public sealed class ExportsController(
         }
 
         var response = ResponseResolver.Resolve(result, statusMap: StatusMap);
+
         return response.Result ?? Ok(response.Value);
     }
 }

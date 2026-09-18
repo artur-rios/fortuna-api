@@ -37,6 +37,7 @@ public sealed class GetMyProcessingConsentsQueryHandler(
             {
                 byPurpose.TryGetValue(purpose, out var consent);
                 var current = options.CurrentVersion(purpose);
+
                 return new ProcessingConsentStateOutput
                 {
                     Purpose = ProcessingConsentOptions.Name(purpose),
@@ -48,6 +49,7 @@ public sealed class GetMyProcessingConsentsQueryHandler(
                 };
             })
             .ToArray();
+
         return DataOutput<ProcessingConsentQueryOutput?>.New
             .WithData(new ProcessingConsentQueryOutput { Consents = states })
             .WithMessage(ProcessingConsentMessages.RetrievedSuccessfully);

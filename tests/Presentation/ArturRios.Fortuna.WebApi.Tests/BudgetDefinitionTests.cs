@@ -452,6 +452,7 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -484,6 +485,7 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
             ParentId = parentId
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -499,6 +501,7 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
             OpeningBalance = 1000m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -521,6 +524,7 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
             Description = description
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -537,6 +541,7 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -566,6 +571,7 @@ public sealed class BudgetDefinitionTests : IAsyncLifetime
         var response = await client.GetAsync(
             $"/api/budgets/{budgetId}/consumption?periodStart={periodStart:yyyy-MM-dd}");
         response.EnsureSuccessStatusCode();
+
         return (await response.Content
             .ReadFromJsonAsync<BudgetConsumptionEnvelope>())!.Data!;
     }

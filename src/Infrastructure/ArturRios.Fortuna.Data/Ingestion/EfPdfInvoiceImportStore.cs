@@ -49,6 +49,7 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
         context.ImportJobs.Add(importJob);
         context.BackgroundJobs.Add(backgroundJob);
         await context.SaveChangesAsync(cancellationToken);
+
         return new QueuePdfInvoiceImportResult(
             Snapshot(importJob),
             backgroundJob.Id,
@@ -287,6 +288,7 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
 
         category = new Category(job.User, "Uncategorized", createdAt);
         context.Categories.Add(category);
+
         return category;
     }
 
@@ -318,6 +320,7 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
 
         open = new CreditCardStatement(card, cycle, changedAt);
         statements.Add(open);
+
         return open;
     }
 
@@ -401,6 +404,7 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
             line.SignedAmount.ToString(System.Globalization.CultureInfo.InvariantCulture),
             line.Kind);
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)));
+
         return $"nubank:{invoice.PeriodEnd:yyyyMMdd}:{line.Sequence:D4}:{hash[..32]}";
     }
 

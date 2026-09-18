@@ -109,6 +109,7 @@ public sealed class InstallmentPlan : RecordLifecycleEntity
         var firstAmount = totalAmount - regularAmount * (installmentCount - 1);
         var amounts = Enumerable.Repeat(regularAmount, installmentCount).ToArray();
         amounts[0] = firstAmount;
+
         return amounts;
     }
 }

@@ -165,6 +165,7 @@ public sealed class UserErasureEndpointsTests : IAsyncLifetime
         var target = new UserProfile(Guid.NewGuid(), "Erasure Target", currency, DateTimeOffset.UtcNow);
         context.UserProfiles.Add(target);
         await context.SaveChangesAsync();
+
         return target.PublicId;
     }
 
@@ -208,6 +209,7 @@ public sealed class UserErasureEndpointsTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -264,6 +266,7 @@ public sealed class UserErasureEndpointsTests : IAsyncLifetime
             CancellationToken cancellationToken)
         {
             UserId = userId;
+
             return Task.FromResult(result);
         }
     }

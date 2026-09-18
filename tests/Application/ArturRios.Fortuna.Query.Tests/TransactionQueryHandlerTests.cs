@@ -461,6 +461,7 @@ public sealed class TransactionQueryHandlerTests
         public IQueryable<TransactionReadSnapshot> Query(TransactionSearchCriteria criteria)
         {
             LastCriteria = criteria;
+
             return snapshots.AsQueryable();
         }
 
@@ -478,6 +479,7 @@ public sealed class TransactionQueryHandlerTests
             CancellationToken cancellationToken)
         {
             LastCriteria = criteria;
+
             return Task.FromResult(totals);
         }
     }
@@ -495,6 +497,7 @@ public sealed class TransactionQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }
@@ -529,6 +532,7 @@ public sealed class TransactionQueryHandlerTests
             CancellationToken cancellationToken)
         {
             LastFigureDate = figureDate;
+
             return Task.FromResult(rate);
         }
     }

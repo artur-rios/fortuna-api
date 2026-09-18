@@ -114,6 +114,7 @@ public sealed class ListCommittedObligationsQueryHandler(
             .Select(group =>
             {
                 var periodConverted = group.All(item => item.DisplayAmount.HasValue);
+
                 return new CommittedObligationPeriodOutput
                 {
                     PeriodStart = new DateOnly(group.Key.Year, group.Key.Month, 1),

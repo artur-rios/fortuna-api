@@ -343,6 +343,7 @@ public sealed class FinancialAccountQueryHandlerTests
                 item.User.PublicId == userId &&
                 item.PublicId == id &&
                 (includeDeleted || !item.IsDeleted));
+
             return Task.FromResult(account is null ? null : Snapshot(account));
         }
 
@@ -378,6 +379,7 @@ public sealed class FinancialAccountQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

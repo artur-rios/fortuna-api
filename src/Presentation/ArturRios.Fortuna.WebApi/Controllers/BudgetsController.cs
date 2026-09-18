@@ -50,6 +50,7 @@ public sealed class BudgetsController(
         var result = await commandMediator.ExecuteCommandAsync<
             CreateBudgetCommand,
             BudgetCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -61,6 +62,7 @@ public sealed class BudgetsController(
         var result = await queryMediator.ExecuteQueryAsync<
             ListBudgetsQuery,
             BudgetListOutput>(new ListBudgetsQuery { IncludeDeleted = includeDeleted });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -77,6 +79,7 @@ public sealed class BudgetsController(
                 Id = id,
                 IncludeDeleted = includeDeleted
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -93,6 +96,7 @@ public sealed class BudgetsController(
                 Id = id,
                 PeriodStart = periodStart
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -106,6 +110,7 @@ public sealed class BudgetsController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateBudgetCommand,
             BudgetCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -116,6 +121,7 @@ public sealed class BudgetsController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteBudgetCommand,
             BudgetCommandOutput>(new DeleteBudgetCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

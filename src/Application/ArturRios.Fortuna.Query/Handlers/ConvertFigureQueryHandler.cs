@@ -96,6 +96,7 @@ public sealed class ConvertFigureQueryHandler(
         }
 
         var fullyConverted = converted.All(group => group.DisplayAmount.HasValue);
+
         return output
             .WithData(new ConvertFigureQueryOutput
             {
@@ -120,6 +121,7 @@ public sealed class ConvertFigureQueryHandler(
         var profile = query.IsLocal
             ? await profiles.FindByPublicIdAsync(query.ExternalSubject, CancellationToken.None)
             : await profiles.FindByExternalSubjectAsync(query.ExternalSubject, CancellationToken.None);
+
         return profile?.DisplayCurrency.ToUpperInvariant();
     }
 

@@ -38,6 +38,7 @@ public sealed class CreateCounterpartyCommandHandler(
         var result = await counterparties.CreateAsync(
             new CounterpartyCreation(profile.Id, command.Name, timeProvider.GetUtcNow()),
             CancellationToken.None);
+
         return CounterpartyHandler.Resolve(
             result.Counterparty,
             result.Outcome,
@@ -80,6 +81,7 @@ public sealed class UpdateCounterpartyCommandHandler(
                 command.Name,
                 timeProvider.GetUtcNow()),
             CancellationToken.None);
+
         return CounterpartyHandler.Resolve(
             result.Counterparty,
             result.Outcome,
@@ -109,6 +111,7 @@ public sealed class DeleteCounterpartyCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return CounterpartyHandler.Resolve(
             result.Counterparty,
             result.Outcome,
@@ -147,6 +150,7 @@ public sealed class MergeCounterpartiesCommandHandler(
                 command.TargetId,
                 timeProvider.GetUtcNow()),
             CancellationToken.None);
+
         return result.Outcome switch
         {
             CounterpartyMergeOutcome.Succeeded => output
@@ -183,6 +187,7 @@ internal static class CounterpartyHandler
         bool reused = false)
     {
         var output = DataOutput<CounterpartyCommandOutput?>.New;
+
         return outcome switch
         {
             CounterpartyMutationOutcome.Succeeded => output

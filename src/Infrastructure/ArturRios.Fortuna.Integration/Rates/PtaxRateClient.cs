@@ -35,6 +35,7 @@ public sealed class PtaxRateClient(
             .Aggregate((left, right) =>
             {
                 left.IntersectWith(right);
+
                 return left;
             });
         var publicationDate = commonDates
@@ -53,6 +54,7 @@ public sealed class PtaxRateClient(
                 .OrderByDescending(item => item.IsClosing)
                 .ThenByDescending(item => item.Timestamp)
                 .First();
+
             return new PtaxQuote(entry.Key, publication.BrlPerUnit);
         }).ToArray();
 

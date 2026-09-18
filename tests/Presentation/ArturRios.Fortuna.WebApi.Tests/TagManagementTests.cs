@@ -272,6 +272,7 @@ public sealed class TagManagementTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -282,6 +283,7 @@ public sealed class TagManagementTests : IAsyncLifetime
     {
         var response = await client.PostAsJsonAsync("/api/tags", new { Name = name });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<TagEnvelope>())!.Data!;
     }
 
@@ -289,6 +291,7 @@ public sealed class TagManagementTests : IAsyncLifetime
     {
         var response = await CreateTransactionResponseAsync(client, description);
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<TransactionEnvelope>())!.Data!.Id;
     }
 
@@ -299,6 +302,7 @@ public sealed class TagManagementTests : IAsyncLifetime
     {
         var category = await CreateCategoryAsync(client);
         var account = await CreateAccountAsync(client);
+
         return await client.PostAsJsonAsync("/api/transactions", new
         {
             OccurredOn = new DateOnly(2026, 9, 6),
@@ -317,6 +321,7 @@ public sealed class TagManagementTests : IAsyncLifetime
             "/api/categories",
             new { Name = $"Category {Guid.NewGuid():N}" });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -330,6 +335,7 @@ public sealed class TagManagementTests : IAsyncLifetime
             OpeningBalance = 0m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 

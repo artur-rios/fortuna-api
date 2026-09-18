@@ -293,6 +293,7 @@ public sealed class TagCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(CreationResult);
         }
 
@@ -301,6 +302,7 @@ public sealed class TagCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(UpdateResult);
         }
 
@@ -311,6 +313,7 @@ public sealed class TagCommandHandlerTests
             CancellationToken cancellationToken)
         {
             DeletedAt = changedAt;
+
             return Task.FromResult(DeletionResult);
         }
 

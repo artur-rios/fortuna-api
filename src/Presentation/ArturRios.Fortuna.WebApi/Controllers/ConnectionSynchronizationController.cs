@@ -38,6 +38,7 @@ public sealed class ConnectionSynchronizationController(CommandMediator commandM
         var result = await commandMediator.ExecuteCommandAsync<
             SynchronizeConnectionCommand,
             SynchronizeConnectionCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

@@ -47,6 +47,7 @@ public sealed class CounterpartiesController(
         var result = await commandMediator.ExecuteCommandAsync<
             CreateCounterpartyCommand,
             CounterpartyCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -61,6 +62,7 @@ public sealed class CounterpartiesController(
             {
                 IncludeDeleted = includeDeleted
             });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -74,6 +76,7 @@ public sealed class CounterpartiesController(
         var result = await commandMediator.ExecuteCommandAsync<
             UpdateCounterpartyCommand,
             CounterpartyCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -84,6 +87,7 @@ public sealed class CounterpartiesController(
         var result = await commandMediator.ExecuteCommandAsync<
             DeleteCounterpartyCommand,
             CounterpartyCommandOutput>(new DeleteCounterpartyCommand { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -97,6 +101,7 @@ public sealed class CounterpartiesController(
         var result = await commandMediator.ExecuteCommandAsync<
             MergeCounterpartiesCommand,
             CounterpartyMergeCommandOutput>(command);
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
@@ -108,6 +113,7 @@ public sealed class CounterpartiesController(
         var result = await queryMediator.ExecuteQueryAsync<
             SuggestCounterpartyCategoryQuery,
             CounterpartyCategorySuggestionOutput>(new SuggestCounterpartyCategoryQuery { Id = id });
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

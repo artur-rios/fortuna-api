@@ -23,6 +23,7 @@ public sealed class EfAttachmentLifecycleStore(
 
         attachment.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new AttachmentLifecycleResult(
             AttachmentLifecycleOutcome.Succeeded,
             attachment.PublicId,
@@ -59,10 +60,12 @@ public sealed class EfAttachmentLifecycleStore(
         {
             await databaseTransaction.RollbackAsync(cancellationToken);
             context.Entry(attachment).State = EntityState.Unchanged;
+
             return new AttachmentLifecycleResult(AttachmentLifecycleOutcome.StorageUnavailable);
         }
 
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return new AttachmentLifecycleResult(
             AttachmentLifecycleOutcome.Succeeded,
             attachment.PublicId,
@@ -180,6 +183,7 @@ public sealed class EfAttachmentLifecycleStore(
         try
         {
             await storage.DeleteAsync(key, cancellationToken);
+
             return true;
         }
         catch (AttachmentObjectNotFoundException)

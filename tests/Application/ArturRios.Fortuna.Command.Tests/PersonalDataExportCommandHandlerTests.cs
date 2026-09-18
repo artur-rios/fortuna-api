@@ -162,6 +162,7 @@ public sealed class PersonalDataExportCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 
@@ -184,6 +185,7 @@ public sealed class PersonalDataExportCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Queued = request;
+
             return Task.FromResult(new QueueDataExportResult(ExportId, BackgroundJobId));
         }
 
@@ -217,6 +219,7 @@ public sealed class PersonalDataExportCommandHandlerTests
             CompletedId = exportId;
             CompletedCount = rowCount;
             CompletedContentType = contentType;
+
             return Task.CompletedTask;
         }
 
@@ -228,6 +231,7 @@ public sealed class PersonalDataExportCommandHandlerTests
         {
             FailedId = exportId;
             FailureReason = reason;
+
             return Task.CompletedTask;
         }
     }

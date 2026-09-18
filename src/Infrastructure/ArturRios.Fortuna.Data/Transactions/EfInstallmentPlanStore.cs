@@ -145,6 +145,7 @@ public sealed class EfInstallmentPlanStore(
         context.InstallmentPlans.Add(plan);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return Result(InstallmentPlanRecordOutcome.Succeeded, Snapshot(plan));
     }
 
@@ -173,6 +174,7 @@ public sealed class EfInstallmentPlanStore(
         }
 
         var plan = await query.SingleOrDefaultAsync(cancellationToken);
+
         return plan is null ? null : Snapshot(plan);
     }
 
@@ -230,6 +232,7 @@ public sealed class EfInstallmentPlanStore(
         }
 
         var result = await change(plan.TransactionId, cancellationToken);
+
         return result.Outcome switch
         {
             TransactionLifecycleOutcome.Succeeded => LifecycleResult(
@@ -272,6 +275,7 @@ public sealed class EfInstallmentPlanStore(
                 {
                     statement = new CreditCardStatement(card, cycle, changedAt);
                     statements.Add(statement);
+
                     break;
                 }
 
@@ -319,6 +323,7 @@ public sealed class EfInstallmentPlanStore(
 
         counterparty = new Counterparty(user, name, createdAt);
         context.Counterparties.Add(counterparty);
+
         return counterparty;
     }
 
@@ -341,6 +346,7 @@ public sealed class EfInstallmentPlanStore(
                 item.IsDeleted))
             .ToArray();
         var first = installments[0];
+
         return new InstallmentPlanSnapshot
         {
             Id = plan.PublicId,

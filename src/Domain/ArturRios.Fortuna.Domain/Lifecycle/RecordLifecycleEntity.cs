@@ -48,6 +48,7 @@ public abstract class RecordLifecycleEntity
 
         var cascadeId = Guid.NewGuid();
         MarkDeleted(cascadeId, deletedAt);
+
         return new SoftDeletionResult(cascadeId, true);
     }
 
@@ -64,6 +65,7 @@ public abstract class RecordLifecycleEntity
         }
 
         MarkDeleted(cascadeId, deletedAt);
+
         return true;
     }
 
@@ -77,6 +79,7 @@ public abstract class RecordLifecycleEntity
 
         var cascadeId = DeletionCascadeId!.Value;
         MarkRestored(restoredAt);
+
         return cascadeId;
     }
 
@@ -88,6 +91,7 @@ public abstract class RecordLifecycleEntity
         }
 
         MarkRestored(restoredAt);
+
         return true;
     }
 

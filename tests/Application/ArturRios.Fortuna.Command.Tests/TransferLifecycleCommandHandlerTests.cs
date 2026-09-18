@@ -122,6 +122,7 @@ public sealed class TransferLifecycleCommandHandlerTests
             UserId = userId;
             TransferId = id;
             ChangedAt = changedAt;
+
             return Task.FromResult(result);
         }
 
@@ -135,6 +136,7 @@ public sealed class TransferLifecycleCommandHandlerTests
             UserId = userId;
             TransferId = id;
             ChangedAt = changedAt;
+
             return Task.FromResult(result);
         }
     }

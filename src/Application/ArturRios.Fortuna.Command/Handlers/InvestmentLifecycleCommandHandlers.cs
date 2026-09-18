@@ -32,6 +32,7 @@ public sealed class DeleteInvestmentCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return InvestmentLifecycleHandler.Resolve(result, InvestmentMessages.DeletedSuccessfully);
     }
 }
@@ -59,6 +60,7 @@ public sealed class RestoreInvestmentCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return InvestmentLifecycleHandler.Resolve(result, InvestmentMessages.RestoredSuccessfully);
     }
 }
@@ -84,6 +86,7 @@ public sealed class HardDeleteInvestmentCommandHandler(
             profile.Id,
             command.Id,
             CancellationToken.None);
+
         return InvestmentLifecycleHandler.Resolve(
             result,
             InvestmentMessages.HardDeletedSuccessfully);
@@ -109,6 +112,7 @@ internal static class InvestmentLifecycleHandler
         string successMessage)
     {
         var output = DataOutput<InvestmentLifecycleCommandOutput?>.New;
+
         return result.Outcome switch
         {
             InvestmentLifecycleOutcome.Succeeded => output

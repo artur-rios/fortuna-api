@@ -194,6 +194,7 @@ public sealed class RecordTransferCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Record = record;
+
             return Task.FromResult(result);
         }
     }
@@ -208,6 +209,7 @@ public sealed class RecordTransferCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Request = settlement;
+
             return Task.FromResult(result);
         }
     }

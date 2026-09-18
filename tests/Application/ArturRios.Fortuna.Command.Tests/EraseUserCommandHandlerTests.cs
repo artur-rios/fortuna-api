@@ -190,6 +190,7 @@ public sealed class EraseUserCommandHandlerTests
             CancellationToken cancellationToken)
         {
             ExternalSubjectLookupUsed = true;
+
             return Task.FromResult(profile);
         }
 
@@ -198,6 +199,7 @@ public sealed class EraseUserCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }
@@ -212,6 +214,7 @@ public sealed class EraseUserCommandHandlerTests
             CancellationToken cancellationToken)
         {
             ErasedUserId = userId;
+
             return Task.FromResult(result);
         }
     }

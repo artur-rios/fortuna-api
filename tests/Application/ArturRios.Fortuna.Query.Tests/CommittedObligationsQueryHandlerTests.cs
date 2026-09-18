@@ -126,6 +126,7 @@ public sealed class CommittedObligationsQueryHandlerTests
         bool supportsCurrency = true)
     {
         var options = new CashFlowProjectionOptions(366, 90, 30);
+
         return new ListCommittedObligationsQueryHandler(
             new ListCommittedObligationsQueryValidator(options),
             new StubProfileReader(missingProfile ? null : Profile),
@@ -146,6 +147,7 @@ public sealed class CommittedObligationsQueryHandlerTests
             Guid userId, DateOnly asOf, DateOnly through, CancellationToken cancellationToken)
         {
             UserId = userId;
+
             return Task.FromResult(items);
         }
     }

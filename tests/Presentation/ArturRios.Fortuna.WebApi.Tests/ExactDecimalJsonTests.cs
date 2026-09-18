@@ -157,6 +157,7 @@ public sealed class ExactDecimalJsonTests
     {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         options.Converters.Add(new ExactDecimalJsonConverter());
+
         return options;
     }
 
@@ -168,6 +169,7 @@ public sealed class ExactDecimalJsonTests
         {
             directory = directory.Parent;
         }
+
         return directory?.FullName ?? throw new DirectoryNotFoundException(
             "Could not locate the repository root.");
     }

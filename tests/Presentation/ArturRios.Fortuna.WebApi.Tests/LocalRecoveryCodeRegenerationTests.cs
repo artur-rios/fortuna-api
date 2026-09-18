@@ -185,6 +185,7 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
         var envelope = await response.Content.ReadFromJsonAsync<CreationEnvelope>();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return envelope!.Data!;
     }
 
@@ -215,6 +216,7 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
         var envelope = await response.Content.ReadFromJsonAsync<AuthenticationEnvelope>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
         return envelope!.Data!.Token;
     }
 
@@ -224,6 +226,7 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
         {
             DisplayName = "Heimdall User"
         };
+
         return new JwtHandler().CreateToken(new JwtConfiguration(
             3600,
             Issuer,
@@ -274,6 +277,7 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

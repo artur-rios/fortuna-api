@@ -104,96 +104,112 @@ public sealed class UpdateTransactionCommandValidatorTests
     private static string SetInvalidId(UpdateTransactionCommand command)
     {
         command.Id = Guid.Empty;
+
         return TransactionMessages.TransactionIdRequired;
     }
 
     private static string SetInvalidDate(UpdateTransactionCommand command)
     {
         command.OccurredOn = default;
+
         return TransactionMessages.OccurredOnRequired;
     }
 
     private static string SetFutureDate(UpdateTransactionCommand command)
     {
         command.OccurredOn = new DateOnly(2026, 9, 7);
+
         return TransactionMessages.OccurredOnTooFarInFuture;
     }
 
     private static string SetInvalidAmount(UpdateTransactionCommand command)
     {
         command.Amount = 0m;
+
         return TransactionMessages.AmountPositive;
     }
 
     private static string SetInvalidPrecision(UpdateTransactionCommand command)
     {
         command.Amount = 1.00001m;
+
         return TransactionMessages.AmountPrecisionInvalid;
     }
 
     private static string SetInvalidDirection(UpdateTransactionCommand command)
     {
         command.Direction = (TransactionDirection)99;
+
         return TransactionMessages.DirectionInvalid;
     }
 
     private static string SetInvalidCategory(UpdateTransactionCommand command)
     {
         command.CategoryId = Guid.Empty;
+
         return TransactionMessages.CategoryIdRequired;
     }
 
     private static string SetAccount(UpdateTransactionCommand command)
     {
         command.FinancialAccountId = Guid.NewGuid();
+
         return TransactionMessages.TransactionTargetImmutable;
     }
 
     private static string SetCard(UpdateTransactionCommand command)
     {
         command.CreditCardId = Guid.NewGuid();
+
         return TransactionMessages.TransactionTargetImmutable;
     }
 
     private static string SetCurrency(UpdateTransactionCommand command)
     {
         command.CurrencyCode = "USD";
+
         return TransactionMessages.TransactionCurrencyImmutable;
     }
 
     private static string SetOwner(UpdateTransactionCommand command)
     {
         command.OwnerId = Guid.NewGuid();
+
         return TransactionMessages.OwnerImmutable;
     }
 
     private static string SetDescription(UpdateTransactionCommand command)
     {
         command.Description = new string('d', 501);
+
         return TransactionMessages.DescriptionTooLong;
     }
 
     private static string SetCounterparty(UpdateTransactionCommand command)
     {
         command.Counterparty = new string('c', 201);
+
         return TransactionMessages.CounterpartyTooLong;
     }
 
     private static string SetTag(UpdateTransactionCommand command)
     {
         command.Tags = [new string('t', 201)];
+
         return TransactionMessages.TagTooLong;
     }
 
     private static string SetEmptyTag(UpdateTransactionCommand command)
     {
         command.Tags = [string.Empty];
+
         return TransactionMessages.TagRequired;
     }
 
     private static string SetTooManyTags(UpdateTransactionCommand command)
     {
         command.Tags = Enumerable.Range(1, 51).Select(index => $"Tag {index}").ToArray();
+
         return TransactionMessages.TooManyTags;
     }
 

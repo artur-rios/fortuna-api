@@ -110,6 +110,7 @@ public sealed class PluggySynchronizationGateway(
             if (response.Outcome != PluggySynchronizationFetchOutcome.Succeeded)
             {
                 response.Document?.Dispose();
+
                 return new PageResult(response.Outcome, []);
             }
 
@@ -152,6 +153,7 @@ public sealed class PluggySynchronizationGateway(
                 HttpStatusCode.NotFound)
             {
                 response.Dispose();
+
                 return new DocumentResult(
                     PluggySynchronizationFetchOutcome.RequiresReauthentication,
                     null);
@@ -160,12 +162,14 @@ public sealed class PluggySynchronizationGateway(
             if (!response.IsSuccessStatusCode)
             {
                 response.Dispose();
+
                 return new DocumentResult(PluggySynchronizationFetchOutcome.Unavailable, null);
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
             response.Dispose();
+
             return new DocumentResult(PluggySynchronizationFetchOutcome.Succeeded, document);
         }
     }
@@ -181,6 +185,7 @@ public sealed class PluggySynchronizationGateway(
             subtype.Contains("CREDIT", StringComparison.OrdinalIgnoreCase);
         var number = ReadString(account, "number");
         var lastFour = number is { Length: >= 4 } ? number[^4..] : null;
+
         return new PluggyResourceRecord(
             externalReference,
             isCard ? PluggyResourceKind.CreditCard : PluggyResourceKind.Account,
@@ -203,6 +208,7 @@ public sealed class PluggySynchronizationGateway(
             : type?.Equals("DEBIT", StringComparison.OrdinalIgnoreCase) == true
                 ? TransactionDirection.Expense
                 : (TransactionDirection?)null;
+
         return new PluggyTransactionRecord(
             transaction.GetRawText(),
             ReadString(transaction, "accountId") ?? accountId,
@@ -272,6 +278,7 @@ public sealed class PluggySynchronizationGateway(
     private static DateOnly? ReadDate(JsonElement element, string name)
     {
         var value = ReadString(element, name);
+
         return DateOnly.TryParse(value, CultureInfo.InvariantCulture, out var date) ? date : null;
     }
 

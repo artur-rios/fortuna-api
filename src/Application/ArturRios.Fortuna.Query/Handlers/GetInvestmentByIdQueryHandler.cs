@@ -49,6 +49,7 @@ public sealed class GetInvestmentByIdQueryHandler(
         if (!string.IsNullOrWhiteSpace(query.DisplayCurrencyCode) && displayCurrency is null)
         {
             var code = query.DisplayCurrencyCode.Trim().ToUpperInvariant();
+
             return output
                 .WithError(InvestmentMessages.CurrencyNotSupported)
                 .WithMessage(InvestmentMessages.UnknownCurrency(code));
@@ -60,6 +61,7 @@ public sealed class GetInvestmentByIdQueryHandler(
             displayCurrency,
             query.FigureDate ?? Today(),
             rates);
+
         return output
             .WithData(result)
             .WithMessage(InvestmentMessages.RetrievedSuccessfully);

@@ -391,6 +391,7 @@ public sealed class EfTransactionStore(
             update.Id,
             includeDeleted: false,
             cancellationToken);
+
         return UpdateResult(TransactionUpdateOutcome.Succeeded, snapshot);
     }
 
@@ -428,6 +429,7 @@ public sealed class EfTransactionStore(
 
             transaction.Unreconcile(change.ChangedAt);
             await context.SaveChangesAsync(cancellationToken);
+
             return await SuccessfulReconciliationAsync(change, cancellationToken);
         }
 
@@ -467,6 +469,7 @@ public sealed class EfTransactionStore(
 
         transaction.Reconcile(importedRecord, change.ChangedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return await SuccessfulReconciliationAsync(change, cancellationToken);
     }
 
@@ -540,6 +543,7 @@ public sealed class EfTransactionStore(
 
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
     }
 
@@ -622,6 +626,7 @@ public sealed class EfTransactionStore(
 
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
     }
 
@@ -682,6 +687,7 @@ public sealed class EfTransactionStore(
         context.FinancialTransactions.RemoveRange(transactionLegs);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
     }
 
@@ -754,6 +760,7 @@ public sealed class EfTransactionStore(
         }
 
         var transactionIds = transactions.Select(item => item.Id).ToArray();
+
         return await context.CreditCardStatements.AnyAsync(statement =>
             statement.Status == CreditCardStatementStatus.Settled &&
             statement.SettlementTransactionId.HasValue &&
@@ -951,6 +958,7 @@ public sealed class EfTransactionStore(
 
         counterparty = new Counterparty(user, name, createdAt);
         context.Counterparties.Add(counterparty);
+
         return counterparty;
     }
 
@@ -1022,6 +1030,7 @@ public sealed class EfTransactionStore(
                 {
                     statement = new CreditCardStatement(card, cycle, changedAt);
                     context.CreditCardStatements.Add(statement);
+
                     break;
                 }
 
@@ -1084,6 +1093,7 @@ public sealed class EfTransactionStore(
                 {
                     statement = new CreditCardStatement(card, cycle, changedAt);
                     context.CreditCardStatements.Add(statement);
+
                     break;
                 }
 
@@ -1118,6 +1128,7 @@ public sealed class EfTransactionStore(
         var normalizedRequested = string.IsNullOrWhiteSpace(requested)
             ? null
             : requested.Trim().ToUpperInvariant();
+
         return current?.NormalizedName == normalizedRequested;
     }
 
@@ -1158,6 +1169,7 @@ public sealed class EfTransactionStore(
         }
 
         entity.SoftDeleteFromCascade(cascadeId, changedAt);
+
         return !wasDeleted;
     }
 
@@ -1171,6 +1183,7 @@ public sealed class EfTransactionStore(
         }
 
         entity.Restore(changedAt);
+
         return true;
     }
 
@@ -1207,6 +1220,7 @@ public sealed class EfTransactionStore(
             change.TransactionId,
             includeDeleted: false,
             cancellationToken);
+
         return ReconciliationResult(
             TransactionReconciliationOutcome.Succeeded,
             transaction: snapshot);

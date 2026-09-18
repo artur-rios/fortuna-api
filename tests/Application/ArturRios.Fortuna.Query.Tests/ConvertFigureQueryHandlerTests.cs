@@ -210,6 +210,7 @@ public sealed class ConvertFigureQueryHandlerTests
             CancellationToken cancellationToken)
         {
             CallCount++;
+
             return Task.FromResult(rate);
         }
     }
@@ -223,6 +224,7 @@ public sealed class ConvertFigureQueryHandlerTests
             CancellationToken cancellationToken)
         {
             CallCount++;
+
             return Task.FromResult(profile);
         }
 
@@ -231,6 +233,7 @@ public sealed class ConvertFigureQueryHandlerTests
             CancellationToken cancellationToken)
         {
             CallCount++;
+
             return Task.FromResult(profile);
         }
     }

@@ -107,6 +107,7 @@ public sealed class ExcelWorkbookParserTests
         populate(sheet);
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
+
         return stream.ToArray();
     }
 }

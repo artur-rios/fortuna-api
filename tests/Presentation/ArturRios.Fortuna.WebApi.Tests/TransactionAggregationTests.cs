@@ -381,6 +381,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             $"/api/reports/aggregate?dimension={dimension}&from={Start:yyyy-MM-dd}" +
             $"&to={to ?? Start:yyyy-MM-dd}{suffix}");
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<AggregationEnvelope>())!;
     }
 
@@ -391,6 +392,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
     {
         var response = await client.GetAsync(DrillUrl(key, suffix));
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<DrillEnvelope>())!;
     }
 
@@ -405,6 +407,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category;
     }
 
@@ -421,6 +424,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         var tag = new Tag(user, "Coffee", DateTimeOffset.UtcNow);
         context.AddRange(child, counterparty, tag);
         await context.SaveChangesAsync();
+
         return new ClassificationSeed(root, child, counterparty, tag);
     }
 
@@ -467,6 +471,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             attachedTags);
         context.FinancialTransactions.Add(transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
@@ -495,6 +500,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             description);
         context.FinancialTransactions.Add(transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
@@ -574,6 +580,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             OpeningBalance = 0m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -593,6 +600,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -631,6 +639,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

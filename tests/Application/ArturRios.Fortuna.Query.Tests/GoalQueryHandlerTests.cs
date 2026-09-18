@@ -214,6 +214,7 @@ public sealed class GoalQueryHandlerTests
             UserId = userId;
             IncludeDeleted = includeDeleted;
             AsOf = asOf;
+
             return Task.FromResult(goals);
         }
 
@@ -225,6 +226,7 @@ public sealed class GoalQueryHandlerTests
             GoalId = id;
             IncludeDeleted = includeDeleted;
             AsOf = asOf;
+
             return Task.FromResult(goal);
         }
     }
@@ -242,6 +244,7 @@ public sealed class GoalQueryHandlerTests
         {
             UserId = userId;
             AsOf = asOf;
+
             return Task.FromResult(result);
         }
     }

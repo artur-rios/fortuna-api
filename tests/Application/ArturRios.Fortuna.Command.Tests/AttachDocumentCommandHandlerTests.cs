@@ -183,6 +183,7 @@ public sealed class AttachDocumentCommandHandlerTests
                     write.SizeInBytes,
                     write.CreatedAt)
                 : null;
+
             return Task.FromResult(new AttachmentMetadataResult(Outcome, snapshot));
         }
     }
@@ -216,6 +217,7 @@ public sealed class AttachDocumentCommandHandlerTests
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {
             DeletedKey = key;
+
             return Task.CompletedTask;
         }
 

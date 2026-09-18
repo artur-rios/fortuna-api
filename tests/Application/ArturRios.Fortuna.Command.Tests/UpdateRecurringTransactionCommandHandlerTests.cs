@@ -105,6 +105,7 @@ public sealed class UpdateRecurringTransactionCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(result);
         }
     }

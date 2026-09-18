@@ -229,6 +229,7 @@ public sealed class ReconcileTransactionCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Change = change;
+
             return Task.FromResult(result);
         }
     }
@@ -246,6 +247,7 @@ public sealed class ReconcileTransactionCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

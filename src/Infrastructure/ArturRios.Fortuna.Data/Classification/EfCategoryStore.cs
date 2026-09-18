@@ -72,6 +72,7 @@ public sealed class EfCategoryStore(
             DatabaseException.IsUniqueViolation(exception, RootSiblingNameIndex, NestedSiblingNameIndex))
         {
             context.Entry(category).State = EntityState.Detached;
+
             return Result(CategoryCreationOutcome.DuplicateSiblingName);
         }
 
@@ -173,6 +174,7 @@ public sealed class EfCategoryStore(
             DatabaseException.IsUniqueViolation(exception, RootSiblingNameIndex, NestedSiblingNameIndex))
         {
             context.Entry(category).State = EntityState.Detached;
+
             return UpdateResult(CategoryUpdateOutcome.DuplicateSiblingName);
         }
 
@@ -278,6 +280,7 @@ public sealed class EfCategoryStore(
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
         return LifecycleResult(CategoryLifecycleOutcome.Succeeded, category.PublicId);
     }
 

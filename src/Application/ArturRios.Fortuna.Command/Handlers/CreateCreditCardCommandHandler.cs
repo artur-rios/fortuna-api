@@ -67,6 +67,7 @@ public sealed class CreateCreditCardCommandHandler(
         }
 
         var card = created.Card!;
+
         return output
             .WithData(new CreateCreditCardCommandOutput
             {

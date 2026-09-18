@@ -122,6 +122,7 @@ public sealed class BackgroundJobProcessorTests
             }
 
             Payload = payload;
+
             return Task.CompletedTask;
         }
     }
@@ -150,6 +151,7 @@ public sealed class BackgroundJobProcessorTests
         public Task SaveAsync(BackgroundJob changedJob, CancellationToken cancellationToken)
         {
             SaveCount++;
+
             return Task.CompletedTask;
         }
     }

@@ -185,21 +185,25 @@ public sealed class TransactionQueryValidatorTests
             new SearchTransactionsQuery { FinancialAccountId = Guid.Empty },
             TransactionMessages.FinancialAccountIdInvalid
         ];
+
         yield return
         [
             new SearchTransactionsQuery { CreditCardId = Guid.Empty },
             TransactionMessages.CreditCardIdInvalid
         ];
+
         yield return
         [
             new SearchTransactionsQuery { CategoryId = Guid.Empty },
             TransactionMessages.CategoryFilterIdInvalid
         ];
+
         yield return
         [
             new SearchTransactionsQuery { TagId = Guid.Empty },
             TransactionMessages.TagIdInvalid
         ];
+
         yield return
         [
             new SearchTransactionsQuery { CounterpartyId = Guid.Empty },
@@ -214,6 +218,7 @@ public sealed class TransactionQueryValidatorTests
             new SearchTransactionsQuery { MinimumAmount = -0.01m },
             TransactionMessages.MinimumAmountInvalid
         ];
+
         yield return
         [
             new SearchTransactionsQuery { MaximumAmount = -0.01m },
@@ -224,6 +229,7 @@ public sealed class TransactionQueryValidatorTests
     public static IEnumerable<object[]> ImpreciseAmountBounds()
     {
         yield return [new SearchTransactionsQuery { MinimumAmount = 1.00001m }];
+
         yield return
         [
             new SearchTransactionsQuery { MaximumAmount = 1_000_000_000_000_000m }

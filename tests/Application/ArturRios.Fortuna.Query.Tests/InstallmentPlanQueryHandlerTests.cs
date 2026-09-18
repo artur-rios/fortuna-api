@@ -115,6 +115,7 @@ public sealed class InstallmentPlanQueryHandlerTests
         {
             UserId = userId;
             IncludeDeleted = includeDeleted;
+
             return Task.FromResult(snapshot);
         }
     }

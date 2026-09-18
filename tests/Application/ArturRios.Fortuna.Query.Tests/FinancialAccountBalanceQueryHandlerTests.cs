@@ -166,6 +166,7 @@ public sealed class FinancialAccountBalanceQueryHandlerTests
         {
             WasCalled = true;
             RequestedAsOf = asOf;
+
             return Task.FromResult(
                 userId == ownerId && balance?.Id == id
                     ? balance
@@ -186,6 +187,7 @@ public sealed class FinancialAccountBalanceQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

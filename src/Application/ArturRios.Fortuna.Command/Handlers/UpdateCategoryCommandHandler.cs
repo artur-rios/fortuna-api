@@ -65,6 +65,7 @@ public sealed class UpdateCategoryCommandHandler(
         }
 
         var category = result.Category!;
+
         return output
             .WithData(new UpdateCategoryCommandOutput
             {

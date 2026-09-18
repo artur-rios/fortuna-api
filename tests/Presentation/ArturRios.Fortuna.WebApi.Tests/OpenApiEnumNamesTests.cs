@@ -57,6 +57,7 @@ public sealed class OpenApiEnumNamesTests
         {
             directory = directory.Parent;
         }
+
         return directory?.FullName ?? throw new DirectoryNotFoundException(
             "Could not locate the repository root.");
     }

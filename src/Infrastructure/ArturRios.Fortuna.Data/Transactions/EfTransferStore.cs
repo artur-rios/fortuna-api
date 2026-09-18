@@ -254,6 +254,7 @@ public sealed class EfTransferStore(
         }
 
         var result = await change(transfer.OutboundTransactionId, cancellationToken);
+
         return result.Outcome switch
         {
             TransactionLifecycleOutcome.Succeeded => LifecycleResult(

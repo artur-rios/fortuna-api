@@ -236,6 +236,7 @@ public sealed class HeimdallAuthGatewayTests
                 ? string.Empty
                 : await request.Content.ReadAsStringAsync(cancellationToken);
             Authorization = request.Headers.Authorization;
+
             return response(request);
         }
     }

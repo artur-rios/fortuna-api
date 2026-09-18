@@ -39,6 +39,7 @@ public sealed class EfDataExportStore(AppDbContext context) :
         export.AttachBackgroundJob(backgroundJob);
         context.AddRange(backgroundJob, export);
         await context.SaveChangesAsync(cancellationToken);
+
         return new QueueDataExportResult(export.PublicId, backgroundJob.Id);
     }
 
@@ -59,6 +60,7 @@ public sealed class EfDataExportStore(AppDbContext context) :
 
         export.Start(startedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new DataExportWorkItem(
             export.PublicId,
             export.User.PublicId,
@@ -143,6 +145,7 @@ public sealed class EfDataExportStore(AppDbContext context) :
         export.AttachBackgroundJob(backgroundJob);
         context.AddRange(backgroundJob, export);
         await context.SaveChangesAsync(cancellationToken);
+
         return new QueueDataExportResult(export.PublicId, backgroundJob.Id);
     }
 
@@ -163,6 +166,7 @@ public sealed class EfDataExportStore(AppDbContext context) :
 
         export.Start(startedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new PersonalDataExportWorkItem(
             export.PublicId,
             export.User.PublicId,

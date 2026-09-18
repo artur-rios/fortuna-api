@@ -192,6 +192,7 @@ public sealed class RecordInvestmentValuationCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Record = record;
+
             return Task.FromResult(result);
         }
     }
@@ -209,6 +210,7 @@ public sealed class RecordInvestmentValuationCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

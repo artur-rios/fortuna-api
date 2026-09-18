@@ -44,6 +44,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
         {
             context.Entry(counterparty).State = EntityState.Detached;
             existing = await FindLiveByNameAsync(user.Id, creation.Name, cancellationToken);
+
             return new CounterpartyCreationResult(
                 existing is null ? null : Snapshot(existing),
                 Reused: existing is not null,
@@ -105,6 +106,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
         catch (DbUpdateException exception) when (IsDuplicateName(exception))
         {
             context.Entry(counterparty).State = EntityState.Detached;
+
             return MutationResult(CounterpartyMutationOutcome.DuplicateName);
         }
 
@@ -127,6 +129,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
 
         counterparty.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new CounterpartyMutationResult(
             Snapshot(counterparty),
             CounterpartyMutationOutcome.Succeeded);
@@ -233,6 +236,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
         CancellationToken cancellationToken)
     {
         var normalizedName = name.Trim().ToUpperInvariant();
+
         return context.Counterparties
             .AsNoTracking()
             .SingleOrDefaultAsync(item =>

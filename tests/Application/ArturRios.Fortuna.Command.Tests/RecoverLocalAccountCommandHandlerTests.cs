@@ -129,6 +129,7 @@ public sealed class RecoverLocalAccountCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Recovery = recovery;
+
             return Task.FromResult(result);
         }
 
@@ -148,6 +149,7 @@ public sealed class RecoverLocalAccountCommandHandlerTests
             Subject = subject;
             DisplayName = displayName;
             IssueCount++;
+
             return new LocalAuthToken("local-token", Now.AddHours(1));
         }
     }

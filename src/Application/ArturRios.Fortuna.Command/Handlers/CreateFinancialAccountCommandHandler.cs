@@ -65,6 +65,7 @@ public sealed class CreateFinancialAccountCommandHandler(
         }
 
         var account = created.Account!;
+
         return output
             .WithData(new CreateFinancialAccountCommandOutput
             {

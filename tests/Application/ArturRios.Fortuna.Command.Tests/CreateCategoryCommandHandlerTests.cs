@@ -147,6 +147,7 @@ public sealed class CreateCategoryCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(result);
         }
     }
@@ -164,6 +165,7 @@ public sealed class CreateCategoryCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

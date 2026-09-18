@@ -154,6 +154,7 @@ public sealed class GoalCommandHandlerTests
             GoalCreation creation, CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(Result);
         }
 
@@ -161,6 +162,7 @@ public sealed class GoalCommandHandlerTests
             GoalUpdate update, CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(Result);
         }
 
@@ -170,6 +172,7 @@ public sealed class GoalCommandHandlerTests
         {
             DeletedAt = changedAt;
             AsOf = asOf;
+
             return Task.FromResult(Result);
         }
     }

@@ -27,6 +27,7 @@ public sealed class DataSourcesController(QueryMediator queryMediator) : Control
         var result = await queryMediator.ExecuteQueryAsync<
             ListDataSourcesQuery,
             DataSourceListOutput>(new ListDataSourcesQuery());
+
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

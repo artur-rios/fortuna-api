@@ -28,6 +28,7 @@ public sealed class S3AttachmentStore(IAmazonS3 client, string bucket) : IAttach
             var copy = new MemoryStream();
             await response.ResponseStream.CopyToAsync(copy, cancellationToken);
             copy.Position = 0;
+
             return copy;
         }
         catch (AmazonS3Exception exception) when (
@@ -49,6 +50,7 @@ public sealed class S3AttachmentStore(IAmazonS3 client, string bucket) : IAttach
         try
         {
             await client.GetBucketAclAsync(new GetBucketAclRequest { BucketName = bucket }, cancellationToken);
+
             return true;
         }
         catch (AmazonS3Exception)

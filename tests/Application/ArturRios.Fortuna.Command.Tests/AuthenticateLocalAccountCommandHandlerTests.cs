@@ -84,6 +84,7 @@ public sealed class AuthenticateLocalAccountCommandHandlerTests
     private static LocalAccountCredentialSnapshot Credentials(string secret)
     {
         var hash = Hash.EncodeWithRandomSalt(secret, out var salt);
+
         return new LocalAccountCredentialSnapshot(Guid.NewGuid(), "Local User", hash, salt);
     }
 
@@ -123,6 +124,7 @@ public sealed class AuthenticateLocalAccountCommandHandlerTests
             Subject = subject;
             DisplayName = displayName;
             IssueCount++;
+
             return new LocalAuthToken("local-token", DateTimeOffset.UtcNow.AddHours(1));
         }
     }

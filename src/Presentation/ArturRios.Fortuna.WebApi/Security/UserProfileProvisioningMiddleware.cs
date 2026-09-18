@@ -22,6 +22,7 @@ public sealed class UserProfileProvisioningMiddleware(RequestDelegate next)
             if (string.IsNullOrWhiteSpace(actor.DisplayName))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+
                 return;
             }
 

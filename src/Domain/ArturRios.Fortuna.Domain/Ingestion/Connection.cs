@@ -114,6 +114,7 @@ public sealed class Connection
         AccessTokenCipher = [];
         Status = ConnectionStatus.Revoked;
         UpdatedAt = updatedAt;
+
         return true;
     }
 }

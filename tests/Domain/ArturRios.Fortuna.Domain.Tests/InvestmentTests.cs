@@ -156,6 +156,7 @@ public sealed class InvestmentTests
     private static (UserProfile User, Currency Currency) Owner()
     {
         var currency = new Currency("BRL", "Brazilian real", 2);
+
         return (new UserProfile(Guid.NewGuid(), "Owner", currency, Now), currency);
     }
 }

@@ -43,6 +43,7 @@ public sealed class SearchTransactionsQueryHandler(
         if (!string.IsNullOrWhiteSpace(query.DisplayCurrencyCode) && displayCurrency is null)
         {
             var code = query.DisplayCurrencyCode.Trim().ToUpperInvariant();
+
             return output
                 .WithError(TransactionMessages.CurrencyNotSupported)
                 .WithMessage(TransactionMessages.UnknownCurrency(code));

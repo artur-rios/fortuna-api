@@ -62,6 +62,7 @@ public sealed class ListConnectionsQueryHandler(
             pageSize,
             orderBy: null,
             cancellationToken: CancellationToken.None);
+
         return page.WithMessage(ConnectionMessages.ListedSuccessfully);
     }
 

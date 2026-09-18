@@ -44,6 +44,7 @@ public sealed class CreateBudgetCommandHandler(
                 command.IncludeDescendants,
                 timeProvider.GetUtcNow()),
             CancellationToken.None);
+
         return BudgetHandler.Resolve(result, BudgetMessages.CreatedSuccessfully);
     }
 }
@@ -83,6 +84,7 @@ public sealed class UpdateBudgetCommandHandler(
                 command.IncludeDescendants,
                 timeProvider.GetUtcNow()),
             CancellationToken.None);
+
         return BudgetHandler.Resolve(result, BudgetMessages.UpdatedSuccessfully);
     }
 }
@@ -109,6 +111,7 @@ public sealed class DeleteBudgetCommandHandler(
             now,
             DateOnly.FromDateTime(now.UtcDateTime),
             CancellationToken.None);
+
         return BudgetHandler.Resolve(result, BudgetMessages.DeletedSuccessfully);
     }
 }
@@ -128,6 +131,7 @@ internal static class BudgetHandler
         string successMessage)
     {
         var output = DataOutput<BudgetCommandOutput?>.New;
+
         return result.Outcome switch
         {
             BudgetMutationOutcome.Succeeded => output

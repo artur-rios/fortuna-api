@@ -317,6 +317,7 @@ public sealed class AggregateTransactionsQueryHandler(
             criteria.Dimension == "category" && criteria.RollupCategories,
             periodStart,
             periodEnd);
+
         return keyCodec.Encode(new TransactionDrillDownKeyPayload(
             1,
             criteria.UserId,

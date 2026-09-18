@@ -74,6 +74,7 @@ public sealed class DrillIntoAggregationQueryHandler(
                 PageNumber = 1,
                 PageSize = 1
             };
+
             return Complete(output, direct, TransactionDrillDownMessages.TransactionRetrieved,
                 changed);
         }
@@ -105,6 +106,7 @@ public sealed class DrillIntoAggregationQueryHandler(
                 MayDifferFromChart = changed,
                 Buckets = aggregate.Data.Buckets
             };
+
             return Complete(output, detail, TransactionDrillDownMessages.AggregationRetrieved,
                 changed);
         }
@@ -129,6 +131,7 @@ public sealed class DrillIntoAggregationQueryHandler(
             PageSize = page.PageSize,
             TotalItems = page.TotalItems
         };
+
         return Complete(output, list, TransactionDrillDownMessages.TransactionsRetrieved, changed);
     }
 
@@ -234,6 +237,7 @@ public sealed class DrillIntoAggregationQueryHandler(
         }
 
         var finer = key.Dimension == "period" ? FinerGranularity(key.Granularity) : null;
+
         return finer is null ? null : new TargetAggregation("period", finer);
     }
 
@@ -297,6 +301,7 @@ public sealed class DrillIntoAggregationQueryHandler(
         bool changed)
     {
         output.WithData(data).WithMessage(message);
+
         return changed ? output.WithMessage(TransactionDrillDownMessages.RecordsChanged) : output;
     }
 

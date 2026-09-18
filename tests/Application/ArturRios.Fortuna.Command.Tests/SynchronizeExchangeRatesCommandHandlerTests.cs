@@ -86,6 +86,7 @@ public sealed class SynchronizeExchangeRatesCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Created = BackgroundJob.Create(type, payload, idempotencyKey, correlationId, Now);
+
             return Task.FromResult(Created);
         }
 
@@ -111,6 +112,7 @@ public sealed class SynchronizeExchangeRatesCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 
