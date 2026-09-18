@@ -275,12 +275,16 @@ public sealed class DrillIntoAggregationQueryHandler(
 
     private static AggregateTransactionsQuery AggregationQuery(
         TransactionDrillDownKeyPayload key,
-        TargetAggregation target) => new()
+        TargetAggregation target)
+    {
+        var (from, to) = NarrowedPeriod(key);
+
+        return new AggregateTransactionsQuery
         {
             Dimension = target.Dimension.Name(),
             Granularity = target.Granularity?.Name(),
-            From = key.From,
-            To = key.To,
+            From = from,
+            To = to,
             FinancialAccountId = key.Filters.FinancialAccountId,
             CreditCardId = key.Filters.CreditCardId,
             CategoryId = key.Filters.CategoryId,
@@ -293,6 +297,7 @@ public sealed class DrillIntoAggregationQueryHandler(
             DisplayCurrencyCode = key.DisplayCurrencyCode,
             Selections = key.Selections
         };
+    }
 
     private static bool IsValid(TransactionDrillDownKeyPayload key) =>
         key.Version == 1 &&
