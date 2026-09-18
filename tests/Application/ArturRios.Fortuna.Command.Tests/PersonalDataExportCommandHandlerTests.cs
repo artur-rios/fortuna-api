@@ -10,6 +10,7 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Test.Attributes;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ArturRios.Fortuna.Command.Tests;
 
@@ -87,12 +88,14 @@ public sealed class PersonalDataExportCommandHandlerTests
             exports,
             new StubArchiveBuilder(new PersonalDataArchive([1, 2, 3], 7, ["profile"])),
             storage,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now),
+            NullLogger<PersonalDataExportJobHandler>.Instance);
 
-        await handler.ExecuteAsync(
+        var result = await handler.ExecuteAsync(
             JsonSerializer.Serialize(new PersonalDataExportJobPayload(ExportId)),
             CancellationToken.None);
 
+        Assert.True(result.Success);
         Assert.Equal(ExportId, exports.CompletedId);
         Assert.Equal(7, exports.CompletedCount);
         Assert.Equal("application/zip", exports.CompletedContentType);
@@ -113,7 +116,8 @@ public sealed class PersonalDataExportCommandHandlerTests
             exports,
             new StubArchiveBuilder(new IOException("archive failed")),
             new MemoryStorage(),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now),
+            NullLogger<PersonalDataExportJobHandler>.Instance);
 
         await Assert.ThrowsAsync<IOException>(() => handler.ExecuteAsync(
             JsonSerializer.Serialize(new PersonalDataExportJobPayload(ExportId)),
@@ -121,8 +125,105 @@ public sealed class PersonalDataExportCommandHandlerTests
 
         Assert.Equal(ExportId, exports.FailedId);
         Assert.Equal(PersonalDataExportMessages.GenerationFailed, exports.FailureReason);
+        Assert.Equal(CancellationToken.None, exports.FailToken);
         Assert.Null(exports.CompletedId);
     }
+
+    [UnitTheory]
+    [InlineData(PersonalDataArchiveOutcome.UserNotFound, PersonalDataExportMessages.ProfileNotFound)]
+    [InlineData(PersonalDataArchiveOutcome.AttachmentNotFound, PersonalDataExportMessages.AttachmentMissing)]
+    [InlineData(PersonalDataArchiveOutcome.StorageUnavailable, PersonalDataExportMessages.StorageUnavailable)]
+    public async Task GivenArchiveOutcome_WhenJobProcessed_ThenSpecificReasonFailsTheExport(
+        PersonalDataArchiveOutcome outcome,
+        string reason)
+    {
+        var exports = new StubExportStore
+        {
+            Work = new PersonalDataExportWorkItem(ExportId, UserId, "personal.zip", Now.AddHours(24))
+        };
+        var storage = new MemoryStorage();
+
+        var result = await JobHandler(exports, new StubArchiveBuilder(outcome), storage).ExecuteAsync(
+            JsonSerializer.Serialize(new PersonalDataExportJobPayload(ExportId)),
+            CancellationToken.None);
+
+        Assert.Equal([reason], result.Errors);
+        Assert.Equal(reason, exports.FailureReason);
+        Assert.Null(storage.Content);
+    }
+
+    [UnitFact]
+    public async Task GivenExportErasedBeforeCompletion_WhenJobProcessed_ThenArchiveFileIsDeleted()
+    {
+        var exports = new StubExportStore
+        {
+            Work = new PersonalDataExportWorkItem(ExportId, UserId, "personal.zip", Now.AddHours(24)),
+            CompleteOutcome = JobTransitionOutcome.NotFound
+        };
+        var storage = new MemoryStorage();
+
+        var result = await JobHandler(
+            exports,
+            new StubArchiveBuilder(new PersonalDataArchive([1, 2, 3], 7, ["profile"])),
+            storage).ExecuteAsync(
+            JsonSerializer.Serialize(new PersonalDataExportJobPayload(ExportId)),
+            CancellationToken.None);
+
+        Assert.Equal([PersonalDataExportMessages.NotFound], result.Errors);
+        Assert.NotNull(storage.DeletedKey);
+    }
+
+    [UnitFact]
+    public async Task GivenCompletionThrows_WhenJobProcessed_ThenArchiveFileIsDeletedAndExportFails()
+    {
+        var exports = new StubExportStore
+        {
+            Work = new PersonalDataExportWorkItem(ExportId, UserId, "personal.zip", Now.AddHours(24)),
+            CompleteFailure = new IOException("database unavailable")
+        };
+        var storage = new MemoryStorage();
+
+        await Assert.ThrowsAsync<IOException>(() => JobHandler(
+            exports,
+            new StubArchiveBuilder(new PersonalDataArchive([1, 2, 3], 7, ["profile"])),
+            storage).ExecuteAsync(
+            JsonSerializer.Serialize(new PersonalDataExportJobPayload(ExportId)),
+            CancellationToken.None));
+
+        Assert.NotNull(storage.DeletedKey);
+        Assert.Equal(PersonalDataExportMessages.GenerationFailed, exports.FailureReason);
+    }
+
+    [UnitFact]
+    public async Task GivenHostShutdown_WhenJobProcessed_ThenCancellationPropagatesWithoutFailingTheExport()
+    {
+        var exports = new StubExportStore
+        {
+            Work = new PersonalDataExportWorkItem(ExportId, UserId, "personal.zip", Now.AddHours(24))
+        };
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => JobHandler(
+            exports,
+            new StubArchiveBuilder(new OperationCanceledException(cancellation.Token)),
+            new MemoryStorage()).ExecuteAsync(
+            JsonSerializer.Serialize(new PersonalDataExportJobPayload(ExportId)),
+            cancellation.Token));
+
+        Assert.Null(exports.FailedId);
+    }
+
+    private static PersonalDataExportJobHandler JobHandler(
+        StubExportStore exports,
+        StubArchiveBuilder builder,
+        MemoryStorage storage) => new(
+        exports,
+        exports,
+        builder,
+        storage,
+        new FixedTimeProvider(Now),
+        NullLogger<PersonalDataExportJobHandler>.Instance);
 
     private static RequestPersonalDataExportCommandHandler Handler(
         RequestActor actor,
@@ -179,6 +280,9 @@ public sealed class PersonalDataExportCommandHandlerTests
         public string? CompletedContentType { get; private set; }
         public Guid? FailedId { get; private set; }
         public string? FailureReason { get; private set; }
+        public CancellationToken? FailToken { get; private set; }
+        public JobTransitionOutcome CompleteOutcome { get; init; } = JobTransitionOutcome.Applied;
+        public Exception? CompleteFailure { get; init; }
 
         public Task<QueueDataExportResult> QueuePersonalAsync(
             QueuePersonalDataExportRequest request,
@@ -216,11 +320,16 @@ public sealed class PersonalDataExportCommandHandlerTests
             DateTimeOffset completedAt,
             CancellationToken cancellationToken)
         {
+            if (CompleteFailure is not null)
+            {
+                return Task.FromException<JobTransitionOutcome>(CompleteFailure);
+            }
+
             CompletedId = exportId;
             CompletedCount = rowCount;
             CompletedContentType = contentType;
 
-            return Task.FromResult(JobTransitionOutcome.Applied);
+            return Task.FromResult(CompleteOutcome);
         }
 
         public Task<JobTransitionOutcome> FailAsync(
@@ -231,6 +340,7 @@ public sealed class PersonalDataExportCommandHandlerTests
         {
             FailedId = exportId;
             FailureReason = reason;
+            FailToken = cancellationToken;
 
             return Task.FromResult(JobTransitionOutcome.Applied);
         }
@@ -259,6 +369,7 @@ public sealed class PersonalDataExportCommandHandlerTests
     private sealed class MemoryStorage : IAttachmentStore
     {
         public byte[]? Content { get; private set; }
+        public string? DeletedKey { get; private set; }
 
         public async Task WriteAsync(string key, Stream content, CancellationToken cancellationToken)
         {
@@ -269,7 +380,13 @@ public sealed class PersonalDataExportCommandHandlerTests
 
         public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
-        public Task DeleteAsync(string key, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task DeleteAsync(string key, CancellationToken cancellationToken)
+        {
+            DeletedKey = key;
+
+            return Task.CompletedTask;
+        }
+
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) => Task.FromResult(true);
     }
 

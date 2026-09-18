@@ -93,7 +93,8 @@ public sealed class RequestDataExportCommandHandlerTests
         var builder = new DataExportBuilder(
             reader,
             new StubCurrencyReader(),
-            new StubRateReader());
+            new StubRateReader(),
+            new FixedTimeProvider());
         var handler = new RequestDataExportCommandHandler(
             new RequestDataExportCommandValidator(),
             new StubActor(),

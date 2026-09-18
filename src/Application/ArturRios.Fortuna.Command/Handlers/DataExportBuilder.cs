@@ -8,7 +8,8 @@ namespace ArturRios.Fortuna.Command.Handlers;
 public sealed class DataExportBuilder(
     ITableReportReader reports,
     ICurrencyReader currencies,
-    IExchangeRateReader rates)
+    IExchangeRateReader rates,
+    TimeProvider timeProvider)
 {
     public async Task<DataExportBuildResult> BuildAsync(
         Guid userId,
@@ -121,7 +122,7 @@ public sealed class DataExportBuilder(
                 var rate = await rates.FindApplicableAsync(
                     group.CurrencyCode,
                     displayCurrency,
-                    group.FigureDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+                    group.FigureDate ?? DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
                     cancellationToken);
                 converted.Add(rate is null ? null : group.Value * rate.Rate);
             }
