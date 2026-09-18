@@ -2,9 +2,9 @@ name: Check OpenAPI Document
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 concurrency:
   group: check-openapi-${{ github.ref }}
