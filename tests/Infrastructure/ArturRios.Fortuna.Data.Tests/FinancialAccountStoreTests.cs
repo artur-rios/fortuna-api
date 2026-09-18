@@ -4,6 +4,8 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Planning;
 using ArturRios.Fortuna.Data.Reporting;
 using ArturRios.Fortuna.Domain.Attachments;
+using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Accounts;
@@ -48,6 +50,42 @@ public sealed class FinancialAccountStoreTests
             Assert.False((await context.Transfers.SingleAsync()).IsDeleted);
             Assert.All(await context.FinancialTransactions.ToListAsync(), item => Assert.False(item.IsDeleted));
             Assert.False((await context.Attachments.SingleAsync()).IsDeleted);
+        });
+    }
+
+    [FunctionalFact]
+    public async Task GivenInvestmentFundedWhileAnOpenStatementExists_WhenAccountIsSoftDeleted_ThenTheMovementFollows()
+    {
+        await WithDatabaseAsync(async context =>
+        {
+            var data = await StoreTestData.SeedAsync(context);
+            var account = data.Account(context, "Checking");
+            var card = new CreditCard(
+                data.User, "Card", "Issuer", data.Currency, 1000m, 20, 5, null, StoreTestData.Now);
+            context.CreditCardStatements.Add(new CreditCardStatement(
+                card,
+                BillingCycle.Containing(StoreTestData.Today, 20, 5),
+                StoreTestData.Now));
+            var investment = new Investment(
+                data.User, "Treasury", null, InvestmentType.FixedIncome, data.Currency, StoreTestData.Now);
+            var movement = new InvestmentMovement(
+                investment, InvestmentMovementType.Contribution, 50m, StoreTestData.Today, StoreTestData.Now);
+            context.AddRange(card, investment, movement);
+            context.Transfers.Add(new Transfer(
+                data.Transaction(context, account, TransactionDirection.Expense, 50m),
+                movement,
+                null,
+                null,
+                StoreTestData.Now));
+            await context.SaveChangesAsync();
+
+            var deleted = await Store(context).SoftDeleteAsync(
+                data.User.PublicId, account.PublicId, StoreTestData.Now, CancellationToken.None);
+
+            Assert.Equal(FinancialAccountLifecycleOutcome.Succeeded, deleted.Outcome);
+            context.ChangeTracker.Clear();
+            Assert.True((await context.Transfers.SingleAsync()).IsDeleted);
+            Assert.True((await context.InvestmentMovements.SingleAsync()).IsDeleted);
         });
     }
 

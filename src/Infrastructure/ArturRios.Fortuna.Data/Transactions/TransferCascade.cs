@@ -92,6 +92,7 @@ internal static class TransferCascade
                     (transfer.InboundTransactionId.HasValue &&
                         ids.Contains(transfer.InboundTransactionId.Value))) &&
                 !context.CreditCardStatements.Any(statement =>
+                    transfer.InboundTransactionId.HasValue &&
                     statement.SettlementTransactionId == transfer.InboundTransactionId))
             .ToListAsync(cancellationToken);
     }
