@@ -79,26 +79,23 @@ public sealed class EfInstallmentPlanStore(
                 MidpointRounding.AwayFromZero);
         }
 
-        IReadOnlyList<decimal> billedAmounts;
-        IReadOnlyList<decimal>? originalAmounts = null;
-        try
-        {
-            billedAmounts = InstallmentPlan.Split(
-                billedTotal,
+        var billedSplit = InstallmentPlan.TrySplit(
+            billedTotal,
+            record.InstallmentCount,
+            card.Currency.MinorUnitDigits);
+        var originalSplit = originalCurrency is null
+            ? null
+            : InstallmentPlan.TrySplit(
+                record.TotalAmount,
                 record.InstallmentCount,
-                card.Currency.MinorUnitDigits);
-            if (originalCurrency is not null)
-            {
-                originalAmounts = InstallmentPlan.Split(
-                    record.TotalAmount,
-                    record.InstallmentCount,
-                    originalCurrency.MinorUnitDigits);
-            }
-        }
-        catch (ArgumentOutOfRangeException)
+                originalCurrency.MinorUnitDigits);
+        if (!billedSplit.Succeeded || originalSplit is { Succeeded: false })
         {
             return Result(InstallmentPlanRecordOutcome.AmountTooSmall);
         }
+
+        var billedAmounts = billedSplit.Amounts;
+        var originalAmounts = originalSplit?.Amounts;
 
         var counterparty = await ResolveCounterpartyAsync(
             card.User,
