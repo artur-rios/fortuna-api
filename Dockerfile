@@ -38,7 +38,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh /app/fortuna-migrate \
     && mkdir -p /app/logs /app/attachments \
     && chown -R $APP_UID:$APP_UID /app/logs /app/attachments
 USER $APP_UID
-ENV ASPNETCORE_HTTP_PORTS=8080
-EXPOSE 8080
+# 8080 is the public API behind the reverse proxy. Prometheus scrapes GET /metrics on 9464 over the
+# private network only; the API matches the listener's local port, so 8080 never serves /metrics.
+ENV ASPNETCORE_HTTP_PORTS=8080;9464
+EXPOSE 8080 9464
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["dotnet", "ArturRios.Fortuna.WebApi.dll"]
