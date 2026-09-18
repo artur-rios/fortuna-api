@@ -49,6 +49,7 @@ using ArturRios.Fortuna.Shared.Projections;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Controllers;
+using ArturRios.Fortuna.WebApi.Observability;
 using ArturRios.Fortuna.WebApi.OpenApi;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Serialization;
@@ -820,6 +821,7 @@ try
     builder.Services.AddSingleton<IDataSourceCatalog>(provider =>
         provider.GetRequiredService<IngestionSourceRegistry>());
     RegisterAttachmentStore(builder.Services, options);
+    builder.Services.AddPrometheusMetrics(options.MetricsPort);
 
     builder.Services.AddControllers().AddJsonOptions(json =>
         json.JsonSerializerOptions.Converters.Add(new ExactDecimalJsonConverter()));
@@ -896,6 +898,7 @@ try
     });
 
     var app = builder.Build();
+    app.UsePrometheusMetrics(options.MetricsPort);
     if (!app.Environment.IsProduction())
     {
         app.UseSwagger();

@@ -40,9 +40,12 @@ services:
       FORTUNA_RATES_CURRENCIES: ${FORTUNA_RATES_CURRENCIES:-}
       FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE: ${FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE:-0.01}
       FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS: ${FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS:-1}
+      FORTUNA_METRICS_PORT: ${FORTUNA_METRICS_PORT:-}
     volumes:
       - logs:/app/logs
       - attachments:/app/attachments
+    # Only the API port is published. Prometheus reaches the metrics port (9464) over a private
+    # Docker network, so it is intentionally never mapped to the host.
     ports:
       - "${API_PORT:-8080}:8080"
     healthcheck:

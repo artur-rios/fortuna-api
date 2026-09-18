@@ -164,6 +164,7 @@ fortuna-api/
 | IR-24 | Every native function that returns JSON shall allocate it in the native library, document ownership in the header, and accept release through `fortuna_string_free` on success and failure alike |
 | IR-25 | Native CI shall build and test the library on Windows and Linux, reject generated-header drift, and publish both platform artifacts on every pull request and commit to `main` |
 | IR-26 | The native core shall own a namespaced SQLite schema independent from EF migrations; monetary values in it shall use SQLite `TEXT` and arbitrary-precision JSON serialization |
+| IR-27 | The hosted API shall expose Prometheus metrics only on a dedicated private listener, selected by the connection's local port and never by a request header, outside authentication and the OpenAPI document |
 
 ---
 
@@ -193,6 +194,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Reporting bounds | `FORTUNA_REPORT_MAX_RANGE_DAYS`, `FORTUNA_REPORT_KEY_TTL_MINUTES`, `FORTUNA_PROJECTION_MAX_HORIZON_DAYS`, `FORTUNA_PAGE_SIZE_MAX` | The limits the endpoints validate against, including drill-down key lifetime. |
 | Transaction tags | `FORTUNA_TRANSACTION_MAX_TAGS` | Maximum number of live tags attached to one transaction; defaults to `50`. |
 | Reconciliation | `FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE`, `FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS` | Differences beyond these non-negative amount and day tolerances are accepted but flagged. Defaults to `0.01` and `1`. |
+| Metrics | `FORTUNA_METRICS_PORT` | Local port whose listener serves `GET /metrics` (IR-27). Defaults to `9464`; `0` disables the exporter. The port must also be one Kestrel listens on (`ASPNETCORE_HTTP_PORTS`). |
 | CORS | `FORTUNA_CORS_ALLOWED_ORIGINS` | Empty by default, which refuses every cross-origin request; a browser client does not reach the API until its origin is listed. |
 | Logging | `FORTUNA_LOG_DIRECTORY`, `FORTUNA_LOG_LEVEL` | The log directory is a mounted volume in a container. |
 
@@ -227,6 +229,7 @@ reading a log should be able to tell **that** an import processed 412 rows and r
 | --- | --- | --- |
 | `GET /healthcheck` | Liveness — identifies `Fortuna API` and its published contract version without touching dependencies | **Public** |
 | `GET /healthcheck/detailed` | Per-dependency status and an aggregate | **Instance Administrator only** |
+| `GET /metrics` | Prometheus scrape of OpenTelemetry metrics — see [5.5](#55-metrics) | **Private listener only** — never served on the public port |
 
 ### 5.2 Functional Requirements
 
@@ -331,6 +334,34 @@ sequenceDiagram
 | AF-07 | A liveness caller ignores the response body | It remains compatible: `200 OK` still means the process is up |
 | AF-08 | Dependencies are starting or not ready | Liveness still returns its two published identifiers; dependency readiness remains detailed-only |
 
+### 5.5 Metrics
+
+The hosted API publishes OpenTelemetry metrics in the Prometheus text format, under the resource
+service name `fortuna-api`: ASP.NET Core request and outbound `HttpClient` instrumentation plus the
+built-in `System.Runtime`, `Microsoft.AspNetCore.Server.Kestrel`, `Microsoft.EntityFrameworkCore` and
+`Npgsql` meters. The native desktop core is a separate Rust library and exposes no metrics.
+
+The container listens on two ports (`ASPNETCORE_HTTP_PORTS=8080;9464`). The reverse proxy routes
+only `8080`; Prometheus scrapes `http://<container>:9464/metrics` over the private Docker network, and
+the compose file never publishes `9464` on the host. A request is served as a scrape only when its
+path is `/metrics` **and** the connection's local port equals `FORTUNA_METRICS_PORT` (IR-27). The
+`Host` header plays no part: the proxy forwards the caller's, so a client could forge any value. The
+private port still answers the ordinary API routes as well; what keeps it private is that nothing
+outside the Docker network can reach it.
+
+The exporter runs before request logging, rate limiting, authentication and authorization, so a
+scrape needs no token and is not logged; it is middleware rather than a controller, so it is absent
+from the OpenAPI document. On `8080`, `/metrics` falls through to the normal pipeline like any
+unknown path (`401` anonymous, `404` authenticated) and is never served. Setting
+`FORTUNA_METRICS_PORT=0` removes the exporter and its instrumentation entirely.
+
+```yaml
+scrape_configs:
+  - job_name: fortuna-api
+    static_configs:
+      - targets: ["fortuna-api:9464"]
+```
+
 ---
 
 ## 6. Environments
@@ -415,3 +446,4 @@ and a continuous integration run answer the same question, and so that raising i
 | Offline and network-independent operation | IR-20 | — |
 | In-process desktop native core and C ABI | IR-21 … IR-26 | — |
 | Health and monitoring | FR-HC-01 … FR-HC-12 | UC-75 |
+| Metrics | IR-27 | — |

@@ -54,6 +54,39 @@ public sealed class FoundationApiTests
         Assert.Equal("1.0", options.ConsentExternalDataProcessingVersion);
         Assert.Equal(0.01m, options.ReconciliationAmountTolerance);
         Assert.Equal(1, options.ReconciliationDateToleranceDays);
+        Assert.Equal(9464, options.MetricsPort);
+    }
+
+    [UnitTheory]
+    [InlineData("", 9464)]
+    [InlineData("0", 0)]
+    [InlineData("9100", 9100)]
+    [InlineData("65535", 65535)]
+    public void GivenMetricsPortSetting_WhenConfigurationLoads_ThenPortIsApplied(
+        string value,
+        int expected)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_METRICS_PORT"] = value;
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal(expected, options.MetricsPort);
+    }
+
+    [UnitTheory]
+    [InlineData("-1")]
+    [InlineData("65536")]
+    [InlineData("metrics")]
+    public void GivenInvalidMetricsPort_WhenConfigurationLoads_ThenStartupIsRejected(string value)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_METRICS_PORT"] = value;
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_METRICS_PORT", exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]
