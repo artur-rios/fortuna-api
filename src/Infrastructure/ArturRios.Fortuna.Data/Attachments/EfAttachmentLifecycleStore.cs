@@ -186,10 +186,6 @@ public sealed class EfAttachmentLifecycleStore(
 
             return true;
         }
-        catch (AttachmentObjectNotFoundException)
-        {
-            return true;
-        }
         catch (Exception)
         {
             return false;

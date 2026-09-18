@@ -80,16 +80,18 @@ public sealed class RetrieveDataExportQueryHandler(
                 return output.WithError(DataExportMessages.StorageUnavailable);
             }
 
-            var content = await storage.OpenReadAsync(
+            var read = await storage.OpenReadAsync(
                 export.StorageKey,
                 CancellationToken.None);
+            if (!read.IsFound)
+            {
+                return output.WithError(read.Status == AttachmentReadStatus.NotFound
+                    ? DataExportMessages.FileNotFound
+                    : DataExportMessages.StorageUnavailable);
+            }
 
-            return output.WithData(Project(export, content)).WithMessage(
+            return output.WithData(Project(export, read.Content)).WithMessage(
                 DataExportMessages.RetrievedSuccessfully);
-        }
-        catch (AttachmentObjectNotFoundException)
-        {
-            return output.WithError(DataExportMessages.FileNotFound);
         }
         catch (Exception exception)
         {

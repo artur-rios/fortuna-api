@@ -474,7 +474,7 @@ public sealed class DataExportTests : IAsyncLifetime
             CancellationToken cancellationToken) =>
             throw new IOException("sensitive infrastructure detail");
 
-        public Task<Stream> OpenReadAsync(
+        public Task<AttachmentReadResult> OpenReadAsync(
             string key,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 

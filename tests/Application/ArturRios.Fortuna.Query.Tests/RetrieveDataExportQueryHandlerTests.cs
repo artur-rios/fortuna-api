@@ -28,7 +28,7 @@ public sealed class RetrieveDataExportQueryHandlerTests
         var content = new MemoryStream([1, 2, 3]);
         var storage = Storage(healthy: true);
         storage.Setup(item => item.OpenReadAsync("exports/file.csv", CancellationToken.None))
-            .ReturnsAsync(content);
+            .ReturnsAsync(AttachmentReadResult.Found(content));
 
         var result = await Handler(Reader(Snapshot(DataExportStatus.Completed)), storage)
             .HandleAsync(Query());
@@ -114,11 +114,25 @@ public sealed class RetrieveDataExportQueryHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenUnavailableStoredFile_WhenRetrieved_ThenStorageIsUnavailable()
+    {
+        var storage = Storage(healthy: true);
+        storage.Setup(item => item.OpenReadAsync("exports/file.csv", CancellationToken.None))
+            .ReturnsAsync(AttachmentReadResult.Unavailable);
+
+        var result = await Handler(Reader(Snapshot(DataExportStatus.Completed)), storage)
+            .HandleAsync(Query());
+
+        Assert.False(result.Success);
+        Assert.Contains(DataExportMessages.StorageUnavailable, result.Errors);
+    }
+
+    [UnitFact]
     public async Task GivenMissingStoredFile_WhenRetrieved_ThenNewExportIsRequested()
     {
         var storage = Storage(healthy: true);
         storage.Setup(item => item.OpenReadAsync("exports/file.csv", CancellationToken.None))
-            .ThrowsAsync(new AttachmentObjectNotFoundException("exports/file.csv"));
+            .ReturnsAsync(AttachmentReadResult.NotFound);
 
         var result = await Handler(Reader(Snapshot(DataExportStatus.Completed)), storage)
             .HandleAsync(Query());

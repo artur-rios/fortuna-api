@@ -71,16 +71,18 @@ public sealed class GetPersonalDataExportQueryHandler(
                 return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
                     PersonalDataExportMessages.StorageUnavailable);
             }
-            var content = await storage.OpenReadAsync(export.StorageKey, CancellationToken.None);
+            var read = await storage.OpenReadAsync(export.StorageKey, CancellationToken.None);
+            if (!read.IsFound)
+            {
+                return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
+                    read.Status == AttachmentReadStatus.NotFound
+                        ? PersonalDataExportMessages.FileNotFound
+                        : PersonalDataExportMessages.StorageUnavailable);
+            }
 
             return DataOutput<PersonalDataExportQueryOutput?>.New
-                .WithData(Project(export, content))
+                .WithData(Project(export, read.Content))
                 .WithMessage(PersonalDataExportMessages.RetrievedSuccessfully);
-        }
-        catch (AttachmentObjectNotFoundException)
-        {
-            return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
-                PersonalDataExportMessages.FileNotFound);
         }
         catch (Exception exception)
         {

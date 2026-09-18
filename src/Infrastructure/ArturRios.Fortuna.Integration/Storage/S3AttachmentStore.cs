@@ -1,3 +1,4 @@
+using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using ArturRios.Fortuna.Shared.Attachments;
@@ -19,7 +20,7 @@ public sealed class S3AttachmentStore(IAmazonS3 client, string bucket) : IAttach
         }, cancellationToken);
     }
 
-    public async Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken)
+    public async Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken)
     {
         Validate(key);
         try
@@ -29,13 +30,17 @@ public sealed class S3AttachmentStore(IAmazonS3 client, string bucket) : IAttach
             await response.ResponseStream.CopyToAsync(copy, cancellationToken);
             copy.Position = 0;
 
-            return copy;
+            return AttachmentReadResult.Found(copy);
         }
         catch (AmazonS3Exception exception) when (
             exception.StatusCode == HttpStatusCode.NotFound ||
             string.Equals(exception.ErrorCode, "NoSuchKey", StringComparison.Ordinal))
         {
-            throw new AttachmentObjectNotFoundException(key);
+            return AttachmentReadResult.NotFound;
+        }
+        catch (Exception exception) when (exception is AmazonServiceException or HttpRequestException or IOException)
+        {
+            return AttachmentReadResult.Unavailable;
         }
     }
 
@@ -49,11 +54,11 @@ public sealed class S3AttachmentStore(IAmazonS3 client, string bucket) : IAttach
     {
         try
         {
-            await client.GetBucketAclAsync(new GetBucketAclRequest { BucketName = bucket }, cancellationToken);
+            await client.HeadBucketAsync(new HeadBucketRequest { BucketName = bucket }, cancellationToken);
 
             return true;
         }
-        catch (AmazonS3Exception)
+        catch (Exception exception) when (exception is AmazonServiceException or HttpRequestException)
         {
             return false;
         }

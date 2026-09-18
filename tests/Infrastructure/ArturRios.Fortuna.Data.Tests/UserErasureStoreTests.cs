@@ -259,15 +259,10 @@ public sealed class UserErasureStoreTests
             objects[key] = copy.ToArray();
         }
 
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken)
-        {
-            if (!objects.TryGetValue(key, out var content))
-            {
-                throw new AttachmentObjectNotFoundException(key);
-            }
-
-            return Task.FromResult<Stream>(new MemoryStream(content, writable: false));
-        }
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+            Task.FromResult(objects.TryGetValue(key, out var content)
+                ? AttachmentReadResult.Found(new MemoryStream(content, writable: false))
+                : AttachmentReadResult.NotFound);
 
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {

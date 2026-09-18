@@ -238,19 +238,22 @@ public sealed class PersonalDataExportCommandHandlerTests
 
     private sealed class StubArchiveBuilder : IPersonalDataArchiveBuilder
     {
-        private readonly PersonalDataArchive? archive;
+        private readonly PersonalDataArchiveResult? result;
         private readonly Exception? exception;
 
-        public StubArchiveBuilder(PersonalDataArchive archive) => this.archive = archive;
+        public StubArchiveBuilder(PersonalDataArchive archive) =>
+            result = PersonalDataArchiveResult.Built(archive);
+        public StubArchiveBuilder(PersonalDataArchiveOutcome outcome) =>
+            result = PersonalDataArchiveResult.Failed(outcome);
         public StubArchiveBuilder(Exception exception) => this.exception = exception;
 
-        public Task<PersonalDataArchive> BuildAsync(
+        public Task<PersonalDataArchiveResult> BuildAsync(
             Guid userId,
             DateTimeOffset generatedAt,
             DateTimeOffset expiresAt,
             CancellationToken cancellationToken) => exception is null
-            ? Task.FromResult(archive!)
-            : Task.FromException<PersonalDataArchive>(exception);
+            ? Task.FromResult(result!)
+            : Task.FromException<PersonalDataArchiveResult>(exception);
     }
 
     private sealed class MemoryStorage : IAttachmentStore
@@ -264,7 +267,7 @@ public sealed class PersonalDataExportCommandHandlerTests
             Content = copy.ToArray();
         }
 
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
         public Task DeleteAsync(string key, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) => Task.FromResult(true);

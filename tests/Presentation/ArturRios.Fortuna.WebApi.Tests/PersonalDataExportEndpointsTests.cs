@@ -282,10 +282,10 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
             await content.CopyToAsync(copy, cancellationToken);
             values[key] = copy.ToArray();
         }
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
-            values.TryGetValue(key, out var content)
-                ? Task.FromResult<Stream>(new MemoryStream(content, writable: false))
-                : throw new AttachmentObjectNotFoundException(key);
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+            Task.FromResult(values.TryGetValue(key, out var content)
+                ? AttachmentReadResult.Found(new MemoryStream(content, writable: false))
+                : AttachmentReadResult.NotFound);
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {
             values.Remove(key);

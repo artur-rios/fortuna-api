@@ -23,7 +23,7 @@ public sealed class DownloadAttachmentQueryHandlerTests
         var content = new MemoryStream([1, 2, 3]);
         var storage = Storage(healthy: true);
         storage.Setup(item => item.OpenReadAsync("attachments/key", CancellationToken.None))
-            .ReturnsAsync(content);
+            .ReturnsAsync(AttachmentReadResult.Found(content));
 
         var result = await Handler(Metadata(), storage).HandleAsync(Query());
 
@@ -52,7 +52,7 @@ public sealed class DownloadAttachmentQueryHandlerTests
     {
         var storage = Storage(healthy: true);
         storage.Setup(item => item.OpenReadAsync("attachments/key", CancellationToken.None))
-            .ThrowsAsync(new AttachmentObjectNotFoundException("attachments/key"));
+            .ReturnsAsync(AttachmentReadResult.NotFound);
         var audit = new Mock<IAuditEntryWriter>();
 
         var result = await Handler(Metadata(), storage, audit).HandleAsync(Query());
@@ -78,6 +78,26 @@ public sealed class DownloadAttachmentQueryHandlerTests
         Assert.Contains(AttachmentMessages.StorageUnavailable, result.Errors);
         storage.Verify(item => item.OpenReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [UnitFact]
+    public async Task GivenUnavailableStoredObject_WhenDownloaded_ThenServiceUnavailableIsReturned()
+    {
+        var storage = Storage(healthy: true);
+        storage.Setup(item => item.OpenReadAsync("attachments/key", CancellationToken.None))
+            .ReturnsAsync(AttachmentReadResult.Unavailable);
+        var audit = new Mock<IAuditEntryWriter>();
+
+        var result = await Handler(Metadata(), storage, audit).HandleAsync(Query());
+
+        Assert.False(result.Success);
+        Assert.Contains(AttachmentMessages.StorageUnavailable, result.Errors);
+        audit.Verify(writer => writer.WriteAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<Guid>(),
+            It.IsAny<bool>(),
+            It.IsAny<string>()), Times.Never);
     }
 
     [UnitFact]

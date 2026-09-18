@@ -29,11 +29,13 @@ public sealed class PersonalDataExportJobHandler(
 
         try
         {
-            var archive = await builder.BuildAsync(
+            var built = await builder.BuildAsync(
                 work.UserId,
                 timeProvider.GetUtcNow(),
                 work.ExpiresAt,
                 cancellationToken);
+            var archive = built.Archive ?? throw new InvalidOperationException(
+                $"The personal data archive could not be built: {built.Outcome}.");
             var storageKey = $"exports/{work.UserId:N}/{work.ExportId:N}.zip";
             await using var content = new MemoryStream(archive.Content, writable: false);
             await storage.WriteAsync(storageKey, content, cancellationToken);
