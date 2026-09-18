@@ -95,6 +95,9 @@ public sealed class InstallmentPlan : RecordLifecycleEntity
             throw new ArgumentOutOfRangeException(nameof(minorUnitDigits));
         }
 
+        // A total finer than the currency's minor unit would leak the excess into the first
+        // installment, so the total is brought to the currency scale before splitting.
+        totalAmount = decimal.Round(totalAmount, minorUnitDigits, MidpointRounding.AwayFromZero);
         var regularAmount = decimal.Round(
             totalAmount / installmentCount,
             minorUnitDigits,

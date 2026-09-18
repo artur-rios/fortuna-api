@@ -470,7 +470,11 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         MarkUpdated(updatedAt);
     }
 
-    public void AssignToInstallmentPlan(
+    /// <summary>
+    /// Links the transaction to its plan. Only <see cref="InstallmentPlan.AddInstallment"/> may
+    /// call this, so the plan's numbering and composition rules cannot be bypassed.
+    /// </summary>
+    internal void AssignToInstallmentPlan(
         InstallmentPlan installmentPlan,
         short installmentNumber,
         DateTimeOffset updatedAt)
