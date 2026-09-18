@@ -458,7 +458,8 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
                 nameof(statement));
         }
 
-        if (statement.Status == CreditCardStatementStatus.Settled)
+        if (statement.Status == CreditCardStatementStatus.Settled ||
+            Statement?.Status == CreditCardStatementStatus.Settled)
         {
             throw new InvalidOperationException("A settled statement's composition is frozen.");
         }

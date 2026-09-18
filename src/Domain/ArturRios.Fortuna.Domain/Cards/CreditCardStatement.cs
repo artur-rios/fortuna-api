@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Transactions;
 
@@ -103,20 +104,23 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
     public long? SettlementTransactionId { get; private set; }
     public FinancialTransaction? SettlementTransaction { get; private set; }
 
+    /// <summary>
+    /// Replaces the signed purchase total (refunds count negatively, so a negative total is
+    /// legitimate). The amount due moves by the same difference, which keeps any adjustment
+    /// carried by an imported invoice summary instead of overwriting it.
+    /// </summary>
     public void RecalculatePurchaseTotal(decimal purchaseTotal, DateTimeOffset updatedAt)
     {
-        if (Status == CreditCardStatementStatus.Settled)
-        {
-            throw new InvalidOperationException("A settled statement's composition is frozen.");
-        }
-
+        EnsureCompositionOpen();
+        AmountDue += purchaseTotal - PurchaseTotal;
         PurchaseTotal = purchaseTotal;
-        AmountDue = PreviousBalance - PaymentsReceived + PurchaseTotal + ForeignTaxTotal + OtherEntries;
         MarkUpdated(updatedAt);
     }
 
+    /// <summary>Closes an open statement; closing an already closed statement is a no-op.</summary>
     public void Close(DateTimeOffset updatedAt)
     {
+        EnsureCompositionOpen();
         if (Status == CreditCardStatementStatus.Open)
         {
             Status = CreditCardStatementStatus.Closed;
@@ -124,21 +128,15 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
         }
     }
 
+    /// <summary>
+    /// Replaces the balance carried from earlier cycles. A negative value is a credit balance,
+    /// which imported invoice summaries may also report.
+    /// </summary>
     public void SetPreviousBalance(decimal previousBalance, DateTimeOffset updatedAt)
     {
-        if (Status == CreditCardStatementStatus.Settled)
-        {
-            throw new InvalidOperationException("A settled statement's composition is frozen.");
-        }
-
-        if (previousBalance < 0m)
-        {
-            throw new ArgumentOutOfRangeException(nameof(previousBalance));
-        }
-
+        EnsureCompositionOpen();
+        AmountDue += previousBalance - PreviousBalance;
         PreviousBalance = previousBalance;
-        AmountDue = PreviousBalance - PaymentsReceived + PurchaseTotal +
-            ForeignTaxTotal + OtherEntries;
         MarkUpdated(updatedAt);
     }
 
@@ -151,11 +149,7 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
         decimal amountDue,
         DateTimeOffset updatedAt)
     {
-        if (Status == CreditCardStatementStatus.Settled)
-        {
-            throw new InvalidOperationException("A settled statement's composition is frozen.");
-        }
-
+        EnsureCompositionOpen();
         if (paymentsReceived < 0m)
         {
             throw new ArgumentOutOfRangeException(nameof(paymentsReceived));
@@ -163,7 +157,7 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
 
         var calculatedAmountDue = previousBalance - paymentsReceived + purchaseTotal +
             foreignTaxTotal + otherEntries;
-        if (Math.Abs(calculatedAmountDue - amountDue) > 0.01m)
+        if (Math.Abs(calculatedAmountDue - amountDue) > Money.MinorUnit(CreditCard.Currency))
         {
             throw new ArgumentException(
                 "The imported statement summary does not reconcile.",
@@ -199,5 +193,13 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
         SettlementTransactionId = settlementTransaction.Id;
         Status = CreditCardStatementStatus.Settled;
         MarkUpdated(updatedAt);
+    }
+
+    private void EnsureCompositionOpen()
+    {
+        if (Status == CreditCardStatementStatus.Settled)
+        {
+            throw new InvalidOperationException("A settled statement's composition is frozen.");
+        }
     }
 }
