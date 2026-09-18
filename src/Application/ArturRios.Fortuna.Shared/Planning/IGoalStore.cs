@@ -54,7 +54,8 @@ public enum GoalMutationOutcome
     Succeeded = 1,
     NotFound = 2,
     ResourceNotFound = 3,
-    CurrencyNotFound = 4
+    CurrencyNotFound = 4,
+    TargetDateNotFuture = 5
 }
 
 public sealed record GoalCreation(

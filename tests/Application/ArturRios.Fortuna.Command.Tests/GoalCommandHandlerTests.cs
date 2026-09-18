@@ -58,6 +58,7 @@ public sealed class GoalCommandHandlerTests
     [InlineData(GoalMutationOutcome.NotFound, GoalMessages.NotFound)]
     [InlineData(GoalMutationOutcome.ResourceNotFound, GoalMessages.ResourceNotFound)]
     [InlineData(GoalMutationOutcome.CurrencyNotFound, GoalMessages.CurrencyNotSupported)]
+    [InlineData(GoalMutationOutcome.TargetDateNotFuture, GoalMessages.TargetDateMustBeFuture)]
     public async Task GivenRejectedUpdate_WhenHandled_ThenExpectedErrorIsReturned(
         GoalMutationOutcome outcome,
         string expectedError)
@@ -68,7 +69,7 @@ public sealed class GoalCommandHandlerTests
             Result = new GoalMutationResult(null, outcome)
         };
         var handler = new UpdateGoalCommandHandler(
-            new UpdateGoalCommandValidator(new FixedTimeProvider(Now)),
+            new UpdateGoalCommandValidator(),
             Actor(profile), new StubProfileReader(profile), store, new FixedTimeProvider(Now));
 
         var result = await handler.HandleAsync(new UpdateGoalCommand

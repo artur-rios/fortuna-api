@@ -28,7 +28,11 @@ public sealed class Goal : RecordLifecycleEntity
     {
         User = user ?? throw new ArgumentNullException(nameof(user));
         Currency = currency ?? throw new ArgumentNullException(nameof(currency));
-        ValidateDetails(user, name, targetAmount, targetDate, accounts, investments, createdAt);
+        ValidateDetails(user, name, targetAmount, accounts, investments);
+        if (!IsFutureTargetDate(targetDate, createdAt))
+        {
+            throw new ArgumentOutOfRangeException(nameof(targetDate));
+        }
 
         UserId = user.Id;
         Name = name.Trim();
@@ -50,6 +54,17 @@ public sealed class Goal : RecordLifecycleEntity
     public IReadOnlyCollection<FinancialAccount> Accounts => _accounts;
     public IReadOnlyCollection<Investment> Investments => _investments;
 
+    /// <summary>A new or moved target date must fall after the UTC date of the change.</summary>
+    public static bool IsFutureTargetDate(DateOnly targetDate, DateTimeOffset changedAt) =>
+        targetDate > DateOnly.FromDateTime(changedAt.UtcDateTime);
+
+    /// <summary>
+    /// Whether an edit may set this target date. An unchanged date is always accepted, so a goal
+    /// whose target date has passed can still be renamed or re-scoped.
+    /// </summary>
+    public bool AcceptsTargetDate(DateOnly targetDate, DateTimeOffset changedAt) =>
+        targetDate == TargetDate || IsFutureTargetDate(targetDate, changedAt);
+
     public void UpdateDetails(
         string name,
         decimal targetAmount,
@@ -61,17 +76,24 @@ public sealed class Goal : RecordLifecycleEntity
     {
         EnsureNotDeleted();
         ArgumentNullException.ThrowIfNull(currency);
-        ValidateDetails(User, name, targetAmount, targetDate, accounts, investments, updatedAt);
+        ValidateDetails(User, name, targetAmount, accounts, investments);
+        if (!AcceptsTargetDate(targetDate, updatedAt))
+        {
+            throw new ArgumentOutOfRangeException(nameof(targetDate));
+        }
 
         Name = name.Trim();
         TargetAmount = targetAmount;
         Currency = currency;
         CurrencyId = currency.Id;
         TargetDate = targetDate;
+        // Snapshot first: the caller may pass this goal's own collections back in.
+        var newAccounts = accounts.DistinctBy(item => item.PublicId).ToArray();
+        var newInvestments = investments.DistinctBy(item => item.PublicId).ToArray();
         _accounts.Clear();
-        _accounts.AddRange(accounts.DistinctBy(item => item.PublicId));
+        _accounts.AddRange(newAccounts);
         _investments.Clear();
-        _investments.AddRange(investments.DistinctBy(item => item.PublicId));
+        _investments.AddRange(newInvestments);
 
         MarkUpdated(updatedAt);
     }
@@ -80,10 +102,8 @@ public sealed class Goal : RecordLifecycleEntity
         UserProfile user,
         string name,
         decimal targetAmount,
-        DateOnly targetDate,
         IReadOnlyCollection<FinancialAccount> accounts,
-        IReadOnlyCollection<Investment> investments,
-        DateTimeOffset changedAt)
+        IReadOnlyCollection<Investment> investments)
     {
         _ = BoundedText.Required(
             name,
@@ -94,11 +114,6 @@ public sealed class Goal : RecordLifecycleEntity
         if (targetAmount <= 0m)
         {
             throw new ArgumentOutOfRangeException(nameof(targetAmount));
-        }
-
-        if (targetDate <= DateOnly.FromDateTime(changedAt.UtcDateTime))
-        {
-            throw new ArgumentOutOfRangeException(nameof(targetDate));
         }
 
         ArgumentNullException.ThrowIfNull(accounts);

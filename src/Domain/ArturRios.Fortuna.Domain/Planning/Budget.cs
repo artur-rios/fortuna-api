@@ -73,8 +73,10 @@ public sealed class Budget : RecordLifecycleEntity
         PeriodType = periodType;
         PeriodStart = periodStart;
         IncludeDescendants = includeDescendants;
+        // Snapshot first: the caller may pass this budget's own collection back in.
+        var newCategories = categories.DistinctBy(item => item.PublicId).ToArray();
         _categories.Clear();
-        _categories.AddRange(categories.DistinctBy(item => item.PublicId));
+        _categories.AddRange(newCategories);
 
         MarkUpdated(updatedAt);
     }

@@ -133,6 +133,8 @@ internal static class GoalHandler
             GoalMutationOutcome.ResourceNotFound => output.WithError(GoalMessages.ResourceNotFound),
             GoalMutationOutcome.CurrencyNotFound => output.WithError(
                 GoalMessages.CurrencyNotSupported),
+            GoalMutationOutcome.TargetDateNotFuture => output.WithError(
+                GoalMessages.TargetDateMustBeFuture),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
     }
