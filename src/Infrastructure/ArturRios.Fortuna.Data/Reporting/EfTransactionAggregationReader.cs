@@ -128,6 +128,8 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                 SELECT item.id, item.id AS root_id
                 FROM fortuna.category item
                 WHERE item.parent_id IS NULL
+                  AND item.user_id = (
+                      SELECT id FROM fortuna."user" WHERE public_id = @userId)
                 UNION ALL
                 SELECT child.id, parent.root_id
                 FROM fortuna.category child
@@ -175,7 +177,7 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                   AND (@maximumAmount::numeric IS NULL OR
                        item.amount <= @maximumAmount)
                   AND (@text::text IS NULL OR
-                       item.description ILIKE '%' || @text || '%')
+                       item.description ILIKE @text ESCAPE E'\\')
                   {extraWhere}
                   {selectionWhere}
             )
@@ -209,7 +211,9 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
             : null);
         AddParameter(command, "minimumAmount", criteria.MinimumAmount);
         AddParameter(command, "maximumAmount", criteria.MaximumAmount);
-        AddParameter(command, "text", criteria.Text);
+        AddParameter(command, "text", criteria.Text is null
+            ? null
+            : SqlLike.Contains(criteria.Text));
         var index = 0;
         foreach (var selection in criteria.Selections)
         {

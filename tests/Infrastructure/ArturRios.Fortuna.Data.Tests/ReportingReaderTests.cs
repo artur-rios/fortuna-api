@@ -12,19 +12,11 @@ namespace ArturRios.Fortuna.Data.Tests;
 /// Runs every reporting read path against one seeded scenario. Each database provider derives
 /// from this class, so the same expectations hold on PostgreSQL and on SQLite.
 /// </summary>
-public abstract class ReportingReaderTests
+public abstract class ReportingReaderTests(ReportingDatabaseFixture fixture)
 {
-    private ReportingScenario? scenario;
+    private protected ReportingScenario Scenario => fixture.Scenario;
 
-    private protected ReportingScenario Scenario => scenario!;
-
-    protected abstract AppDbContext CreateContext();
-
-    protected async Task SeedAsync()
-    {
-        await using var context = CreateContext();
-        scenario = await ReportingScenario.SeedAsync(context);
-    }
+    private AppDbContext CreateContext() => fixture.CreateContext();
 
     [FunctionalFact]
     public async Task GivenRowsUnderDeletedParents_WhenReadByEveryPath_ThenCountsAndTotalsAgree()
@@ -70,6 +62,45 @@ public abstract class ReportingReaderTests
         Assert.Equal(8, listed);
         Assert.Equal(ReportingScenario.Expense, totals.Expense);
         Assert.Equal(ReportingScenario.Earning, totals.Earning);
+    }
+
+    [FunctionalTheory]
+    [InlineData("50%", 1)]
+    [InlineData("_", 1)]
+    [InlineData("SALARY", 1)]
+    [InlineData("%", 1)]
+    [InlineData("no such text", 0)]
+    public async Task GivenLikeWildcardsInText_WhenAggregated_ThenTheyMatchLiterally(
+        string text,
+        int expected)
+    {
+        await using var context = CreateContext();
+
+        var figures = await AggregateAsync(context, AggregationDimension.Category, text: text);
+
+        Assert.Equal(expected, figures.Sum(item => item.RecordCount));
+    }
+
+    [FunctionalFact]
+    public async Task GivenCategoryRollup_WhenAggregatedAndSelected_ThenDescendantsRollIntoRoot()
+    {
+        await using var context = CreateContext();
+
+        var figures = await AggregateAsync(context, AggregationDimension.Category, rollup: true);
+        var selected = await AggregateAsync(
+            context,
+            AggregationDimension.Category,
+            selections: [new TransactionAggregationSelection(
+                AggregationDimension.Category,
+                Scenario.FoodId.ToString(),
+                true)]);
+
+        var food = Assert.Single(figures.GroupBy(item => item.DimensionValue));
+        Assert.Equal(Scenario.FoodId.ToString(), food.Key);
+        Assert.Equal("Food", food.First().Label);
+        Assert.Equal(ReportingScenario.ReportableCount, food.Sum(item => item.RecordCount));
+        Assert.Equal(ReportingScenario.ReportableCount, selected.Sum(item => item.RecordCount));
+        Assert.Contains(selected, item => item.DimensionValue == Scenario.GroceriesId.ToString());
     }
 
     protected Task<IReadOnlyCollection<TransactionAggregationFigureSnapshot>> AggregateAsync(

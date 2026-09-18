@@ -267,9 +267,9 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             };
             var value = filter.Operator switch
             {
-                "contains" => $"%{EscapeLike((string)filter.Value)}%",
-                "startsWith" => $"{EscapeLike((string)filter.Value)}%",
-                "endsWith" => $"%{EscapeLike((string)filter.Value)}",
+                "contains" => SqlLike.Contains((string)filter.Value),
+                "startsWith" => $"{SqlLike.Escape((string)filter.Value)}%",
+                "endsWith" => $"%{SqlLike.Escape((string)filter.Value)}",
                 _ => filter.Value
             };
             if (filter.Operator is "contains" or "startsWith" or "endsWith")
@@ -283,11 +283,6 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
 
         return new PreparedWhere(string.Join(" AND ", clauses), parameters);
     }
-
-    private static string EscapeLike(string value) => value
-        .Replace("\\", "\\\\", StringComparison.Ordinal)
-        .Replace("%", "\\%", StringComparison.Ordinal)
-        .Replace("_", "\\_", StringComparison.Ordinal);
 
     private static string? NormalizeOperator(string value) => value.Trim().ToLowerInvariant() switch
     {
