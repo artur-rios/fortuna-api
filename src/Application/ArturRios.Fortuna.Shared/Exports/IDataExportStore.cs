@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Domain.Exports;
+using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Reporting;
 
 namespace ArturRios.Fortuna.Shared.Exports;
@@ -48,7 +49,7 @@ public interface IDataExportStore
         DateTimeOffset startedAt,
         CancellationToken cancellationToken);
 
-    Task CompleteAsync(
+    Task<JobTransitionOutcome> CompleteAsync(
         Guid exportId,
         int rowCount,
         string contentType,
@@ -56,7 +57,7 @@ public interface IDataExportStore
         DateTimeOffset completedAt,
         CancellationToken cancellationToken);
 
-    Task FailAsync(
+    Task<JobTransitionOutcome> FailAsync(
         Guid exportId,
         string reason,
         DateTimeOffset failedAt,

@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Shared.Jobs;
 
 namespace ArturRios.Fortuna.Shared.Ingestion;
 
@@ -19,13 +20,13 @@ public interface IPluggySynchronizationStore
         DateTimeOffset startedAt,
         CancellationToken cancellationToken);
 
-    Task CompleteAsync(
+    Task<ImportCompletionResult> CompleteAsync(
         Guid importJobId,
         PluggySynchronizationBatch batch,
         DateTimeOffset completedAt,
         CancellationToken cancellationToken);
 
-    Task FailAsync(
+    Task<JobTransitionOutcome> FailAsync(
         Guid importJobId,
         string reason,
         bool requiresReauthentication,

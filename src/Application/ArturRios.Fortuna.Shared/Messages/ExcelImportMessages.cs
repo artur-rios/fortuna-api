@@ -6,6 +6,7 @@ public static class ExcelImportMessages
     public const string ProfileNotFound = "The acting user's profile was not found.";
     public const string TargetNotFound = "The import target was not found.";
     public const string TargetDeleted = "The import target is deleted.";
+    public const string TargetUnavailable = "The import target was deleted or removed while the import ran.";
     public const string FileRequired = "A workbook file is required.";
     public const string FileTooLarge = "The workbook exceeds the configured size limit.";
     public const string WorkbookInvalid = "The file is not a readable Excel workbook.";

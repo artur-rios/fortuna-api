@@ -56,13 +56,20 @@ public sealed class PluggySynchronizationJobHandler(
                 return ProcessOutput.New.WithError(reason);
             }
 
-            await synchronizations.CompleteAsync(
+            var completion = await synchronizations.CompleteAsync(
                 request.ImportJobId,
                 result.Batch!,
                 timeProvider.GetUtcNow(),
                 cancellationToken);
 
-            return ProcessOutput.New;
+            return completion.Outcome switch
+            {
+                ImportCompletionOutcome.Completed => ProcessOutput.New,
+                ImportCompletionOutcome.JobNotFound => ProcessOutput.New.WithError(ImportJobMessages.NotFound),
+                ImportCompletionOutcome.JobNotRunning =>
+                    ProcessOutput.New.WithError(ImportJobMessages.NoLongerRunning),
+                _ => ProcessOutput.New.WithError(completion.Reason ?? ImportJobMessages.ProcessingFailed)
+            };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

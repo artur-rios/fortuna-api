@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Domain.Ingestion;
+using ArturRios.Fortuna.Shared.Jobs;
 
 namespace ArturRios.Fortuna.Shared.Ingestion;
 
@@ -39,7 +40,7 @@ public interface IPdfInvoiceImportStore
         DateTimeOffset startedAt,
         CancellationToken cancellationToken);
 
-    Task CompleteAsync(
+    Task<ImportCompletionResult> CompleteAsync(
         Guid importJobId,
         Guid userId,
         Guid creditCardId,
@@ -47,7 +48,7 @@ public interface IPdfInvoiceImportStore
         DateTimeOffset completedAt,
         CancellationToken cancellationToken);
 
-    Task FailAsync(
+    Task<JobTransitionOutcome> FailAsync(
         Guid importJobId,
         string reason,
         DateTimeOffset failedAt,

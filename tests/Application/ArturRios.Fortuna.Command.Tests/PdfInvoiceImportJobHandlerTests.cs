@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Shared.Ingestion;
+using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Util.Test.Attributes;
 
@@ -34,12 +35,69 @@ public sealed class PdfInvoiceImportJobHandlerTests
         var parser = new StubParser(new PdfInvoiceParseException(
             PdfInvoiceImportMessages.UnsupportedLayout));
 
-        await Assert.ThrowsAsync<PdfInvoiceParseException>(() =>
-            new PdfInvoiceImportJobHandler(store, parser, new FixedTimeProvider(Now))
-                .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None));
+        var result = await new PdfInvoiceImportJobHandler(store, parser, new FixedTimeProvider(Now))
+            .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
 
+        Assert.Equal([PdfInvoiceImportMessages.UnsupportedLayout], result.Errors);
         Assert.Equal(PdfInvoiceImportMessages.UnsupportedLayout, store.FailedReason);
         Assert.Null(store.CompletedJobId);
+    }
+
+    [UnitFact]
+    public async Task GivenSummaryMismatchAtImport_WhenExecuted_ThenSpecificReasonFailsTheJob()
+    {
+        var store = new StubStore
+        {
+            CompletionResult = ImportCompletionResult.Rejected(PdfInvoiceImportMessages.SummaryDoesNotReconcile)
+        };
+
+        var result = await new PdfInvoiceImportJobHandler(store, new StubParser(), new FixedTimeProvider(Now))
+            .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
+
+        Assert.Equal([PdfInvoiceImportMessages.SummaryDoesNotReconcile], result.Errors);
+        Assert.Equal(PdfInvoiceImportMessages.SummaryDoesNotReconcile, store.FailedReason);
+    }
+
+    [UnitFact]
+    public async Task GivenCardDeletedWhileRunning_WhenExecuted_ThenJobFailsAsTargetUnavailable()
+    {
+        var store = new StubStore
+        {
+            CompletionResult = ImportCompletionResult.Of(ImportCompletionOutcome.TargetUnavailable)
+        };
+
+        var result = await new PdfInvoiceImportJobHandler(store, new StubParser(), new FixedTimeProvider(Now))
+            .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
+
+        Assert.Equal([PdfInvoiceImportMessages.CreditCardUnavailable], result.Errors);
+        Assert.Equal(PdfInvoiceImportMessages.CreditCardUnavailable, store.FailedReason);
+    }
+
+    [UnitFact]
+    public async Task GivenImportJobErasedWhileRunning_WhenExecuted_ThenErrorIsReturnedWithoutFailingIt()
+    {
+        var store = new StubStore
+        {
+            CompletionResult = ImportCompletionResult.Of(ImportCompletionOutcome.JobNotFound)
+        };
+
+        var result = await new PdfInvoiceImportJobHandler(store, new StubParser(), new FixedTimeProvider(Now))
+            .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
+
+        Assert.Equal([ImportJobMessages.NotFound], result.Errors);
+        Assert.Null(store.FailedReason);
+    }
+
+    [UnitFact]
+    public async Task GivenMalformedPayload_WhenExecuted_ThenPayloadErrorIsReturned()
+    {
+        var store = new StubStore();
+
+        var result = await new PdfInvoiceImportJobHandler(store, new StubParser(), new FixedTimeProvider(Now))
+            .ExecuteAsync("{broken", CancellationToken.None);
+
+        Assert.Equal([BackgroundJobMessages.PayloadInvalid], result.Errors);
+        Assert.Null(store.BegunJobId);
     }
 
     [UnitFact]
@@ -49,10 +107,10 @@ public sealed class PdfInvoiceImportJobHandlerTests
         var reason = PdfInvoiceImportMessages.ReconciliationFailed(99m, 100m, -1m);
         var parser = new StubParser(new PdfInvoiceParseException(reason));
 
-        await Assert.ThrowsAsync<PdfInvoiceParseException>(() =>
-            new PdfInvoiceImportJobHandler(store, parser, new FixedTimeProvider(Now))
-                .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None));
+        var result = await new PdfInvoiceImportJobHandler(store, parser, new FixedTimeProvider(Now))
+            .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
 
+        Assert.Equal([reason], result.Errors);
         Assert.Equal(reason, store.FailedReason);
         Assert.Null(store.CompletedJobId);
     }
@@ -85,6 +143,8 @@ public sealed class PdfInvoiceImportJobHandlerTests
 
     private sealed class StubStore : IPdfInvoiceImportStore
     {
+        public ImportCompletionResult CompletionResult { get; init; } =
+            ImportCompletionResult.Completed;
         public Guid? BegunJobId { get; private set; }
         public Guid? CompletedJobId { get; private set; }
         public ParsedPdfInvoice? Invoice { get; private set; }
@@ -102,23 +162,23 @@ public sealed class PdfInvoiceImportJobHandlerTests
             return Task.FromResult(true);
         }
 
-        public Task CompleteAsync(
+        public Task<ImportCompletionResult> CompleteAsync(
             Guid importJobId, Guid userId, Guid creditCardId, ParsedPdfInvoice invoice,
             DateTimeOffset completedAt, CancellationToken cancellationToken)
         {
             CompletedJobId = importJobId;
             Invoice = invoice;
 
-            return Task.CompletedTask;
+            return Task.FromResult(CompletionResult);
         }
 
-        public Task FailAsync(
+        public Task<JobTransitionOutcome> FailAsync(
             Guid importJobId, string reason, DateTimeOffset failedAt,
             CancellationToken cancellationToken)
         {
             FailedReason = reason;
 
-            return Task.CompletedTask;
+            return Task.FromResult(JobTransitionOutcome.Applied);
         }
     }
 

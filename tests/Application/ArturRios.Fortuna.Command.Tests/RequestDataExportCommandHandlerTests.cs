@@ -202,12 +202,12 @@ public sealed class RequestDataExportCommandHandlerTests
         public Task<DataExportWorkItem?> StartAsync(Guid exportId, DateTimeOffset startedAt,
             CancellationToken cancellationToken) => Task.FromResult<DataExportWorkItem?>(null);
 
-        public Task CompleteAsync(Guid exportId, int rowCount, string contentType,
+        public Task<JobTransitionOutcome> CompleteAsync(Guid exportId, int rowCount, string contentType,
             string storageKey, DateTimeOffset completedAt,
-            CancellationToken cancellationToken) => Task.CompletedTask;
+            CancellationToken cancellationToken) => Task.FromResult(JobTransitionOutcome.Applied);
 
-        public Task FailAsync(Guid exportId, string reason, DateTimeOffset failedAt,
-            CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<JobTransitionOutcome> FailAsync(Guid exportId, string reason, DateTimeOffset failedAt,
+            CancellationToken cancellationToken) => Task.FromResult(JobTransitionOutcome.Applied);
     }
 
     private sealed class StubQueue : IBackgroundJobQueue

@@ -153,12 +153,12 @@ public sealed class SynchronizeConnectionCommandHandlerTests
             Guid importJobId, DateTimeOffset startedAt, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task CompleteAsync(
+        public Task<ImportCompletionResult> CompleteAsync(
             Guid importJobId, PluggySynchronizationBatch batch,
             DateTimeOffset completedAt, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task FailAsync(
+        public Task<JobTransitionOutcome> FailAsync(
             Guid importJobId, string reason, bool requiresReauthentication,
             DateTimeOffset failedAt, CancellationToken cancellationToken) =>
             throw new NotSupportedException();

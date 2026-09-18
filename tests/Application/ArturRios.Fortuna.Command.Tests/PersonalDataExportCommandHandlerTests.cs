@@ -208,7 +208,7 @@ public sealed class PersonalDataExportCommandHandlerTests
             DateTimeOffset startedAt,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
-        public Task CompleteAsync(
+        public Task<JobTransitionOutcome> CompleteAsync(
             Guid exportId,
             int rowCount,
             string contentType,
@@ -220,10 +220,10 @@ public sealed class PersonalDataExportCommandHandlerTests
             CompletedCount = rowCount;
             CompletedContentType = contentType;
 
-            return Task.CompletedTask;
+            return Task.FromResult(JobTransitionOutcome.Applied);
         }
 
-        public Task FailAsync(
+        public Task<JobTransitionOutcome> FailAsync(
             Guid exportId,
             string reason,
             DateTimeOffset failedAt,
@@ -232,7 +232,7 @@ public sealed class PersonalDataExportCommandHandlerTests
             FailedId = exportId;
             FailureReason = reason;
 
-            return Task.CompletedTask;
+            return Task.FromResult(JobTransitionOutcome.Applied);
         }
     }
 

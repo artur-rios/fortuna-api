@@ -2,6 +2,7 @@ using System.Text.Json;
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Ingestion;
+using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Util.Test.Attributes;
 
@@ -34,12 +35,54 @@ public sealed class ExcelImportJobHandlerTests
         var store = new StubStore();
         var parser = new StubParser(new InvalidOperationException("broken workbook"));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new ExcelImportJobHandler(store, parser, new FixedTimeProvider(Now))
-                .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None));
+        var result = await new ExcelImportJobHandler(store, parser, new FixedTimeProvider(Now))
+            .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
 
+        Assert.Equal([ExcelImportMessages.WorkbookInvalid], result.Errors);
         Assert.Equal(ExcelImportMessages.WorkbookInvalid, store.FailedReason);
         Assert.Null(store.CompletedJobId);
+    }
+
+    [UnitFact]
+    public async Task GivenTargetDeletedWhileRunning_WhenExecuted_ThenJobFailsAsTargetUnavailable()
+    {
+        var store = new StubStore
+        {
+            CompletionResult = ImportCompletionResult.Of(ImportCompletionOutcome.TargetUnavailable)
+        };
+
+        var result = await new ExcelImportJobHandler(store, new StubParser(), new FixedTimeProvider(Now))
+            .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
+
+        Assert.Equal([ExcelImportMessages.TargetUnavailable], result.Errors);
+        Assert.Equal(ExcelImportMessages.TargetUnavailable, store.FailedReason);
+    }
+
+    [UnitFact]
+    public async Task GivenJobNoLongerRunning_WhenExecuted_ThenErrorIsReturnedWithoutFailingIt()
+    {
+        var store = new StubStore
+        {
+            CompletionResult = ImportCompletionResult.Of(ImportCompletionOutcome.JobNotRunning)
+        };
+
+        var result = await new ExcelImportJobHandler(store, new StubParser(), new FixedTimeProvider(Now))
+            .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None);
+
+        Assert.Equal([ImportJobMessages.NoLongerRunning], result.Errors);
+        Assert.Null(store.FailedReason);
+    }
+
+    [UnitFact]
+    public async Task GivenStoreFailure_WhenCompleting_ThenImportJobIsFailedAndFailurePropagates()
+    {
+        var store = new StubStore { CompleteFailure = new IOException("database unavailable") };
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            new ExcelImportJobHandler(store, new StubParser(), new FixedTimeProvider(Now))
+                .ExecuteAsync(JsonSerializer.Serialize(Payload()), CancellationToken.None));
+
+        Assert.Equal(ImportJobMessages.ProcessingFailed, store.FailedReason);
     }
 
     private static ExcelImportJobPayload Payload() => new(
@@ -75,6 +118,9 @@ public sealed class ExcelImportJobHandlerTests
 
     private sealed class StubStore : IExcelImportStore
     {
+        public ImportCompletionResult CompletionResult { get; init; } =
+            ImportCompletionResult.Completed;
+        public Exception? CompleteFailure { get; init; }
         public Guid? BegunJobId { get; private set; }
         public Guid? CompletedJobId { get; private set; }
         public IReadOnlyCollection<ExcelWorkbookRow>? Rows { get; private set; }
@@ -92,24 +138,29 @@ public sealed class ExcelImportJobHandlerTests
             return Task.FromResult(true);
         }
 
-        public Task CompleteAsync(
+        public Task<ImportCompletionResult> CompleteAsync(
             Guid importJobId, Guid userId, Guid targetId, ImportTargetType targetType,
             bool createMissingCategories, IReadOnlyCollection<ExcelWorkbookRow> rows,
             DateTimeOffset completedAt, CancellationToken cancellationToken)
         {
+            if (CompleteFailure is not null)
+            {
+                return Task.FromException<ImportCompletionResult>(CompleteFailure);
+            }
+
             CompletedJobId = importJobId;
             Rows = rows;
 
-            return Task.CompletedTask;
+            return Task.FromResult(CompletionResult);
         }
 
-        public Task FailAsync(
+        public Task<JobTransitionOutcome> FailAsync(
             Guid importJobId, string reason, DateTimeOffset failedAt,
             CancellationToken cancellationToken)
         {
             FailedReason = reason;
 
-            return Task.CompletedTask;
+            return Task.FromResult(JobTransitionOutcome.Applied);
         }
     }
 

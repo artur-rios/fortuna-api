@@ -167,6 +167,53 @@ public sealed class CreditCardStatementTests
         Assert.Contains("does not reconcile", exception.Message, StringComparison.Ordinal);
     }
 
+    [UnitTheory]
+    [InlineData(-1, 160, ImportedSummaryOutcome.PaymentsNegative)]
+    [InlineData(100, 161, ImportedSummaryOutcome.DoesNotReconcile)]
+    public void GivenInvalidInvoiceSummary_WhenTried_ThenOutcomeIsReturnedAndStatementIsUnchanged(
+        int paymentsReceived,
+        int amountDue,
+        ImportedSummaryOutcome expected)
+    {
+        var statement = Statement(Card());
+
+        var outcome = statement.TryApplyImportedSummary(
+            100m, paymentsReceived, 165m, 5m, -10m, amountDue, Now);
+
+        Assert.Equal(expected, outcome);
+        Assert.Equal(0m, statement.AmountDue);
+        Assert.Equal(0m, statement.PreviousBalance);
+    }
+
+    [UnitFact]
+    public void GivenReconciledInvoiceSummary_WhenTried_ThenItIsApplied()
+    {
+        var statement = Statement(Card());
+
+        var outcome = statement.TryApplyImportedSummary(100m, 100m, 165m, 5m, -10m, 160m, Now);
+
+        Assert.Equal(ImportedSummaryOutcome.Applied, outcome);
+        Assert.Equal(160m, statement.AmountDue);
+    }
+
+    [UnitTheory]
+    [InlineData(10, 10, false)]
+    [InlineData(10, 9, false)]
+    [InlineData(10, 11, true)]
+    public void GivenCycleDueDate_WhenValidated_ThenItMustFollowTheClosingDate(
+        int closingDay,
+        int dueDay,
+        bool expected)
+    {
+        var cycle = new BillingCycle(
+            new DateOnly(2026, 7, 11),
+            new DateOnly(2026, 8, closingDay),
+            new DateOnly(2026, 8, closingDay),
+            new DateOnly(2026, 8, dueDay));
+
+        Assert.Equal(expected, CreditCardStatement.IsValidCycle(cycle));
+    }
+
     [UnitFact]
     public void GivenOutboundMovement_WhenStatementSettled_ThenItIsRejected()
     {

@@ -2,6 +2,7 @@ using System.Text.Json;
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Shared.Ingestion;
+using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Util.Test.Attributes;
 
@@ -61,6 +62,8 @@ public sealed class PluggySynchronizationJobHandlerTests
 
     private sealed class StubStore : IPluggySynchronizationStore
     {
+        public ImportCompletionResult CompletionResult { get; init; } =
+            ImportCompletionResult.Completed;
         public Guid JobId { get; } = Guid.NewGuid();
         public PluggySynchronizationBatch? CompletedBatch { get; private set; }
         public string? FailureReason { get; private set; }
@@ -76,7 +79,7 @@ public sealed class PluggySynchronizationJobHandlerTests
             Task.FromResult<PluggySynchronizationContext?>(new(
                 JobId, Guid.NewGuid(), "item-1", [1, 2, 3], null, null));
 
-        public Task CompleteAsync(
+        public Task<ImportCompletionResult> CompleteAsync(
             Guid importJobId,
             PluggySynchronizationBatch batch,
             DateTimeOffset completedAt,
@@ -84,10 +87,10 @@ public sealed class PluggySynchronizationJobHandlerTests
         {
             CompletedBatch = batch;
 
-            return Task.CompletedTask;
+            return Task.FromResult(CompletionResult);
         }
 
-        public Task FailAsync(
+        public Task<JobTransitionOutcome> FailAsync(
             Guid importJobId,
             string reason,
             bool requiresReauthentication,
@@ -97,7 +100,7 @@ public sealed class PluggySynchronizationJobHandlerTests
             FailureReason = reason;
             RequiresReauthentication = requiresReauthentication;
 
-            return Task.CompletedTask;
+            return Task.FromResult(JobTransitionOutcome.Applied);
         }
     }
 

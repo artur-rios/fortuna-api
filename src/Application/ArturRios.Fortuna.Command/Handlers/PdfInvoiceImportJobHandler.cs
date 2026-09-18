@@ -29,8 +29,21 @@ public sealed class PdfInvoiceImportJobHandler(
 
         try
         {
-            var invoice = parser.Parse(request.Content);
-            await imports.CompleteAsync(
+            ParsedPdfInvoice invoice;
+            try
+            {
+                invoice = parser.Parse(request.Content);
+            }
+            catch (PdfInvoiceParseException exception)
+            {
+                return await FailAsync(request.ImportJobId, exception.Message);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                return await FailAsync(request.ImportJobId, PdfInvoiceImportMessages.FileInvalid);
+            }
+
+            var completion = await imports.CompleteAsync(
                 request.ImportJobId,
                 request.UserId,
                 request.CreditCardId,
@@ -38,29 +51,34 @@ public sealed class PdfInvoiceImportJobHandler(
                 timeProvider.GetUtcNow(),
                 cancellationToken);
 
-            return ProcessOutput.New;
+            return completion.Outcome switch
+            {
+                ImportCompletionOutcome.Completed => ProcessOutput.New,
+                ImportCompletionOutcome.JobNotFound => ProcessOutput.New.WithError(ImportJobMessages.NotFound),
+                ImportCompletionOutcome.JobNotRunning =>
+                    ProcessOutput.New.WithError(ImportJobMessages.NoLongerRunning),
+                ImportCompletionOutcome.TargetUnavailable =>
+                    await FailAsync(request.ImportJobId, PdfInvoiceImportMessages.CreditCardUnavailable),
+                _ => await FailAsync(
+                    request.ImportJobId,
+                    completion.Reason ?? ImportJobMessages.ProcessingFailed)
+            };
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (Exception exception) when (exception is not OperationCanceledException ||
+            !cancellationToken.IsCancellationRequested)
         {
+            // Unexpected (for example a database failure): leave the import job failed rather than
+            // running forever, then let the processor record the defect.
+            await FailAsync(request.ImportJobId, ImportJobMessages.ProcessingFailed);
             throw;
         }
-        catch (PdfInvoiceParseException exception)
-        {
-            await imports.FailAsync(
-                request.ImportJobId,
-                exception.Message,
-                timeProvider.GetUtcNow(),
-                cancellationToken);
-            throw;
-        }
-        catch (Exception)
-        {
-            await imports.FailAsync(
-                request.ImportJobId,
-                PdfInvoiceImportMessages.FileInvalid,
-                timeProvider.GetUtcNow(),
-                cancellationToken);
-            throw;
-        }
+    }
+
+    private async Task<ProcessOutput> FailAsync(Guid importJobId, string reason)
+    {
+        // The outcome is decided; host shutdown must not leave the import job running.
+        await imports.FailAsync(importJobId, reason, timeProvider.GetUtcNow(), CancellationToken.None);
+
+        return ProcessOutput.New.WithError(reason);
     }
 }

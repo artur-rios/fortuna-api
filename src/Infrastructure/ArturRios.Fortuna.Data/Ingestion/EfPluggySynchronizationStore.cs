@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Ingestion;
+using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
 
@@ -129,36 +130,45 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
             job.PeriodEnd);
     }
 
-    public async Task CompleteAsync(
+    public async Task<ImportCompletionResult> CompleteAsync(
         Guid importJobId,
         PluggySynchronizationBatch batch,
         DateTimeOffset completedAt,
         CancellationToken cancellationToken)
     {
-        var connectionId = await ConnectionIdAsync(importJobId, cancellationToken)
-            ?? throw new InvalidOperationException("A Pluggy import job requires a connection.");
+        // A job or connection that vanished (erasure, hard delete) mid-run is an outcome, not a crash.
+        var connectionId = await ConnectionIdAsync(importJobId, cancellationToken);
+        if (connectionId is null)
+        {
+            return ImportCompletionResult.Of(ImportCompletionOutcome.JobNotFound);
+        }
+
         await using var databaseTransaction = await context.Database.BeginTransactionAsync(
             cancellationToken);
         var lockedConnection = await ConnectionRowLock.FindAsync(
-            context, connectionId, cancellationToken)
-            ?? throw new InvalidOperationException("A Pluggy import job requires a connection.");
+            context, connectionId.Value, cancellationToken);
         var job = await context.ImportJobs
             .Include(item => item.Connection)
                 .ThenInclude(item => item!.User)
-            .SingleAsync(item => item.PublicId == importJobId, cancellationToken);
-        var connection = job.Connection
-            ?? throw new InvalidOperationException("A Pluggy import job requires a connection.");
-        if (lockedConnection.Status == ConnectionStatus.Revoked ||
-            job.Status != ImportJobStatus.Running)
+            .SingleOrDefaultAsync(item => item.PublicId == importJobId, cancellationToken);
+        if (lockedConnection is null || job?.Connection is null)
         {
-            if (job.Status is ImportJobStatus.Pending or ImportJobStatus.Running)
-            {
-                job.Fail(ConnectionMessages.SynchronizationStoppedByRevocation, completedAt);
-                await context.SaveChangesAsync(cancellationToken);
-                await databaseTransaction.CommitAsync(cancellationToken);
-            }
+            return ImportCompletionResult.Of(ImportCompletionOutcome.JobNotFound);
+        }
 
-            return;
+        var connection = job.Connection;
+        if (job.Status != ImportJobStatus.Running)
+        {
+            return ImportCompletionResult.Of(ImportCompletionOutcome.JobNotRunning);
+        }
+
+        if (lockedConnection.Status == ConnectionStatus.Revoked)
+        {
+            job.Fail(ConnectionMessages.SynchronizationStoppedByRevocation, completedAt);
+            await context.SaveChangesAsync(cancellationToken);
+            await databaseTransaction.CommitAsync(cancellationToken);
+
+            return ImportCompletionResult.Stopped(ConnectionMessages.SynchronizationStoppedByRevocation);
         }
 
         var mappings = await context.ConnectionResources
@@ -285,28 +295,40 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
         job.Complete(imported, duplicates, rejected, completedAt);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
+        return ImportCompletionResult.Completed;
     }
 
-    public async Task FailAsync(
+    public async Task<JobTransitionOutcome> FailAsync(
         Guid importJobId,
         string reason,
         bool requiresReauthentication,
         DateTimeOffset failedAt,
         CancellationToken cancellationToken)
     {
-        var connectionId = await ConnectionIdAsync(importJobId, cancellationToken)
-            ?? throw new InvalidOperationException("A Pluggy import job requires a connection.");
+        var connectionId = await ConnectionIdAsync(importJobId, cancellationToken);
+        if (connectionId is null)
+        {
+            return JobTransitionOutcome.NotFound;
+        }
+
         await using var databaseTransaction = await context.Database.BeginTransactionAsync(
             cancellationToken);
         var lockedConnection = await ConnectionRowLock.FindAsync(
-            context, connectionId, cancellationToken)
-            ?? throw new InvalidOperationException("A Pluggy import job requires a connection.");
+            context, connectionId.Value, cancellationToken);
         var job = await context.ImportJobs
             .Include(item => item.Connection)
-            .SingleAsync(item => item.PublicId == importJobId, cancellationToken);
+            .SingleOrDefaultAsync(item => item.PublicId == importJobId, cancellationToken);
+        if (lockedConnection is null || job is null)
+        {
+            return JobTransitionOutcome.NotFound;
+        }
+
+        var outcome = JobTransitionOutcome.NotRunning;
         if (job.Status is ImportJobStatus.Pending or ImportJobStatus.Running)
         {
             job.Fail(reason, failedAt);
+            outcome = JobTransitionOutcome.Applied;
         }
 
         if (requiresReauthentication && lockedConnection.Status != ConnectionStatus.Revoked &&
@@ -318,6 +340,8 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
 
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
+        return outcome;
     }
 
     private Task<long?> ConnectionIdAsync(
