@@ -89,7 +89,12 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
             transaction.IsDeleted,
             transaction.OccurredOn
         });
-        builder.HasIndex(transaction => new { transaction.UserId, transaction.IsDeleted });
+        builder.HasIndex(transaction => new
+        {
+            transaction.UserId,
+            transaction.IsDeleted,
+            transaction.OccurredOn
+        });
         builder.HasIndex(transaction => new
         {
             transaction.InstallmentPlanId,
