@@ -2,9 +2,9 @@ name: Native Core
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 concurrency:
   group: native-core-${{ github.ref }}
