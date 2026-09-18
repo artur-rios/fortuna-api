@@ -164,6 +164,18 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
+    [UnitFact]
+    public async Task GivenUndefinedReaderOutcome_WhenHandled_ThenReadFailedErrorReturns()
+    {
+        var handler = Handler(reader: new StubTableReader(new TableReportReadResult(
+            (TableReportReadOutcome)99)));
+
+        var result = await handler.HandleAsync(Query());
+
+        Assert.False(result.Success);
+        Assert.Contains(TableReportMessages.ReadFailed, result.Errors);
+    }
+
     private static QueryRecordsAsTableQueryHandler Handler(
         StubTableReader? reader = null,
         bool missingProfile = false,

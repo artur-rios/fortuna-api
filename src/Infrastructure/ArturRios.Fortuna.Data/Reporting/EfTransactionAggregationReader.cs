@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Shared.Reporting;
 using Microsoft.EntityFrameworkCore;
@@ -56,34 +57,34 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
     private static DimensionSql ResolveDimension(TransactionAggregationCriteria criteria) =>
         criteria.Dimension switch
         {
-            "period" => Period(criteria.Granularity!),
-            "category" when criteria.RollupCategories => new DimensionSql(
+            AggregationDimension.Period => Period(criteria.Granularity!.Value),
+            AggregationDimension.Category when criteria.RollupCategories => new DimensionSql(
                 "bucket_category.public_id::text",
                 "bucket_category.name",
                 "NULL::date",
                 "JOIN category_roots root ON root.id = category.id " +
                 "JOIN fortuna.category bucket_category ON bucket_category.id = root.root_id",
                 "NOT bucket_category.is_deleted"),
-            "category" => new DimensionSql(
+            AggregationDimension.Category => new DimensionSql(
                 "category.public_id::text",
                 "category.name",
                 "NULL::date"),
-            "account" => new DimensionSql(
+            AggregationDimension.Account => new DimensionSql(
                 "account.public_id::text",
                 "account.name",
                 "NULL::date",
                 Where: "account.id IS NOT NULL AND NOT account.is_deleted"),
-            "card" => new DimensionSql(
+            AggregationDimension.Card => new DimensionSql(
                 "card.public_id::text",
                 "card.name",
                 "NULL::date",
                 Where: "card.id IS NOT NULL AND NOT card.is_deleted"),
-            "counterparty" => new DimensionSql(
+            AggregationDimension.Counterparty => new DimensionSql(
                 "COALESCE(counterparty.public_id::text, 'none')",
                 "COALESCE(counterparty.name, 'No counterparty')",
                 "NULL::date",
                 Where: "counterparty.id IS NULL OR NOT counterparty.is_deleted"),
-            "tag" => new DimensionSql(
+            AggregationDimension.Tag => new DimensionSql(
                 "dimension_tag.public_id::text",
                 "dimension_tag.name",
                 "NULL::date",
@@ -91,20 +92,19 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                 "ON dimension_link.financial_transaction_id = item.id " +
                 "JOIN fortuna.tag dimension_tag ON dimension_tag.id = dimension_link.tag_id",
                 "NOT dimension_tag.is_deleted"),
-            _ => throw new InvalidOperationException("The aggregation dimension was not normalized.")
+            _ => throw new UnreachableException()
         };
 
-    private static DimensionSql Period(string granularity)
+    private static DimensionSql Period(AggregationGranularity granularity)
     {
         var unit = granularity switch
         {
-            "day" => "day",
-            "week" => "week",
-            "month" => "month",
-            "quarter" => "quarter",
-            "year" => "year",
-            _ => throw new InvalidOperationException(
-                "The aggregation granularity was not normalized.")
+            AggregationGranularity.Day => "day",
+            AggregationGranularity.Week => "week",
+            AggregationGranularity.Month => "month",
+            AggregationGranularity.Quarter => "quarter",
+            AggregationGranularity.Year => "year",
+            _ => throw new UnreachableException()
         };
         var expression = $"date_trunc('{unit}', item.occurred_on::timestamp)::date";
 
@@ -217,12 +217,13 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
         var index = 0;
         foreach (var selection in criteria.Selections)
         {
-            if (selection.Dimension == "period")
+            if (selection.Dimension == AggregationDimension.Period)
             {
                 AddParameter(command, $"selection{index}From", selection.From);
                 AddParameter(command, $"selection{index}To", selection.To);
             }
-            else if (selection.Dimension != "counterparty" || selection.Value != "none")
+            else if (selection.Dimension != AggregationDimension.Counterparty ||
+                     selection.Value != "none")
             {
                 AddParameter(command, $"selection{index}Value", Guid.Parse(selection.Value));
             }
@@ -241,22 +242,22 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
             var value = $"@selection{index}Value";
             clauses.Add(selection.Dimension switch
             {
-                "period" => $"item.occurred_on BETWEEN @selection{index}From AND @selection{index}To",
-                "category" when selection.RollupCategories =>
+                AggregationDimension.Period => $"item.occurred_on BETWEEN @selection{index}From AND @selection{index}To",
+                AggregationDimension.Category when selection.RollupCategories =>
                     $"category.id IN (SELECT root.id FROM category_roots root " +
                     $"WHERE root.root_id = (SELECT id FROM fortuna.category " +
                     $"WHERE public_id = {value}))",
-                "category" => $"category.public_id = {value}",
-                "account" => $"account.public_id = {value}",
-                "card" => $"card.public_id = {value}",
-                "counterparty" when selection.Value == "none" => "counterparty.id IS NULL",
-                "counterparty" => $"counterparty.public_id = {value}",
-                "tag" => $"EXISTS (SELECT 1 FROM fortuna.financial_transaction_tag key_link " +
+                AggregationDimension.Category => $"category.public_id = {value}",
+                AggregationDimension.Account => $"account.public_id = {value}",
+                AggregationDimension.Card => $"card.public_id = {value}",
+                AggregationDimension.Counterparty when selection.Value == "none" =>
+                    "counterparty.id IS NULL",
+                AggregationDimension.Counterparty => $"counterparty.public_id = {value}",
+                AggregationDimension.Tag => $"EXISTS (SELECT 1 FROM fortuna.financial_transaction_tag key_link " +
                     $"JOIN fortuna.tag key_tag ON key_tag.id = key_link.tag_id " +
                     $"WHERE key_link.financial_transaction_id = item.id " +
                     $"AND key_tag.public_id = {value} AND NOT key_tag.is_deleted)",
-                _ => throw new InvalidOperationException(
-                    "The drill-down selection dimension was not normalized.")
+                _ => throw new UnreachableException()
             });
             index++;
         }

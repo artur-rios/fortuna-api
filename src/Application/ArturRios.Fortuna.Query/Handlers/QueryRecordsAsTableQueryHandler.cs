@@ -206,6 +206,6 @@ public sealed class QueryRecordsAsTableQueryHandler(
         TableReportReadOutcome.SortFieldUnknown => TableReportMessages.UnknownSortField(
             recordSet,
             result.InvalidName ?? string.Empty),
-        _ => throw new InvalidOperationException("The table reader returned an invalid outcome.")
+        _ => TableReportMessages.ReadFailed
     };
 }

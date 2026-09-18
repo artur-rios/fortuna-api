@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Query.Output;
@@ -66,8 +67,8 @@ public sealed class DrillIntoAggregationQueryHandler(
             var transaction = await selected.SingleAsync(CancellationToken.None);
             var direct = new TransactionDrillDownOutput
             {
-                Mode = "transaction",
-                SourceDimension = key.Dimension,
+                Mode = TransactionDrillDownMode.Transaction.WireName(),
+                SourceDimension = key.Dimension.Name(),
                 MayDifferFromChart = changed,
                 Transaction = TransactionProjection.Project(transaction),
                 TotalItems = 1,
@@ -79,12 +80,21 @@ public sealed class DrillIntoAggregationQueryHandler(
                 changed);
         }
 
-        var requestedDimension = string.IsNullOrWhiteSpace(query.Dimension)
-            ? null
-            : query.Dimension.Trim().ToLowerInvariant();
-        if (requestedDimension is not null && requestedDimension != "period" &&
-            key.Selections.Any(selection =>
-                selection.Dimension == requestedDimension))
+        AggregationDimension? requestedDimension = null;
+        if (!string.IsNullOrWhiteSpace(query.Dimension))
+        {
+            if (!AggregationModes.TryParseDimension(query.Dimension, out var parsed))
+            {
+                return output.WithError(TransactionDrillDownMessages.UnknownDimension(
+                    query.Dimension,
+                    AggregateTransactionsQueryValidator.SupportedDimensions));
+            }
+
+            requestedDimension = parsed;
+        }
+
+        if (requestedDimension is not null && requestedDimension != AggregationDimension.Period &&
+            key.Selections.Any(selection => selection.Dimension == requestedDimension))
         {
             return output.WithError(TransactionDrillDownMessages.DimensionAlreadyUsed);
         }
@@ -100,9 +110,9 @@ public sealed class DrillIntoAggregationQueryHandler(
 
             var detail = new TransactionDrillDownOutput
             {
-                Mode = "aggregation",
-                SourceDimension = key.Dimension,
-                Dimension = target.Dimension,
+                Mode = TransactionDrillDownMode.Aggregation.WireName(),
+                SourceDimension = key.Dimension.Name(),
+                Dimension = target.Dimension.Name(),
                 MayDifferFromChart = changed,
                 Buckets = aggregate.Data.Buckets
             };
@@ -123,8 +133,8 @@ public sealed class DrillIntoAggregationQueryHandler(
                 cancellationToken: CancellationToken.None);
         var list = new TransactionDrillDownOutput
         {
-            Mode = "transactions",
-            SourceDimension = key.Dimension,
+            Mode = TransactionDrillDownMode.Transactions.WireName(),
+            SourceDimension = key.Dimension.Name(),
             MayDifferFromChart = changed,
             Transactions = (page.Data ?? []).Select(TransactionProjection.Project).ToArray(),
             PageNumber = page.PageNumber,
@@ -139,14 +149,7 @@ public sealed class DrillIntoAggregationQueryHandler(
         Guid userId,
         TransactionDrillDownKeyPayload key)
     {
-        var from = key.From;
-        var to = key.To;
-        foreach (var selection in key.Selections.Where(item => item.Dimension == "period"))
-        {
-            from = DateOnly.FromDayNumber(Math.Max(from.DayNumber, selection.From!.Value.DayNumber));
-            to = DateOnly.FromDayNumber(Math.Min(to.DayNumber, selection.To!.Value.DayNumber));
-        }
-
+        var (from, to) = NarrowedPeriod(key);
         IQueryable<TransactionReadSnapshot> selected = transactions.Query(new TransactionSearchCriteria
         {
             UserId = userId,
@@ -157,7 +160,7 @@ public sealed class DrillIntoAggregationQueryHandler(
             CategoryId = key.Filters.CategoryId,
             TagId = key.Filters.TagId,
             RequiredTagIds = key.Selections
-                .Where(item => item.Dimension == "tag")
+                .Where(item => item.Dimension == AggregationDimension.Tag)
                 .Select(item => Guid.Parse(item.Value))
                 .ToArray(),
             CounterpartyId = key.Filters.CounterpartyId,
@@ -170,7 +173,7 @@ public sealed class DrillIntoAggregationQueryHandler(
 
         var rollupCategoryIds = new Dictionary<string, Guid[]>();
         if (key.Selections.Any(item =>
-                item.Dimension == "category" && item.RollupCategories))
+                item.Dimension == AggregationDimension.Category && item.RollupCategories))
         {
             var records = await categories.ListAsync(
                 userId,
@@ -178,7 +181,7 @@ public sealed class DrillIntoAggregationQueryHandler(
                 includeUsageCounts: false,
                 CancellationToken.None);
             foreach (var selection in key.Selections.Where(item =>
-                         item.Dimension == "category" && item.RollupCategories))
+                         item.Dimension == AggregationDimension.Category && item.RollupCategories))
             {
                 var root = Guid.Parse(selection.Value);
                 var result = new HashSet<Guid>();
@@ -201,61 +204,81 @@ public sealed class DrillIntoAggregationQueryHandler(
             }
         }
 
-        foreach (var selection in key.Selections.Where(item => item.Dimension != "period"))
+        foreach (var selection in key.Selections)
         {
             selected = selection.Dimension switch
             {
-                "account" => selected.Where(item =>
+                AggregationDimension.Account => selected.Where(item =>
                     item.FinancialAccountId == Guid.Parse(selection.Value)),
-                "card" => selected.Where(item =>
+                AggregationDimension.Card => selected.Where(item =>
                     item.CreditCardId == Guid.Parse(selection.Value)),
-                "category" when selection.RollupCategories => selected.Where(item =>
-                    rollupCategoryIds[selection.Value].Contains(item.CategoryId)),
-                "category" => selected.Where(item =>
+                AggregationDimension.Category when selection.RollupCategories =>
+                    selected.Where(item =>
+                        rollupCategoryIds[selection.Value].Contains(item.CategoryId)),
+                AggregationDimension.Category => selected.Where(item =>
                     item.CategoryId == Guid.Parse(selection.Value)),
-                "counterparty" when selection.Value == "none" => selected.Where(item =>
-                    item.CounterpartyId == null),
-                "counterparty" => selected.Where(item =>
+                AggregationDimension.Counterparty when selection.Value == "none" =>
+                    selected.Where(item => item.CounterpartyId == null),
+                AggregationDimension.Counterparty => selected.Where(item =>
                     item.CounterpartyId == Guid.Parse(selection.Value)),
-                "tag" => selected,
-                _ => selected
+                AggregationDimension.Period or AggregationDimension.Tag => selected,
+                _ => throw new UnreachableException()
             };
         }
 
         return selected;
     }
 
+    private static (DateOnly From, DateOnly To) NarrowedPeriod(TransactionDrillDownKeyPayload key)
+    {
+        var from = key.From;
+        var to = key.To;
+        foreach (var selection in key.Selections.Where(item =>
+                     item.Dimension == AggregationDimension.Period))
+        {
+            from = DateOnly.FromDayNumber(Math.Max(from.DayNumber, selection.From!.Value.DayNumber));
+            to = DateOnly.FromDayNumber(Math.Min(to.DayNumber, selection.To!.Value.DayNumber));
+        }
+
+        return (from, to);
+    }
+
     private static TargetAggregation? Target(
         TransactionDrillDownKeyPayload key,
-        string? requestedDimension)
+        AggregationDimension? requestedDimension)
     {
         if (requestedDimension is not null)
         {
             return new TargetAggregation(
-                requestedDimension,
-                requestedDimension == "period" ? FinerGranularity(key.Granularity) ?? "day" : null);
+                requestedDimension.Value,
+                requestedDimension == AggregationDimension.Period
+                    ? FinerGranularity(key.Granularity) ?? AggregationGranularity.Day
+                    : null);
         }
 
-        var finer = key.Dimension == "period" ? FinerGranularity(key.Granularity) : null;
+        var finer = key.Dimension == AggregationDimension.Period
+            ? FinerGranularity(key.Granularity)
+            : null;
 
-        return finer is null ? null : new TargetAggregation("period", finer);
+        return finer is null ? null : new TargetAggregation(AggregationDimension.Period, finer);
     }
 
-    private static string? FinerGranularity(string? granularity) => granularity switch
-    {
-        "year" => "quarter",
-        "quarter" => "month",
-        "month" => "day",
-        "week" => "day",
-        _ => null
-    };
+    private static AggregationGranularity? FinerGranularity(AggregationGranularity? granularity) =>
+        granularity switch
+        {
+            AggregationGranularity.Year => AggregationGranularity.Quarter,
+            AggregationGranularity.Quarter => AggregationGranularity.Month,
+            AggregationGranularity.Month => AggregationGranularity.Day,
+            AggregationGranularity.Week => AggregationGranularity.Day,
+            _ => null
+        };
 
     private static AggregateTransactionsQuery AggregationQuery(
         TransactionDrillDownKeyPayload key,
         TargetAggregation target) => new()
         {
-            Dimension = target.Dimension,
-            Granularity = target.Granularity,
+            Dimension = target.Dimension.Name(),
+            Granularity = target.Granularity?.Name(),
             From = key.From,
             To = key.To,
             FinancialAccountId = key.Filters.FinancialAccountId,
@@ -280,18 +303,16 @@ public sealed class DrillIntoAggregationQueryHandler(
         !string.IsNullOrWhiteSpace(key.DisplayCurrencyCode) &&
         key.Filters is not null &&
         key.Selections is { Count: > 0 } &&
-        AggregateTransactionsQueryValidator.SupportedDimensions.Contains(
-            key.Dimension,
-            StringComparer.OrdinalIgnoreCase) &&
+        Enum.IsDefined(key.Dimension) &&
+        (key.Granularity is null || Enum.IsDefined(key.Granularity.Value)) &&
         key.Selections.All(selection => selection is not null && IsValidSelection(selection));
 
     private static bool IsValidSelection(TransactionAggregationSelection selection) =>
-        AggregateTransactionsQueryValidator.SupportedDimensions.Contains(
-            selection.Dimension,
-            StringComparer.OrdinalIgnoreCase) &&
-        (selection.Dimension == "period"
+        Enum.IsDefined(selection.Dimension) &&
+        (selection.Dimension == AggregationDimension.Period
             ? selection.From.HasValue && selection.To.HasValue && selection.From <= selection.To
-            : (selection.Dimension == "counterparty" && selection.Value == "none") ||
+            : (selection.Dimension == AggregationDimension.Counterparty &&
+               selection.Value == "none") ||
               (Guid.TryParse(selection.Value, out var id) && id != Guid.Empty));
 
     private static DataOutput<TransactionDrillDownOutput?> Complete(
@@ -312,5 +333,7 @@ public sealed class DrillIntoAggregationQueryHandler(
                 ? null
                 : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
-    private sealed record TargetAggregation(string Dimension, string? Granularity);
+    private sealed record TargetAggregation(
+        AggregationDimension Dimension,
+        AggregationGranularity? Granularity);
 }

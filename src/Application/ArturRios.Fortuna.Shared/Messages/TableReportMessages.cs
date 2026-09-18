@@ -16,6 +16,7 @@ public static class TableReportMessages
     public const string DisplayCurrencyInvalid =
         "DisplayCurrencyCode must be a three-letter currency code.";
     public const string DisplayCurrencyUnsupported = "The display currency is not supported.";
+    public const string ReadFailed = "The table could not be read.";
 
     public static string UnknownRecordSet(string name, IEnumerable<string> supported) =>
         $"Record set '{name}' is not supported. Supported record sets: {Join(supported)}.";

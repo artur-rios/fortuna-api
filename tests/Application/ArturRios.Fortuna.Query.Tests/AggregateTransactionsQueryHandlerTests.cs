@@ -49,7 +49,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
         Assert.Equal(5m, Assert.Single(buckets[2].Conversions).AppliedRate);
         Assert.Equal("key-1", buckets[0].DrillDownKey);
         var key = codec.Payloads[0];
-        Assert.Equal("period", key.Dimension);
+        Assert.Equal(AggregationDimension.Period, key.Dimension);
         Assert.Equal(Start, Assert.Single(key.Selections).From);
         Assert.Equal(1, key.RecordCount);
         Assert.Equal(Now.AddMinutes(15), key.ExpiresAt);
@@ -99,6 +99,23 @@ public sealed class AggregateTransactionsQueryHandlerTests
             currencyResult.Errors);
         Assert.All([invalidReader, missingReader, currencyReader], item =>
             Assert.Null(item.Criteria));
+    }
+
+    [UnitFact]
+    public async Task GivenMixedCaseModes_WhenHandled_ThenReaderReceivesParsedEnums()
+    {
+        var reader = new StubAggregationReader([]);
+        var query = Valid();
+        query.Dimension = " Period ";
+        query.Granularity = "WEEK";
+
+        var result = await Handler(reader: reader).HandleAsync(query);
+
+        Assert.True(result.Success);
+        Assert.Equal(AggregationDimension.Period, reader.Criteria!.Dimension);
+        Assert.Equal(AggregationGranularity.Week, reader.Criteria.Granularity);
+        Assert.Equal("period", result.Data!.Dimension);
+        Assert.Equal("week", result.Data.Granularity);
     }
 
     [UnitFact]
