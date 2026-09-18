@@ -109,6 +109,7 @@ public sealed class EfCashFlowProjectionReader(AppDbContext context) : ICashFlow
             .Where(transaction =>
                 transaction.User.PublicId == userId &&
                 transaction.FinancialAccountId != null &&
+                transaction.RecurringTransactionId == null &&
                 !transaction.IsDeleted &&
                 !transaction.FinancialAccount!.IsDeleted &&
                 transaction.OccurredOn >= historyFrom &&
