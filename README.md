@@ -138,7 +138,7 @@ is a floor, not a target — the standard is to test everything that can be test
 ships with its tests before its pull request is opened.
 
 ```bash
-dotnet tool install --global dotnet-reportgenerator-globaltool
+dotnet tool restore  # ReportGenerator is pinned in .config/dotnet-tools.json
 python3 scripts/coverage.py
 ```
 

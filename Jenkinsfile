@@ -9,6 +9,11 @@
 //                                           delete the release branch
 //
 // Build and test stay in GitHub Actions; this file only deploys.
+//
+// The library version is deliberately not pinned here: yggdrasil's controller configuration
+// (platform/jenkins/controller/casc.yaml) sets `allowVersionOverride: false`, so
+// `@Library('yggdrasil@<tag>')` would fail the build. Pin it centrally instead, by setting that
+// configuration's `defaultVersion` to a release tag (v0.3.0 at the time of writing).
 
 @Library('yggdrasil') _
 
