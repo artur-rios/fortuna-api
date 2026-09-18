@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.Domain.Guards;
+
 namespace ArturRios.Fortuna.Domain.Jobs;
 
 public enum BackgroundJobState : short
@@ -17,7 +19,7 @@ public sealed class BackgroundJob
     private BackgroundJob(string type, string payload, string idempotencyKey, string? correlationId, DateTimeOffset createdAt)
     {
         Id = Guid.NewGuid();
-        Type = string.IsNullOrWhiteSpace(type) ? throw new ArgumentException("A job type is required.", nameof(type)) : type;
+        Type = BoundedText.Required(type, 100, nameof(type), "A job type is required.");
         Payload = payload ?? throw new ArgumentNullException(nameof(payload));
         IdempotencyKey = string.IsNullOrWhiteSpace(idempotencyKey)
             ? throw new ArgumentException("An idempotency key is required.", nameof(idempotencyKey))

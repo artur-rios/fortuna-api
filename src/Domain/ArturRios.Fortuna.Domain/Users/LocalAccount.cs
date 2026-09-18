@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.Domain.Guards;
+
 namespace ArturRios.Fortuna.Domain.Users;
 
 /// <summary>The single offline identity owned by a desktop Fortuna installation.</summary>
@@ -17,21 +19,12 @@ public sealed class LocalAccount
         LocalAccountStorageMode storageMode,
         DateTimeOffset createdAt)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Length > 200)
-        {
-            throw new ArgumentException("A name between 1 and 200 characters is required.", nameof(name));
-        }
-
-        if (secretHash.Length == 0)
-        {
-            throw new ArgumentException("A secret hash is required.", nameof(secretHash));
-        }
-
-        if (salt.Length == 0)
-        {
-            throw new ArgumentException("A salt is required.", nameof(salt));
-        }
-
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A name between 1 and 200 characters is required.");
+        EnsureSecret(secretHash, salt);
         if (!Enum.IsDefined(storageMode))
         {
             throw new ArgumentOutOfRangeException(nameof(storageMode));
@@ -65,6 +58,33 @@ public sealed class LocalAccount
 
     public void ReplaceSecret(byte[] secretHash, byte[] salt, DateTimeOffset updatedAt)
     {
+        EnsureSecret(secretHash, salt);
+        SecretHash = secretHash.ToArray();
+        Salt = salt.ToArray();
+        UpdatedAt = updatedAt;
+    }
+
+    /// <summary>
+    /// Replaces every recovery code at once. All replacements are built (and so validated)
+    /// before the current set is dropped, so a bad hash cannot leave a partial set behind.
+    /// </summary>
+    public void ReplaceRecoveryCodes(
+        IEnumerable<byte[]> recoveryCodeHashes,
+        DateTimeOffset updatedAt)
+    {
+        ArgumentNullException.ThrowIfNull(recoveryCodeHashes);
+        var replacements = recoveryCodeHashes
+            .Select(codeHash => new RecoveryCode(this, codeHash, updatedAt))
+            .ToArray();
+        _recoveryCodes.Clear();
+        _recoveryCodes.AddRange(replacements);
+        UpdatedAt = updatedAt;
+    }
+
+    private static void EnsureSecret(byte[] secretHash, byte[] salt)
+    {
+        ArgumentNullException.ThrowIfNull(secretHash);
+        ArgumentNullException.ThrowIfNull(salt);
         if (secretHash.Length == 0)
         {
             throw new ArgumentException("A secret hash is required.", nameof(secretHash));
@@ -74,22 +94,5 @@ public sealed class LocalAccount
         {
             throw new ArgumentException("A salt is required.", nameof(salt));
         }
-
-        SecretHash = secretHash.ToArray();
-        Salt = salt.ToArray();
-        UpdatedAt = updatedAt;
-    }
-
-    public void ReplaceRecoveryCodes(
-        IEnumerable<byte[]> recoveryCodeHashes,
-        DateTimeOffset updatedAt)
-    {
-        _recoveryCodes.Clear();
-        foreach (var codeHash in recoveryCodeHashes)
-        {
-            AddRecoveryCode(codeHash, updatedAt);
-        }
-
-        UpdatedAt = updatedAt;
     }
 }

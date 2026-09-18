@@ -3,6 +3,7 @@ using ArturRios.Fortuna.Domain.Attachments;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
@@ -128,12 +129,11 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
                 nameof(counterparty));
         }
 
-        if (description?.Trim().Length > 500)
-        {
-            throw new ArgumentException(
-                "A description cannot exceed 500 characters.",
-                nameof(description));
-        }
+        description = BoundedText.Optional(
+            description,
+            500,
+            nameof(description),
+            "A description cannot exceed 500 characters.");
 
         var labels = tags?.DistinctBy(tag => tag.PublicId).ToArray() ?? [];
         if (labels.Any(tag => tag.User.PublicId != user.PublicId))
@@ -169,7 +169,7 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         Currency = account?.Currency ?? card!.Currency;
         CurrencyId = Currency.Id;
         OccurredOn = occurredOn;
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        Description = description;
         SourceType = TransactionSourceType.Manual;
         foreach (var tag in labels)
         {
@@ -365,12 +365,11 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
                 nameof(counterparty));
         }
 
-        if (description?.Trim().Length > 500)
-        {
-            throw new ArgumentException(
-                "A description cannot exceed 500 characters.",
-                nameof(description));
-        }
+        description = BoundedText.Optional(
+            description,
+            500,
+            nameof(description),
+            "A description cannot exceed 500 characters.");
 
         var labels = tags?.DistinctBy(tag => tag.PublicId).ToArray() ?? [];
         if (labels.Any(tag => tag.User.PublicId != User.PublicId))
@@ -406,7 +405,7 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         Direction = direction;
         Amount = amount;
         OccurredOn = occurredOn;
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        Description = description;
         _tags.Clear();
         foreach (var tag in labels)
         {

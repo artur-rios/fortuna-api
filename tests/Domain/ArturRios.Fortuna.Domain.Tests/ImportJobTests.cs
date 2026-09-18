@@ -58,6 +58,23 @@ public sealed class ImportJobTests
         Assert.Equal(occurredOn, record.OccurredOn);
     }
 
+    [UnitFact]
+    public void GivenPaddedIdentifierWithinBound_WhenRecordCreated_ThenBoundAppliesAfterTrimming()
+    {
+        var job = new ImportJob(User(), TransactionSourceType.Excel, Now);
+        var identifier = new string('x', 200);
+
+        var record = new ImportedRecord(
+            job,
+            "{}",
+            ImportedRecordOutcome.Imported,
+            10m,
+            new DateOnly(2026, 9, 4),
+            $"  {identifier}  ");
+
+        Assert.Equal(identifier, record.ExternalId);
+    }
+
     [UnitTheory]
     [InlineData("")]
     [InlineData("not json")]

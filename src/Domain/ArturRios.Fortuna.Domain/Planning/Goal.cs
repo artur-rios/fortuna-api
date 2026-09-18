@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
@@ -83,12 +84,11 @@ public sealed class Goal : RecordLifecycleEntity
         IReadOnlyCollection<Investment> investments,
         DateTimeOffset changedAt)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A goal name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        _ = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A goal name between 1 and 200 characters is required.");
 
         if (targetAmount <= 0m)
         {

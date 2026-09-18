@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -26,19 +27,17 @@ public sealed class Investment : RecordLifecycleEntity
         Currency currency,
         DateTimeOffset createdAt) : base(createdAt)
     {
-        if (string.IsNullOrWhiteSpace(instrument) || instrument.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An instrument name between 1 and 200 characters is required.",
-                nameof(instrument));
-        }
+        instrument = BoundedText.Required(
+            instrument,
+            200,
+            nameof(instrument),
+            "An instrument name between 1 and 200 characters is required.");
 
-        if (institution?.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An institution cannot exceed 200 characters.",
-                nameof(institution));
-        }
+        institution = BoundedText.Optional(
+            institution,
+            200,
+            nameof(institution),
+            "An institution cannot exceed 200 characters.");
 
         if (!Enum.IsDefined(investmentType))
         {
@@ -47,9 +46,9 @@ public sealed class Investment : RecordLifecycleEntity
 
         User = user ?? throw new ArgumentNullException(nameof(user));
         UserId = user.Id;
-        Instrument = instrument.Trim();
+        Instrument = instrument;
         NormalizedInstrument = Instrument.ToUpperInvariant();
-        Institution = string.IsNullOrWhiteSpace(institution) ? null : institution.Trim();
+        Institution = institution;
         InvestmentType = investmentType;
         Currency = currency ?? throw new ArgumentNullException(nameof(currency));
         CurrencyId = currency.Id;
@@ -71,28 +70,26 @@ public sealed class Investment : RecordLifecycleEntity
         InvestmentType investmentType,
         DateTimeOffset updatedAt)
     {
-        if (string.IsNullOrWhiteSpace(instrument) || instrument.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An instrument name between 1 and 200 characters is required.",
-                nameof(instrument));
-        }
+        instrument = BoundedText.Required(
+            instrument,
+            200,
+            nameof(instrument),
+            "An instrument name between 1 and 200 characters is required.");
 
-        if (institution?.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An institution cannot exceed 200 characters.",
-                nameof(institution));
-        }
+        institution = BoundedText.Optional(
+            institution,
+            200,
+            nameof(institution),
+            "An institution cannot exceed 200 characters.");
 
         if (!Enum.IsDefined(investmentType))
         {
             throw new ArgumentOutOfRangeException(nameof(investmentType));
         }
 
-        Instrument = instrument.Trim();
+        Instrument = instrument;
         NormalizedInstrument = Instrument.ToUpperInvariant();
-        Institution = string.IsNullOrWhiteSpace(institution) ? null : institution.Trim();
+        Institution = institution;
         InvestmentType = investmentType;
         MarkUpdated(updatedAt);
     }

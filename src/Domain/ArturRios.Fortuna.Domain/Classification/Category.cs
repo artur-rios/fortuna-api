@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -16,12 +17,11 @@ public sealed class Category : RecordLifecycleEntity
         Category? parent = null) : base(createdAt)
     {
         User = user ?? throw new ArgumentNullException(nameof(user));
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A category name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A category name between 1 and 200 characters is required.");
 
         if (parent is not null && parent.User.PublicId != user.PublicId)
         {
@@ -31,7 +31,7 @@ public sealed class Category : RecordLifecycleEntity
         }
 
         UserId = user.Id;
-        Name = name.Trim();
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
         Parent = parent;
         ParentId = parent?.Id;
@@ -50,12 +50,11 @@ public sealed class Category : RecordLifecycleEntity
         Category? parent,
         DateTimeOffset updatedAt)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A category name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A category name between 1 and 200 characters is required.");
 
         if (parent is not null && parent.User.PublicId != User.PublicId)
         {
@@ -72,7 +71,7 @@ public sealed class Category : RecordLifecycleEntity
                 nameof(parent));
         }
 
-        Name = name.Trim();
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
         Parent = parent;
         ParentId = parent?.Id;

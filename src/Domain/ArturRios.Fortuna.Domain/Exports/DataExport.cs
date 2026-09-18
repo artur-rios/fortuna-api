@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -63,8 +64,8 @@ public sealed class DataExport
         UserId = user.Id;
         Format = format;
         Kind = kind;
-        Locale = Required(locale, 35, nameof(locale));
-        FileName = Required(fileName, 300, nameof(fileName));
+        Locale = BoundedText.Required(locale, 35, nameof(locale));
+        FileName = BoundedText.Required(fileName, 300, nameof(fileName));
         RequestJson = string.IsNullOrWhiteSpace(requestJson)
             ? throw new ArgumentException("An export request is required.", nameof(requestJson))
             : requestJson;
@@ -135,8 +136,8 @@ public sealed class DataExport
         }
 
         RowCount = rowCount;
-        ContentType = Required(contentType, 150, nameof(contentType));
-        StorageKey = Required(storageKey, 500, nameof(storageKey));
+        ContentType = BoundedText.Required(contentType, 150, nameof(contentType));
+        StorageKey = BoundedText.Required(storageKey, 500, nameof(storageKey));
         FailureReason = null;
         Status = DataExportStatus.Completed;
         UpdatedAt = updatedAt;
@@ -149,23 +150,8 @@ public sealed class DataExport
             throw new InvalidOperationException("Only an unfinished export can fail.");
         }
 
-        FailureReason = Required(reason, 1000, nameof(reason));
+        FailureReason = BoundedText.Required(reason, 1000, nameof(reason));
         Status = DataExportStatus.Failed;
         UpdatedAt = updatedAt;
-    }
-
-    private static string Required(string value, int maximumLength, string parameterName)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new ArgumentException("A value is required.", parameterName);
-        }
-
-        var normalized = value.Trim();
-
-        return normalized.Length <= maximumLength
-            ? normalized
-            : throw new ArgumentException(
-                $"A value cannot exceed {maximumLength} characters.", parameterName);
     }
 }

@@ -131,4 +131,50 @@ public sealed class LocalAccountTests
         [4, 5, 6],
         LocalAccountStorageMode.InMemory,
         createdAt);
+
+    [UnitFact]
+    public void GivenPaddedName_WhenAccountIsCreated_ThenItIsTrimmed()
+    {
+        var createdAt = DateTimeOffset.Parse("2026-09-03T00:00:00Z");
+
+        var account = new LocalAccount(
+            new UserProfile("Local User", Currency, createdAt),
+            "  Local User  ",
+            [1, 2, 3],
+            [4, 5, 6],
+            LocalAccountStorageMode.InMemory,
+            createdAt);
+
+        Assert.Equal("Local User", account.Name);
+    }
+
+    [UnitFact]
+    public void GivenInvalidReplacementHash_WhenReplacingSet_ThenExistingCodesAreKept()
+    {
+        var createdAt = DateTimeOffset.Parse("2026-09-03T00:00:00Z");
+        var account = Account(createdAt);
+        account.AddRecoveryCode([1, 1, 1], createdAt);
+
+        Assert.Throws<ArgumentException>(() =>
+            account.ReplaceRecoveryCodes([[3, 3, 3], []], createdAt.AddHours(1)));
+
+        Assert.Equal([1, 1, 1], Assert.Single(account.RecoveryCodes).CodeHash);
+        Assert.Equal(createdAt, account.UpdatedAt);
+    }
+
+    [UnitFact]
+    public void GivenNullSecret_WhenAccountIsCreated_ThenArgumentNullIsReported()
+    {
+        var createdAt = DateTimeOffset.Parse("2026-09-03T00:00:00Z");
+
+        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAccount(
+            new UserProfile("Local User", Currency, createdAt),
+            "Local User",
+            null!,
+            [4, 5, 6],
+            LocalAccountStorageMode.InMemory,
+            createdAt));
+
+        Assert.Equal("secretHash", exception.ParamName);
+    }
 }

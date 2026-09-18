@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -69,10 +70,11 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
             throw new ArgumentOutOfRangeException(nameof(endsOn));
         }
 
-        if (description?.Trim().Length > 500)
-        {
-            throw new ArgumentException("A description cannot exceed 500 characters.", nameof(description));
-        }
+        description = BoundedText.Optional(
+            description,
+            500,
+            nameof(description),
+            "A description cannot exceed 500 characters.");
 
         UserId = user.Id;
         FinancialAccount = financialAccount;
@@ -90,7 +92,7 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
         Frequency = frequency;
         StartsOn = startsOn;
         EndsOn = endsOn;
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        Description = description;
     }
 
     public long Id { get; private set; }
@@ -177,10 +179,11 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
             throw new ArgumentOutOfRangeException(nameof(endsOn));
         }
 
-        if (description?.Trim().Length > 500)
-        {
-            throw new ArgumentException("A description cannot exceed 500 characters.", nameof(description));
-        }
+        description = BoundedText.Optional(
+            description,
+            500,
+            nameof(description),
+            "A description cannot exceed 500 characters.");
 
         FinancialAccount = financialAccount;
         FinancialAccountId = financialAccount?.Id;
@@ -197,7 +200,7 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
         Frequency = frequency;
         StartsOn = startsOn;
         EndsOn = endsOn;
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        Description = description;
         MarkUpdated(updatedAt);
     }
 

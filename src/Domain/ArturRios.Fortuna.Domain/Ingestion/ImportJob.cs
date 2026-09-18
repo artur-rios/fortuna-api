@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -162,14 +163,13 @@ public sealed class ImportJob
             throw new InvalidOperationException("Only an unfinished import job can fail.");
         }
 
-        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length > 1000)
-        {
-            throw new ArgumentException(
-                "A failure reason between 1 and 1000 characters is required.",
-                nameof(reason));
-        }
+        reason = BoundedText.Required(
+            reason,
+            1000,
+            nameof(reason),
+            "A failure reason between 1 and 1000 characters is required.");
 
-        FailureReason = reason.Trim();
+        FailureReason = reason;
         Status = ImportJobStatus.Failed;
         UpdatedAt = updatedAt;
     }
@@ -203,12 +203,11 @@ public sealed class ConnectionResource
         Cards.CreditCard? card = null)
     {
         Connection = connection ?? throw new ArgumentNullException(nameof(connection));
-        if (string.IsNullOrWhiteSpace(externalReference) || externalReference.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An external reference between 1 and 200 characters is required.",
-                nameof(externalReference));
-        }
+        externalReference = BoundedText.Required(
+            externalReference,
+            200,
+            nameof(externalReference),
+            "An external reference between 1 and 200 characters is required.");
 
         if ((account is null) == (card is null))
         {
@@ -223,7 +222,7 @@ public sealed class ConnectionResource
         }
 
         ConnectionId = connection.Id;
-        ExternalReference = externalReference.Trim();
+        ExternalReference = externalReference;
         FinancialAccount = account;
         FinancialAccountId = account?.Id;
         CreditCard = card;
@@ -272,27 +271,19 @@ public sealed class ImportedRecord
             throw new ArgumentOutOfRangeException(nameof(amount));
         }
 
-        if (externalId?.Length > 200)
-        {
-            throw new ArgumentException(
-                "An external identifier cannot exceed 200 characters.",
-                nameof(externalId));
-        }
-
-        if (rejectionReason?.Length > 1000)
-        {
-            throw new ArgumentException(
-                "A rejection reason cannot exceed 1000 characters.",
-                nameof(rejectionReason));
-        }
-
         ImportJobId = importJob.Id;
         RawPayload = rawPayload;
-        ExternalId = string.IsNullOrWhiteSpace(externalId) ? null : externalId.Trim();
+        ExternalId = BoundedText.Optional(
+            externalId,
+            200,
+            nameof(externalId),
+            "An external identifier cannot exceed 200 characters.");
         Outcome = outcome;
-        RejectionReason = string.IsNullOrWhiteSpace(rejectionReason)
-            ? null
-            : rejectionReason.Trim();
+        RejectionReason = BoundedText.Optional(
+            rejectionReason,
+            1000,
+            nameof(rejectionReason),
+            "A rejection reason cannot exceed 1000 characters.");
         Amount = amount;
         OccurredOn = occurredOn;
     }

@@ -20,10 +20,13 @@ public sealed class EfLocalAccountStore(
         string name,
         CancellationToken cancellationToken)
     {
+        var normalizedName = name.Trim();
         var account = await context.LocalAccounts
             .AsNoTracking()
             .Include(x => x.User)
-            .SingleOrDefaultAsync(x => x.Name == name, cancellationToken);
+            .SingleOrDefaultAsync(
+                x => x.Name == normalizedName || x.Name == name,
+                cancellationToken);
 
         return account is null
             ? null
@@ -111,10 +114,13 @@ public sealed class EfLocalAccountStore(
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         await DatabaseLock.AcquireAsync(context, AccountLockId, cancellationToken);
+        var normalizedName = recovery.Name.Trim();
         var account = await context.LocalAccounts
             .Include(x => x.User)
             .Include(x => x.RecoveryCodes)
-            .SingleOrDefaultAsync(x => x.Name == recovery.Name, cancellationToken);
+            .SingleOrDefaultAsync(
+                x => x.Name == normalizedName || x.Name == recovery.Name,
+                cancellationToken);
 
         if (account is null)
         {

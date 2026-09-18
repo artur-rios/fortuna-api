@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -27,19 +28,17 @@ public sealed class FinancialAccount : RecordLifecycleEntity
         decimal openingBalance,
         DateTimeOffset createdAt) : base(createdAt)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An account name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "An account name between 1 and 200 characters is required.");
 
-        if (institution?.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An institution cannot exceed 200 characters.",
-                nameof(institution));
-        }
+        institution = BoundedText.Optional(
+            institution,
+            200,
+            nameof(institution),
+            "An institution cannot exceed 200 characters.");
 
         if (!Enum.IsDefined(accountType))
         {
@@ -48,9 +47,9 @@ public sealed class FinancialAccount : RecordLifecycleEntity
 
         User = user ?? throw new ArgumentNullException(nameof(user));
         UserId = user.Id;
-        Name = name.Trim();
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
-        Institution = string.IsNullOrWhiteSpace(institution) ? null : institution.Trim();
+        Institution = institution;
         AccountType = accountType;
         Currency = currency ?? throw new ArgumentNullException(nameof(currency));
         CurrencyId = currency.Id;
@@ -74,28 +73,26 @@ public sealed class FinancialAccount : RecordLifecycleEntity
         FinancialAccountType accountType,
         DateTimeOffset updatedAt)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An account name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "An account name between 1 and 200 characters is required.");
 
-        if (institution?.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An institution cannot exceed 200 characters.",
-                nameof(institution));
-        }
+        institution = BoundedText.Optional(
+            institution,
+            200,
+            nameof(institution),
+            "An institution cannot exceed 200 characters.");
 
         if (!Enum.IsDefined(accountType))
         {
             throw new ArgumentOutOfRangeException(nameof(accountType));
         }
 
-        Name = name.Trim();
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
-        Institution = string.IsNullOrWhiteSpace(institution) ? null : institution.Trim();
+        Institution = institution;
         AccountType = accountType;
         MarkUpdated(updatedAt);
     }

@@ -40,4 +40,13 @@ public sealed class CurrencyTests
 
         Assert.Equal("name", exception.ParamName);
     }
+
+    [UnitFact]
+    public void GivenPaddedCodeAndName_WhenCreated_ThenBothAreTrimmed()
+    {
+        var currency = new Currency(" usd ", "  US dollar  ", 2);
+
+        Assert.Equal("USD", currency.Code);
+        Assert.Equal("US dollar", currency.Name);
+    }
 }

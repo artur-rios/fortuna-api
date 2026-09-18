@@ -42,4 +42,15 @@ public sealed class UserProfileTests
             new Currency("BRL", "Brazilian Real", 2),
             DateTimeOffset.UtcNow));
     }
+
+    [UnitFact]
+    public void GivenPaddedDisplayName_WhenProfileIsCreated_ThenItIsTrimmed()
+    {
+        var profile = new UserProfile(
+            "  Ada  ",
+            new Currency("BRL", "Brazilian real", 2),
+            DateTimeOffset.Parse("2026-09-03T00:00:00Z"));
+
+        Assert.Equal("Ada", profile.DisplayName);
+    }
 }

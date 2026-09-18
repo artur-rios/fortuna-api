@@ -123,4 +123,17 @@ public sealed class BackgroundJobTests
 
         Assert.Equal("payload", exception.ParamName);
     }
+
+    [UnitFact]
+    public void GivenPaddedType_WhenJobIsCreated_ThenTypeIsTrimmed()
+    {
+        var job = BackgroundJob.Create(
+            "  excel-import  ",
+            "{}",
+            "key",
+            null,
+            DateTimeOffset.Parse("2026-09-04T12:00:00Z"));
+
+        Assert.Equal("excel-import", job.Type);
+    }
 }
