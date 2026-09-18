@@ -264,22 +264,14 @@ public sealed class EfCreditCardStore(
         {
             liveReferences.Add("statement settlement transactions");
         }
-        try
+
+        var check = card.CheckHardDeletion(liveReferences);
+        if (!check.IsAllowed)
         {
-            card.EnsureHardDeletionAllowed(liveReferences);
-        }
-        catch (RecordLifecycleConflictException exception)
-        {
-            return exception.Conflict switch
-            {
-                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion =>
-                    LifecycleResult(CreditCardLifecycleOutcome.HardDeleteRequiresSoftDeletion),
-                RecordLifecycleConflict.HardDeleteHasLiveReferences =>
-                    LifecycleResult(CreditCardLifecycleOutcome.HardDeleteHasLiveTransactions),
-                _ => throw new InvalidOperationException(
-                    "An unexpected lifecycle conflict prevented hard deletion.",
-                    exception)
-            };
+            return LifecycleResult(
+                check.Conflict == RecordLifecycleConflict.HardDeleteRequiresSoftDeletion
+                    ? CreditCardLifecycleOutcome.HardDeleteRequiresSoftDeletion
+                    : CreditCardLifecycleOutcome.HardDeleteHasLiveTransactions);
         }
 
         var outstandingAmount = CalculateOutstandingAmount(transactions);

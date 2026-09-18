@@ -336,7 +336,7 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         Assert.Equal(auditSubject.SubjectReference, retainedBeforeDelete.SubjectReference);
         Assert.NotEqual(actor.PublicId, retainedBeforeDelete.SubjectReference);
         Assert.NotEqual(actorId, persistedTarget.Id);
-        persistedTarget.EnsureHardDeletionAllowed();
+        Assert.True(persistedTarget.CheckHardDeletion().IsAllowed);
         context.UserProfiles.Remove(persistedTarget);
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();

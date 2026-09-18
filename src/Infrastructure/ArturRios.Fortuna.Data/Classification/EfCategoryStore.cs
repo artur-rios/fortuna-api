@@ -352,30 +352,20 @@ public sealed class EfCategoryStore(
         var liveTransactionCount =
             transactions.Count(item => !item.IsDeleted) +
             recurringTransactions.Count(item => !item.IsDeleted);
-        try
+        var refusal = subtree
+            .Select(item => item.CheckHardDeletion(
+                item.Id == category.Id && liveTransactionCount > 0
+                    ? ["transactions"]
+                    : []))
+            .FirstOrDefault(check => !check.IsAllowed);
+        if (refusal is not null)
         {
-            foreach (var item in subtree)
-            {
-                item.EnsureHardDeletionAllowed(
-                    item.Id == category.Id && liveTransactionCount > 0
-                        ? ["transactions"]
-                        : []);
-            }
-        }
-        catch (RecordLifecycleConflictException exception)
-        {
-            return exception.Conflict switch
-            {
-                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion => LifecycleResult(
-                    CategoryLifecycleOutcome.HardDeleteRequiresSoftDeletion),
-                RecordLifecycleConflict.HardDeleteHasLiveReferences => LifecycleResult(
+            return refusal.Conflict == RecordLifecycleConflict.HardDeleteRequiresSoftDeletion
+                ? LifecycleResult(CategoryLifecycleOutcome.HardDeleteRequiresSoftDeletion)
+                : LifecycleResult(
                     CategoryLifecycleOutcome.HardDeleteHasLiveTransactions,
                     category.PublicId,
-                    liveTransactionCount),
-                _ => throw new InvalidOperationException(
-                    "An unexpected lifecycle conflict prevented hard deletion.",
-                    exception)
-            };
+                    liveTransactionCount);
         }
 
         await using var databaseTransaction = await context.Database.BeginTransactionAsync(

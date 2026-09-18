@@ -290,12 +290,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
             return LifecycleResult(InvestmentLifecycleOutcome.NotFound);
         }
 
-        try
-        {
-            investment.EnsureHardDeletionAllowed();
-        }
-        catch (RecordLifecycleConflictException exception) when (
-            exception.Conflict == RecordLifecycleConflict.HardDeleteRequiresSoftDeletion)
+        if (!investment.CheckHardDeletion().IsAllowed)
         {
             return LifecycleResult(InvestmentLifecycleOutcome.HardDeleteRequiresSoftDeletion);
         }

@@ -250,22 +250,13 @@ public sealed class EfFinancialAccountStore(
         var liveReferences = transactions.Any(item => !item.IsDeleted)
             ? new[] { "transactions" }
             : [];
-        try
+        var check = account.CheckHardDeletion(liveReferences);
+        if (!check.IsAllowed)
         {
-            account.EnsureHardDeletionAllowed(liveReferences);
-        }
-        catch (RecordLifecycleConflictException exception)
-        {
-            return exception.Conflict switch
-            {
-                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion =>
-                    LifecycleResult(FinancialAccountLifecycleOutcome.HardDeleteRequiresSoftDeletion),
-                RecordLifecycleConflict.HardDeleteHasLiveReferences =>
-                    LifecycleResult(FinancialAccountLifecycleOutcome.HardDeleteHasLiveTransactions),
-                _ => throw new InvalidOperationException(
-                    "An unexpected lifecycle conflict prevented hard deletion.",
-                    exception)
-            };
+            return LifecycleResult(
+                check.Conflict == RecordLifecycleConflict.HardDeleteRequiresSoftDeletion
+                    ? FinancialAccountLifecycleOutcome.HardDeleteRequiresSoftDeletion
+                    : FinancialAccountLifecycleOutcome.HardDeleteHasLiveTransactions);
         }
 
         await using var databaseTransaction = await context.Database.BeginTransactionAsync(

@@ -89,34 +89,38 @@ public sealed class RecordLifecycleTests
     }
 
     [UnitFact]
-    public void GivenLiveRecord_WhenHardDeleteIsRequested_ThenConflictIsRaised()
+    public void GivenLiveRecord_WhenHardDeleteIsChecked_ThenSoftDeletionIsRequired()
     {
-        var exception = Assert.Throws<RecordLifecycleConflictException>(() =>
-            new TestRecord(DateTimeOffset.UtcNow).EnsureHardDeletionAllowed());
+        var check = new TestRecord(DateTimeOffset.UtcNow).CheckHardDeletion();
 
-        Assert.Equal(RecordLifecycleConflict.HardDeleteRequiresSoftDeletion, exception.Conflict);
+        Assert.False(check.IsAllowed);
+        Assert.Equal(RecordLifecycleConflict.HardDeleteRequiresSoftDeletion, check.Conflict);
     }
 
     [UnitFact]
-    public void GivenSoftDeletedRecordWithLiveReferences_WhenHardDeleteIsRequested_ThenReferencesAreNamed()
+    public void GivenSoftDeletedRecordWithLiveReferences_WhenHardDeleteIsChecked_ThenReferencesAreNamed()
     {
         var record = new TestRecord(DateTimeOffset.UtcNow);
         record.SoftDelete(DateTimeOffset.UtcNow.AddMinutes(1));
 
-        var exception = Assert.Throws<RecordLifecycleConflictException>(() =>
-            record.EnsureHardDeletionAllowed(["transactions", "goals", "transactions"]));
+        var check = record.CheckHardDeletion(["transactions", "goals", "transactions"]);
 
-        Assert.Equal(RecordLifecycleConflict.HardDeleteHasLiveReferences, exception.Conflict);
-        Assert.Equal(["goals", "transactions"], exception.LiveReferences);
+        Assert.False(check.IsAllowed);
+        Assert.Equal(RecordLifecycleConflict.HardDeleteHasLiveReferences, check.Conflict);
+        Assert.Equal(["goals", "transactions"], check.LiveReferences);
     }
 
     [UnitFact]
-    public void GivenSoftDeletedUnreferencedRecord_WhenHardDeleteIsRequested_ThenItIsAllowed()
+    public void GivenSoftDeletedUnreferencedRecord_WhenHardDeleteIsChecked_ThenItIsAllowed()
     {
         var record = new TestRecord(DateTimeOffset.UtcNow);
         record.SoftDelete(DateTimeOffset.UtcNow.AddMinutes(1));
 
-        record.EnsureHardDeletionAllowed();
+        var check = record.CheckHardDeletion();
+
+        Assert.True(check.IsAllowed);
+        Assert.Null(check.Conflict);
+        Assert.Empty(check.LiveReferences);
     }
 
     private sealed class TestRecord(DateTimeOffset createdAt) : RecordLifecycleEntity(createdAt);

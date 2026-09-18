@@ -92,7 +92,7 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
                 targetId));
             target.SoftDelete(DateTimeOffset.UtcNow.AddMinutes(1));
             await context.SaveChangesAsync();
-            target.EnsureHardDeletionAllowed();
+            Assert.True(target.CheckHardDeletion().IsAllowed);
             context.UserProfiles.Remove(target);
             await context.SaveChangesAsync();
         }
