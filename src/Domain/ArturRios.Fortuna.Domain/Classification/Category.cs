@@ -30,6 +30,11 @@ public sealed class Category : RecordLifecycleEntity
                 nameof(parent));
         }
 
+        if (parent?.IsDeleted == true)
+        {
+            throw new ArgumentException("A deleted category cannot be a parent.", nameof(parent));
+        }
+
         UserId = user.Id;
         Name = name;
         NormalizedName = Name.ToUpperInvariant();
@@ -50,6 +55,7 @@ public sealed class Category : RecordLifecycleEntity
         Category? parent,
         DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         name = BoundedText.Required(
             name,
             200,
@@ -63,12 +69,20 @@ public sealed class Category : RecordLifecycleEntity
                 nameof(parent));
         }
 
-        if (parent is not null &&
-            (ReferenceEquals(parent, this) || parent.PublicId == PublicId))
+        if (parent?.IsDeleted == true)
         {
-            throw new ArgumentException(
-                "A category cannot be its own parent.",
-                nameof(parent));
+            throw new ArgumentException("A deleted category cannot be a parent.", nameof(parent));
+        }
+
+        for (var ancestor = parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            // Walks the ancestors that are loaded; the store checks the persisted hierarchy.
+            if (ReferenceEquals(ancestor, this) || ancestor.PublicId == PublicId)
+            {
+                throw new ArgumentException(
+                    "A category cannot be its own parent or ancestor.",
+                    nameof(parent));
+            }
         }
 
         Name = name;

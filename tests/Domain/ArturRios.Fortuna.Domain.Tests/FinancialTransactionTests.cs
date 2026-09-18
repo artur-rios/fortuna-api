@@ -566,6 +566,99 @@ public sealed class FinancialTransactionTests
             transaction.AttachTag(new Tag(User(), "Foreign", Now), Now));
     }
 
+    [UnitFact]
+    public void GivenDeletedReferences_WhenTransactionCreated_ThenEachIsRejected()
+    {
+        var user = User();
+        var deletedAccount = Account(user);
+        deletedAccount.SoftDelete(Now);
+        var deletedCategory = Category(user);
+        deletedCategory.SoftDelete(Now);
+        var deletedCounterparty = new Counterparty(user, "Shop", Now);
+        deletedCounterparty.SoftDelete(Now);
+        var deletedTag = new Tag(user, "Old", Now);
+        deletedTag.SoftDelete(Now);
+
+        Assert.Throws<ArgumentException>(() => new FinancialTransaction(
+            user, deletedAccount, Category(user), TransactionDirection.Expense, 1m,
+            new DateOnly(2026, 9, 4), Now));
+        Assert.Throws<ArgumentException>(() => new FinancialTransaction(
+            user, Account(user), deletedCategory, TransactionDirection.Expense, 1m,
+            new DateOnly(2026, 9, 4), Now));
+        Assert.Throws<ArgumentException>(() => new FinancialTransaction(
+            user, Account(user), Category(user), TransactionDirection.Expense, 1m,
+            new DateOnly(2026, 9, 4), Now, counterparty: deletedCounterparty));
+        Assert.Throws<ArgumentException>(() => new FinancialTransaction(
+            user, Account(user), Category(user), TransactionDirection.Expense, 1m,
+            new DateOnly(2026, 9, 4), Now, tags: [deletedTag]));
+    }
+
+    [UnitFact]
+    public void GivenDeletedTransaction_WhenEdited_ThenEveryMutationIsRefused()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            25m,
+            new DateOnly(2026, 9, 3),
+            Now);
+        transaction.SoftDelete(Now);
+
+        Assert.Throws<InvalidOperationException>(() => transaction.UpdateDetails(
+            Category(user), TransactionDirection.Expense, 30m, new DateOnly(2026, 9, 3),
+            null, null, null, Now));
+        Assert.Throws<InvalidOperationException>(() =>
+            transaction.AttachTag(new Tag(user, "Food", Now), Now));
+        Assert.Throws<InvalidOperationException>(() =>
+            transaction.Reconcile(ImportedRecord(user), Now));
+        Assert.Equal(25m, transaction.Amount);
+    }
+
+    [UnitFact]
+    public void GivenDeletedTag_WhenAttached_ThenItIsRejected()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Account(user),
+            Category(user),
+            TransactionDirection.Expense,
+            25m,
+            new DateOnly(2026, 9, 3),
+            Now);
+        var tag = new Tag(user, "Old", Now);
+        tag.SoftDelete(Now);
+
+        Assert.Throws<ArgumentException>(() => transaction.AttachTag(tag, Now));
+        Assert.Empty(transaction.Tags);
+    }
+
+    [UnitFact]
+    public void GivenDeletedStatement_WhenChargeAssigned_ThenItIsRejected()
+    {
+        var user = User();
+        var card = Card(user);
+        var charge = new FinancialTransaction(
+            user,
+            card,
+            Category(user),
+            TransactionDirection.Expense,
+            25m,
+            new DateOnly(2026, 9, 3),
+            Now);
+        var statement = new CreditCardStatement(
+            card,
+            BillingCycle.Containing(new DateOnly(2026, 9, 3), card.ClosingDay, card.DueDay),
+            Now);
+        statement.SoftDelete(Now);
+
+        Assert.Throws<ArgumentException>(() => charge.AssignToStatement(statement, false, Now));
+        Assert.Null(charge.Statement);
+    }
+
     private static UserProfile User() => new(
         Guid.NewGuid(),
         "Account Owner",

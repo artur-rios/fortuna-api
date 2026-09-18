@@ -91,6 +91,7 @@ public sealed class CreditCard : RecordLifecycleEntity
         short dueDay,
         DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         name = BoundedText.Required(
             name,
             200,

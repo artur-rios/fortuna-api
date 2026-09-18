@@ -175,12 +175,20 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
 
     public void Settle(FinancialTransaction settlementTransaction, DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         if (Status != CreditCardStatementStatus.Closed)
         {
             throw new InvalidOperationException("Only a closed statement can be settled.");
         }
 
         ArgumentNullException.ThrowIfNull(settlementTransaction);
+        if (settlementTransaction.IsDeleted)
+        {
+            throw new ArgumentException(
+                "A deleted movement cannot settle a statement.",
+                nameof(settlementTransaction));
+        }
+
         if (settlementTransaction.CreditCard?.PublicId != CreditCard.PublicId ||
             settlementTransaction.Direction != TransactionDirection.Earning)
         {

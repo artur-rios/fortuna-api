@@ -32,6 +32,7 @@ public sealed class Tag : RecordLifecycleEntity
 
     public void Rename(string name, DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         name = BoundedText.Required(
             name,
             200,

@@ -70,6 +70,7 @@ public sealed class Investment : RecordLifecycleEntity
         InvestmentType investmentType,
         DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         instrument = BoundedText.Required(
             instrument,
             200,

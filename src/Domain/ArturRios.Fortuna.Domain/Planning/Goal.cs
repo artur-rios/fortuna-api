@@ -59,6 +59,7 @@ public sealed class Goal : RecordLifecycleEntity
         IReadOnlyCollection<Investment> investments,
         DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         ArgumentNullException.ThrowIfNull(currency);
         ValidateDetails(User, name, targetAmount, targetDate, accounts, investments, updatedAt);
 

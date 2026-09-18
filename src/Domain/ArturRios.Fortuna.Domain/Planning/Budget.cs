@@ -63,6 +63,7 @@ public sealed class Budget : RecordLifecycleEntity
         bool includeDescendants,
         DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         ArgumentNullException.ThrowIfNull(currency);
         ValidateDetails(User, amount, periodType, periodStart, categories);
 

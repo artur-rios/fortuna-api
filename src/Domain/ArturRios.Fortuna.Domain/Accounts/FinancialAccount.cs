@@ -73,6 +73,7 @@ public sealed class FinancialAccount : RecordLifecycleEntity
         FinancialAccountType accountType,
         DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         name = BoundedText.Required(
             name,
             200,

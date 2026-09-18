@@ -209,13 +209,11 @@ public sealed class ConnectionResource
             nameof(externalReference),
             "An external reference between 1 and 200 characters is required.");
 
-        if ((account is null) == (card is null))
-        {
-            throw new ArgumentException("Exactly one mapped resource is required.");
-        }
-
-        var owner = account?.User ?? card!.User;
-        if (owner.PublicId != connection.User.PublicId)
+        var target = TransactionTarget.Of(
+            account,
+            card,
+            message: "Exactly one mapped resource is required.");
+        if (target.Owner.PublicId != connection.User.PublicId)
         {
             throw new ArgumentException(
                 "The connection and mapped resource must have the same owner.");

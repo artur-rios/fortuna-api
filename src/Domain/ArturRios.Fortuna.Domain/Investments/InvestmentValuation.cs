@@ -28,6 +28,7 @@ public sealed class InvestmentValuation : RecordLifecycleEntity
 
     public void ReplaceValue(decimal value, DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         Value = value;
         MarkUpdated(updatedAt);
     }
