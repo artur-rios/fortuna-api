@@ -31,6 +31,14 @@ public sealed record BillingCycle(
         var periodStart = InMonth(previousMonth.Year, previousMonth.Month, closingDay).AddDays(1);
         var dueMonth = dueDay > closingDay ? closingDate : closingDate.AddMonths(1);
         var dueDate = InMonth(dueMonth.Year, dueMonth.Month, dueDay);
+        if (dueDate <= closingDate)
+        {
+            // Clamping a late due day to a short month can land it on (or before) the
+            // closing date, e.g. closing 30 / due 31 in April; the bill is then due the
+            // following month.
+            var followingMonth = dueMonth.AddMonths(1);
+            dueDate = InMonth(followingMonth.Year, followingMonth.Month, dueDay);
+        }
 
         return new BillingCycle(periodStart, closingDate, closingDate, dueDate);
     }

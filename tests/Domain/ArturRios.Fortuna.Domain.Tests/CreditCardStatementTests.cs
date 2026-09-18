@@ -39,6 +39,25 @@ public sealed class CreditCardStatementTests
         Assert.Equal(new DateOnly(2027, 3, 5), cycle.DueDate);
     }
 
+    [UnitTheory]
+    [InlineData("2026-04-15", 30, 31, "2026-04-30", "2026-05-31")]
+    [InlineData("2027-02-10", 28, 29, "2027-02-28", "2027-03-29")]
+    [InlineData("2027-02-10", 29, 30, "2027-02-28", "2027-03-30")]
+    public void GivenDueDayClampedOntoClosingDate_WhenCycleCalculated_ThenDueMovesToNextMonth(
+        string date,
+        short closingDay,
+        short dueDay,
+        string expectedClosing,
+        string expectedDue)
+    {
+        var cycle = BillingCycle.Containing(DateOnly.Parse(date), closingDay, dueDay);
+        var statement = new CreditCardStatement(Card(), cycle, Now);
+
+        Assert.Equal(DateOnly.Parse(expectedClosing), cycle.ClosingDate);
+        Assert.Equal(DateOnly.Parse(expectedDue), cycle.DueDate);
+        Assert.True(statement.DueDate > statement.ClosingDate);
+    }
+
     [UnitFact]
     public void GivenCharge_WhenAssigned_ThenStatementTotalAndLinkAreUpdated()
     {
