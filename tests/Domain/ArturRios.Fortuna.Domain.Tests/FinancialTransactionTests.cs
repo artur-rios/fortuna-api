@@ -394,6 +394,75 @@ public sealed class FinancialTransactionTests
     }
 
     [UnitFact]
+    public void GivenForeignCurrencyCharge_WhenAmountEdited_ThenStaleConversionIsCleared()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Card(user),
+            Category(user),
+            TransactionDirection.Expense,
+            125.50m,
+            new DateOnly(2026, 9, 4),
+            Now);
+        transaction.RecordForeignCurrencyDetails(
+            25m,
+            new Currency("USD", "US dollar", 2),
+            5.02m,
+            new DateOnly(2026, 9, 3),
+            Now);
+
+        transaction.UpdateDetails(
+            transaction.Category,
+            transaction.Direction,
+            130m,
+            transaction.OccurredOn,
+            null,
+            null,
+            null,
+            Now.AddMinutes(1));
+
+        Assert.Equal(130m, transaction.Amount);
+        Assert.Null(transaction.OriginalAmount);
+        Assert.Null(transaction.OriginalCurrency);
+        Assert.Null(transaction.AppliedRate);
+        Assert.Null(transaction.RateDate);
+    }
+
+    [UnitFact]
+    public void GivenForeignCurrencyCharge_WhenOnlyDescriptionEdited_ThenConversionIsKept()
+    {
+        var user = User();
+        var transaction = new FinancialTransaction(
+            user,
+            Card(user),
+            Category(user),
+            TransactionDirection.Expense,
+            125.50m,
+            new DateOnly(2026, 9, 4),
+            Now);
+        transaction.RecordForeignCurrencyDetails(
+            25m,
+            new Currency("USD", "US dollar", 2),
+            5.02m,
+            new DateOnly(2026, 9, 3),
+            Now);
+
+        transaction.UpdateDetails(
+            transaction.Category,
+            transaction.Direction,
+            125.50m,
+            transaction.OccurredOn,
+            "Hotel",
+            null,
+            null,
+            Now.AddMinutes(1));
+
+        Assert.Equal(25m, transaction.OriginalAmount);
+        Assert.Equal(5.02m, transaction.AppliedRate);
+    }
+
+    [UnitFact]
     public void GivenImportedTransaction_WhenUpdated_ThenItIsMarkedManuallyCorrected()
     {
         var user = User();

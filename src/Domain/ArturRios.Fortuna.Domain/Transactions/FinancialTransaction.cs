@@ -389,6 +389,13 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
                 "A transaction amount must be greater than zero.");
         }
 
+        if (amount != Amount)
+        {
+            // The edited amount is expressed in the billed currency, so a recorded
+            // conversion no longer explains it and would report a stale original amount.
+            ClearForeignCurrencyDetails();
+        }
+
         Category = category;
         CategoryId = category.Id;
         Counterparty = counterparty;
@@ -496,5 +503,14 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         InstallmentPlanId = installmentPlan.Id;
         InstallmentNumber = installmentNumber;
         MarkUpdated(updatedAt);
+    }
+
+    private void ClearForeignCurrencyDetails()
+    {
+        OriginalAmount = null;
+        OriginalCurrency = null;
+        OriginalCurrencyId = null;
+        AppliedRate = null;
+        RateDate = null;
     }
 }
