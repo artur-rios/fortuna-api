@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using ArturRios.Fortuna.Data.Configuration;
 
 namespace ArturRios.Fortuna.WebApi.Configuration;
@@ -48,6 +49,9 @@ public sealed record FortunaOptions
     public IReadOnlyCollection<string> RatesCurrencies { get; init; } = [];
     public decimal ReconciliationAmountTolerance { get; init; }
     public int ReconciliationDateToleranceDays { get; init; }
+    public int MetricsPort { get; init; } = DefaultMetricsPort;
+
+    public const int DefaultMetricsPort = 9464;
 
     public static FortunaOptions From(Func<string, string?> read)
     {
@@ -148,7 +152,8 @@ public sealed record FortunaOptions
             ReconciliationDateToleranceDays = NonNegativeInteger(
                 read("FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS"),
                 "FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS",
-                1)
+                1),
+            MetricsPort = Port(read("FORTUNA_METRICS_PORT"), "FORTUNA_METRICS_PORT", DefaultMetricsPort)
         };
 
         if (!DatabaseProvider.IsSupported(options.DataDatabaseType))
@@ -272,6 +277,20 @@ public sealed record FortunaOptions
             ? parsed
             : throw new InvalidOperationException(
                 $"Environment variable '{key}' must be a non-negative integer.");
+    }
+
+    private static int Port(string? value, string key, int fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        return int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) &&
+            parsed <= IPEndPoint.MaxPort
+            ? parsed
+            : throw new InvalidOperationException(
+                $"Environment variable '{key}' must be a TCP port between 0 and 65535.");
     }
 
     private static decimal NonNegativeDecimal(string? value, string key, decimal fallback)
