@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ArturRios.Fortuna.Domain.Guards;
+using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -42,8 +43,13 @@ public sealed class ImportJob
         DateOnly? periodStart,
         DateOnly? periodEnd,
         DateTimeOffset createdAt)
-        : this(user, connection, connection?.DataSourceType ?? TransactionSourceType.Manual,
-            periodStart, periodEnd, createdAt)
+        : this(
+            user,
+            connection ?? throw new ArgumentNullException(nameof(connection)),
+            connection.DataSourceType,
+            periodStart,
+            periodEnd,
+            createdAt)
     {
     }
 
@@ -103,13 +109,17 @@ public sealed class ImportJob
     public DateTimeOffset UpdatedAt { get; private set; }
     public IReadOnlyCollection<ImportedRecord> Records => _records;
 
+    private JobPhase Phase => Status switch
+    {
+        ImportJobStatus.Pending => JobPhase.Pending,
+        ImportJobStatus.Running => JobPhase.Running,
+        ImportJobStatus.Completed => JobPhase.Finished,
+        _ => JobPhase.Failed
+    };
+
     public void Start(DateTimeOffset updatedAt)
     {
-        if (Status != ImportJobStatus.Pending)
-        {
-            throw new InvalidOperationException("Only a pending import job can start.");
-        }
-
+        JobLifecycle.EnsureCanStart(Phase, "import job");
         Status = ImportJobStatus.Running;
         FailureReason = null;
         UpdatedAt = updatedAt;
@@ -138,11 +148,7 @@ public sealed class ImportJob
         int rejectedCount,
         DateTimeOffset updatedAt)
     {
-        if (Status != ImportJobStatus.Running)
-        {
-            throw new InvalidOperationException("Only a running import job can complete.");
-        }
-
+        JobLifecycle.EnsureCanComplete(Phase, "import job");
         if (importedCount < 0 || duplicateCount < 0 || rejectedCount < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(importedCount));
@@ -156,31 +162,17 @@ public sealed class ImportJob
         UpdatedAt = updatedAt;
     }
 
-    public void Fail(string reason, DateTimeOffset updatedAt)
+    public void Fail(string? reason, DateTimeOffset updatedAt)
     {
-        if (Status is not (ImportJobStatus.Pending or ImportJobStatus.Running))
-        {
-            throw new InvalidOperationException("Only an unfinished import job can fail.");
-        }
-
-        reason = BoundedText.Required(
-            reason,
-            1000,
-            nameof(reason),
-            "A failure reason between 1 and 1000 characters is required.");
-
-        FailureReason = reason;
+        JobLifecycle.EnsureCanFail(Phase, "import job");
+        FailureReason = JobLifecycle.FailureReason(reason);
         Status = ImportJobStatus.Failed;
         UpdatedAt = updatedAt;
     }
 
     public void Retry(DateTimeOffset updatedAt)
     {
-        if (Status != ImportJobStatus.Failed)
-        {
-            throw new InvalidOperationException("Only a failed import job can be retried.");
-        }
-
+        JobLifecycle.EnsureCanRetry(Phase, "import job");
         Status = ImportJobStatus.Pending;
         ImportedCount = 0;
         DuplicateCount = 0;
@@ -258,7 +250,7 @@ public sealed class ImportedRecord
             throw new ArgumentException("A raw payload is required.", nameof(rawPayload));
         }
 
-        using var _ = JsonDocument.Parse(rawPayload);
+        EnsureJson(rawPayload);
         if (!Enum.IsDefined(outcome))
         {
             throw new ArgumentOutOfRangeException(nameof(outcome));
@@ -282,6 +274,13 @@ public sealed class ImportedRecord
             1000,
             nameof(rejectionReason),
             "A rejection reason cannot exceed 1000 characters.");
+        if (outcome == ImportedRecordOutcome.Rejected && RejectionReason is null)
+        {
+            throw new ArgumentException(
+                "A rejected record requires a rejection reason.",
+                nameof(rejectionReason));
+        }
+
         Amount = amount;
         OccurredOn = occurredOn;
     }
@@ -296,4 +295,20 @@ public sealed class ImportedRecord
     public decimal? Amount { get; private set; }
     public DateOnly? OccurredOn { get; private set; }
     public FinancialTransaction? Transaction { get; private set; }
+
+    private static void EnsureJson(string rawPayload)
+    {
+        try
+        {
+            using var _ = JsonDocument.Parse(rawPayload);
+        }
+        catch (JsonException exception)
+        {
+            // Reported as the argument error it is rather than leaking a parser exception.
+            throw new ArgumentException(
+                "The raw payload must be a JSON document.",
+                nameof(rawPayload),
+                exception);
+        }
+    }
 }

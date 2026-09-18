@@ -85,6 +85,20 @@ public sealed class DataExportTests
             kind));
     }
 
+    [UnitTheory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public void GivenBlankReason_WhenExportFails_ThenGenericReasonIsRecorded(string? reason)
+    {
+        var export = Export(User());
+        export.Start(Now);
+
+        export.Fail(reason, Now.AddMinutes(1));
+
+        Assert.Equal(DataExportStatus.Failed, export.Status);
+        Assert.Equal("The job failed.", export.FailureReason);
+    }
+
     private static DataExport Export(UserProfile user) => new(
         user,
         DataExportFormat.Csv,

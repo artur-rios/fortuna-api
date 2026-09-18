@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Ingestion;
+using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Ingestion;
@@ -128,10 +129,10 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
                     job,
                     row.RawPayload,
                     ImportedRecordOutcome.Rejected,
-                    row.Amount,
+                    row.Amount is > 0 ? row.Amount : null,
                     row.OccurredOn,
                     ValidExternalId(row.ExternalId),
-                    row.RejectionReason));
+                    row.RejectionReason ?? RejectionReason(row)));
                 rejected++;
                 continue;
             }
@@ -302,6 +303,11 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
                 item.ImportedRecord != null && item.ImportedRecord.ExternalId == externalId,
                 cancellationToken);
     }
+
+    private static string RejectionReason(ExcelWorkbookRow row) =>
+        row.OccurredOn is null ? ExcelImportMessages.RowDateInvalid
+        : row.Amount is not > 0 ? ExcelImportMessages.RowAmountInvalid
+        : ExcelImportMessages.RowDirectionInvalid;
 
     private async Task AssignToStatementAsync(
         FinancialTransaction transaction,

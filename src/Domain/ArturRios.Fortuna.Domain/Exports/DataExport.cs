@@ -107,13 +107,17 @@ public sealed class DataExport
         BackgroundJobId = job.Id;
     }
 
+    private JobPhase Phase => Status switch
+    {
+        DataExportStatus.Pending => JobPhase.Pending,
+        DataExportStatus.Running => JobPhase.Running,
+        DataExportStatus.Completed => JobPhase.Finished,
+        _ => JobPhase.Failed
+    };
+
     public void Start(DateTimeOffset updatedAt)
     {
-        if (Status != DataExportStatus.Pending)
-        {
-            throw new InvalidOperationException("Only a pending export can start.");
-        }
-
+        JobLifecycle.EnsureCanStart(Phase, "export");
         Status = DataExportStatus.Running;
         FailureReason = null;
         UpdatedAt = updatedAt;
@@ -125,11 +129,7 @@ public sealed class DataExport
         string storageKey,
         DateTimeOffset updatedAt)
     {
-        if (Status != DataExportStatus.Running)
-        {
-            throw new InvalidOperationException("Only a running export can complete.");
-        }
-
+        JobLifecycle.EnsureCanComplete(Phase, "export");
         if (rowCount < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(rowCount));
@@ -143,14 +143,10 @@ public sealed class DataExport
         UpdatedAt = updatedAt;
     }
 
-    public void Fail(string reason, DateTimeOffset updatedAt)
+    public void Fail(string? reason, DateTimeOffset updatedAt)
     {
-        if (Status is not (DataExportStatus.Pending or DataExportStatus.Running))
-        {
-            throw new InvalidOperationException("Only an unfinished export can fail.");
-        }
-
-        FailureReason = BoundedText.Required(reason, 1000, nameof(reason));
+        JobLifecycle.EnsureCanFail(Phase, "export");
+        FailureReason = JobLifecycle.FailureReason(reason);
         Status = DataExportStatus.Failed;
         UpdatedAt = updatedAt;
     }
