@@ -177,7 +177,7 @@ public sealed class DrillIntoAggregationQueryHandler(
         {
             var records = await categories.ListAsync(
                 userId,
-                includeDeleted: false,
+                includeDeleted: true,
                 includeUsageCounts: false,
                 CancellationToken.None);
             foreach (var selection in key.Selections.Where(item =>

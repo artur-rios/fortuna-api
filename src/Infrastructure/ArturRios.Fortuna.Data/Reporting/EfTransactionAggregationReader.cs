@@ -2,6 +2,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Shared.Reporting;
 using Microsoft.EntityFrameworkCore;
 
@@ -119,6 +120,8 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
             ? string.Empty
             : $"AND ({dimension.Where})";
         var selectionWhere = BuildSelectionWhere(selections);
+        var live = TransactionVisibility.LiveSql("item", "category", "account", "card");
+        var notTransfer = TransactionVisibility.NotTransferSql("item", "fortuna.transfer");
 
         return $"""
             WITH RECURSIVE category_roots AS (
@@ -150,16 +153,9 @@ public sealed class EfTransactionAggregationReader(AppDbContext context)
                     ON counterparty.id = item.counterparty_id
                 {dimension.Joins}
                 WHERE owner.public_id = @userId
-                  AND NOT item.is_deleted
-                  AND NOT category.is_deleted
-                  AND (account.id IS NULL OR NOT account.is_deleted)
-                  AND (card.id IS NULL OR NOT card.is_deleted)
+                  AND {live}
+                  AND {notTransfer}
                   AND item.occurred_on BETWEEN @from AND @to
-                  AND NOT EXISTS (
-                      SELECT 1
-                      FROM fortuna.transfer transfer
-                      WHERE transfer.outbound_transaction_id = item.id
-                         OR transfer.inbound_transaction_id = item.id)
                   AND (@financialAccountId::uuid IS NULL OR
                        account.public_id = @financialAccountId)
                   AND (@creditCardId::uuid IS NULL OR card.public_id = @creditCardId)

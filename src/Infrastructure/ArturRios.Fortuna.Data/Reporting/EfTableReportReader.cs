@@ -2,6 +2,7 @@ using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Shared.Reporting;
 using Microsoft.EntityFrameworkCore;
 
@@ -404,7 +405,7 @@ public sealed class EfTableReportReader(AppDbContext context) : ITableReportRead
             "JOIN fortuna.category category ON category.id = r.category_id " +
             "LEFT JOIN fortuna.counterparty counterparty ON counterparty.id = r.counterparty_id",
             "r.user_id = (SELECT id FROM fortuna.\"user\" WHERE public_id = @userId)",
-            "NOT r.is_deleted",
+            TransactionVisibility.LiveSql("r", "category", "account", "card"),
             "r.occurred_on DESC, r.public_id",
             "r.public_id",
             Uuid("id", "r.public_id"),

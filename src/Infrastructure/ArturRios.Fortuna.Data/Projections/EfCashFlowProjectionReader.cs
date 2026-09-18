@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Projections;
@@ -106,17 +107,14 @@ public sealed class EfCashFlowProjectionReader(AppDbContext context) : ICashFlow
 
         var history = await context.FinancialTransactions
             .AsNoTracking()
+            .WhereLive()
+            .WhereNotTransfer(context)
             .Where(transaction =>
                 transaction.User.PublicId == userId &&
                 transaction.FinancialAccountId != null &&
                 transaction.RecurringTransactionId == null &&
-                !transaction.IsDeleted &&
-                !transaction.FinancialAccount!.IsDeleted &&
                 transaction.OccurredOn >= historyFrom &&
-                transaction.OccurredOn <= asOf &&
-                !context.Transfers.Any(transfer =>
-                    transfer.OutboundTransactionId == transaction.Id ||
-                    transfer.InboundTransactionId == transaction.Id))
+                transaction.OccurredOn <= asOf)
             .Select(transaction => new CashFlowAmountSnapshot(
                 transaction.OccurredOn,
                 transaction.Currency.Code,
@@ -127,15 +125,12 @@ public sealed class EfCashFlowProjectionReader(AppDbContext context) : ICashFlow
             .ToArrayAsync(cancellationToken);
         var historyStartsOn = await context.FinancialTransactions
             .AsNoTracking()
+            .WhereLive()
+            .WhereNotTransfer(context)
             .Where(transaction =>
                 transaction.User.PublicId == userId &&
                 transaction.FinancialAccountId != null &&
-                !transaction.IsDeleted &&
-                !transaction.FinancialAccount!.IsDeleted &&
-                transaction.OccurredOn <= asOf &&
-                !context.Transfers.Any(transfer =>
-                    transfer.OutboundTransactionId == transaction.Id ||
-                    transfer.InboundTransactionId == transaction.Id))
+                transaction.OccurredOn <= asOf)
             .Select(transaction => (DateOnly?)transaction.OccurredOn)
             .MinAsync(cancellationToken);
 

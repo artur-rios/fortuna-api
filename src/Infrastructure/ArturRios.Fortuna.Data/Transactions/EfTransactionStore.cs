@@ -40,11 +40,8 @@ public sealed class EfTransactionStore(
         CancellationToken cancellationToken)
     {
         var grouped = await Filter(criteria)
-            .Where(transaction =>
-                !transaction.IsDeleted &&
-                !context.Transfers.Any(transfer =>
-                    transfer.OutboundTransactionId == transaction.Id ||
-                    transfer.InboundTransactionId == transaction.Id))
+            .WhereLive()
+            .WhereNotTransfer(context)
             .GroupBy(transaction => new
             {
                 transaction.Currency.Code,
@@ -775,7 +772,7 @@ public sealed class EfTransactionStore(
             .Where(transaction => transaction.User.PublicId == criteria.UserId);
         if (!criteria.IncludeDeleted)
         {
-            transactions = transactions.Where(transaction => !transaction.IsDeleted);
+            transactions = transactions.WhereLive();
         }
 
         if (criteria.From.HasValue)
@@ -813,14 +810,14 @@ public sealed class EfTransactionStore(
         if (criteria.TagId.HasValue)
         {
             transactions = transactions.Where(transaction => transaction.Tags.Any(tag =>
-                tag.PublicId == criteria.TagId.Value));
+                tag.PublicId == criteria.TagId.Value && !tag.IsDeleted));
         }
 
         foreach (var tagId in criteria.RequiredTagIds)
         {
             var requiredTagId = tagId;
             transactions = transactions.Where(transaction => transaction.Tags.Any(tag =>
-                tag.PublicId == requiredTagId));
+                tag.PublicId == requiredTagId && !tag.IsDeleted));
         }
 
         if (criteria.CounterpartyId.HasValue)
