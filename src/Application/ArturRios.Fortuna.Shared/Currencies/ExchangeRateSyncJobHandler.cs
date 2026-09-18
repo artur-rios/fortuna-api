@@ -45,6 +45,13 @@ public sealed class ExchangeRateSyncJobHandler(
                     batch.PublicationDate))
                 .ToArray();
             var result = await rates.UpsertPublishedAsync(candidates, cancellationToken);
+            if (result.MissingCurrencyCodes is { Count: > 0 } missing)
+            {
+                logger.LogWarning(
+                    "Exchange-rate synchronization skipped {SkippedCount} rates for currencies missing from the reference set: {CurrencyCodes}",
+                    result.SkippedCount,
+                    string.Join(", ", missing));
+            }
 
             logger.LogInformation(
                 "Exchange-rate synchronization stored {StoredCount} rates, left {UnchangedCount} unchanged, and rejected {RejectedCount} source rows",
