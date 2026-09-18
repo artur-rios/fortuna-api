@@ -12,9 +12,21 @@ public sealed class IngestionSourceRegistryTests
         var source = new StubSource("file-upload");
         var registry = new IngestionSourceRegistry([source]);
 
-        var resolved = registry.Get("file-upload");
+        var found = registry.TryGet("FILE-UPLOAD", out var resolved);
 
+        Assert.True(found);
         Assert.Same(source, resolved);
+    }
+
+    [UnitFact]
+    public void GivenUnknownName_WhenResolved_ThenNoSourceIsReturned()
+    {
+        var registry = new IngestionSourceRegistry([new StubSource("file-upload")]);
+
+        var found = registry.TryGet("pluggy", out var resolved);
+
+        Assert.False(found);
+        Assert.Null(resolved);
     }
 
     [UnitFact]

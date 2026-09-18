@@ -1,6 +1,8 @@
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Domain.Jobs;
+using ArturRios.Output;
 using ArturRios.Util.Test.Attributes;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ArturRios.Fortuna.Shared.Tests;
 
@@ -47,7 +49,7 @@ public sealed class BackgroundJobProcessorTests
         var job = BackgroundJob.Create("import", "{\"row\":1}", "request", null, DateTimeOffset.UtcNow);
         var store = new StubStore(job);
         var handler = new StubHandler();
-        var processor = new BackgroundJobProcessor(store, [handler], TimeProvider.System);
+        var processor = Processor(store, handler);
 
         await processor.ProcessAsync(job.Id, CancellationToken.None);
 
@@ -59,7 +61,7 @@ public sealed class BackgroundJobProcessorTests
     public async Task GivenMissingJob_WhenProcessed_ThenNothingIsSaved()
     {
         var store = new StubStore(null);
-        var processor = new BackgroundJobProcessor(store, [], TimeProvider.System);
+        var processor = Processor(store);
 
         await processor.ProcessAsync(Guid.NewGuid(), CancellationToken.None);
 
@@ -71,7 +73,7 @@ public sealed class BackgroundJobProcessorTests
     {
         var job = BackgroundJob.Create("missing", "{}", "request", null, DateTimeOffset.UtcNow);
         var store = new StubStore(job);
-        var processor = new BackgroundJobProcessor(store, [], TimeProvider.System);
+        var processor = Processor(store);
 
         await processor.ProcessAsync(job.Id, CancellationToken.None);
 
@@ -85,7 +87,7 @@ public sealed class BackgroundJobProcessorTests
     {
         var job = BackgroundJob.Create("import", "{}", "request", null, DateTimeOffset.UtcNow);
         var store = new StubStore(job);
-        var processor = new BackgroundJobProcessor(store, [new StubHandler(new InvalidDataException("bad file"))], TimeProvider.System);
+        var processor = Processor(store, new StubHandler(new InvalidDataException("bad file")));
 
         await processor.ProcessAsync(job.Id, CancellationToken.None);
 
@@ -101,7 +103,7 @@ public sealed class BackgroundJobProcessorTests
         var store = new StubStore(job);
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
-        var processor = new BackgroundJobProcessor(store, [new StubHandler(new OperationCanceledException(cancellation.Token))], TimeProvider.System);
+        var processor = Processor(store, new StubHandler(new OperationCanceledException(cancellation.Token)));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             processor.ProcessAsync(job.Id, cancellation.Token));
@@ -109,12 +111,71 @@ public sealed class BackgroundJobProcessorTests
         Assert.Equal(BackgroundJobState.Pending, job.State);
     }
 
-    private sealed class StubHandler(Exception? exception = null) : IBackgroundJobHandler
+    [UnitFact]
+    public async Task GivenHandlerReturnsErrors_WhenProcessed_ThenJobFailsWithJoinedErrors()
+    {
+        var job = BackgroundJob.Create("import", "{}", "request", null, DateTimeOffset.UtcNow);
+        var store = new StubStore(job);
+        var handler = new StubHandler(errors: ["The file is invalid.", "Row 2 is invalid."]);
+
+        await Processor(store, handler).ProcessAsync(job.Id, CancellationToken.None);
+
+        Assert.Equal(BackgroundJobState.Failed, job.State);
+        Assert.Equal("The file is invalid. Row 2 is invalid.", job.FailureReason);
+    }
+
+    [UnitFact]
+    public async Task GivenJobInterruptedWhileRunning_WhenProcessedAgain_ThenItResumesAndSucceeds()
+    {
+        var job = BackgroundJob.Create("import", "{}", "request", null, DateTimeOffset.UtcNow);
+        job.Start(DateTimeOffset.UtcNow);
+        var store = new StubStore(job);
+        var handler = new StubHandler();
+
+        await Processor(store, handler).ProcessAsync(job.Id, CancellationToken.None);
+
+        Assert.Equal("{}", handler.Payload);
+        Assert.Equal(BackgroundJobState.Succeeded, job.State);
+        Assert.Equal(1, store.SaveCount);
+    }
+
+    [UnitFact]
+    public async Task GivenFinishedJob_WhenProcessedAgain_ThenHandlerIsNotRun()
+    {
+        var job = BackgroundJob.Create("import", "{}", "request", null, DateTimeOffset.UtcNow);
+        job.Start(DateTimeOffset.UtcNow);
+        job.Succeed(DateTimeOffset.UtcNow);
+        var store = new StubStore(job);
+        var handler = new StubHandler();
+
+        await Processor(store, handler).ProcessAsync(job.Id, CancellationToken.None);
+
+        Assert.Null(handler.Payload);
+        Assert.Equal(0, store.SaveCount);
+    }
+
+    [UnitFact]
+    public async Task GivenStartCannotBeSaved_WhenProcessed_ThenHandlerIsNotRunAndFailurePropagates()
+    {
+        var job = BackgroundJob.Create("import", "{}", "request", null, DateTimeOffset.UtcNow);
+        var store = new StubStore(job) { FailSaves = true };
+        var handler = new StubHandler();
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            Processor(store, handler).ProcessAsync(job.Id, CancellationToken.None));
+
+        Assert.Null(handler.Payload);
+    }
+
+    private static BackgroundJobProcessor Processor(IBackgroundJobStore store, params IBackgroundJobHandler[] handlers) =>
+        new(store, handlers, TimeProvider.System, NullLogger<BackgroundJobProcessor>.Instance);
+
+    private sealed class StubHandler(Exception? exception = null, string[]? errors = null) : IBackgroundJobHandler
     {
         public string JobType => "import";
         public string? Payload { get; private set; }
 
-        public Task ExecuteAsync(string payload, CancellationToken cancellationToken)
+        public Task<ProcessOutput> ExecuteAsync(string payload, CancellationToken cancellationToken)
         {
             if (exception is not null)
             {
@@ -123,7 +184,9 @@ public sealed class BackgroundJobProcessorTests
 
             Payload = payload;
 
-            return Task.CompletedTask;
+            return Task.FromResult(errors is null
+                ? ProcessOutput.New
+                : ProcessOutput.New.WithErrors(errors));
         }
     }
 
@@ -148,8 +211,15 @@ public sealed class BackgroundJobProcessorTests
         public Task<IReadOnlyList<BackgroundJob>> RecoverAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<BackgroundJob>>([]);
 
+        public bool FailSaves { get; init; }
+
         public Task SaveAsync(BackgroundJob changedJob, CancellationToken cancellationToken)
         {
+            if (FailSaves)
+            {
+                return Task.FromException(new IOException("database unavailable"));
+            }
+
             SaveCount++;
 
             return Task.CompletedTask;

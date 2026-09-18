@@ -12,6 +12,7 @@ using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Attachments;
+using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -35,11 +36,14 @@ public sealed class PersonalDataArchiveTests
             {
                 await context.Database.MigrateAsync();
                 userId = await SeedAsync(context, objects);
-                var result = await new EfPersonalDataArchiveBuilder(context, objects).BuildAsync(
+                var built = await new EfPersonalDataArchiveBuilder(context, objects).BuildAsync(
                     userId,
                     Now,
                     Now.AddHours(24),
                     CancellationToken.None);
+
+                Assert.Equal(PersonalDataArchiveOutcome.Built, built.Outcome);
+                var result = built.Archive!;
 
                 Assert.Equal(PersonalDataArchiveCoverage.Included.Count, result.Parts.Count);
                 using var archive = new ZipArchive(
@@ -90,6 +94,30 @@ public sealed class PersonalDataArchiveTests
     }
 
     [FunctionalFact]
+    public async Task GivenUnknownUser_WhenArchiveBuilt_ThenUserNotFoundIsReturned()
+    {
+        var path = TemporaryDatabasePath();
+        try
+        {
+            await using var context = CreateContext(path);
+            await context.Database.MigrateAsync();
+
+            var result = await new EfPersonalDataArchiveBuilder(context, new MemoryObjectStore()).BuildAsync(
+                Guid.NewGuid(),
+                Now,
+                Now.AddHours(24),
+                CancellationToken.None);
+
+            Assert.Equal(PersonalDataArchiveOutcome.UserNotFound, result.Outcome);
+            Assert.Null(result.Archive);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [FunctionalFact]
     public async Task GivenProfileOnly_WhenArchiveBuilt_ThenEveryPartExistsAndNonProfilePartsAreEmpty()
     {
         var path = TemporaryDatabasePath();
@@ -103,11 +131,11 @@ public sealed class PersonalDataArchiveTests
             context.AddRange(currency, user);
             await context.SaveChangesAsync();
 
-            var result = await new EfPersonalDataArchiveBuilder(context, objects).BuildAsync(
+            var result = (await new EfPersonalDataArchiveBuilder(context, objects).BuildAsync(
                 user.PublicId,
                 Now,
                 Now.AddHours(24),
-                CancellationToken.None);
+                CancellationToken.None)).Archive!;
 
             using var archive = new ZipArchive(
                 new MemoryStream(result.Content, writable: false),
@@ -283,8 +311,10 @@ public sealed class PersonalDataArchiveTests
             objects[key] = copy.ToArray();
         }
 
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
-            Task.FromResult<Stream>(new MemoryStream(objects[key], writable: false));
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+            Task.FromResult(objects.TryGetValue(key, out var content)
+                ? AttachmentReadResult.Found(new MemoryStream(content, writable: false))
+                : AttachmentReadResult.NotFound);
 
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {

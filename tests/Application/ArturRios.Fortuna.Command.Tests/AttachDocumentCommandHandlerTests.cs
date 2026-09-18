@@ -221,7 +221,7 @@ public sealed class AttachDocumentCommandHandlerTests
             return Task.CompletedTask;
         }
 
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
     }
 

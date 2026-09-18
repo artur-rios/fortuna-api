@@ -19,10 +19,12 @@ public sealed class S3AttachmentStoreTests
         await using var content = new MemoryStream(Encoding.UTF8.GetBytes("receipt"));
 
         await store.WriteAsync("user/receipt.txt", content, CancellationToken.None);
-        await using var result = await store.OpenReadAsync("user/receipt.txt", CancellationToken.None);
+        var result = await store.OpenReadAsync("user/receipt.txt", CancellationToken.None);
         await store.DeleteAsync("user/receipt.txt", CancellationToken.None);
 
-        using var reader = new StreamReader(result);
+        Assert.True(result.IsFound);
+        await using var stored = result.Content;
+        using var reader = new StreamReader(stored);
         Assert.Equal("stored", await reader.ReadToEndAsync(CancellationToken.None));
         Assert.Equal("receipts", client.PutRequest?.BucketName);
         Assert.Equal("user/receipt.txt", client.PutRequest?.Key);
@@ -51,13 +53,25 @@ public sealed class S3AttachmentStoreTests
     }
 
     [UnitFact]
-    public async Task GivenMissingObject_WhenOpened_ThenPortableNotFoundExceptionIsThrown()
+    public async Task GivenMissingObject_WhenOpened_ThenNotFoundIsReturned()
     {
         using var client = new StubS3Client { MissingObject = true };
         var store = new S3AttachmentStore(client, "receipts");
 
-        await Assert.ThrowsAsync<AttachmentObjectNotFoundException>(() =>
-            store.OpenReadAsync("missing.pdf", CancellationToken.None));
+        var result = await store.OpenReadAsync("missing.pdf", CancellationToken.None);
+
+        Assert.Equal(AttachmentReadStatus.NotFound, result.Status);
+    }
+
+    [UnitFact]
+    public async Task GivenUnreachableBucket_WhenOpened_ThenUnavailableIsReturned()
+    {
+        using var client = new StubS3Client { FailRead = true };
+        var store = new S3AttachmentStore(client, "receipts");
+
+        var result = await store.OpenReadAsync("receipt.pdf", CancellationToken.None);
+
+        Assert.Equal(AttachmentReadStatus.Unavailable, result.Status);
     }
 
     [UnitTheory]
@@ -82,6 +96,7 @@ public sealed class S3AttachmentStoreTests
         public string? HealthBucket { get; private set; }
         public bool FailHealth { get; init; }
         public bool MissingObject { get; init; }
+        public bool FailRead { get; init; }
 
         public override Task<PutObjectResponse> PutObjectAsync(
             PutObjectRequest request,
@@ -98,6 +113,14 @@ public sealed class S3AttachmentStoreTests
             CancellationToken cancellationToken = default)
         {
             GetRequest = (bucketName, key);
+            if (FailRead)
+            {
+                return Task.FromException<GetObjectResponse>(new AmazonS3Exception("offline")
+                {
+                    StatusCode = System.Net.HttpStatusCode.ServiceUnavailable
+                });
+            }
+
             if (MissingObject)
             {
                 return Task.FromException<GetObjectResponse>(new AmazonS3Exception("missing")
@@ -122,15 +145,15 @@ public sealed class S3AttachmentStoreTests
             return Task.FromResult(new DeleteObjectResponse());
         }
 
-        public override Task<GetBucketAclResponse> GetBucketAclAsync(
-            GetBucketAclRequest request,
+        public override Task<HeadBucketResponse> HeadBucketAsync(
+            HeadBucketRequest request,
             CancellationToken cancellationToken = default)
         {
             HealthBucket = request.BucketName;
 
             return FailHealth
-                ? Task.FromException<GetBucketAclResponse>(new AmazonS3Exception("offline"))
-                : Task.FromResult(new GetBucketAclResponse());
+                ? Task.FromException<HeadBucketResponse>(new AmazonS3Exception("offline"))
+                : Task.FromResult(new HeadBucketResponse());
         }
     }
 }

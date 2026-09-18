@@ -34,8 +34,26 @@ public sealed class ExchangeRateSyncHostedService(
             now = timeProvider.GetUtcNow();
             if (schedule.Matches(now))
             {
-                await EnqueueAsync(now, stoppingToken);
+                await TryEnqueueAsync(now, stoppingToken);
             }
+        }
+    }
+
+    private async Task TryEnqueueAsync(DateTimeOffset now, CancellationToken stoppingToken)
+    {
+        try
+        {
+            await EnqueueAsync(now, stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // A failed tick (for example a database outage) must not stop the schedule; the next
+            // matching minute tries again.
+            logger.LogError(exception, "Scheduling the exchange-rate synchronization job failed");
         }
     }
 

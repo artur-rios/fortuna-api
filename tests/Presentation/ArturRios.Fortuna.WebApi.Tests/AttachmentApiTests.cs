@@ -864,7 +864,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             Task.FromResult(false);
         public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
         public Task DeleteAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
@@ -879,7 +879,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             inner.IsHealthyAsync(cancellationToken);
         public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken) =>
             inner.WriteAsync(key, content, cancellationToken);
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
             inner.OpenReadAsync(key, cancellationToken);
         public Task DeleteAsync(string key, CancellationToken cancellationToken) =>
             throw new IOException("delete unavailable");

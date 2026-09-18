@@ -350,7 +350,10 @@ try
         options.RatesCurrencies));
     builder.Services.AddSingleton<IRateLimitDelay, RateLimitDelay>();
     builder.Services.AddHttpClient<IPtaxRateClient, PtaxRateClient>(client =>
-        client.BaseAddress = options.RatesSourceBaseUri ?? new Uri("http://localhost/"));
+    {
+        client.BaseAddress = options.RatesSourceBaseUri ?? new Uri("http://localhost/");
+        client.Timeout = HttpRetryPolicy.RequestTimeout;
+    });
     builder.Services.AddScoped<IBackgroundJobHandler, ExchangeRateSyncJobHandler>();
     builder.Services.AddScoped<ILocalAccountStore, EfLocalAccountStore>();
     builder.Services.AddSingleton<ILocalCredentialStoreAvailability, LocalCredentialStoreAvailability>();
@@ -782,9 +785,15 @@ try
         !options.LocalAuthEnabled));
     builder.Services.AddSingleton<IIngestionSource, PluggyIngestionSource>();
     builder.Services.AddHttpClient<IPluggyConnectionGateway, PluggyConnectionGateway>(client =>
-        client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/"));
+    {
+        client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/");
+        client.Timeout = HttpRetryPolicy.RequestTimeout;
+    });
     builder.Services.AddHttpClient<IPluggySynchronizationGateway, PluggySynchronizationGateway>(client =>
-        client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/"));
+    {
+        client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/");
+        client.Timeout = HttpRetryPolicy.RequestTimeout;
+    });
     builder.Services.AddHttpClient(OperationalHealthClientNames.Aggregator, client =>
     {
         client.BaseAddress = options.PluggyBaseUri ?? new Uri("http://localhost/");

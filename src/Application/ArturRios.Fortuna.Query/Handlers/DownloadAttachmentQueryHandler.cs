@@ -59,9 +59,20 @@ public sealed class DownloadAttachmentQueryHandler(
                 return output.WithError(AttachmentMessages.StorageUnavailable);
             }
 
-            var content = await storage.OpenReadAsync(
+            var read = await storage.OpenReadAsync(
                 attachment.StorageKey,
                 CancellationToken.None);
+            if (read.Status == AttachmentReadStatus.NotFound)
+            {
+                await RecordDiscrepancyAsync(attachment.Id);
+
+                return output.WithError(AttachmentMessages.StoredObjectNotFound);
+            }
+
+            if (!read.IsFound)
+            {
+                return output.WithError(AttachmentMessages.StorageUnavailable);
+            }
 
             return output
                 .WithData(new DownloadAttachmentQueryOutput
@@ -70,15 +81,9 @@ public sealed class DownloadAttachmentQueryHandler(
                     FileName = attachment.FileName,
                     ContentType = attachment.ContentType,
                     SizeInBytes = attachment.SizeInBytes,
-                    Content = content
+                    Content = read.Content
                 })
                 .WithMessage(AttachmentMessages.DownloadedSuccessfully);
-        }
-        catch (AttachmentObjectNotFoundException)
-        {
-            await RecordDiscrepancyAsync(attachment.Id);
-
-            return output.WithError(AttachmentMessages.StoredObjectNotFound);
         }
         catch (Exception exception)
         {

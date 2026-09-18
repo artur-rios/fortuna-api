@@ -159,15 +159,10 @@ public sealed class GetPersonalDataExportQueryHandlerTests
 
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) =>
             Task.FromResult(Healthy);
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken)
-        {
-            if (Missing)
-            {
-                throw new AttachmentObjectNotFoundException(key);
-            }
-
-            return Task.FromResult<Stream>(new MemoryStream(Content, writable: false));
-        }
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+            Task.FromResult(Missing
+                ? AttachmentReadResult.NotFound
+                : AttachmentReadResult.Found(new MemoryStream(Content, writable: false)));
         public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
         public Task DeleteAsync(string key, CancellationToken cancellationToken) => Task.CompletedTask;

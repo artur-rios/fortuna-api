@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Ingestion;
+using ArturRios.Fortuna.Shared.Jobs;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Ingestion;
@@ -80,7 +81,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         return true;
     }
 
-    public async Task CompleteAsync(
+    public async Task<ImportCompletionResult> CompleteAsync(
         Guid importJobId,
         Guid userId,
         Guid targetId,
@@ -90,14 +91,19 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         DateTimeOffset completedAt,
         CancellationToken cancellationToken)
     {
-        var job = await context.ImportJobs.Include(item => item.User).SingleAsync(
+        var job = await context.ImportJobs.Include(item => item.User).SingleOrDefaultAsync(
             item => item.PublicId == importJobId &&
                 item.User.PublicId == userId &&
                 item.SourceType == TransactionSourceType.Excel,
             cancellationToken);
+        if (job is null)
+        {
+            return ImportCompletionResult.Of(ImportCompletionOutcome.JobNotFound);
+        }
+
         if (job.Status != ImportJobStatus.Running)
         {
-            return;
+            return ImportCompletionResult.Of(ImportCompletionOutcome.JobNotRunning);
         }
 
         var account = targetType == ImportTargetType.Account
@@ -112,7 +118,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
             : null;
         if ((account is null) == (card is null))
         {
-            throw new InvalidOperationException("The Excel import target is unavailable.");
+            return ImportCompletionResult.Of(ImportCompletionOutcome.TargetUnavailable);
         }
 
         var imported = 0;
@@ -202,23 +208,34 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
 
         job.Complete(imported, duplicates, rejected, completedAt);
         await context.SaveChangesAsync(cancellationToken);
+
+        return ImportCompletionResult.Completed;
     }
 
-    public async Task FailAsync(
+    public async Task<JobTransitionOutcome> FailAsync(
         Guid importJobId,
         string reason,
         DateTimeOffset failedAt,
         CancellationToken cancellationToken)
     {
-        var job = await context.ImportJobs.SingleAsync(
+        var job = await context.ImportJobs.SingleOrDefaultAsync(
             item => item.PublicId == importJobId &&
                 item.SourceType == TransactionSourceType.Excel,
             cancellationToken);
-        if (job.Status is ImportJobStatus.Pending or ImportJobStatus.Running)
+        if (job is null)
         {
-            job.Fail(reason, failedAt);
-            await context.SaveChangesAsync(cancellationToken);
+            return JobTransitionOutcome.NotFound;
         }
+
+        if (job.Status is not (ImportJobStatus.Pending or ImportJobStatus.Running))
+        {
+            return JobTransitionOutcome.NotRunning;
+        }
+
+        job.Fail(reason, failedAt);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return JobTransitionOutcome.Applied;
     }
 
     private async Task<Domain.Lifecycle.RecordLifecycleEntity?> TargetAsync(

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -160,14 +161,7 @@ public sealed class ImportJob
             throw new InvalidOperationException("Only an unfinished import job can fail.");
         }
 
-        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length > 1000)
-        {
-            throw new ArgumentException(
-                "A failure reason between 1 and 1000 characters is required.",
-                nameof(reason));
-        }
-
-        FailureReason = reason.Trim();
+        FailureReason = JobFailureReason.Normalize(reason);
         Status = ImportJobStatus.Failed;
         UpdatedAt = updatedAt;
     }

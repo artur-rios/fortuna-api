@@ -314,17 +314,23 @@ public sealed class EfUserErasureStore(
         var backups = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         foreach (var key in keys)
         {
-            try
-            {
-                await using var source = await objects.OpenReadAsync(key, cancellationToken);
-                using var copy = new MemoryStream();
-                await source.CopyToAsync(copy, cancellationToken);
-                backups[key] = copy.ToArray();
-            }
-            catch (AttachmentObjectNotFoundException)
+            var read = await objects.OpenReadAsync(key, cancellationToken);
+            if (read.Status == AttachmentReadStatus.NotFound)
             {
                 // A missing object is already physically erased; its metadata is still removed.
+                continue;
             }
+
+            if (!read.IsFound)
+            {
+                // Erasing without a backup could lose the object when the database rolls back.
+                throw new IOException($"Attachment storage is unavailable while reading '{key}'.");
+            }
+
+            await using var source = read.Content;
+            using var copy = new MemoryStream();
+            await source.CopyToAsync(copy, cancellationToken);
+            backups[key] = copy.ToArray();
         }
 
         return backups;

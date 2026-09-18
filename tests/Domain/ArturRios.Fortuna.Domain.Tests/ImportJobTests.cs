@@ -148,6 +148,21 @@ public sealed class ImportJobTests
         Assert.Equal(Now.AddMinutes(3), failed.UpdatedAt);
     }
 
+    [UnitTheory]
+    [InlineData("", "The job failed.")]
+    [InlineData(" parse error ", "parse error")]
+    public void GivenFailureReason_WhenImportJobFails_ThenReasonIsNormalizedLikeOtherJobs(
+        string reason,
+        string expected)
+    {
+        var job = new ImportJob(User(), TransactionSourceType.Excel, Now);
+
+        job.Fail(reason, Now.AddMinutes(1));
+
+        Assert.Equal(ImportJobStatus.Failed, job.Status);
+        Assert.Equal(expected, job.FailureReason);
+    }
+
     [UnitFact]
     public void GivenReauthenticationFailure_WhenConnectionMarked_ThenStatusChanges()
     {

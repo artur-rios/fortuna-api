@@ -146,13 +146,13 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
             Guid importJobId, DateTimeOffset startedAt, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task CompleteAsync(
+        public Task<ImportCompletionResult> CompleteAsync(
             Guid importJobId, Guid userId, Guid targetId, ImportTargetType targetType,
             bool createMissingCategories, IReadOnlyCollection<ExcelWorkbookRow> rows,
             DateTimeOffset completedAt, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task FailAsync(
+        public Task<JobTransitionOutcome> FailAsync(
             Guid importJobId, string reason, DateTimeOffset failedAt,
             CancellationToken cancellationToken) => throw new NotSupportedException();
     }
@@ -170,7 +170,7 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
                 valid ? null : ExcelImportMessages.WorkbookInvalid);
         }
 
-        public IReadOnlyCollection<ExcelWorkbookRow> Parse(
+        public ExcelWorkbookParseResult Parse(
             byte[] content, ExcelColumnMapping mapping) => throw new NotSupportedException();
     }
 

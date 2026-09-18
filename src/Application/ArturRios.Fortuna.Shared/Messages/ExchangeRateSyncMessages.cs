@@ -7,4 +7,7 @@ public static class ExchangeRateSyncMessages
     public const string SourceUnavailable = "The exchange-rate source is unavailable.";
     public const string PublicationUnavailable = "No exchange-rate publication is available for the requested date.";
     public const string ConfiguredCurrencyNotFound = "A configured exchange-rate currency is not supported.";
+
+    public static string CurrenciesMissing(IEnumerable<string> currencyCodes) =>
+        $"The exchange-rate source published no usable rate for: {string.Join(", ", currencyCodes)}.";
 }

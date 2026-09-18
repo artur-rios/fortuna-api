@@ -34,7 +34,7 @@ public sealed class EfPersonalDataArchiveBuilder(
         WriteIndented = true
     };
 
-    public async Task<PersonalDataArchive> BuildAsync(
+    public async Task<PersonalDataArchiveResult> BuildAsync(
         Guid userId,
         DateTimeOffset generatedAt,
         DateTimeOffset expiresAt,
@@ -42,13 +42,18 @@ public sealed class EfPersonalDataArchiveBuilder(
     {
         var internalUserId = await context.UserProfiles
             .Where(item => item.PublicId == userId)
-            .Select(item => item.Id)
-            .SingleAsync(cancellationToken);
+            .Select(item => (long?)item.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (internalUserId is null)
+        {
+            return PersonalDataArchiveResult.Failed(PersonalDataArchiveOutcome.UserNotFound);
+        }
+
         var subjectReference = await context.AuditSubjects
-            .Where(item => item.UserId == internalUserId)
+            .Where(item => item.UserId == internalUserId.Value)
             .Select(item => (Guid?)item.SubjectReference)
             .SingleOrDefaultAsync(cancellationToken);
-        var parts = await LoadPartsAsync(internalUserId, subjectReference, cancellationToken);
+        var parts = await LoadPartsAsync(internalUserId.Value, subjectReference, cancellationToken);
         var currencies = await context.Currencies.AsNoTracking()
             .ToDictionaryAsync(item => item.Id, item => item.Code, cancellationToken);
         var publicIds = PublicIdLookup(parts);
@@ -102,9 +107,15 @@ public sealed class EfPersonalDataArchiveBuilder(
                          .Records
                          .Cast<Attachment>())
             {
-                await using var source = await objects.OpenReadAsync(
-                    attachment.StorageKey,
-                    cancellationToken);
+                var read = await objects.OpenReadAsync(attachment.StorageKey, cancellationToken);
+                if (!read.IsFound)
+                {
+                    return PersonalDataArchiveResult.Failed(read.Status == AttachmentReadStatus.NotFound
+                        ? PersonalDataArchiveOutcome.AttachmentNotFound
+                        : PersonalDataArchiveOutcome.StorageUnavailable);
+                }
+
+                await using var source = read.Content;
                 var entry = archive.CreateEntry(
                     attachmentPaths[attachment.Id],
                     CompressionLevel.Optimal);
@@ -123,10 +134,10 @@ public sealed class EfPersonalDataArchiveBuilder(
             }, cancellationToken);
         }
 
-        return new PersonalDataArchive(
+        return PersonalDataArchiveResult.Built(new PersonalDataArchive(
             output.ToArray(),
             parts.Sum(part => part.Records.Count),
-            parts.Select(part => part.Descriptor.Name).ToArray());
+            parts.Select(part => part.Descriptor.Name).ToArray()));
     }
 
     private async Task<IReadOnlyList<LoadedPart>> LoadPartsAsync(

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Util.Test.Attributes;
 
@@ -28,8 +29,20 @@ public sealed class RecurringMaterializationJobHandlerTests
     {
         var handler = new RecurringMaterializationJobHandler(new StubMaterializer());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            handler.ExecuteAsync("null", CancellationToken.None));
+        var result = await handler.ExecuteAsync("null", CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains(BackgroundJobMessages.PayloadInvalid, result.Errors);
+    }
+
+    [UnitFact]
+    public async Task GivenMalformedPayload_WhenExecuted_ThenItIsRejectedWithoutThrowing()
+    {
+        var handler = new RecurringMaterializationJobHandler(new StubMaterializer());
+
+        var result = await handler.ExecuteAsync("{not json", CancellationToken.None);
+
+        Assert.Contains(BackgroundJobMessages.PayloadInvalid, result.Errors);
     }
 
     private sealed class StubMaterializer : IRecurringTransactionMaterializer

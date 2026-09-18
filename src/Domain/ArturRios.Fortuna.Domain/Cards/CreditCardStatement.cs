@@ -50,6 +50,14 @@ public sealed record BillingCycle(
     }
 }
 
+public enum ImportedSummaryOutcome
+{
+    Applied = 1,
+    StatementSettled = 2,
+    PaymentsNegative = 3,
+    DoesNotReconcile = 4
+}
+
 public sealed class CreditCardStatement : RecordLifecycleEntity
 {
     private CreditCardStatement()
@@ -64,9 +72,7 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
         CreditCard = creditCard ?? throw new ArgumentNullException(nameof(creditCard));
         CreditCardId = creditCard.Id;
         ArgumentNullException.ThrowIfNull(cycle);
-        if (cycle.PeriodStart > cycle.PeriodEnd ||
-            cycle.ClosingDate != cycle.PeriodEnd ||
-            cycle.DueDate <= cycle.ClosingDate)
+        if (!IsValidCycle(cycle))
         {
             throw new ArgumentException("A valid billing cycle is required.", nameof(cycle));
         }
@@ -143,23 +149,56 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
         decimal amountDue,
         DateTimeOffset updatedAt)
     {
+        var outcome = TryApplyImportedSummary(
+            previousBalance,
+            paymentsReceived,
+            purchaseTotal,
+            foreignTaxTotal,
+            otherEntries,
+            amountDue,
+            updatedAt);
+        switch (outcome)
+        {
+            case ImportedSummaryOutcome.StatementSettled:
+                throw new InvalidOperationException("A settled statement's composition is frozen.");
+            case ImportedSummaryOutcome.PaymentsNegative:
+                throw new ArgumentOutOfRangeException(nameof(paymentsReceived));
+            case ImportedSummaryOutcome.DoesNotReconcile:
+                throw new ArgumentException(
+                    "The imported statement summary does not reconcile.",
+                    nameof(amountDue));
+        }
+    }
+
+    /// <summary>
+    /// Applies an imported summary, reporting why it cannot be applied instead of throwing, so an
+    /// import can fail with a specific reason. The statement is unchanged unless the outcome is
+    /// <see cref="ImportedSummaryOutcome.Applied"/>.
+    /// </summary>
+    public ImportedSummaryOutcome TryApplyImportedSummary(
+        decimal previousBalance,
+        decimal paymentsReceived,
+        decimal purchaseTotal,
+        decimal foreignTaxTotal,
+        decimal otherEntries,
+        decimal amountDue,
+        DateTimeOffset updatedAt)
+    {
         if (Status == CreditCardStatementStatus.Settled)
         {
-            throw new InvalidOperationException("A settled statement's composition is frozen.");
+            return ImportedSummaryOutcome.StatementSettled;
         }
 
         if (paymentsReceived < 0m)
         {
-            throw new ArgumentOutOfRangeException(nameof(paymentsReceived));
+            return ImportedSummaryOutcome.PaymentsNegative;
         }
 
         var calculatedAmountDue = previousBalance - paymentsReceived + purchaseTotal +
             foreignTaxTotal + otherEntries;
         if (Math.Abs(calculatedAmountDue - amountDue) > 0.01m)
         {
-            throw new ArgumentException(
-                "The imported statement summary does not reconcile.",
-                nameof(amountDue));
+            return ImportedSummaryOutcome.DoesNotReconcile;
         }
 
         PreviousBalance = previousBalance;
@@ -169,7 +208,15 @@ public sealed class CreditCardStatement : RecordLifecycleEntity
         OtherEntries = otherEntries;
         AmountDue = amountDue;
         MarkUpdated(updatedAt);
+
+        return ImportedSummaryOutcome.Applied;
     }
+
+    /// <summary>Whether a billing cycle can back a statement (see the constructor's rules).</summary>
+    public static bool IsValidCycle(BillingCycle cycle) =>
+        cycle.PeriodStart <= cycle.PeriodEnd &&
+        cycle.ClosingDate == cycle.PeriodEnd &&
+        cycle.DueDate > cycle.ClosingDate;
 
     public void Settle(FinancialTransaction settlementTransaction, DateTimeOffset updatedAt)
     {

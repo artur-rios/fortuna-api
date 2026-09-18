@@ -4,6 +4,8 @@ public static class ImportJobMessages
 {
     public const string ProfileNotFound = "The acting user's profile was not found.";
     public const string NotFound = "The import job was not found.";
+    public const string NoLongerRunning = "The import job is no longer running.";
+    public const string ProcessingFailed = "The import could not be processed.";
     public const string RetrievedSuccessfully = "Import job retrieved successfully.";
     public const string ListedSuccessfully = "Import jobs listed successfully.";
     public const string RecordsListedSuccessfully = "Import job records listed successfully.";

@@ -1,7 +1,7 @@
-using System.Text.Json;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Output;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
@@ -12,43 +12,67 @@ public sealed class ExcelImportJobHandler(
 {
     public string JobType => ExcelImportJob.Type;
 
-    public async Task ExecuteAsync(string payload, CancellationToken cancellationToken)
+    public async Task<ProcessOutput> ExecuteAsync(string payload, CancellationToken cancellationToken)
     {
-        var request = JsonSerializer.Deserialize<ExcelImportJobPayload>(payload)
-            ?? throw new InvalidOperationException("The Excel import payload is invalid.");
+        if (!JobPayload.TryRead<ExcelImportJobPayload>(payload, out var request))
+        {
+            return ProcessOutput.New.WithError(BackgroundJobMessages.PayloadInvalid);
+        }
+
         if (!await imports.BeginAsync(
             request.ImportJobId,
             timeProvider.GetUtcNow(),
             cancellationToken))
         {
-            throw new InvalidOperationException("The Excel import job was not found.");
+            return ProcessOutput.New.WithError(ImportJobMessages.NotFound);
         }
 
         try
         {
-            var rows = parser.Parse(request.Content, request.Mapping);
-            await imports.CompleteAsync(
+            var parsed = parser.Parse(request.Content, request.Mapping);
+            if (!parsed.IsSuccess)
+            {
+                return await FailAsync(request.ImportJobId, parsed.Error);
+            }
+
+            var completion = await imports.CompleteAsync(
                 request.ImportJobId,
                 request.UserId,
                 request.TargetId,
                 request.TargetType,
                 request.CreateMissingCategories,
-                rows,
+                parsed.Rows,
                 timeProvider.GetUtcNow(),
                 cancellationToken);
+
+            return completion.Outcome switch
+            {
+                ImportCompletionOutcome.Completed => ProcessOutput.New,
+                ImportCompletionOutcome.JobNotFound => ProcessOutput.New.WithError(ImportJobMessages.NotFound),
+                ImportCompletionOutcome.JobNotRunning =>
+                    ProcessOutput.New.WithError(ImportJobMessages.NoLongerRunning),
+                ImportCompletionOutcome.TargetUnavailable =>
+                    await FailAsync(request.ImportJobId, ExcelImportMessages.TargetUnavailable),
+                _ => await FailAsync(
+                    request.ImportJobId,
+                    completion.Reason ?? ImportJobMessages.ProcessingFailed)
+            };
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (Exception exception) when (exception is not OperationCanceledException ||
+            !cancellationToken.IsCancellationRequested)
         {
+            // Unexpected (for example a database failure): leave the import job failed rather than
+            // running forever, then let the processor record the defect.
+            await FailAsync(request.ImportJobId, ImportJobMessages.ProcessingFailed);
             throw;
         }
-        catch (Exception)
-        {
-            await imports.FailAsync(
-                request.ImportJobId,
-                ExcelImportMessages.WorkbookInvalid,
-                timeProvider.GetUtcNow(),
-                cancellationToken);
-            throw;
-        }
+    }
+
+    private async Task<ProcessOutput> FailAsync(Guid importJobId, string reason)
+    {
+        // The outcome is decided; host shutdown must not leave the import job running.
+        await imports.FailAsync(importJobId, reason, timeProvider.GetUtcNow(), CancellationToken.None);
+
+        return ProcessOutput.New.WithError(reason);
     }
 }

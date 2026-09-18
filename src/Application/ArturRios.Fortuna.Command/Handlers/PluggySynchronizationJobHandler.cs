@@ -1,82 +1,93 @@
-using System.Text.Json;
-using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Output;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class PluggySynchronizationJobHandler(
     IPluggySynchronizationStore synchronizations,
     IPluggySynchronizationGateway pluggy,
-    IConnectionAccessTokenProtector protector,
     TimeProvider timeProvider) : IBackgroundJobHandler
 {
     public string JobType => PluggySynchronizationJob.Type;
 
-    public async Task ExecuteAsync(string payload, CancellationToken cancellationToken)
+    public async Task<ProcessOutput> ExecuteAsync(string payload, CancellationToken cancellationToken)
     {
-        var request = JsonSerializer.Deserialize<PluggySynchronizationJobPayload>(payload)
-            ?? throw new InvalidOperationException("The Pluggy synchronization payload is invalid.");
-        var startedAt = timeProvider.GetUtcNow();
+        if (!JobPayload.TryRead<PluggySynchronizationJobPayload>(payload, out var request))
+        {
+            return ProcessOutput.New.WithError(BackgroundJobMessages.PayloadInvalid);
+        }
+
         var context = await synchronizations.BeginAsync(
             request.ImportJobId,
-            startedAt,
+            timeProvider.GetUtcNow(),
             cancellationToken);
         if (context is null)
         {
-            throw new InvalidOperationException("The Pluggy import job was not found.");
+            return ProcessOutput.New.WithError(ImportJobMessages.NotFound);
         }
 
         try
         {
+            // The gateway authenticates with the application credentials; the key stored with the
+            // connection expires after two hours and is not used for synchronization.
             var result = await pluggy.FetchAsync(
                 context.ExternalReference,
-                protector.Unprotect(context.AccessTokenCipher),
                 context.PeriodStart,
                 context.PeriodEnd,
                 cancellationToken);
-            if (result.Outcome != PluggySynchronizationFetchOutcome.Succeeded)
+            switch (result.Outcome)
             {
-                var reauthentication = result.Outcome ==
-                    PluggySynchronizationFetchOutcome.RequiresReauthentication;
-                var reason = reauthentication
-                    ? PluggySynchronizationMessages.ReauthenticationRequired
-                    : PluggySynchronizationMessages.SourceUnavailable;
-                await synchronizations.FailAsync(
-                    request.ImportJobId,
-                    reason,
-                    reauthentication,
-                    timeProvider.GetUtcNow(),
-                    cancellationToken);
-                throw new InvalidOperationException(reason);
+                case PluggySynchronizationFetchOutcome.RequiresReauthentication:
+                    return await FailAsync(
+                        request.ImportJobId,
+                        PluggySynchronizationMessages.ReauthenticationRequired,
+                        requiresReauthentication: true);
+                case PluggySynchronizationFetchOutcome.ItemNotFound:
+                    return await FailAsync(request.ImportJobId, PluggySynchronizationMessages.ItemNotFound);
+                case PluggySynchronizationFetchOutcome.Unavailable:
+                    return await FailAsync(request.ImportJobId, PluggySynchronizationMessages.SourceUnavailable);
             }
 
-            await synchronizations.CompleteAsync(
+            var completion = await synchronizations.CompleteAsync(
                 request.ImportJobId,
                 result.Batch!,
                 timeProvider.GetUtcNow(),
                 cancellationToken);
+
+            return completion.Outcome switch
+            {
+                ImportCompletionOutcome.Completed => ProcessOutput.New,
+                ImportCompletionOutcome.JobNotFound => ProcessOutput.New.WithError(ImportJobMessages.NotFound),
+                ImportCompletionOutcome.JobNotRunning =>
+                    ProcessOutput.New.WithError(ImportJobMessages.NoLongerRunning),
+                _ => ProcessOutput.New.WithError(completion.Reason ?? ImportJobMessages.ProcessingFailed)
+            };
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (Exception exception) when (exception is not OperationCanceledException ||
+            !cancellationToken.IsCancellationRequested)
         {
+            // Unexpected (for example a database failure): leave the import job failed rather than
+            // running forever, then let the processor record the defect.
+            await FailAsync(request.ImportJobId, PluggySynchronizationMessages.SourceUnavailable);
             throw;
         }
-        catch (InvalidOperationException exception) when (
-            exception.Message is PluggySynchronizationMessages.ReauthenticationRequired or
-                PluggySynchronizationMessages.SourceUnavailable)
-        {
-            throw;
-        }
-        catch (Exception)
-        {
-            await synchronizations.FailAsync(
-                request.ImportJobId,
-                PluggySynchronizationMessages.SourceUnavailable,
-                false,
-                timeProvider.GetUtcNow(),
-                cancellationToken);
-            throw;
-        }
+    }
+
+    private async Task<ProcessOutput> FailAsync(
+        Guid importJobId,
+        string reason,
+        bool requiresReauthentication = false)
+    {
+        // The outcome is decided; host shutdown must not leave the import job running.
+        await synchronizations.FailAsync(
+            importJobId,
+            reason,
+            requiresReauthentication,
+            timeProvider.GetUtcNow(),
+            CancellationToken.None);
+
+        return ProcessOutput.New.WithError(reason);
     }
 }

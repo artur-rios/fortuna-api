@@ -3,6 +3,8 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Shared.Exports;
+using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Exports;
@@ -53,25 +55,29 @@ public sealed class EfDataExportStore(AppDbContext context) :
             .SingleOrDefaultAsync(item =>
                 item.PublicId == exportId && item.Kind == DataExportKind.DataSet,
                 cancellationToken);
-        if (export is null)
+        if (export is null || !await BeginAsync(export, startedAt, cancellationToken))
         {
             return null;
         }
 
-        export.Start(startedAt);
-        await context.SaveChangesAsync(cancellationToken);
+        var specification = ReadSpecification(export.RequestJson);
+        if (specification is null)
+        {
+            // An unreadable stored request can never be built; record why instead of retrying.
+            export.Fail(DataExportMessages.RequestInvalid, startedAt);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return null;
+        }
 
         return new DataExportWorkItem(
             export.PublicId,
             export.User.PublicId,
-            JsonSerializer.Deserialize<DataExportSpecification>(
-                export.RequestJson,
-                JsonOptions) ?? throw new InvalidOperationException(
-                    "The stored export request is invalid."),
+            specification,
             export.FileName);
     }
 
-    public async Task CompleteAsync(
+    public async Task<JobTransitionOutcome> CompleteAsync(
         Guid exportId,
         int rowCount,
         string contentType,
@@ -79,20 +85,44 @@ public sealed class EfDataExportStore(AppDbContext context) :
         DateTimeOffset completedAt,
         CancellationToken cancellationToken)
     {
-        var export = await RequiredAsync(exportId, cancellationToken);
+        var export = await FindAsync(exportId, cancellationToken);
+        if (export is null)
+        {
+            return JobTransitionOutcome.NotFound;
+        }
+
+        if (export.Status != DataExportStatus.Running)
+        {
+            return JobTransitionOutcome.NotRunning;
+        }
+
         export.Complete(rowCount, contentType, storageKey, completedAt);
         await context.SaveChangesAsync(cancellationToken);
+
+        return JobTransitionOutcome.Applied;
     }
 
-    public async Task FailAsync(
+    public async Task<JobTransitionOutcome> FailAsync(
         Guid exportId,
         string reason,
         DateTimeOffset failedAt,
         CancellationToken cancellationToken)
     {
-        var export = await RequiredAsync(exportId, cancellationToken);
-        export.Fail(reason.Length <= 1000 ? reason : reason[..1000], failedAt);
+        var export = await FindAsync(exportId, cancellationToken);
+        if (export is null)
+        {
+            return JobTransitionOutcome.NotFound;
+        }
+
+        if (export.Status is not (DataExportStatus.Pending or DataExportStatus.Running))
+        {
+            return JobTransitionOutcome.NotRunning;
+        }
+
+        export.Fail(reason, failedAt);
         await context.SaveChangesAsync(cancellationToken);
+
+        return JobTransitionOutcome.Applied;
     }
 
     public Task<DataExportReadSnapshot?> FindOwnedAsync(
@@ -159,13 +189,10 @@ public sealed class EfDataExportStore(AppDbContext context) :
             .SingleOrDefaultAsync(item =>
                 item.PublicId == exportId && item.Kind == DataExportKind.PersonalArchive,
                 cancellationToken);
-        if (export is null)
+        if (export is null || !await BeginAsync(export, startedAt, cancellationToken))
         {
             return null;
         }
-
-        export.Start(startedAt);
-        await context.SaveChangesAsync(cancellationToken);
 
         return new PersonalDataExportWorkItem(
             export.PublicId,
@@ -197,11 +224,43 @@ public sealed class EfDataExportStore(AppDbContext context) :
             export.ExpiresAt))
         .SingleOrDefaultAsync(cancellationToken);
 
-    private async Task<DataExport> RequiredAsync(
-        Guid exportId,
-        CancellationToken cancellationToken) =>
-        await context.DataExports.SingleOrDefaultAsync(
-            item => item.PublicId == exportId,
-            cancellationToken) ?? throw new InvalidOperationException(
-                "The export record was not found.");
+    private Task<DataExport?> FindAsync(Guid exportId, CancellationToken cancellationToken) =>
+        context.DataExports.SingleOrDefaultAsync(item => item.PublicId == exportId, cancellationToken);
+
+    /// <summary>
+    /// Starts a pending export. A running one was interrupted by a restart and resumes; a finished
+    /// one is not worked on again.
+    /// </summary>
+    private async Task<bool> BeginAsync(
+        DataExport export,
+        DateTimeOffset startedAt,
+        CancellationToken cancellationToken)
+    {
+        if (export.Status == DataExportStatus.Running)
+        {
+            return true;
+        }
+
+        if (export.Status != DataExportStatus.Pending)
+        {
+            return false;
+        }
+
+        export.Start(startedAt);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
+    private static DataExportSpecification? ReadSpecification(string requestJson)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<DataExportSpecification>(requestJson, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 }
