@@ -27,7 +27,7 @@ public sealed class SqlitePersistenceTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 
@@ -63,7 +63,7 @@ public sealed class SqlitePersistenceTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 
@@ -86,7 +86,7 @@ public sealed class SqlitePersistenceTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 
@@ -114,7 +114,7 @@ public sealed class SqlitePersistenceTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 

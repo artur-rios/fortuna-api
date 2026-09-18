@@ -80,7 +80,7 @@ public sealed class UserErasureStoreTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 
@@ -115,7 +115,7 @@ public sealed class UserErasureStoreTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 

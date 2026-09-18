@@ -85,7 +85,7 @@ public sealed class PersonalDataArchiveTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 
@@ -123,7 +123,7 @@ public sealed class PersonalDataArchiveTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 
