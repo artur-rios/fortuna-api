@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.WebApi.Observability;
 using ArturRios.Util.Test.Attributes;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Metrics;
@@ -65,6 +66,71 @@ public sealed class PrometheusMetricsUnitTests
         using var provider = services.BuildServiceProvider();
 
         Assert.Equal(metricsPort > 0, provider.GetService<MeterProvider>() is not null);
+    }
+
+    [UnitTheory]
+    [InlineData(MetricsPort, MetricsPort, true)]
+    [InlineData(PublicPort, MetricsPort, false)]
+    [InlineData(0, MetricsPort, false)]
+    [InlineData(0, 0, false)]
+    public void GivenLocalPort_WhenListenerEvaluated_ThenOnlyTheMetricsPortIsPrivate(
+        int localPort,
+        int metricsPort,
+        bool expected)
+    {
+        Assert.Equal(expected, PrometheusMetrics.IsMetricsListenerRequest(localPort, metricsPort));
+    }
+
+    [UnitTheory]
+    [InlineData("/metrics", MetricsPort, StatusCodes.Status200OK)]
+    [InlineData("/healthcheck", MetricsPort, StatusCodes.Status404NotFound)]
+    [InlineData("/api/accounts", MetricsPort, StatusCodes.Status404NotFound)]
+    [InlineData("/", MetricsPort, StatusCodes.Status404NotFound)]
+    [InlineData("/healthcheck", PublicPort, StatusCodes.Status202Accepted)]
+    [InlineData("/metrics", PublicPort, StatusCodes.Status202Accepted)]
+    public async Task GivenPipeline_WhenRequestArrives_ThenMetricsListenerServesOnlyTheScrape(
+        string path,
+        int localPort,
+        int expectedStatus)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddPrometheusMetrics(MetricsPort);
+        await using var provider = services.BuildServiceProvider();
+        var app = new ApplicationBuilder(provider);
+        app.UsePrometheusMetrics(MetricsPort);
+        app.Run(context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status202Accepted;
+
+            return Task.CompletedTask;
+        });
+        var pipeline = app.Build();
+        var context = Context(path, localPort);
+        context.RequestServices = provider;
+        context.Response.Body = new MemoryStream();
+
+        await pipeline(context);
+
+        Assert.Equal(expectedStatus, context.Response.StatusCode);
+    }
+
+    [UnitFact]
+    public async Task GivenExporterDisabled_WhenRequestArrivesOnFormerMetricsPort_ThenApiServesIt()
+    {
+        var app = new ApplicationBuilder(new ServiceCollection().BuildServiceProvider());
+        app.UsePrometheusMetrics(0);
+        app.Run(context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status202Accepted;
+
+            return Task.CompletedTask;
+        });
+        var context = Context("/healthcheck", MetricsPort);
+
+        await app.Build()(context);
+
+        Assert.Equal(StatusCodes.Status202Accepted, context.Response.StatusCode);
     }
 
     private static DefaultHttpContext Context(string path, int localPort)

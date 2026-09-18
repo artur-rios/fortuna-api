@@ -82,6 +82,35 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
         Assert.Contains("service_name=\"fortuna-api\"", body, StringComparison.Ordinal);
     }
 
+    [FunctionalTheory]
+    [InlineData("/healthcheck")]
+    [InlineData("/api/me")]
+    [InlineData("/swagger/v1/swagger.json")]
+    public async Task GivenPrivateListener_WhenApiRouteRequested_ThenItIsNotServed(string path)
+    {
+        await using var factory = CreateFactory(metricsPort: null);
+        using var client = factory.CreateClient();
+        Authorize(client);
+        client.DefaultRequestHeaders.Add(LocalPortHeader, MetricsPort.ToString());
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenPublicListener_WhenApiRouteRequested_ThenItIsServed()
+    {
+        await using var factory = CreateFactory(metricsPort: null);
+        using var client = factory.CreateClient();
+        Authorize(client);
+        client.DefaultRequestHeaders.Add(LocalPortHeader, PublicPort.ToString());
+
+        var response = await client.GetAsync("/healthcheck");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [FunctionalFact]
     public async Task GivenExporterDisabled_WhenPrivateListenerRequestsMetrics_ThenEndpointIsNotServed()
     {
