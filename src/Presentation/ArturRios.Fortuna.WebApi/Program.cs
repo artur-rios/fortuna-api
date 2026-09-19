@@ -51,6 +51,7 @@ using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Controllers;
 using ArturRios.Fortuna.WebApi.Observability;
 using ArturRios.Fortuna.WebApi.OpenApi;
+using ArturRios.Fortuna.WebApi.Requests;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Serialization;
 using ArturRios.Fortuna.WebApi.Services;
@@ -298,6 +299,7 @@ try
     builder.Services.AddSingleton(new AttachmentOptions(
         options.UploadMaximumBytes,
         options.UploadAllowedContentTypes));
+    builder.Services.AddSingleton<UploadLimits>();
     builder.Services.AddScoped<EfBackgroundJobStore>();
     builder.Services.AddScoped<IBackgroundJobStore>(provider =>
         provider.GetRequiredService<EfBackgroundJobStore>());

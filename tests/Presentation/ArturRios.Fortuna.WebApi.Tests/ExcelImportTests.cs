@@ -160,6 +160,23 @@ public sealed class ExcelImportTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenBodyBeyondConfiguredLimit_WhenImported_ThenDataOutputErrorIsReturned()
+    {
+        var subject = Guid.NewGuid();
+        var accountId = await SeedAccountAsync(subject);
+        await using var factory = CreateFactory(maximumBytes: 10);
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+
+        var response = await ImportAsync(client, accountId, new byte[256 * 1024]);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains(ExcelImportMessages.FileTooLarge, body, StringComparison.Ordinal);
+        Assert.Contains("\"errors\"", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [FunctionalFact]
     public async Task GivenForeignOrMissingTarget_WhenImported_ThenResponsesAreIndistinguishable()
     {
         var ownerSubject = Guid.NewGuid();
