@@ -89,8 +89,7 @@ public sealed class AggregateTransactionsQueryValidator : AbstractValidator<Aggr
             .MaximumLength(500)
             .WithMessage(TransactionAggregationMessages.TextTooLong);
         RuleFor(query => query.DisplayCurrencyCode)
-            .Must(code => code is null ||
-                code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .OptionalCurrencyCode()
             .WithMessage(TransactionAggregationMessages.DisplayCurrencyInvalid);
     }
 

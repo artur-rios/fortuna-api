@@ -39,6 +39,8 @@ public sealed class ExchangeRatesController(
             [FigureConversionMessages.DisplayCurrencyInvalid] = StatusCodes.Status400BadRequest,
             [FigureConversionMessages.FigureDateRequired] = StatusCodes.Status400BadRequest,
             [FigureConversionMessages.AmountsRequired] = StatusCodes.Status400BadRequest,
+            [FigureConversionMessages.AmountRequired] = StatusCodes.Status400BadRequest,
+            [FigureConversionMessages.TooManyAmounts] = StatusCodes.Status400BadRequest,
             [FigureConversionMessages.AmountCurrencyRequired] = StatusCodes.Status400BadRequest,
             [FigureConversionMessages.AmountCurrencyInvalid] = StatusCodes.Status400BadRequest,
             [FigureConversionMessages.AmountPrecisionInvalid] = StatusCodes.Status400BadRequest,

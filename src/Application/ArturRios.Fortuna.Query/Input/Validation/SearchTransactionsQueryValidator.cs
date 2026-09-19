@@ -74,8 +74,7 @@ public sealed class SearchTransactionsQueryValidator : AbstractValidator<SearchT
             .MaximumLength(500)
             .WithMessage(TransactionMessages.SearchTextTooLong);
         RuleFor(query => query.DisplayCurrencyCode)
-            .Length(3)
-            .When(query => !string.IsNullOrWhiteSpace(query.DisplayCurrencyCode))
+            .OptionalCurrencyCode()
             .WithMessage(TransactionMessages.DisplayCurrencyInvalid);
         RuleFor(query => query.SortBy)
             .Must(field => !string.IsNullOrWhiteSpace(field) && SortFields.Contains(field.Trim()))
