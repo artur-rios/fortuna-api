@@ -13,7 +13,7 @@ using Moq;
 
 namespace ArturRios.Fortuna.Query.Tests;
 
-public sealed class RetrieveDataExportQueryHandlerTests
+public sealed class GetDataExportQueryHandlerTests
 {
     private static readonly Guid UserId = Guid.Parse(
         "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -98,6 +98,21 @@ public sealed class RetrieveDataExportQueryHandlerTests
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [UnitTheory]
+    [InlineData(DataExportStatus.Pending)]
+    [InlineData(DataExportStatus.Running)]
+    [InlineData(DataExportStatus.Failed)]
+    public async Task GivenExpiredExportInAnyState_WhenRetrieved_ThenItIsReportedAsExpired(
+        DataExportStatus status)
+    {
+        var result = await Handler(
+            Reader(Snapshot(status, expiresAt: Now)),
+            Storage(healthy: true)).HandleAsync(Query());
+
+        Assert.False(result.Success);
+        Assert.Contains(DataExportMessages.Expired, result.Errors);
+    }
+
     [UnitFact]
     public async Task GivenExpiredCompletedExport_WhenRetrieved_ThenNewExportIsRequested()
     {
@@ -141,7 +156,7 @@ public sealed class RetrieveDataExportQueryHandlerTests
         Assert.Contains(DataExportMessages.FileNotFound, result.Errors);
     }
 
-    private static RetrieveDataExportQueryHandler Handler(
+    private static GetDataExportQueryHandler Handler(
         Mock<IDataExportReader> reader,
         Mock<IAttachmentStore> storage) => new(
         new GetDataExportQueryValidator(),
@@ -151,7 +166,7 @@ public sealed class RetrieveDataExportQueryHandlerTests
         reader.Object,
         storage.Object,
         new FixedTimeProvider(),
-        NullLogger<RetrieveDataExportQueryHandler>.Instance);
+        NullLogger<GetDataExportQueryHandler>.Instance);
 
     private static Mock<IDataExportReader> Reader(DataExportReadSnapshot? snapshot)
     {
