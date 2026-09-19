@@ -4,10 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,12 +12,10 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/categories")]
-public sealed class CategoriesController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+public sealed class CategoriesController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [CategoryMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [CategoryMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
@@ -29,7 +24,6 @@ public sealed class CategoriesController(
             [CategoryMessages.RestoredSuccessfully] = StatusCodes.Status200OK,
             [CategoryMessages.HardDeletedSuccessfully] = StatusCodes.Status200OK,
             [CategoryMessages.NotFound] = StatusCodes.Status404NotFound,
-            [CategoryMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.ParentNotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.DuplicateSiblingName] = StatusCodes.Status409Conflict,
             [CategoryMessages.CycleDetected] = StatusCodes.Status409Conflict,
@@ -41,20 +35,19 @@ public sealed class CategoriesController(
             [CategoryMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [CategoryMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [CategoryMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict,
-            [CategoryMessages.HardDeleteHasDependents] = StatusCodes.Status409Conflict,
-            [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable
-        };
+            [CategoryMessages.HardDeleteHasDependents] = StatusCodes.Status409Conflict
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CreateCategoryCommandOutput?>>> Create(
         [FromBody] CreateCategoryCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             CreateCategoryCommand,
             CreateCategoryCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPut("{id:guid}")]
@@ -64,11 +57,10 @@ public sealed class CategoriesController(
         [FromBody] UpdateCategoryCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             UpdateCategoryCommand,
             UpdateCategoryCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/reassign")]
@@ -78,44 +70,37 @@ public sealed class CategoriesController(
         [FromBody] ReassignCategoryTransactionsCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             ReassignCategoryTransactionsCommand,
             ReassignCategoryTransactionsCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CategoryLifecycleCommandOutput?>>> Delete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DeleteCategoryCommand,
             CategoryLifecycleCommandOutput>(new DeleteCategoryCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/restore")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CategoryLifecycleCommandOutput?>>> Restore(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RestoreCategoryCommand,
             CategoryLifecycleCommandOutput>(new RestoreCategoryCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}/hard")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CategoryLifecycleCommandOutput?>>> HardDelete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             HardDeleteCategoryCommand,
             CategoryLifecycleCommandOutput>(new HardDeleteCategoryCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet]
@@ -124,15 +109,13 @@ public sealed class CategoriesController(
         [FromQuery] bool includeDeleted = false,
         [FromQuery] bool includeUsageCounts = false)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetCategoryTreeQuery,
             CategoryTreeOutput>(new GetCategoryTreeQuery
             {
                 IncludeDeleted = includeDeleted,
                 IncludeUsageCounts = includeUsageCounts
             });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}")]
@@ -142,7 +125,7 @@ public sealed class CategoriesController(
         [FromQuery] bool includeDeleted = false,
         [FromQuery] bool includeUsageCounts = false)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetCategoryByIdQuery,
             CategoryOutput>(new GetCategoryByIdQuery
             {
@@ -150,7 +133,5 @@ public sealed class CategoriesController(
                 IncludeDeleted = includeDeleted,
                 IncludeUsageCounts = includeUsageCounts
             });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

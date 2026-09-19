@@ -4,10 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,12 +12,10 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/tags")]
-public sealed class TagsController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+public sealed class TagsController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [TagMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [TagMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
@@ -29,22 +24,21 @@ public sealed class TagsController(
             [TagMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
             [TagMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [TagMessages.NotFound] = StatusCodes.Status404NotFound,
-            [TagMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [TagMessages.DuplicateName] = StatusCodes.Status409Conflict,
             [TagMessages.NameRequired] = StatusCodes.Status400BadRequest,
             [TagMessages.NameTooLong] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TagCommandOutput?>>> Create(
         [FromBody] CreateTagCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             CreateTagCommand,
             TagCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet]
@@ -54,7 +48,7 @@ public sealed class TagsController(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 100)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             ListTagsQuery,
             TagListOutput>(new ListTagsQuery
             {
@@ -62,8 +56,6 @@ public sealed class TagsController(
                 PageNumber = pageNumber,
                 PageSize = pageSize
             });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPut("{id:guid}")]
@@ -73,21 +65,18 @@ public sealed class TagsController(
         [FromBody] UpdateTagCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             UpdateTagCommand,
             TagCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TagCommandOutput?>>> Delete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DeleteTagCommand,
             TagCommandOutput>(new DeleteTagCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

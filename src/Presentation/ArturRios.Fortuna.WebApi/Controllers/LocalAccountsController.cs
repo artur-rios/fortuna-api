@@ -2,9 +2,7 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
-using ArturRios.Mediator.Command;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -14,11 +12,10 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 [ApiController]
 [Route("api/local-accounts")]
 public sealed class LocalAccountsController(
-    CommandMediator commandMediator,
-    LocalAccountOptions options) : Controller
+    LocalAccountOptions options) : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [LocalAccountMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [LocalAccountMessages.Disabled] = StatusCodes.Status404NotFound,
@@ -30,17 +27,16 @@ public sealed class LocalAccountsController(
             [LocalAccountRecoveryMessages.RecoveryCodesExhausted] = StatusCodes.Status401Unauthorized,
             [LocalRecoveryCodeRegenerationMessages.InvalidSecret] = StatusCodes.Status401Unauthorized,
             [LocalRecoveryCodeRegenerationMessages.LocalAccountOnly] = StatusCodes.Status404NotFound
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost]
     [AllowAnonymous]
     public async Task<ActionResult<DataOutput<CreateLocalAccountCommandOutput?>>> Create(
         [FromBody] CreateLocalAccountCommand command)
     {
-        var result = await commandMediator
-            .ExecuteCommandAsync<CreateLocalAccountCommand, CreateLocalAccountCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+        return await SendAsync<CreateLocalAccountCommand, CreateLocalAccountCommandOutput>(command);
     }
 
     [HttpPost("authenticate")]
@@ -49,10 +45,7 @@ public sealed class LocalAccountsController(
     public async Task<ActionResult<DataOutput<AuthenticateLocalAccountCommandOutput?>>> Authenticate(
         [FromBody] AuthenticateLocalAccountCommand command)
     {
-        var result = await commandMediator
-            .ExecuteCommandAsync<AuthenticateLocalAccountCommand, AuthenticateLocalAccountCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+        return await SendAsync<AuthenticateLocalAccountCommand, AuthenticateLocalAccountCommandOutput>(command);
     }
 
     [HttpPost("recover")]
@@ -61,21 +54,16 @@ public sealed class LocalAccountsController(
     public async Task<ActionResult<DataOutput<RecoverLocalAccountCommandOutput?>>> Recover(
         [FromBody] RecoverLocalAccountCommand command)
     {
-        var result = await commandMediator
-            .ExecuteCommandAsync<RecoverLocalAccountCommand, RecoverLocalAccountCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+        return await SendAsync<RecoverLocalAccountCommand, RecoverLocalAccountCommandOutput>(command);
     }
 
     [HttpPost("recovery-codes/regenerate")]
     public async Task<ActionResult<DataOutput<RegenerateLocalAccountRecoveryCodesCommandOutput?>>> Regenerate(
         [FromBody] RegenerateLocalAccountRecoveryCodesCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RegenerateLocalAccountRecoveryCodesCommand,
             RegenerateLocalAccountRecoveryCodesCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("password-reset")]
@@ -86,8 +74,6 @@ public sealed class LocalAccountsController(
             ? LocalAuthenticationMessages.PasswordResetUnavailable
             : LocalAccountMessages.Disabled;
 
-        return ResponseResolver.Resolve(
-            DataOutput<object?>.New.WithError(error),
-            statusMap: StatusMap);
+        return Respond(DataOutput<object?>.New.WithError(error));
     }
 }

@@ -4,10 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,19 +12,23 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/exports")]
-public sealed class ExportsController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+public sealed class ExportsController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
-            [DataExportMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [DataExportMessages.NotFound] = StatusCodes.Status404NotFound,
             [DataExportMessages.Expired] = StatusCodes.Status404NotFound,
-            [DataExportMessages.FileNotFound] = StatusCodes.Status404NotFound,
-            [DataExportMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable
-        };
+            [DataExportMessages.FileNotFound] = StatusCodes.Status404NotFound
+        });
+
+    private static readonly IReadOnlyDictionary<string, int> RequestStatuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
+        {
+            [DataExportMessages.Accepted] = StatusCodes.Status202Accepted
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
@@ -37,7 +38,7 @@ public sealed class ExportsController(
     public async Task<IActionResult> RequestExport([FromBody] RequestDataExportCommand command)
     {
         command.CorrelationId = HttpContext.TraceIdentifier;
-        var result = await commandMediator.ExecuteCommandAsync<
+        var result = await Commands.ExecuteCommandAsync<
             RequestDataExportCommand,
             RequestDataExportCommandOutput>(command);
         if (result.Success && result.Data?.Delivery == DataExportDelivery.Direct)
@@ -48,11 +49,7 @@ public sealed class ExportsController(
                 result.Data.FileName);
         }
 
-        var response = ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
-        {
-            [DataExportMessages.Accepted] = StatusCodes.Status202Accepted,
-            [DataExportMessages.ProfileNotFound] = StatusCodes.Status404NotFound
-        });
+        var response = Respond(result, RequestStatuses);
 
         return response.Result ?? Ok(response.Value);
     }
@@ -64,7 +61,7 @@ public sealed class ExportsController(
         StatusCodes.Status200OK)]
     public async Task<IActionResult> Retrieve(Guid id)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        var result = await Queries.ExecuteQueryAsync<
             GetDataExportQuery,
             RetrieveDataExportQueryOutput>(new GetDataExportQuery { Id = id });
         if (result.Success && result.Data?.Content is not null)
@@ -76,7 +73,7 @@ public sealed class ExportsController(
                 enableRangeProcessing: true);
         }
 
-        var response = ResponseResolver.Resolve(result, statusMap: StatusMap);
+        var response = Respond(result);
 
         return response.Result ?? Ok(response.Value);
     }
