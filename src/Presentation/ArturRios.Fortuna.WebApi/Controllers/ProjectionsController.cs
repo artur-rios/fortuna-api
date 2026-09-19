@@ -31,6 +31,7 @@ public sealed class ProjectionsController(QueryMediator queryMediator) : Control
         return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
         {
             [CashFlowProjectionMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
+            [CashFlowProjectionMessages.PartiallyConverted] = StatusCodes.Status200OK,
             [CashFlowProjectionMessages.ProfileNotFound] = StatusCodes.Status404NotFound
         });
     }

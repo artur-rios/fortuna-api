@@ -13,6 +13,7 @@ public sealed class TableReportOutput : QueryOutput
     public int PageNumber { get; set; }
     public int PageSize { get; set; }
     public IReadOnlyCollection<TableTotalOutput> Totals { get; set; } = [];
+    public IReadOnlyCollection<MissingExchangeRateOutput> MissingRates { get; set; } = [];
 }
 
 public sealed class TableColumnOutput

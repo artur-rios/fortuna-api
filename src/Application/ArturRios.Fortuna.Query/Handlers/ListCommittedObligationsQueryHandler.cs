@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Query.Conversion;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
@@ -37,9 +38,7 @@ public sealed class ListCommittedObligationsQueryHandler(
             return output.WithError(CommittedObligationMessages.ProfileNotFound);
         }
 
-        var displayCode = string.IsNullOrWhiteSpace(query.DisplayCurrencyCode)
-            ? profile.DisplayCurrency.ToUpperInvariant()
-            : query.DisplayCurrencyCode.Trim().ToUpperInvariant();
+        var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
         var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
         if (displayCurrency is null)
         {
@@ -50,36 +49,17 @@ public sealed class ListCommittedObligationsQueryHandler(
         var through = asOf.AddDays(query.HorizonDays);
         var snapshots = await obligations.ReadAsync(
             profile.Id, asOf, through, CancellationToken.None);
-        var rateCache = new Dictionary<(string Currency, DateOnly Date), ExchangeRateSnapshot?>();
-        var items = new List<CommittedObligationOutput>(snapshots.Count);
+        var converter = new FigureConverter(rates, displayCurrency);
+        var converted = new List<ConvertedObligation>(snapshots.Count);
         foreach (var snapshot in snapshots)
         {
-            ExchangeRateSnapshot? rate = null;
-            decimal? converted;
-            if (snapshot.CurrencyCode == displayCurrency.Code)
-            {
-                converted = Round(snapshot.Amount, displayCurrency.MinorUnitDigits);
-            }
-            else
-            {
-                var key = (snapshot.CurrencyCode, snapshot.DueDate);
-                if (!rateCache.TryGetValue(key, out rate))
-                {
-                    rate = await rates.FindApplicableAsync(
-                        snapshot.CurrencyCode,
-                        displayCurrency.Code,
-                        snapshot.DueDate,
-                        CancellationToken.None);
-                    rateCache[key] = rate;
-                }
-
-                converted = rate is null
-                    ? null
-                    : Round(snapshot.Amount * rate.Rate, displayCurrency.MinorUnitDigits);
-            }
-
+            // Dated figures: each obligation converts at its own due date.
+            var conversion = await converter.ConvertAsync(
+                snapshot.CurrencyCode,
+                snapshot.Amount,
+                snapshot.DueDate);
             var isOverdue = snapshot.DueDate < asOf;
-            items.Add(new CommittedObligationOutput
+            converted.Add(new ConvertedObligation(conversion, new CommittedObligationOutput
             {
                 Id = snapshot.Id,
                 Kind = snapshot.Kind,
@@ -90,30 +70,28 @@ public sealed class ListCommittedObligationsQueryHandler(
                 DaysOverdue = isOverdue ? asOf.DayNumber - snapshot.DueDate.DayNumber : 0,
                 CurrencyCode = snapshot.CurrencyCode,
                 Amount = snapshot.Amount,
-                DisplayAmount = converted,
-                AppliedRate = rate?.Rate,
-                RateDate = rate?.RateDate,
-                RateSource = rate?.Source,
-                UnconvertedReason = converted.HasValue
-                    ? null
-                    : FigureConversionMessages.RateUnavailable
-            });
+                DisplayAmount = converter.Round(conversion.Value),
+                AppliedRate = conversion.Rate?.Rate,
+                RateDate = conversion.Rate?.RateDate,
+                RateSource = conversion.Rate?.Source,
+                UnconvertedReason = conversion.UnconvertedReason
+            }));
         }
 
-        items = items
-            .OrderByDescending(item => item.IsOverdue)
-            .ThenBy(item => item.DueDate)
-            .ThenBy(item => item.Kind)
-            .ThenBy(item => item.Id)
+        converted = converted
+            .OrderByDescending(item => item.Output.IsOverdue)
+            .ThenBy(item => item.Output.DueDate)
+            .ThenBy(item => item.Output.Kind)
+            .ThenBy(item => item.Output.Id)
             .ToList();
-        var fullyConverted = items.All(item => item.DisplayAmount.HasValue);
-        var periods = items
-            .GroupBy(item => new { item.DueDate.Year, item.DueDate.Month })
+        var total = converter.Total(converted.Select(item => item.Conversion));
+        var periods = converted
+            .GroupBy(item => new { item.Output.DueDate.Year, item.Output.DueDate.Month })
             .OrderBy(group => group.Key.Year)
             .ThenBy(group => group.Key.Month)
             .Select(group =>
             {
-                var periodConverted = group.All(item => item.DisplayAmount.HasValue);
+                var periodTotal = converter.Total(group.Select(item => item.Conversion));
 
                 return new CommittedObligationPeriodOutput
                 {
@@ -122,11 +100,8 @@ public sealed class ListCommittedObligationsQueryHandler(
                         group.Key.Year,
                         group.Key.Month,
                         DateTime.DaysInMonth(group.Key.Year, group.Key.Month)),
-                    IsFullyConverted = periodConverted,
-                    Total = periodConverted
-                        ? Round(group.Sum(item => item.DisplayAmount!.Value),
-                            displayCurrency.MinorUnitDigits)
-                        : null
+                    IsFullyConverted = periodTotal.HasValue,
+                    Total = periodTotal
                 };
             })
             .ToArray();
@@ -137,24 +112,11 @@ public sealed class ListCommittedObligationsQueryHandler(
                 AsOf = asOf,
                 Through = through,
                 DisplayCurrencyCode = displayCurrency.Code,
-                IsFullyConverted = fullyConverted,
-                Total = fullyConverted
-                    ? Round(items.Sum(item => item.DisplayAmount!.Value),
-                        displayCurrency.MinorUnitDigits)
-                    : null,
-                Items = items,
+                IsFullyConverted = total.HasValue,
+                Total = total,
+                Items = converted.Select(item => item.Output).ToArray(),
                 Periods = periods,
-                Rates = rateCache.Values
-                    .Where(item => item is not null)
-                    .Select(item => item!)
-                    .DistinctBy(item => new
-                    {
-                        item.BaseCurrencyCode,
-                        item.QuoteCurrencyCode,
-                        item.Rate,
-                        item.RateDate,
-                        item.Source
-                    })
+                Rates = converter.AppliedRates
                     .Select(item => new CommittedObligationRateOutput
                     {
                         BaseCurrencyCode = item.BaseCurrencyCode,
@@ -163,9 +125,10 @@ public sealed class ListCommittedObligationsQueryHandler(
                         RateDate = item.RateDate,
                         Source = item.Source
                     })
-                    .ToArray()
+                    .ToArray(),
+                MissingRates = MissingExchangeRateOutput.From(converter)
             })
-            .WithMessage(fullyConverted
+            .WithMessage(total.HasValue
                 ? CommittedObligationMessages.RetrievedSuccessfully
                 : CommittedObligationMessages.PartiallyConverted);
     }
@@ -177,6 +140,7 @@ public sealed class ListCommittedObligationsQueryHandler(
                 ? null
                 : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
-    private static decimal Round(decimal value, short digits) =>
-        decimal.Round(value, digits, MidpointRounding.AwayFromZero);
+    private sealed record ConvertedObligation(
+        FigureConversion Conversion,
+        CommittedObligationOutput Output);
 }

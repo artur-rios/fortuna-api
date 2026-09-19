@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Query.Conversion;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
@@ -38,14 +39,13 @@ public sealed class ListInvestmentsQueryHandler(
             return output.WithError(InvestmentMessages.ProfileNotFound);
         }
 
-        var displayCurrency = await ResolveDisplayCurrencyAsync(query.DisplayCurrencyCode);
-        if (!string.IsNullOrWhiteSpace(query.DisplayCurrencyCode) && displayCurrency is null)
+        var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
+        var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
+        if (displayCurrency is null)
         {
-            var code = query.DisplayCurrencyCode.Trim().ToUpperInvariant();
-
             return output
                 .WithError(InvestmentMessages.CurrencyNotSupported)
-                .WithMessage(InvestmentMessages.UnknownCurrency(code));
+                .WithMessage(InvestmentMessages.UnknownCurrency(displayCode));
         }
 
         var filtered = investments.QueryPositions().Where(investment =>
@@ -92,24 +92,18 @@ public sealed class ListInvestmentsQueryHandler(
             pageSize,
             orderBy: null,
             cancellationToken: CancellationToken.None);
+        var converter = new FigureConverter(rates, displayCurrency);
+        var figureDate = query.FigureDate ?? Today();
         foreach (var investment in page.Data ?? [])
         {
             await InvestmentPositionProjection.ApplyConversionAsync(
                 investment,
-                displayCurrency,
-                query.FigureDate ?? Today(),
-                rates);
+                converter,
+                figureDate);
         }
 
         return page.WithMessage(InvestmentMessages.ListedSuccessfully);
     }
-
-    private async Task<CurrencySnapshot?> ResolveDisplayCurrencyAsync(string? code) =>
-        string.IsNullOrWhiteSpace(code)
-            ? null
-            : await currencies.FindByCodeAsync(
-                code.Trim().ToUpperInvariant(),
-                CancellationToken.None);
 
     private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
         actor?.IsLocal == true
@@ -123,35 +117,17 @@ public sealed class ListInvestmentsQueryHandler(
     private static IOrderedQueryable<InvestmentPositionSnapshot> Order(
         IQueryable<InvestmentPositionSnapshot> investments,
         string sortBy,
-        bool descending) => (sortBy.ToLowerInvariant(), descending) switch
+        bool descending) => sortBy.ToLowerInvariant() switch
         {
-            ("institution", false) => investments.OrderBy(item => item.Institution)
-                .ThenBy(item => item.Id),
-            ("institution", true) => investments.OrderByDescending(item => item.Institution)
-                .ThenByDescending(item => item.Id),
-            ("investmenttype", false) => investments.OrderBy(item => item.InvestmentType)
-                .ThenBy(item => item.Id),
-            ("investmenttype", true) => investments.OrderByDescending(item => item.InvestmentType)
-                .ThenByDescending(item => item.Id),
-            ("currencycode", false) => investments.OrderBy(item => item.CurrencyCode)
-                .ThenBy(item => item.Id),
-            ("currencycode", true) => investments.OrderByDescending(item => item.CurrencyCode)
-                .ThenByDescending(item => item.Id),
-            ("position", false) => investments.OrderBy(item => item.Position)
-                .ThenBy(item => item.Id),
-            ("position", true) => investments.OrderByDescending(item => item.Position)
-                .ThenByDescending(item => item.Id),
-            ("createdat", false) => investments.OrderBy(item => item.CreatedAt)
-                .ThenBy(item => item.Id),
-            ("createdat", true) => investments.OrderByDescending(item => item.CreatedAt)
-                .ThenByDescending(item => item.Id),
-            ("updatedat", false) => investments.OrderBy(item => item.UpdatedAt)
-                .ThenBy(item => item.Id),
-            ("updatedat", true) => investments.OrderByDescending(item => item.UpdatedAt)
-                .ThenByDescending(item => item.Id),
-            (_, false) => investments.OrderBy(item => item.Instrument)
-                .ThenBy(item => item.Id),
-            _ => investments.OrderByDescending(item => item.Instrument)
-                .ThenByDescending(item => item.Id)
+            "institution" => investments
+                .SortBy(item => item.Institution, item => item.Id, descending),
+            "investmenttype" => investments
+                .SortBy(item => item.InvestmentType, item => item.Id, descending),
+            "currencycode" => investments
+                .SortBy(item => item.CurrencyCode, item => item.Id, descending),
+            "position" => investments.SortBy(item => item.Position, item => item.Id, descending),
+            "createdat" => investments.SortBy(item => item.CreatedAt, item => item.Id, descending),
+            "updatedat" => investments.SortBy(item => item.UpdatedAt, item => item.Id, descending),
+            _ => investments.SortBy(item => item.Instrument, item => item.Id, descending)
         };
 }

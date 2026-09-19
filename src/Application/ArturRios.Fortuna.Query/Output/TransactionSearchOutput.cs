@@ -22,6 +22,8 @@ public sealed class TransactionTotalsOutput
     public decimal? DisplayExpense { get; set; }
     public decimal? DisplayEarning { get; set; }
     public decimal? DisplayNet { get; set; }
+    public bool IsFullyConverted { get; set; } = true;
+    public IReadOnlyCollection<MissingExchangeRateOutput> MissingRates { get; set; } = [];
 }
 
 public sealed class TransactionCurrencyTotalOutput

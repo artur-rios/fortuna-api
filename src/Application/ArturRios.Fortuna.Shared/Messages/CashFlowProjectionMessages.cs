@@ -9,8 +9,8 @@ public static class CashFlowProjectionMessages
         "DisplayCurrencyCode must be a three-letter currency code.";
     public const string DisplayCurrencyUnsupported = "The display currency is not supported.";
     public const string PeriodicityInvalid = "Periodicity is not supported.";
-    public const string ExchangeRateUnavailable =
-        "An exchange rate required by the projection is unavailable.";
+    public const string PartiallyConverted =
+        "The cash-flow projection excludes figures whose exchange rate is unavailable.";
     public const string NoProjectionInputs =
         "No recurring transactions or committed obligations fall within the horizon.";
     public const string InsufficientHistory =

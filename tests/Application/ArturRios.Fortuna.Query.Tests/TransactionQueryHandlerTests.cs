@@ -231,7 +231,7 @@ public sealed class TransactionQueryHandlerTests
     }
 
     [UnitFact]
-    public async Task GivenSeveralCurrenciesWithoutDisplayCurrency_WhenSearched_ThenTotalsRemainSplit()
+    public async Task GivenNoDisplayCurrency_WhenSearched_ThenTotalsFallBackToTheProfileCurrency()
     {
         var profile = Profile();
         var reader = new StubTransactionReader(
@@ -241,12 +241,19 @@ public sealed class TransactionQueryHandlerTests
                 new("USD", 10m, 3m)
             ]);
 
-        var result = await SearchHandler(profile, reader).HandleAsync(new SearchTransactionsQuery());
+        var result = await SearchHandler(profile, reader).HandleAsync(
+            new SearchTransactionsQuery { DisplayCurrencyCode = "  " });
 
+        Assert.True(result.Success);
         Assert.Equal(2, result.Data?.Totals.ByCurrency.Count);
-        Assert.Null(result.Data?.Totals.DisplayCurrencyCode);
+        Assert.Equal("BRL", result.Data?.Totals.DisplayCurrencyCode);
+        Assert.Equal(-15m, result.Data?.Totals.ByCurrency.First().DisplayNet);
         Assert.Null(result.Data?.Totals.DisplayNet);
-        Assert.Equal(-15m, result.Data?.Totals.ByCurrency.First().Net);
+        Assert.False(result.Data?.Totals.IsFullyConverted);
+        var missing = Assert.Single(result.Data!.Totals.MissingRates);
+        Assert.Equal("USD", missing.BaseCurrencyCode);
+        Assert.Equal("BRL", missing.QuoteCurrencyCode);
+        Assert.Contains(FigureConversionMessages.PartiallyConverted, result.Messages);
     }
 
     [UnitFact]
@@ -275,8 +282,8 @@ public sealed class TransactionQueryHandlerTests
             });
 
         Assert.Equal("BRL", result.Data?.Totals.DisplayCurrencyCode);
-        Assert.Equal(53.37m, result.Data?.Totals.DisplayExpense);
-        Assert.Equal(15.02m, result.Data?.Totals.DisplayEarning);
+        Assert.Equal(53.36m, result.Data?.Totals.DisplayExpense);
+        Assert.Equal(15.01m, result.Data?.Totals.DisplayEarning);
         Assert.Equal(-38.35m, result.Data?.Totals.DisplayNet);
         Assert.Equal(
             result.Data?.Totals.DisplayEarning - result.Data?.Totals.DisplayExpense,

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ArturRios.Fortuna.Query.Conversion;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Query.Output;
@@ -41,9 +42,7 @@ public sealed class AggregateTransactionsQueryHandler(
             return output.WithError(TransactionAggregationMessages.ProfileNotFound);
         }
 
-        var displayCurrencyCode = string.IsNullOrWhiteSpace(query.DisplayCurrencyCode)
-            ? profile.DisplayCurrency.ToUpperInvariant()
-            : query.DisplayCurrencyCode.Trim().ToUpperInvariant();
+        var displayCurrencyCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
         var displayCurrency = await currencies.FindByCodeAsync(
             displayCurrencyCode,
             CancellationToken.None);
@@ -100,10 +99,11 @@ public sealed class AggregateTransactionsQueryHandler(
             string.IsNullOrWhiteSpace(query.Text) ? null : query.Text.Trim(),
             query.Selections);
         var figures = await aggregations.ReadAsync(criteria, CancellationToken.None);
+        var converter = new FigureConverter(rates, displayCurrency);
         var buckets = await BuildBucketsAsync(
             figures,
             criteria,
-            displayCurrency,
+            converter,
             snapshotAt);
         ApplyShares(buckets);
 
@@ -115,8 +115,9 @@ public sealed class AggregateTransactionsQueryHandler(
                 From = from,
                 To = to,
                 DisplayCurrencyCode = displayCurrency.Code,
-                IsFullyConverted = buckets.All(bucket => bucket.IsFullyConverted),
-                Buckets = buckets
+                IsFullyConverted = converter.IsFullyConverted,
+                Buckets = buckets,
+                MissingRates = MissingExchangeRateOutput.From(converter)
             })
             .WithMessage(TransactionAggregationMessages.RetrievedSuccessfully);
     }
@@ -124,7 +125,7 @@ public sealed class AggregateTransactionsQueryHandler(
     private async Task<List<TransactionAggregationBucketOutput>> BuildBucketsAsync(
         IReadOnlyCollection<TransactionAggregationFigureSnapshot> figures,
         TransactionAggregationCriteria criteria,
-        CurrencySnapshot displayCurrency,
+        FigureConverter converter,
         DateTimeOffset snapshotAt)
     {
         var source = figures
@@ -154,12 +155,11 @@ public sealed class AggregateTransactionsQueryHandler(
             ? source.OrderBy(item => item.Key.BucketStart)
             : source.OrderBy(item => item.Key.Label, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(item => item.Key.DimensionValue, StringComparer.Ordinal);
-        var rateCache = new Dictionary<(string CurrencyCode, DateOnly FigureDate),
-            ExchangeRateSnapshot?>();
         var result = new List<TransactionAggregationBucketOutput>(source.Count);
         foreach (var (identity, bucketFigures) in ordered)
         {
-            var conversions = new List<TransactionAggregationConversionOutput>();
+            // Historical figures: each currency group converts at its own figure date.
+            var conversions = new List<FigureConversion>();
             foreach (var figure in bucketFigures
                 .GroupBy(item => (item.CurrencyCode, item.FigureDate))
                 .Select(group => new
@@ -171,14 +171,13 @@ public sealed class AggregateTransactionsQueryHandler(
                 .OrderBy(item => item.CurrencyCode, StringComparer.Ordinal)
                 .ThenBy(item => item.FigureDate))
             {
-                conversions.Add(await ConvertAsync(figure.CurrencyCode,
-                    figure.FigureDate,
+                conversions.Add(await converter.ConvertAsync(
+                    figure.CurrencyCode,
                     figure.Amount,
-                    displayCurrency.Code,
-                    rateCache));
+                    figure.FigureDate));
             }
 
-            var fullyConverted = conversions.All(item => item.DisplayAmount.HasValue);
+            var total = converter.Total(conversions);
             var periodStart = identity.BucketStart.HasValue
                 ? DateOnly.FromDayNumber(Math.Max(
                     identity.BucketStart.Value.DayNumber,
@@ -194,73 +193,34 @@ public sealed class AggregateTransactionsQueryHandler(
                 Label = identity.BucketStart.HasValue
                     ? PeriodLabel(identity.BucketStart.Value, criteria.Granularity!.Value)
                     : identity.Label,
-                Total = fullyConverted
-                    ? decimal.Round(
-                        conversions.Sum(item => item.DisplayAmount!.Value),
-                        displayCurrency.MinorUnitDigits,
-                        MidpointRounding.AwayFromZero)
-                    : null,
+                Total = total,
                 PeriodStart = periodStart,
                 PeriodEnd = periodEnd,
                 DrillDownKey = EncodeKey(criteria, identity.DimensionValue,
                     periodStart, periodEnd, bucketFigures.Sum(item => item.RecordCount),
-                    snapshotAt, displayCurrency.Code),
-                IsFullyConverted = fullyConverted,
-                Conversions = conversions
+                    snapshotAt, converter.DisplayCurrency.Code),
+                IsFullyConverted = total.HasValue,
+                Conversions = conversions.Select(conversion => Project(conversion, converter))
+                    .ToArray()
             });
         }
 
         return result;
     }
 
-    private async Task<TransactionAggregationConversionOutput> ConvertAsync(
-        string sourceCurrency,
-        DateOnly figureDate,
-        decimal sourceAmount,
-        string displayCurrency,
-        IDictionary<(string CurrencyCode, DateOnly FigureDate), ExchangeRateSnapshot?> cache)
-    {
-        if (sourceCurrency == displayCurrency)
+    private static TransactionAggregationConversionOutput Project(
+        FigureConversion conversion,
+        FigureConverter converter) => new()
         {
-            return new TransactionAggregationConversionOutput
-            {
-                SourceCurrencyCode = sourceCurrency,
-                SourceAmount = sourceAmount,
-                FigureDate = figureDate,
-                DisplayAmount = sourceAmount
-            };
-        }
-
-        var key = (sourceCurrency, figureDate);
-        if (!cache.TryGetValue(key, out var rate))
-        {
-            rate = await rates.FindApplicableAsync(
-                sourceCurrency,
-                displayCurrency,
-                figureDate,
-                CancellationToken.None);
-            cache[key] = rate;
-        }
-
-        return rate is null
-            ? new TransactionAggregationConversionOutput
-            {
-                SourceCurrencyCode = sourceCurrency,
-                SourceAmount = sourceAmount,
-                FigureDate = figureDate,
-                UnconvertedReason = FigureConversionMessages.RateUnavailable
-            }
-            : new TransactionAggregationConversionOutput
-            {
-                SourceCurrencyCode = sourceCurrency,
-                SourceAmount = sourceAmount,
-                FigureDate = figureDate,
-                DisplayAmount = sourceAmount * rate.Rate,
-                AppliedRate = rate.Rate,
-                RateDate = rate.RateDate,
-                RateSource = rate.Source
-            };
-    }
+            SourceCurrencyCode = conversion.SourceCurrencyCode,
+            SourceAmount = conversion.SourceAmount,
+            FigureDate = conversion.RateDate,
+            DisplayAmount = converter.Round(conversion.Value),
+            AppliedRate = conversion.Rate?.Rate,
+            RateDate = conversion.Rate?.RateDate,
+            RateSource = conversion.Rate?.Source,
+            UnconvertedReason = conversion.UnconvertedReason
+        };
 
     private static void ApplyShares(IReadOnlyCollection<TransactionAggregationBucketOutput> buckets)
     {
