@@ -21,7 +21,7 @@ public sealed class UpdateRecurringTransactionCommandValidator
             .WithMessage(RecurringTransactionMessages.DirectionInvalid);
         RuleFor(command => command.Amount).GreaterThan(0m)
             .WithMessage(RecurringTransactionMessages.AmountPositive);
-        RuleFor(command => command.Amount).Must(MoneyFitsStorage)
+        RuleFor(command => command.Amount).Money()
             .When(command => command.Amount > 0m)
             .WithMessage(RecurringTransactionMessages.AmountPrecisionInvalid);
         RuleFor(command => command.Frequency).Must(frequency =>
@@ -41,7 +41,4 @@ public sealed class UpdateRecurringTransactionCommandValidator
         RuleFor(command => command.OwnerId).Null()
             .WithMessage(RecurringTransactionMessages.OwnerImmutable);
     }
-
-    private static bool MoneyFitsStorage(decimal amount) =>
-        decimal.GetBits(amount)[3] >> 16 <= 4 && Math.Abs(amount) < 1_000_000_000_000_000m;
 }

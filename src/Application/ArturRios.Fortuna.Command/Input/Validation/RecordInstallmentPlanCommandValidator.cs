@@ -17,7 +17,7 @@ public sealed class RecordInstallmentPlanCommandValidator
         RuleFor(command => command.TotalAmount)
             .GreaterThan(0m).WithMessage(InstallmentPlanMessages.TotalAmountPositive);
         RuleFor(command => command.TotalAmount)
-            .Must(MoneyFitsStorage)
+            .Money()
             .When(command => command.TotalAmount > 0m)
             .WithMessage(InstallmentPlanMessages.TotalAmountPrecisionInvalid);
         RuleFor(command => command.InstallmentCount)
@@ -30,17 +30,12 @@ public sealed class RecordInstallmentPlanCommandValidator
             .LessThanOrEqualTo(maximumDate)
             .WithMessage(InstallmentPlanMessages.PurchasedOnTooFarInFuture);
         RuleFor(command => command.CurrencyCode)
-            .Must(code => string.IsNullOrWhiteSpace(code) ||
-                (code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter)))
+            .OptionalCurrencyCode()
             .WithMessage(InstallmentPlanMessages.CurrencyCodeInvalid);
         RuleFor(command => command.Counterparty)
-            .Must(value => value is null || value.Trim().Length <= 200)
+            .TrimmedMaximumLength(200)
             .WithMessage(InstallmentPlanMessages.CounterpartyTooLong);
         RuleFor(command => command.OwnerId)
             .Null().WithMessage(InstallmentPlanMessages.OwnerImmutable);
     }
-
-    private static bool MoneyFitsStorage(decimal amount) =>
-        decimal.GetBits(amount)[3] >> 16 <= 4 &&
-        Math.Abs(amount) < 1_000_000_000_000_000m;
 }

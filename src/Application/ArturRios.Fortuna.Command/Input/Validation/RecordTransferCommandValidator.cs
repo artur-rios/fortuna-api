@@ -27,7 +27,7 @@ public sealed class RecordTransferCommandValidator : AbstractValidator<RecordTra
             .GreaterThan(0m)
             .WithMessage(TransferMessages.AmountPositive);
         RuleFor(command => command.Amount)
-            .Must(MoneyFitsStorage)
+            .Money()
             .When(command => command.Amount > 0m)
             .WithMessage(TransferMessages.AmountPrecisionInvalid);
         RuleFor(command => command.OccurredOn)
@@ -40,8 +40,4 @@ public sealed class RecordTransferCommandValidator : AbstractValidator<RecordTra
             .Null()
             .WithMessage(TransferMessages.OwnerImmutable);
     }
-
-    private static bool MoneyFitsStorage(decimal amount) =>
-        decimal.GetBits(amount)[3] >> 16 <= 4 &&
-        Math.Abs(amount) < 1_000_000_000_000_000m;
 }

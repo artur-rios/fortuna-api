@@ -40,7 +40,7 @@ public sealed class ImportPdfInvoiceCommandHandler(
         var result = await imports.QueueAsync(new PdfInvoiceImportRequest(
             profile.Id,
             command.CreditCardId,
-            command.FileName,
+            command.FileName.Trim(),
             command.Content,
             command.CorrelationId,
             timeProvider.GetUtcNow()), CancellationToken.None);

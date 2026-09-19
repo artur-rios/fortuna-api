@@ -49,7 +49,7 @@ public sealed class ImportExcelWorkbookCommandHandler(
             profile.Id,
             command.TargetId,
             command.TargetType,
-            command.FileName,
+            command.FileName.Trim(),
             command.Content,
             command.Mapping,
             command.CreateMissingCategories,

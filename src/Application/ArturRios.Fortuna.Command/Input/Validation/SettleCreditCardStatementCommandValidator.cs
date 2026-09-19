@@ -6,8 +6,10 @@ namespace ArturRios.Fortuna.Command.Input.Validation;
 public sealed class SettleCreditCardStatementCommandValidator
     : AbstractValidator<SettleCreditCardStatementCommand>
 {
-    public SettleCreditCardStatementCommandValidator()
+    public SettleCreditCardStatementCommandValidator(TimeProvider timeProvider)
     {
+        var maximumDate = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime).AddDays(1);
+
         RuleFor(command => command.Id)
             .NotEmpty()
             .WithMessage(CreditCardStatementMessages.StatementIdRequired);
@@ -18,12 +20,14 @@ public sealed class SettleCreditCardStatementCommandValidator
             .GreaterThan(0m)
             .WithMessage(CreditCardStatementMessages.PaymentAmountPositive);
         RuleFor(command => command.Amount)
-            .Must(amount => decimal.GetBits(amount)[3] >> 16 <= 4 &&
-                Math.Abs(amount) < 1_000_000_000_000_000m)
+            .Money()
             .When(command => command.Amount > 0m)
             .WithMessage(CreditCardStatementMessages.PaymentAmountPrecisionInvalid);
         RuleFor(command => command.PaymentDate)
+            .Cascade(CascadeMode.Stop)
             .NotEqual(default(DateOnly))
-            .WithMessage(CreditCardStatementMessages.PaymentDateRequired);
+            .WithMessage(CreditCardStatementMessages.PaymentDateRequired)
+            .LessThanOrEqualTo(maximumDate)
+            .WithMessage(CreditCardStatementMessages.PaymentDateTooFarInFuture);
     }
 }

@@ -39,13 +39,15 @@ internal static class GoalValidation
         validator.RuleFor(command => Name(command))
             .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage(GoalMessages.NameRequired)
-            .MaximumLength(200).WithMessage(GoalMessages.NameTooLong);
+            .TrimmedMaximumLength(200).WithMessage(GoalMessages.NameTooLong);
         validator.RuleFor(command => TargetAmount(command))
-            .GreaterThan(0m).WithMessage(GoalMessages.TargetAmountMustBePositive);
+            .Cascade(CascadeMode.Stop)
+            .GreaterThan(0m).WithMessage(GoalMessages.TargetAmountMustBePositive)
+            .Money().WithMessage(GoalMessages.TargetAmountPrecisionInvalid);
         validator.RuleFor(command => CurrencyCode(command))
             .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage(GoalMessages.CurrencyRequired)
-            .Must(code => code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .CurrencyCode()
             .WithMessage(GoalMessages.CurrencyInvalid);
         validator.RuleFor(command => TargetDate(command))
             .NotEqual(default(DateOnly)).WithMessage(GoalMessages.TargetDateRequired);

@@ -20,6 +20,9 @@ public sealed class ImportExcelWorkbookCommandValidator
             .WithMessage(ExcelImportMessages.FileRequired)
             .Must(content => content.Length <= options.MaximumFileBytes)
             .WithMessage(ExcelImportMessages.FileTooLarge);
+        RuleFor(command => command.FileName)
+            .TrimmedMaximumLength(300)
+            .WithMessage(ExcelImportMessages.FileNameTooLong);
         RuleFor(command => command.Mapping.Date)
             .NotEmpty()
             .WithMessage(ExcelImportMessages.DateColumnRequired);

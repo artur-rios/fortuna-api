@@ -28,8 +28,7 @@ public sealed class RequestDataExportCommandValidator
             .Must(locale => locale is null || IsSpecificCulture(locale))
             .WithMessage(DataExportMessages.LocaleInvalid);
         RuleFor(command => command.DisplayCurrencyCode)
-            .Must(code => code is null ||
-                code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .OptionalCurrencyCode()
             .WithMessage(TableReportMessages.DisplayCurrencyInvalid);
         RuleForEach(command => command.Filters).ChildRules(filter =>
         {

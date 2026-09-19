@@ -16,5 +16,8 @@ public sealed class ImportPdfInvoiceCommandValidator : AbstractValidator<ImportP
             .WithMessage(PdfInvoiceImportMessages.FileRequired)
             .Must(content => content.Length <= options.MaximumFileBytes)
             .WithMessage(PdfInvoiceImportMessages.FileTooLarge);
+        RuleFor(command => command.FileName)
+            .TrimmedMaximumLength(300)
+            .WithMessage(PdfInvoiceImportMessages.FileNameTooLong);
     }
 }

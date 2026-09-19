@@ -11,11 +11,11 @@ public sealed class UpdateInvestmentCommandValidator : AbstractValidator<UpdateI
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(InvestmentMessages.InstrumentRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(InvestmentMessages.InstrumentTooLong);
 
         RuleFor(command => command.Institution)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(InvestmentMessages.InstitutionTooLong);
 
         RuleFor(command => command.InvestmentType)

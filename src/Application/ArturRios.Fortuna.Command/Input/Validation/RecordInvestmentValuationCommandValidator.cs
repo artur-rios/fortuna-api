@@ -14,7 +14,7 @@ public sealed class RecordInvestmentValuationCommandValidator
             .NotEmpty()
             .WithMessage(InvestmentMessages.InvestmentIdRequired);
         RuleFor(command => command.Value)
-            .PrecisionScale(19, 4, false)
+            .Money()
             .WithMessage(InvestmentMessages.ValuationValuePrecisionInvalid);
         RuleFor(command => command.ValuedOn)
             .Cascade(CascadeMode.Stop)
