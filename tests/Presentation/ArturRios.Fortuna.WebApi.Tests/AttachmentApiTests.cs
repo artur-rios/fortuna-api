@@ -359,7 +359,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         Assert.True(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
         Assert.Contains(await context.AuditEntries.ToArrayAsync(), entry =>
             entry.Operation == "HardDeleteAttachmentCommand" &&
-            entry.EntityPublicId == null &&
+            entry.EntityPublicId == attachmentId &&
             entry.Reason == AttachmentMessages.HardDeleteRequiresSoftDeletion);
     }
 
