@@ -364,7 +364,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
     }
 
     [FunctionalFact]
-    public async Task GivenObjectDeleteFailure_WhenHardDeleted_ThenRowAndObjectRemainTracked()
+    public async Task GivenObjectDeleteFailure_WhenHardDeleted_ThenRowIsRemovedAndObjectIsOrphaned()
     {
         var subject = Guid.NewGuid();
         Guid attachmentId;
@@ -388,14 +388,12 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         Authorize(failing, subject, HeimdallRoles.User);
         var response = await failing.DeleteAsync($"/api/attachments/{attachmentId}/hard");
 
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        // Objects are deleted only after the database commit, so a storage failure leaves an
+        // orphaned object behind instead of a record pointing at a deleted file.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(File.Exists(objectPath));
         await using var context = CreateContext();
-        Assert.True(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
-        Assert.Contains(await context.AuditEntries.ToArrayAsync(), entry =>
-            entry.Operation == "HardDeleteAttachmentCommand" &&
-            entry.EntityPublicId == null &&
-            entry.Reason == AttachmentMessages.StorageUnavailable);
+        Assert.False(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
     }
 
     [FunctionalFact]
@@ -433,7 +431,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
     }
 
     [FunctionalFact]
-    public async Task GivenAttachmentObjectDeleteFailure_WhenTransactionHardDeleted_ThenRowsRemain()
+    public async Task GivenAttachmentObjectDeleteFailure_WhenTransactionHardDeleted_ThenRowsAreRemovedAndObjectIsOrphaned()
     {
         var subject = Guid.NewGuid();
         Guid transactionId;
@@ -458,12 +456,12 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         Authorize(failing, subject, HeimdallRoles.User);
         var response = await failing.DeleteAsync($"/api/transactions/{transactionId}/hard");
 
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(File.Exists(objectPath));
         await using var context = CreateContext();
-        Assert.True(await context.FinancialTransactions.AnyAsync(item =>
+        Assert.False(await context.FinancialTransactions.AnyAsync(item =>
             item.PublicId == transactionId));
-        Assert.True(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
+        Assert.False(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
     }
 
     [FunctionalFact]
