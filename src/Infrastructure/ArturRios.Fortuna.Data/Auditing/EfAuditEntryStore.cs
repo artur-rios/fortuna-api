@@ -10,7 +10,21 @@ public sealed class EfAuditEntryStore(AppDbContext context) : IAuditEntryStore, 
 {
     public IQueryable<AuditEntry> Query() => context.AuditEntries.AsNoTracking();
 
+    /// <remarks>
+    ///     Writes through an isolated context: the audit decorator runs after the handler, and a
+    ///     refused (or failed) handler may have left tracked changes on the shared request context
+    ///     that must never be committed as a side effect of recording the refusal.
+    /// </remarks>
     public async Task AppendAsync(AuditEntryWrite entry, CancellationToken cancellationToken)
+    {
+        await using var isolated = context.CreateIsolatedContext();
+        await AppendAsync(isolated, entry, cancellationToken);
+    }
+
+    private static async Task AppendAsync(
+        AppDbContext context,
+        AuditEntryWrite entry,
+        CancellationToken cancellationToken)
     {
         Guid? subjectReference = null;
         long? actorId = null;
@@ -42,7 +56,7 @@ public sealed class EfAuditEntryStore(AppDbContext context) : IAuditEntryStore, 
             }
         }
 
-        AddEntry(entry, subjectReference);
+        AddEntry(context, entry, subjectReference);
         try
         {
             await context.SaveChangesAsync(cancellationToken);
@@ -56,7 +70,7 @@ public sealed class EfAuditEntryStore(AppDbContext context) : IAuditEntryStore, 
                 .Where(subject => subject.UserId == actorId.Value)
                 .Select(subject => (Guid?)subject.SubjectReference)
                 .SingleAsync(cancellationToken);
-            AddEntry(entry, subjectReference);
+            AddEntry(context, entry, subjectReference);
             await context.SaveChangesAsync(cancellationToken);
         }
     }
@@ -69,7 +83,7 @@ public sealed class EfAuditEntryStore(AppDbContext context) : IAuditEntryStore, 
         .Select(subject => (Guid?)subject.SubjectReference)
         .SingleOrDefaultAsync(cancellationToken);
 
-    private void AddEntry(AuditEntryWrite entry, Guid? subjectReference) =>
+    private static void AddEntry(AppDbContext context, AuditEntryWrite entry, Guid? subjectReference) =>
         context.AuditEntries.Add(new AuditEntry(
             subjectReference,
             entry.Operation,
