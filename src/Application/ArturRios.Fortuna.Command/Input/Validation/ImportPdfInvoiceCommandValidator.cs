@@ -10,7 +10,7 @@ public sealed class ImportPdfInvoiceCommandValidator : AbstractValidator<ImportP
     {
         RuleFor(command => command.CreditCardId)
             .NotEmpty()
-            .WithMessage(PdfInvoiceImportMessages.CreditCardNotFound);
+            .WithMessage(PdfInvoiceImportMessages.CreditCardIdRequired);
         RuleFor(command => command.Content)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()

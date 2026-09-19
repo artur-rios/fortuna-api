@@ -56,7 +56,7 @@ public sealed class ExchangeRateSynchronizationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
-    public async Task GivenSourceNotConfigured_WhenSynchronizationIsRequested_ThenBadRequestCreatesNoJob()
+    public async Task GivenSourceNotConfigured_WhenSynchronizationIsRequested_ThenServiceUnavailableCreatesNoJob()
     {
         await using var beforeContext = CreateContext();
         var before = await beforeContext.BackgroundJobs.CountAsync();
@@ -66,7 +66,7 @@ public sealed class ExchangeRateSynchronizationTests : IAsyncLifetime
 
         var response = await client.PostAsJsonAsync("/api/exchange-rates/sync", new { });
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         await using var afterContext = CreateContext();
         Assert.Equal(before, await afterContext.BackgroundJobs.CountAsync());
     }

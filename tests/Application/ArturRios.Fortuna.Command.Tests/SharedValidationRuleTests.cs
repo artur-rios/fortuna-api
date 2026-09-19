@@ -131,6 +131,28 @@ public sealed class SharedValidationRuleTests
     }
 
     [UnitFact]
+    public async Task GivenEmptyImportTargets_WhenValidated_ThenRequiredNotNotFoundIsReported()
+    {
+        var excel = await new ImportExcelWorkbookCommandValidator(new ExcelImportOptions(1024))
+            .ValidateAsync(new ImportExcelWorkbookCommand
+            {
+                TargetType = ImportTargetType.Account,
+                FileName = "sheet.xlsx",
+                Content = [0x50, 0x4B, 0x03, 0x04],
+                Mapping = new ExcelColumnMapping("Date", "Amount", "Direction", null, null, null)
+            });
+        var pdf = await new ImportPdfInvoiceCommandValidator(new PdfInvoiceImportOptions(1024))
+            .ValidateAsync(new ImportPdfInvoiceCommand
+            {
+                FileName = "invoice.pdf",
+                Content = "%PDF-1.7"u8.ToArray()
+            });
+
+        Assert.Equal(ExcelImportMessages.TargetIdRequired, Assert.Single(excel.Errors).ErrorMessage);
+        Assert.Equal(PdfInvoiceImportMessages.CreditCardIdRequired, Assert.Single(pdf.Errors).ErrorMessage);
+    }
+
+    [UnitFact]
     public async Task GivenPaddedNameWithinBoundOnceTrimmed_WhenValidated_ThenItIsAccepted()
     {
         var name = "  " + new string('t', 200) + "  ";

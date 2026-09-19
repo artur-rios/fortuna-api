@@ -4,6 +4,7 @@ public static class ExcelImportMessages
 {
     public const string Accepted = "Excel import queued successfully.";
     public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
+    public const string TargetIdRequired = "TargetId is required.";
     public const string TargetNotFound = "The import target was not found.";
     public const string TargetDeleted = "The import target is deleted.";
     public const string TargetUnavailable = "The import target was deleted or removed while the import ran.";

@@ -6,6 +6,7 @@ public static class PdfInvoiceImportMessages
 {
     public const string Accepted = "PDF invoice import queued successfully.";
     public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
+    public const string CreditCardIdRequired = "CreditCardId is required.";
     public const string CreditCardNotFound = "The target credit card was not found.";
     public const string CreditCardDeleted = "The target credit card is deleted.";
     public const string FileRequired = "A PDF invoice file is required.";

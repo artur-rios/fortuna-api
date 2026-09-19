@@ -68,7 +68,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         ConnectionMessages.InvalidReference)]
     [InlineData(PluggyConnectionValidationOutcome.Unavailable, HttpStatusCode.ServiceUnavailable,
         ConnectionMessages.SourceUnavailable)]
-    [InlineData(PluggyConnectionValidationOutcome.NotConfigured, HttpStatusCode.NotFound,
+    [InlineData(PluggyConnectionValidationOutcome.NotConfigured, HttpStatusCode.ServiceUnavailable,
         ConnectionMessages.SourceNotAvailable)]
     public async Task GivenPluggyRejection_WhenConnected_ThenNothingIsStored(
         PluggyConnectionValidationOutcome outcome,

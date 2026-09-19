@@ -24,6 +24,7 @@ public sealed class ImportsController(
         {
             [ExcelImportMessages.Accepted] = StatusCodes.Status202Accepted,
             [ExcelImportMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
+            [ExcelImportMessages.TargetIdRequired] = StatusCodes.Status400BadRequest,
             [ExcelImportMessages.TargetNotFound] = StatusCodes.Status404NotFound,
             [ExcelImportMessages.TargetDeleted] = StatusCodes.Status409Conflict,
             [ExcelImportMessages.FileRequired] = StatusCodes.Status400BadRequest,
@@ -36,10 +37,14 @@ public sealed class ImportsController(
             [ExcelImportMessages.ColumnsMustBeDistinct] = StatusCodes.Status400BadRequest,
             [PdfInvoiceImportMessages.Accepted] = StatusCodes.Status202Accepted,
             [PdfInvoiceImportMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
+            [PdfInvoiceImportMessages.CreditCardIdRequired] = StatusCodes.Status400BadRequest,
             [PdfInvoiceImportMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
             [PdfInvoiceImportMessages.CreditCardDeleted] = StatusCodes.Status409Conflict,
             [PdfInvoiceImportMessages.FileRequired] = StatusCodes.Status400BadRequest,
-            [PdfInvoiceImportMessages.FileTooLarge] = StatusCodes.Status400BadRequest
+            [PdfInvoiceImportMessages.FileTooLarge] = StatusCodes.Status400BadRequest,
+            [PdfInvoiceImportMessages.FileInvalid] = StatusCodes.Status400BadRequest,
+            [PdfInvoiceImportMessages.FileNameTooLong] = StatusCodes.Status400BadRequest,
+            [ExcelImportMessages.FileNameTooLong] = StatusCodes.Status400BadRequest
         };
 
     [HttpPost("excel")]

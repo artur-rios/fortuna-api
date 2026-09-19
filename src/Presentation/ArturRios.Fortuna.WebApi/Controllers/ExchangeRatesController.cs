@@ -24,7 +24,7 @@ public sealed class ExchangeRatesController(
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
-            [ExchangeRateSyncMessages.SourceNotConfigured] = StatusCodes.Status400BadRequest,
+            [ExchangeRateSyncMessages.SourceNotConfigured] = StatusCodes.Status503ServiceUnavailable,
             [ManualExchangeRateMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [ManualExchangeRateMessages.ReplacedSuccessfully] = StatusCodes.Status200OK,
             [ManualExchangeRateMessages.BaseCurrencyRequired] = StatusCodes.Status400BadRequest,

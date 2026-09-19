@@ -27,7 +27,7 @@ public sealed class ConnectionsController(
             [ConnectionMessages.Duplicate] = StatusCodes.Status409Conflict,
             [ConnectionMessages.InvalidReference] = StatusCodes.Status400BadRequest,
             [ConnectionMessages.SourceUnavailable] = StatusCodes.Status503ServiceUnavailable,
-            [ConnectionMessages.SourceNotAvailable] = StatusCodes.Status404NotFound,
+            [ConnectionMessages.SourceNotAvailable] = StatusCodes.Status503ServiceUnavailable,
             [ConnectionMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [ConnectionMessages.DataSourceRequired] = StatusCodes.Status400BadRequest,
             [ConnectionMessages.DataSourceInvalid] = StatusCodes.Status400BadRequest,

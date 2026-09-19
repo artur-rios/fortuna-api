@@ -11,7 +11,7 @@ public sealed class ImportExcelWorkbookCommandValidator
     {
         RuleFor(command => command.TargetId)
             .NotEmpty()
-            .WithMessage(ExcelImportMessages.TargetNotFound);
+            .WithMessage(ExcelImportMessages.TargetIdRequired);
         RuleFor(command => command.TargetType)
             .IsInEnum()
             .WithMessage(ExcelImportMessages.TargetTypeInvalid);
