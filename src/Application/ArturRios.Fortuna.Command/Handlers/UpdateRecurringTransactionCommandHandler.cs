@@ -12,7 +12,7 @@ namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class UpdateRecurringTransactionCommandHandler(
     IValidator<UpdateRecurringTransactionCommand> validator,
-    IRequestActorAccessor actors,
+    IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IRecurringTransactionUpdater rules,
     TimeProvider timeProvider)
@@ -28,7 +28,7 @@ public sealed class UpdateRecurringTransactionCommandHandler(
             return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
         }
 
-        var profile = await RecurringTransactionHandler.ResolveProfileAsync(actors.Actor, profiles);
+        var profile = await RecurringTransactionHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
         if (profile is null)
         {
             return output.WithError(RecurringTransactionMessages.ProfileNotFound);

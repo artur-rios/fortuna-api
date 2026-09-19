@@ -12,7 +12,7 @@ namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DefineRecurringTransactionCommandHandler(
     IValidator<DefineRecurringTransactionCommand> validator,
-    IRequestActorAccessor actors,
+    IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IRecurringTransactionStore rules,
     TimeProvider timeProvider)
@@ -23,12 +23,22 @@ public sealed class DefineRecurringTransactionCommandHandler(
     {
         var output = DataOutput<DefineRecurringTransactionCommandOutput?>.New;
         var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid) return output.WithErrors(validation.Errors.Select(item => item.ErrorMessage));
-        var actor = actors.Actor;
+        if (!validation.IsValid)
+        {
+            return output.WithErrors(validation.Errors.Select(item => item.ErrorMessage));
+        }
+
+        var actor = actorAccessor.Actor;
         var profile = actor?.IsLocal == true
             ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null ? null : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-        if (profile is null) return output.WithError(RecurringTransactionMessages.ProfileNotFound);
+            : actor is null
+                ? null
+                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        if (profile is null)
+        {
+            return output.WithError(RecurringTransactionMessages.ProfileNotFound);
+        }
+
         var now = timeProvider.GetUtcNow();
         var result = await rules.RecordAsync(new RecurringTransactionRecord(
             profile.Id, command.FinancialAccountId, command.CreditCardId, command.CategoryId,
@@ -39,9 +49,12 @@ public sealed class DefineRecurringTransactionCommandHandler(
         {
             return output.WithError(result.Outcome switch
             {
-                RecurringTransactionRecordOutcome.FinancialAccountNotFound => RecurringTransactionMessages.FinancialAccountNotFound,
-                RecurringTransactionRecordOutcome.CreditCardNotFound => RecurringTransactionMessages.CreditCardNotFound,
-                RecurringTransactionRecordOutcome.CategoryNotFound => RecurringTransactionMessages.CategoryNotFound,
+                RecurringTransactionRecordOutcome.FinancialAccountNotFound =>
+                    RecurringTransactionMessages.FinancialAccountNotFound,
+                RecurringTransactionRecordOutcome.CreditCardNotFound =>
+                    RecurringTransactionMessages.CreditCardNotFound,
+                RecurringTransactionRecordOutcome.CategoryNotFound =>
+                    RecurringTransactionMessages.CategoryNotFound,
                 _ => throw new InvalidOperationException("Unknown recurring transaction outcome.")
             });
         }

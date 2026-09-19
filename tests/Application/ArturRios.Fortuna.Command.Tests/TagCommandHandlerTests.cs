@@ -158,7 +158,7 @@ public sealed class TagCommandHandlerTests
 
         Assert.False(result.Success);
         Assert.Contains(TagMessages.MaximumExceeded, result.Errors);
-        Assert.Contains(TagMessages.MaximumAllowed(2), result.Errors);
+        Assert.Contains(TagMessages.MaximumAllowed(2), result.Messages);
     }
 
     [UnitFact]

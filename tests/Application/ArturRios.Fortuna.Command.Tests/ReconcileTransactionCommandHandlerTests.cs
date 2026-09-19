@@ -111,7 +111,7 @@ public sealed class ReconcileTransactionCommandHandlerTests
         var result = await Handler(Profile(), store).HandleAsync(ValidCommand());
 
         Assert.Contains(TransactionMessages.ImportedRecordAlreadyMatched, result.Errors);
-        Assert.Contains(TransactionMessages.ConflictingTransaction(conflictingId), result.Errors);
+        Assert.Contains(TransactionMessages.ConflictingTransaction(conflictingId), result.Messages);
     }
 
     [UnitFact]
