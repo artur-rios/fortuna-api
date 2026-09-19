@@ -60,4 +60,63 @@ public sealed class DataExportRendererTests
         Assert.Contains("Coffee; beans | 12,34 | BRL", text);
         Assert.EndsWith("%%EOF", text);
     }
+
+    [UnitFact]
+    public void GivenTextStartingWithFormulaTrigger_WhenCsvRendered_ThenCellIsNeutralized()
+    {
+        var document = SingleTextDocument("=HYPERLINK(\"http://evil\")", "@SUM(A1)", "+1", "-2",
+            "\tTab");
+
+        var result = new DataExportRenderer().Render(document, DataExportFormat.Csv);
+
+        var text = Encoding.UTF8.GetString(result.Content);
+        Assert.Contains("\"'=HYPERLINK(\"\"http://evil\"\")\"", text);
+        Assert.Contains("'@SUM(A1)", text);
+        Assert.Contains("'+1", text);
+        Assert.Contains("'-2", text);
+        Assert.Contains("'\tTab", text);
+    }
+
+    [UnitFact]
+    public void GivenNegativeDecimal_WhenCsvRendered_ThenNumberIsNotPrefixed()
+    {
+        var document = Document with
+        {
+            Rows =
+            [
+                new Dictionary<string, object?>
+                {
+                    ["description"] = "Refund",
+                    ["amount"] = -5.5m,
+                    ["currencyCode"] = "BRL"
+                }
+            ]
+        };
+
+        var result = new DataExportRenderer().Render(document, DataExportFormat.Csv);
+
+        var text = Encoding.UTF8.GetString(result.Content);
+        Assert.Contains("Refund;-5,5;BRL", text);
+        Assert.DoesNotContain("'-5,5", text);
+    }
+
+    [UnitFact]
+    public void GivenPortugueseText_WhenPdfRendered_ThenLatin1BytesAndWinAnsiFontAreWritten()
+    {
+        var document = SingleTextDocument("Pão de açúcar ✓");
+
+        var result = new DataExportRenderer().Render(document, DataExportFormat.Pdf);
+
+        var text = Encoding.Latin1.GetString(result.Content);
+        Assert.Contains("/Encoding /WinAnsiEncoding", text);
+        Assert.Contains("(Pão de açúcar ?) Tj", text);
+    }
+
+    private static DataExportDocument SingleTextDocument(params string[] values) => new(
+        "transactions",
+        [new TableColumnSnapshot("description", TableColumnType.Text, false, null)],
+        values.Select(value => (IReadOnlyDictionary<string, object?>)
+            new Dictionary<string, object?> { ["description"] = value }).ToArray(),
+        [],
+        "pt-BR");
 }
