@@ -65,7 +65,7 @@ public sealed class MeController(
     }
 
     [HttpPost("data-export")]
-    [RoleRequirement((int)HeimdallRoles.User)]
+    [RoleRequirement((int)HeimdallRoles.User, (int)HeimdallRoles.SystemAdmin)]
     [ProducesResponseType(typeof(DataOutput<RequestPersonalDataExportCommandOutput?>),
         StatusCodes.Status202Accepted)]
     public async Task<ActionResult<DataOutput<RequestPersonalDataExportCommandOutput?>>> RequestDataExport()
@@ -86,7 +86,7 @@ public sealed class MeController(
     }
 
     [HttpGet("data-export/{jobId:guid}")]
-    [RoleRequirement((int)HeimdallRoles.User)]
+    [RoleRequirement((int)HeimdallRoles.User, (int)HeimdallRoles.SystemAdmin)]
     [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(DataOutput<PersonalDataExportQueryOutput?>),
         StatusCodes.Status200OK)]

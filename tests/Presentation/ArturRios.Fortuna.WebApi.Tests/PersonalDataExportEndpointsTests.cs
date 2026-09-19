@@ -57,6 +57,22 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenAdministrator_WhenArchiveOfOwnDataRequested_ThenJobIsQueuedAndReadable()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+
+        var response = await client.PostAsync("/api/me/data-export", null);
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var jobId = body.RootElement.GetProperty("data").GetProperty("jobId").GetGuid();
+        var handle = await client.GetAsync($"/api/me/data-export/{jobId}");
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, handle.StatusCode);
+    }
+
+    [FunctionalFact]
     public async Task GivenPendingArchive_WhenOwnerReadsHandle_ThenProgressIsReported()
     {
         var subject = Guid.NewGuid();
@@ -243,9 +259,9 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
             DatabaseDiagnosticsOptions.Disabled);
     }
 
-    private static void Authorize(HttpClient client, Guid subject)
+    private static void Authorize(HttpClient client, Guid subject, HeimdallRoles role = HeimdallRoles.User)
     {
-        var identity = new FortunaIdentity(subject, (int)HeimdallRoles.User, Guid.NewGuid(), [])
+        var identity = new FortunaIdentity(subject, (int)role, Guid.NewGuid(), [])
         {
             DisplayName = "Portable Owner"
         };

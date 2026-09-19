@@ -52,26 +52,32 @@ public sealed class PersonalDataExportCommandHandlerTests
     }
 
     [UnitFact]
-    public async Task GivenMissingProfileOrNonOwnerRole_WhenArchiveRequested_ThenNothingIsQueued()
+    public async Task GivenMissingProfile_WhenArchiveRequested_ThenNothingIsQueued()
     {
-        var missingStore = new StubExportStore();
-        var missing = await Handler(
+        var store = new StubExportStore();
+
+        var result = await Handler(
             new RequestActor(Subject, (int)HeimdallRoles.User, null, []),
             null,
-            missingStore).HandleAsync(new RequestPersonalDataExportCommand());
-        var adminStore = new StubExportStore();
-        var admin = await Handler(
+            store).HandleAsync(new RequestPersonalDataExportCommand());
+
+        Assert.False(result.Success);
+        Assert.Contains(PersonalDataExportMessages.ProfileNotFound, result.Errors);
+        Assert.Null(store.Queued);
+    }
+
+    [UnitFact]
+    public async Task GivenAdministratorOwningAProfile_WhenArchiveRequested_ThenTheirOwnDataIsQueued()
+    {
+        var store = new StubExportStore();
+
+        var result = await Handler(
             new RequestActor(Subject, (int)HeimdallRoles.SystemAdmin, null, []),
             Profile(),
-            adminStore).HandleAsync(new RequestPersonalDataExportCommand());
+            store).HandleAsync(new RequestPersonalDataExportCommand());
 
-        Assert.All(new[] { missing, admin }, result =>
-        {
-            Assert.False(result.Success);
-            Assert.Contains(PersonalDataExportMessages.ProfileNotFound, result.Errors);
-        });
-        Assert.Null(missingStore.Queued);
-        Assert.Null(adminStore.Queued);
+        Assert.True(result.Success);
+        Assert.Equal(UserId, store.Queued!.UserId);
     }
 
     [UnitFact]
