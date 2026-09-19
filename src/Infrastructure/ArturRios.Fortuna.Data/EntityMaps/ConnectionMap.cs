@@ -6,6 +6,9 @@ namespace ArturRios.Fortuna.Data.EntityMaps;
 
 public sealed class ConnectionMap : IEntityTypeConfiguration<Connection>
 {
+    public const string ExternalReferenceIndex =
+        "ix_connection_user_id_data_source_type_external_reference";
+
     public void Configure(EntityTypeBuilder<Connection> builder)
     {
         builder.ToTable("connection");
@@ -24,7 +27,7 @@ public sealed class ConnectionMap : IEntityTypeConfiguration<Connection>
             connection.UserId,
             connection.DataSourceType,
             connection.ExternalReference
-        }).IsUnique();
+        }).HasDatabaseName(ExternalReferenceIndex).IsUnique();
         builder.HasOne(connection => connection.User)
             .WithMany()
             .HasForeignKey(connection => connection.UserId)

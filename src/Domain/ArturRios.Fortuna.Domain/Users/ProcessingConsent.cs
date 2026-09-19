@@ -54,6 +54,7 @@ public sealed class ProcessingConsent
             throw new ArgumentException("A consent version is required.", nameof(value));
         }
         var normalized = value.Trim();
+
         return normalized.Length <= 50
             ? normalized
             : throw new ArgumentException(

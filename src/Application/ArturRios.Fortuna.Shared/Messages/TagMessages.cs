@@ -6,13 +6,15 @@ public static class TagMessages
     public const string UpdatedSuccessfully = "Tag updated successfully.";
     public const string DeletedSuccessfully = "Tag deleted successfully.";
     public const string ListedSuccessfully = "Tags retrieved successfully.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string AttachedSuccessfully = "Tag attached successfully.";
     public const string AlreadyAttached = "The tag was already attached.";
     public const string DetachedSuccessfully = "Tag detached successfully.";
     public const string AlreadyDetached = "The tag was already detached.";
     public const string NotFound = "Tag not found.";
     public const string AssignmentNotFound = "Tag or transaction not found.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string DuplicateName = "A live tag already uses this name.";
     public const string NameRequired = "Name is required.";
     public const string NameTooLong = "Name must not exceed 200 characters.";

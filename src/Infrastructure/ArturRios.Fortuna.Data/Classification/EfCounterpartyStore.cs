@@ -1,6 +1,8 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Shared.Classification;
+using ArturRios.Fortuna.Shared.Pagination;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Classification;
@@ -13,8 +15,6 @@ public sealed class EfCounterpartyStore(AppDbContext context)
         ICounterpartyMerger,
         ICounterpartyCategorySuggester
 {
-    private const string LiveNameIndex = "ix_counterparty_user_id_normalized_name";
-
     public async Task<CounterpartyCreationResult> CreateAsync(
         CounterpartyCreation creation,
         CancellationToken cancellationToken)
@@ -44,6 +44,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
         {
             context.Entry(counterparty).State = EntityState.Detached;
             existing = await FindLiveByNameAsync(user.Id, creation.Name, cancellationToken);
+
             return new CounterpartyCreationResult(
                 existing is null ? null : Snapshot(existing),
                 Reused: existing is not null,
@@ -58,23 +59,33 @@ public sealed class EfCounterpartyStore(AppDbContext context)
             CounterpartyMutationOutcome.Succeeded);
     }
 
-    public async Task<IReadOnlyCollection<CounterpartySnapshot>> ListAsync(
+    public async Task<ReadPage<CounterpartySnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
-        CancellationToken cancellationToken) => await context.Counterparties
-        .AsNoTracking()
-        .Where(item =>
-            item.User.PublicId == userId &&
-            (includeDeleted || !item.IsDeleted))
-        .OrderBy(item => item.Name)
-        .ThenBy(item => item.PublicId)
-        .Select(item => new CounterpartySnapshot(
-            item.PublicId,
-            item.Name,
-            item.IsDeleted,
-            item.CreatedAt,
-            item.UpdatedAt))
-        .ToArrayAsync(cancellationToken);
+        PageRequest page,
+        CancellationToken cancellationToken)
+    {
+        var owned = context.Counterparties
+            .AsNoTracking()
+            .Where(item =>
+                item.User.PublicId == userId &&
+                (includeDeleted || !item.IsDeleted));
+        var totalItems = await owned.CountAsync(cancellationToken);
+        var counterparties = await owned
+            .OrderBy(item => item.Name)
+            .ThenBy(item => item.PublicId)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
+            .Select(item => new CounterpartySnapshot(
+                item.PublicId,
+                item.Name,
+                item.IsDeleted,
+                item.CreatedAt,
+                item.UpdatedAt))
+            .ToArrayAsync(cancellationToken);
+
+        return new ReadPage<CounterpartySnapshot>(counterparties, totalItems);
+    }
 
     public async Task<CounterpartyMutationResult> UpdateAsync(
         CounterpartyUpdate update,
@@ -105,6 +116,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
         catch (DbUpdateException exception) when (IsDuplicateName(exception))
         {
             context.Entry(counterparty).State = EntityState.Detached;
+
             return MutationResult(CounterpartyMutationOutcome.DuplicateName);
         }
 
@@ -127,6 +139,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
 
         counterparty.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new CounterpartyMutationResult(
             Snapshot(counterparty),
             CounterpartyMutationOutcome.Succeeded);
@@ -233,6 +246,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
         CancellationToken cancellationToken)
     {
         var normalizedName = name.Trim().ToUpperInvariant();
+
         return context.Counterparties
             .AsNoTracking()
             .SingleOrDefaultAsync(item =>
@@ -243,7 +257,7 @@ public sealed class EfCounterpartyStore(AppDbContext context)
     }
 
     private static bool IsDuplicateName(DbUpdateException exception) =>
-        DatabaseException.IsUniqueViolation(exception, LiveNameIndex);
+        DatabaseException.IsUniqueViolation(exception, CounterpartyMap.LiveNameIndex);
 
     private static CounterpartySnapshot Snapshot(Counterparty counterparty) => new(
         counterparty.PublicId,

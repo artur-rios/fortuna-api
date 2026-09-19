@@ -11,6 +11,8 @@ public static class ManualExchangeRateMessages
     public const string RateDateRequired = "Rate date is required.";
     public const string CurrenciesMustDiffer = "Base and quote currencies must differ.";
     public const string CurrencyNotSupported = "A supplied currency is not supported.";
+    public const string AdministratorRequired =
+        "Only a system administrator or the local installation owner can record manual exchange rates.";
     public const string RecordedSuccessfully = "Manual exchange rate recorded and now takes precedence for the pair and date.";
     public const string ReplacedSuccessfully = "Manual exchange rate replaced and continues to take precedence for the pair and date.";
 

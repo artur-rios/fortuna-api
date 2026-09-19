@@ -6,7 +6,7 @@ public static class InstallmentPlanMessages
     public const string RetrievedSuccessfully = "Installment plan retrieved successfully.";
     public const string DeletedSuccessfully = "Installment plan deleted successfully.";
     public const string RestoredSuccessfully = "Installment plan restored successfully.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NotFound = "Installment plan not found.";
     public const string CreditCardNotFound = "Credit card not found.";
     public const string CategoryNotFound = "Category not found.";

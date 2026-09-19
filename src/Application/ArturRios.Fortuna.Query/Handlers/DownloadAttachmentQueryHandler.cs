@@ -3,19 +3,15 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class DownloadAttachmentQueryHandler(
-    IValidator<DownloadAttachmentQuery> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IAttachmentMetadataReader metadata,
     IAttachmentStore storage,
     IAuditEntryWriter auditEntries,
@@ -26,18 +22,7 @@ public sealed class DownloadAttachmentQueryHandler(
         DownloadAttachmentQuery query)
     {
         var output = DataOutput<DownloadAttachmentQueryOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(AttachmentMessages.ProfileNotFound);
@@ -59,9 +44,21 @@ public sealed class DownloadAttachmentQueryHandler(
                 return output.WithError(AttachmentMessages.StorageUnavailable);
             }
 
-            var content = await storage.OpenReadAsync(
+            var read = await storage.OpenReadAsync(
                 attachment.StorageKey,
                 CancellationToken.None);
+            if (read.Status == AttachmentReadStatus.NotFound)
+            {
+                await RecordDiscrepancyAsync(attachment.Id);
+
+                return output.WithError(AttachmentMessages.StoredObjectNotFound);
+            }
+
+            if (!read.IsFound)
+            {
+                return output.WithError(AttachmentMessages.StorageUnavailable);
+            }
+
             return output
                 .WithData(new DownloadAttachmentQueryOutput
                 {
@@ -69,18 +66,14 @@ public sealed class DownloadAttachmentQueryHandler(
                     FileName = attachment.FileName,
                     ContentType = attachment.ContentType,
                     SizeInBytes = attachment.SizeInBytes,
-                    Content = content
+                    Content = read.Content
                 })
                 .WithMessage(AttachmentMessages.DownloadedSuccessfully);
-        }
-        catch (AttachmentObjectNotFoundException)
-        {
-            await RecordDiscrepancyAsync(attachment.Id);
-            return output.WithError(AttachmentMessages.StoredObjectNotFound);
         }
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Attachment storage read failed");
+
             return output.WithError(AttachmentMessages.StorageUnavailable);
         }
     }

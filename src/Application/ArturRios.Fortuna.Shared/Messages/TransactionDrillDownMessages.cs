@@ -8,7 +8,7 @@ public static class TransactionDrillDownMessages
         "The transactions behind the aggregation were retrieved successfully.";
     public const string TransactionRetrieved =
         "The transaction behind the aggregation was retrieved successfully.";
-    public const string ProfileNotFound = "The user profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string KeyRequired = "Key is required.";
     public const string KeyTooLong = "Key cannot exceed 8192 characters.";
     public const string KeyInvalidOrExpired =

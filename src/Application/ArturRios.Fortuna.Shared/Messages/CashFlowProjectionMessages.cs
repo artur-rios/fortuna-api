@@ -3,13 +3,14 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class CashFlowProjectionMessages
 {
     public const string RetrievedSuccessfully = "The cash-flow projection was retrieved successfully.";
-    public const string ProfileNotFound = "The user profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string HorizonRequired = "HorizonDays must be greater than zero.";
     public const string DisplayCurrencyInvalid =
         "DisplayCurrencyCode must be a three-letter currency code.";
     public const string DisplayCurrencyUnsupported = "The display currency is not supported.";
-    public const string ExchangeRateUnavailable =
-        "An exchange rate required by the projection is unavailable.";
+    public const string PeriodicityInvalid = "Periodicity is not supported.";
+    public const string PartiallyConverted =
+        "The cash-flow projection excludes figures whose exchange rate is unavailable.";
     public const string NoProjectionInputs =
         "No recurring transactions or committed obligations fall within the horizon.";
     public const string InsufficientHistory =

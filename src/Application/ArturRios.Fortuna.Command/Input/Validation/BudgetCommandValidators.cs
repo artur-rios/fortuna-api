@@ -8,13 +8,16 @@ public sealed class CreateBudgetCommandValidator : AbstractValidator<CreateBudge
     public CreateBudgetCommandValidator()
     {
         RuleFor(command => command.Amount)
+            .Cascade(CascadeMode.Stop)
             .GreaterThan(0m)
-            .WithMessage(BudgetMessages.AmountMustBePositive);
+            .WithMessage(BudgetMessages.AmountMustBePositive)
+            .Money()
+            .WithMessage(BudgetMessages.AmountPrecisionInvalid);
         RuleFor(command => command.CurrencyCode)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(BudgetMessages.CurrencyRequired)
-            .Length(3)
+            .CurrencyCode()
             .WithMessage(BudgetMessages.CurrencyInvalid);
         RuleFor(command => command.PeriodType)
             .IsInEnum()
@@ -36,13 +39,16 @@ public sealed class UpdateBudgetCommandValidator : AbstractValidator<UpdateBudge
     public UpdateBudgetCommandValidator()
     {
         RuleFor(command => command.Amount)
+            .Cascade(CascadeMode.Stop)
             .GreaterThan(0m)
-            .WithMessage(BudgetMessages.AmountMustBePositive);
+            .WithMessage(BudgetMessages.AmountMustBePositive)
+            .Money()
+            .WithMessage(BudgetMessages.AmountPrecisionInvalid);
         RuleFor(command => command.CurrencyCode)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(BudgetMessages.CurrencyRequired)
-            .Length(3)
+            .CurrencyCode()
             .WithMessage(BudgetMessages.CurrencyInvalid);
         RuleFor(command => command.PeriodType)
             .IsInEnum()

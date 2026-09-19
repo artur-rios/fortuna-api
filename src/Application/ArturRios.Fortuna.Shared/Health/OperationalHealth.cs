@@ -34,7 +34,7 @@ public sealed class OperationalHealthEvaluator(IEnumerable<IOperationalHealthChe
         var services = new List<OperationalHealthCheckResult>();
         foreach (var check in checks)
         {
-            services.Add(await check.CheckAsync(cancellationToken));
+            services.Add(await CheckSafelyAsync(check, cancellationToken));
         }
 
         var requiredDown = services.Any(service =>
@@ -47,7 +47,29 @@ public sealed class OperationalHealthEvaluator(IEnumerable<IOperationalHealthChe
             : optionalDown
                 ? OperationalHealthStatus.Degraded
                 : OperationalHealthStatus.Healthy;
+
         return new OperationalHealthReport(status, services);
+    }
+
+    // One failing probe must not take the whole report down: it is reported as
+    // unhealthy and the remaining checks still run.
+    private static async Task<OperationalHealthCheckResult> CheckSafelyAsync(
+        IOperationalHealthCheck check,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await check.CheckAsync(cancellationToken);
+        }
+        catch (Exception exception) when (
+            exception is not OperationCanceledException ||
+            !cancellationToken.IsCancellationRequested)
+        {
+            return new OperationalHealthCheckResult(
+                check.Name,
+                OperationalHealthStatus.Unhealthy,
+                check.IsRequired);
+        }
     }
 }
 

@@ -4,10 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,28 +12,25 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/transfers")]
-public sealed class TransfersController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+public sealed class TransfersController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [TransferMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [TransferMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
             [TransferMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [TransferMessages.RestoredSuccessfully] = StatusCodes.Status200OK,
-            [TransferMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [TransferMessages.OriginFinancialAccountNotFound] = StatusCodes.Status404NotFound,
             [TransferMessages.DestinationFinancialAccountNotFound] =
                 StatusCodes.Status404NotFound,
-            [TransferMessages.DestinationStatementNotFound] = StatusCodes.Status404NotFound,
+            [CreditCardStatementMessages.NotFound] = StatusCodes.Status404NotFound,
+            [CreditCardStatementMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
             [TransferMessages.NotFound] = StatusCodes.Status404NotFound,
             [TransferMessages.AccountsMustDiffer] = StatusCodes.Status400BadRequest,
-            [TransferMessages.ExchangeRateUnavailable] = StatusCodes.Status409Conflict,
             [TransferMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest,
-            [TransferMessages.StatementOpen] = StatusCodes.Status409Conflict,
-            [TransferMessages.StatementAlreadySettled] = StatusCodes.Status409Conflict,
+            [CreditCardStatementMessages.StatementOpen] = StatusCodes.Status409Conflict,
+            [CreditCardStatementMessages.StatementAlreadySettled] = StatusCodes.Status409Conflict,
             [TransferMessages.SettledStatementFrozen] = StatusCodes.Status409Conflict,
             [TransferMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [TransferMessages.TransferIdRequired] = StatusCodes.Status400BadRequest,
@@ -49,7 +43,9 @@ public sealed class TransfersController(
             [TransferMessages.OccurredOnRequired] = StatusCodes.Status400BadRequest,
             [TransferMessages.OccurredOnTooFarInFuture] = StatusCodes.Status400BadRequest,
             [TransferMessages.OwnerImmutable] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpGet("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
@@ -57,14 +53,13 @@ public sealed class TransfersController(
         Guid id,
         [FromQuery] bool includeDeleted = false)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetTransferByIdQuery,
             TransferOutput>(new GetTransferByIdQuery
             {
                 Id = id,
                 IncludeDeleted = includeDeleted
             });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost]
@@ -72,29 +67,26 @@ public sealed class TransfersController(
     public async Task<ActionResult<DataOutput<RecordTransferCommandOutput?>>> Record(
         [FromBody] RecordTransferCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RecordTransferCommand,
             RecordTransferCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TransferLifecycleCommandOutput?>>> Delete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DeleteTransferCommand,
             TransferLifecycleCommandOutput>(new DeleteTransferCommand { Id = id });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/restore")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TransferLifecycleCommandOutput?>>> Restore(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RestoreTransferCommand,
             TransferLifecycleCommandOutput>(new RestoreTransferCommand { Id = id });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

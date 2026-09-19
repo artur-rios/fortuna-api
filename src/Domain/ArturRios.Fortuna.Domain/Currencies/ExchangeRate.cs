@@ -24,6 +24,11 @@ public sealed class ExchangeRate
             throw new ArgumentOutOfRangeException(nameof(rate), "An exchange rate must be positive.");
         }
 
+        if (!Enum.IsDefined(source))
+        {
+            throw new ArgumentOutOfRangeException(nameof(source));
+        }
+
         BaseCurrencyId = baseCurrencyId;
         QuoteCurrencyId = quoteCurrencyId;
         Rate = rate;
@@ -58,6 +63,7 @@ public sealed class ExchangeRate
         }
 
         Rate = rate;
+
         return true;
     }
 
@@ -79,6 +85,7 @@ public sealed class ExchangeRate
         }
 
         Rate = rate;
+
         return true;
     }
 }

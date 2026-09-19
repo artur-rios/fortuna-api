@@ -7,6 +7,7 @@ using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -54,6 +55,8 @@ public sealed class SqliteOfflineApiTests
         }
         finally
         {
+            // Pooled connections keep the file open, which makes deletion fail on Windows.
+            SqliteConnection.ClearAllPools();
             File.Delete(path);
         }
     }
@@ -62,6 +65,7 @@ public sealed class SqliteOfflineApiTests
     {
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         DatabaseProvider.Configure(builder, DatabaseProvider.SQLite, path);
+
         return new AppDbContext(
             builder.Options,
             NullLoggerFactory.Instance,

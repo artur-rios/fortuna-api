@@ -297,6 +297,7 @@ public sealed class TransactionRecordingTests : IAsyncLifetime
             Tags = tags
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<TransactionEnvelope>())!.Data!;
     }
 
@@ -308,6 +309,7 @@ public sealed class TransactionRecordingTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -342,6 +344,7 @@ public sealed class TransactionRecordingTests : IAsyncLifetime
             OpeningBalance = openingBalance
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<AccountEnvelope>())!.Data!.Id;
     }
 
@@ -371,6 +374,7 @@ public sealed class TransactionRecordingTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

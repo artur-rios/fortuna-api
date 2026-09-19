@@ -133,6 +133,50 @@ public sealed class TransferTests
             Now));
     }
 
+    [UnitFact]
+    public void GivenDistinctInstancesOfOneMovement_WhenCreated_ThenTransferIsRejected()
+    {
+        var user = User();
+        var outbound = AccountMovement(user, TransactionDirection.Expense);
+        var inbound = AccountMovement(user, TransactionDirection.Earning);
+        typeof(Lifecycle.RecordLifecycleEntity).GetProperty("PublicId")!
+            .SetValue(inbound, outbound.PublicId);
+
+        Assert.Throws<ArgumentException>(() => new Transfer(outbound, inbound, null, null, Now));
+    }
+
+    [UnitFact]
+    public void GivenBothLegsOnOneAccount_WhenCreated_ThenTransferIsRejected()
+    {
+        var user = User();
+        var outbound = AccountMovement(user, TransactionDirection.Expense);
+        var inbound = new FinancialTransaction(
+            user,
+            outbound.FinancialAccount!,
+            outbound.Category,
+            TransactionDirection.Earning,
+            10m,
+            new DateOnly(2026, 9, 4),
+            Now);
+
+        Assert.Throws<ArgumentException>(() => new Transfer(outbound, inbound, null, null, Now));
+    }
+
+    [UnitFact]
+    public void GivenDeletedLeg_WhenCreated_ThenTransferIsRejected()
+    {
+        var user = User();
+        var outbound = AccountMovement(user, TransactionDirection.Expense);
+        var inbound = CardMovement(user, TransactionDirection.Earning);
+        inbound.SoftDelete(Now);
+        var contribution = InvestmentMovement(user, InvestmentMovementType.Contribution);
+        contribution.SoftDelete(Now);
+
+        Assert.Throws<ArgumentException>(() => new Transfer(outbound, inbound, null, null, Now));
+        Assert.Throws<ArgumentException>(() =>
+            new Transfer(outbound, contribution, null, null, Now));
+    }
+
     private static FinancialTransaction AccountMovement(
         UserProfile user,
         TransactionDirection direction) => new(

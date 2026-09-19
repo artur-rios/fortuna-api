@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.Shared.Pagination;
+
 namespace ArturRios.Fortuna.Shared.Classification;
 
 public interface ICounterpartyStore
@@ -9,9 +11,10 @@ public interface ICounterpartyStore
 
 public interface ICounterpartyReader
 {
-    Task<IReadOnlyCollection<CounterpartySnapshot>> ListAsync(
+    Task<ReadPage<CounterpartySnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
+        PageRequest page,
         CancellationToken cancellationToken);
 }
 

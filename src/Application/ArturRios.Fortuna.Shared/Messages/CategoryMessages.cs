@@ -15,7 +15,7 @@ public static class CategoryMessages
     public const string NotFound = "Category not found.";
     public const string DefaultSetAvailable =
         "No categories were found. A default category set can be seeded.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string ParentNotFound = "Parent category not found.";
     public const string DuplicateSiblingName =
         "A live sibling category already uses this name.";
@@ -34,4 +34,7 @@ public static class CategoryMessages
     public const string HardDeleteHasLiveTransactions =
         "The category cannot be permanently deleted while live transactions reference it. " +
         "Reassign them first.";
+    public const string HardDeleteHasDependents =
+        "The category cannot be permanently deleted while budgets, live transfers, installment " +
+        "plans or statement settlements still reference it.";
 }

@@ -38,7 +38,8 @@ public interface IConnectionReader
 public enum ConnectionMutationOutcome
 {
     Succeeded = 1,
-    Duplicate = 2
+    Duplicate = 2,
+    ProfileNotFound = 3
 }
 
 public sealed record ConnectionCreation(
@@ -49,7 +50,7 @@ public sealed record ConnectionCreation(
     DateTimeOffset CreatedAt);
 
 public sealed record ConnectionMutationResult(
-    ConnectionSnapshot Connection,
+    ConnectionSnapshot? Connection,
     ConnectionMutationOutcome Outcome);
 
 public sealed record ConnectionReauthentication(

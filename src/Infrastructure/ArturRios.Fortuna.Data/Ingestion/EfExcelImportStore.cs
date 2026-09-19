@@ -8,6 +8,8 @@ using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Ingestion;
+using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Ingestion;
@@ -50,6 +52,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         context.ImportJobs.Add(importJob);
         context.BackgroundJobs.Add(backgroundJob);
         await context.SaveChangesAsync(cancellationToken);
+
         return new QueueExcelImportResult(
             Snapshot(importJob),
             backgroundJob.Id,
@@ -79,7 +82,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         return true;
     }
 
-    public async Task CompleteAsync(
+    public async Task<ImportCompletionResult> CompleteAsync(
         Guid importJobId,
         Guid userId,
         Guid targetId,
@@ -89,14 +92,19 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         DateTimeOffset completedAt,
         CancellationToken cancellationToken)
     {
-        var job = await context.ImportJobs.Include(item => item.User).SingleAsync(
+        var job = await context.ImportJobs.Include(item => item.User).SingleOrDefaultAsync(
             item => item.PublicId == importJobId &&
                 item.User.PublicId == userId &&
                 item.SourceType == TransactionSourceType.Excel,
             cancellationToken);
+        if (job is null)
+        {
+            return ImportCompletionResult.Of(ImportCompletionOutcome.JobNotFound);
+        }
+
         if (job.Status != ImportJobStatus.Running)
         {
-            return;
+            return ImportCompletionResult.Of(ImportCompletionOutcome.JobNotRunning);
         }
 
         var account = targetType == ImportTargetType.Account
@@ -111,7 +119,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
             : null;
         if ((account is null) == (card is null))
         {
-            throw new InvalidOperationException("The Excel import target is unavailable.");
+            return ImportCompletionResult.Of(ImportCompletionOutcome.TargetUnavailable);
         }
 
         var imported = 0;
@@ -127,10 +135,10 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
                     job,
                     row.RawPayload,
                     ImportedRecordOutcome.Rejected,
-                    row.Amount,
+                    row.Amount is > 0 ? row.Amount : null,
                     row.OccurredOn,
                     ValidExternalId(row.ExternalId),
-                    row.RejectionReason));
+                    row.RejectionReason ?? RejectionReason(row)));
                 rejected++;
                 continue;
             }
@@ -201,23 +209,34 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
 
         job.Complete(imported, duplicates, rejected, completedAt);
         await context.SaveChangesAsync(cancellationToken);
+
+        return ImportCompletionResult.Completed;
     }
 
-    public async Task FailAsync(
+    public async Task<JobTransitionOutcome> FailAsync(
         Guid importJobId,
         string reason,
         DateTimeOffset failedAt,
         CancellationToken cancellationToken)
     {
-        var job = await context.ImportJobs.SingleAsync(
+        var job = await context.ImportJobs.SingleOrDefaultAsync(
             item => item.PublicId == importJobId &&
                 item.SourceType == TransactionSourceType.Excel,
             cancellationToken);
-        if (job.Status is ImportJobStatus.Pending or ImportJobStatus.Running)
+        if (job is null)
         {
-            job.Fail(reason, failedAt);
-            await context.SaveChangesAsync(cancellationToken);
+            return JobTransitionOutcome.NotFound;
         }
+
+        if (job.Status is not (ImportJobStatus.Pending or ImportJobStatus.Running))
+        {
+            return JobTransitionOutcome.NotRunning;
+        }
+
+        job.Fail(reason, failedAt);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return JobTransitionOutcome.Applied;
     }
 
     private async Task<Domain.Lifecycle.RecordLifecycleEntity?> TargetAsync(
@@ -260,6 +279,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
 
         category = new Category(user, name, createdAt);
         context.Categories.Add(category);
+
         return category;
     }
 
@@ -272,6 +292,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         var local = context.Categories.Local.SingleOrDefault(item =>
             item.UserId == userId && item.ParentId == null &&
             item.NormalizedName == normalized && !item.IsDeleted);
+
         return local is not null
             ? Task.FromResult<Category?>(local)
             : context.Categories.Include(item => item.User).SingleOrDefaultAsync(item =>
@@ -292,12 +313,18 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
             !item.IsDeleted && item.OccurredOn == occurredOn && item.Amount == amount &&
             item.FinancialAccountId == (account == null ? null : account.Id) &&
             item.CreditCardId == (card == null ? null : card.Id));
+
         return string.IsNullOrWhiteSpace(externalId)
             ? await matches.AnyAsync(cancellationToken)
             : await matches.AnyAsync(item =>
                 item.ImportedRecord != null && item.ImportedRecord.ExternalId == externalId,
                 cancellationToken);
     }
+
+    private static string RejectionReason(ExcelWorkbookRow row) =>
+        row.OccurredOn is null ? ExcelImportMessages.RowDateInvalid
+        : row.Amount is not > 0 ? ExcelImportMessages.RowAmountInvalid
+        : ExcelImportMessages.RowDirectionInvalid;
 
     private async Task AssignToStatementAsync(
         FinancialTransaction transaction,

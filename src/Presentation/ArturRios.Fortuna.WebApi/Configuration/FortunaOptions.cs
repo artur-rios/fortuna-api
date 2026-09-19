@@ -1,11 +1,16 @@
 using System.Globalization;
 using System.Net;
-using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Shared.Messages;
 
 namespace ArturRios.Fortuna.WebApi.Configuration;
 
 public sealed record FortunaOptions
 {
+    public const int DefaultMetricsPort = 9464;
+
+    /// <summary>HS256 needs a key of at least 256 bits.</summary>
+    public const int MinimumAuthTokenSecretBytes = 32;
+
     public required string DataConnectionString { get; init; }
     public required string DataDatabaseType { get; init; }
     public required string StorageProvider { get; init; }
@@ -51,366 +56,422 @@ public sealed record FortunaOptions
     public int ReconciliationDateToleranceDays { get; init; }
     public int MetricsPort { get; init; } = DefaultMetricsPort;
 
-    public const int DefaultMetricsPort = 9464;
+    /// <summary>
+    /// Reverse-proxy networks whose <c>X-Forwarded-For</c>/<c>X-Forwarded-Proto</c> headers are
+    /// trusted, so rate limiting and logs see the real client instead of the proxy.
+    /// </summary>
+    public IReadOnlyCollection<IPNetwork> ForwardedKnownNetworks { get; init; } = [];
 
-    public static FortunaOptions From(Func<string, string?> read)
+    /// <summary>Individual reverse-proxy addresses whose forwarded headers are trusted.</summary>
+    public IReadOnlyCollection<IPAddress> ForwardedKnownProxies { get; init; } = [];
+
+    /// <summary>
+    /// The ports Kestrel serves the API on, read from <c>ASPNETCORE_HTTP_PORTS</c> and
+    /// <c>ASPNETCORE_HTTPS_PORTS</c> only to check they do not collide with the metrics port.
+    /// </summary>
+    public IReadOnlyCollection<int> ApiPorts { get; init; } = [];
+
+    /// <summary>
+    /// Reads every setting, then validates the result, and returns all problems at once so a
+    /// misconfigured deployment can be fixed in one pass.
+    /// </summary>
+    public static FortunaOptionsParseResult Parse(Func<string, string?> read)
     {
-        var provider = Required(read, "FORTUNA_STORAGE_PROVIDER");
+        var settings = new SettingsReader(read);
         var options = new FortunaOptions
         {
-            DataConnectionString = Required(read, "FORTUNA_DATA_CONNECTIONSTRING"),
-            DataDatabaseType = Required(read, "FORTUNA_DATA_DATABASETYPE"),
-            StorageProvider = provider,
-            StoragePath = read("FORTUNA_STORAGE_PATH"),
-            StorageS3Endpoint = read("FORTUNA_STORAGE_S3_ENDPOINT"),
-            StorageS3Bucket = read("FORTUNA_STORAGE_S3_BUCKET"),
-            StorageS3AccessKey = read("FORTUNA_STORAGE_S3_ACCESS_KEY"),
-            StorageS3SecretKey = read("FORTUNA_STORAGE_S3_SECRET_KEY"),
-            LogDirectory = Required(read, "FORTUNA_LOG_DIRECTORY"),
-            JobQueueCapacity = PositiveInteger(read("FORTUNA_JOB_QUEUE_CAPACITY"), "FORTUNA_JOB_QUEUE_CAPACITY", 256),
-            HealthJobMaximumPendingSeconds = PositiveInteger(
-                read("FORTUNA_HEALTH_JOB_MAX_PENDING_SECONDS"),
-                "FORTUNA_HEALTH_JOB_MAX_PENDING_SECONDS",
-                300),
-            PageSizeMaximum = PositiveInteger(read("FORTUNA_PAGE_SIZE_MAX"), "FORTUNA_PAGE_SIZE_MAX", 100),
-            ReportMaximumRangeDays = PositiveInteger(
-                read("FORTUNA_REPORT_MAX_RANGE_DAYS"),
-                "FORTUNA_REPORT_MAX_RANGE_DAYS",
-                366),
-            ReportKeyLifetimeMinutes = PositiveInteger(
-                read("FORTUNA_REPORT_KEY_TTL_MINUTES"),
-                "FORTUNA_REPORT_KEY_TTL_MINUTES",
-                15),
-            ProjectionMaximumHorizonDays = PositiveInteger(
-                read("FORTUNA_PROJECTION_MAX_HORIZON_DAYS"),
-                "FORTUNA_PROJECTION_MAX_HORIZON_DAYS",
-                366),
-            ExportSynchronousThresholdRows = PositiveInteger(
-                read("FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS"),
-                "FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS",
-                1000),
-            ExportRetentionHours = PositiveInteger(
-                read("FORTUNA_EXPORT_RETENTION_HOURS"),
-                "FORTUNA_EXPORT_RETENTION_HOURS",
-                24),
-            TransactionMaximumTags = PositiveInteger(
-                read("FORTUNA_TRANSACTION_MAX_TAGS"),
-                "FORTUNA_TRANSACTION_MAX_TAGS",
-                50),
-            ExcelImportMaximumFileBytes = PositiveInteger(
-                read("FORTUNA_EXCEL_IMPORT_MAX_BYTES"),
+            DataConnectionString = settings.Text("FORTUNA_DATA_CONNECTIONSTRING"),
+            DataDatabaseType = settings.Text("FORTUNA_DATA_DATABASETYPE"),
+            StorageProvider = settings.Text("FORTUNA_STORAGE_PROVIDER"),
+            StoragePath = settings.OptionalText("FORTUNA_STORAGE_PATH"),
+            StorageS3Endpoint = settings.OptionalText("FORTUNA_STORAGE_S3_ENDPOINT"),
+            StorageS3Bucket = settings.OptionalText("FORTUNA_STORAGE_S3_BUCKET"),
+            StorageS3AccessKey = settings.OptionalText("FORTUNA_STORAGE_S3_ACCESS_KEY"),
+            StorageS3SecretKey = settings.OptionalText("FORTUNA_STORAGE_S3_SECRET_KEY"),
+            LogDirectory = settings.Text("FORTUNA_LOG_DIRECTORY"),
+            JobQueueCapacity = settings.PositiveInteger("FORTUNA_JOB_QUEUE_CAPACITY", 256),
+            HealthJobMaximumPendingSeconds = settings.PositiveInteger("FORTUNA_HEALTH_JOB_MAX_PENDING_SECONDS", 300),
+            PageSizeMaximum = settings.PositiveInteger("FORTUNA_PAGE_SIZE_MAX", 100),
+            ReportMaximumRangeDays = settings.PositiveInteger("FORTUNA_REPORT_MAX_RANGE_DAYS", 366),
+            ReportKeyLifetimeMinutes = settings.PositiveInteger("FORTUNA_REPORT_KEY_TTL_MINUTES", 15),
+            ProjectionMaximumHorizonDays = settings.PositiveInteger("FORTUNA_PROJECTION_MAX_HORIZON_DAYS", 366),
+            ExportSynchronousThresholdRows = settings.PositiveInteger("FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS", 1000),
+            ExportRetentionHours = settings.PositiveInteger("FORTUNA_EXPORT_RETENTION_HOURS", 24),
+            TransactionMaximumTags = settings.PositiveInteger("FORTUNA_TRANSACTION_MAX_TAGS", 50),
+            ExcelImportMaximumFileBytes = settings.PositiveInteger(
                 "FORTUNA_EXCEL_IMPORT_MAX_BYTES",
                 10 * 1024 * 1024),
-            PdfInvoiceImportMaximumFileBytes = PositiveInteger(
-                read("FORTUNA_PDF_IMPORT_MAX_BYTES"),
+            PdfInvoiceImportMaximumFileBytes = settings.PositiveInteger(
                 "FORTUNA_PDF_IMPORT_MAX_BYTES",
                 20 * 1024 * 1024),
-            UploadMaximumBytes = PositiveInteger(
-                read("FORTUNA_UPLOAD_MAX_BYTES"),
-                "FORTUNA_UPLOAD_MAX_BYTES",
-                10 * 1024 * 1024),
-            UploadAllowedContentTypes = ContentTypes(
-                read("FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES")),
-            RunMigrations = Boolean(read("FORTUNA_RUN_MIGRATIONS"), "FORTUNA_RUN_MIGRATIONS", false),
-            AuthTokenSecret = Required(read, "FORTUNA_AUTH_TOKEN_SECRET"),
-            AuthPreviousTokenSecret = read("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),
-            AuthTokenIssuer = Required(read, "FORTUNA_AUTH_TOKEN_ISSUER"),
-            AuthTokenAudience = Required(read, "FORTUNA_AUTH_TOKEN_AUDIENCE"),
-            AuthTokenExpirationInSeconds = PositiveDouble(
-                read("FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"),
-                "FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS",
-                3600),
-            DefaultDisplayCurrency = CurrencyCode(read("FORTUNA_DEFAULT_DISPLAY_CURRENCY")),
-            Locale = SpecificLocale(read("FORTUNA_LOCALE")),
-            LocalAuthEnabled = Boolean(read("FORTUNA_LOCAL_AUTH_ENABLED"), "FORTUNA_LOCAL_AUTH_ENABLED", false),
-            LocalAuthRecoveryCodeCount = PositiveInteger(
-                read("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"),
-                "FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT",
-                10),
-            ConsentExternalDataProcessingVersion = ConsentVersion(
-                read("FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION")),
-            HeimdallBaseUri = RequiredHttpsUri(
-                read("FORTUNA_HEIMDALL_BASE_URL"),
-                "FORTUNA_HEIMDALL_BASE_URL"),
-            HeimdallScopeId = RequiredGuid(
-                read("FORTUNA_HEIMDALL_SCOPE_ID"),
-                "FORTUNA_HEIMDALL_SCOPE_ID"),
-            PluggyClientId = read("FORTUNA_PLUGGY_CLIENT_ID"),
-            PluggyClientSecret = read("FORTUNA_PLUGGY_CLIENT_SECRET"),
-            PluggyBaseUri = OptionalAbsoluteUri(
-                read("FORTUNA_PLUGGY_BASE_URL"),
-                "FORTUNA_PLUGGY_BASE_URL"),
-            RatesSourceBaseUri = OptionalAbsoluteUri(
-                read("FORTUNA_RATES_SOURCE_BASE_URL"),
-                "FORTUNA_RATES_SOURCE_BASE_URL"),
-            RatesSyncCron = read("FORTUNA_RATES_SYNC_CRON"),
-            RatesCurrencies = CurrencyCodes(read("FORTUNA_RATES_CURRENCIES")),
-            ReconciliationAmountTolerance = NonNegativeDecimal(
-                read("FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE"),
+            UploadMaximumBytes = settings.PositiveInteger("FORTUNA_UPLOAD_MAX_BYTES", 10 * 1024 * 1024),
+            UploadAllowedContentTypes = settings.ContentTypes("FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES"),
+            RunMigrations = settings.Boolean("FORTUNA_RUN_MIGRATIONS", false),
+            AuthTokenSecret = settings.Text("FORTUNA_AUTH_TOKEN_SECRET"),
+            AuthPreviousTokenSecret = settings.OptionalText("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),
+            AuthTokenIssuer = settings.Text("FORTUNA_AUTH_TOKEN_ISSUER"),
+            AuthTokenAudience = settings.Text("FORTUNA_AUTH_TOKEN_AUDIENCE"),
+            AuthTokenExpirationInSeconds = settings.PositiveNumber("FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS", 3600),
+            DefaultDisplayCurrency = settings.CurrencyCode("FORTUNA_DEFAULT_DISPLAY_CURRENCY"),
+            Locale = settings.SpecificLocale("FORTUNA_LOCALE"),
+            LocalAuthEnabled = settings.Boolean("FORTUNA_LOCAL_AUTH_ENABLED", false),
+            LocalAuthRecoveryCodeCount = settings.PositiveInteger("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT", 10),
+            ConsentExternalDataProcessingVersion =
+                settings.OptionalTrimmed("FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION") ?? "1.0",
+            HeimdallBaseUri = settings.RequiredHttpsUri("FORTUNA_HEIMDALL_BASE_URL"),
+            HeimdallScopeId = settings.RequiredGuid("FORTUNA_HEIMDALL_SCOPE_ID"),
+            PluggyClientId = settings.OptionalText("FORTUNA_PLUGGY_CLIENT_ID"),
+            PluggyClientSecret = settings.OptionalText("FORTUNA_PLUGGY_CLIENT_SECRET"),
+            PluggyBaseUri = settings.OptionalAbsoluteUri("FORTUNA_PLUGGY_BASE_URL"),
+            RatesSourceBaseUri = settings.OptionalAbsoluteUri("FORTUNA_RATES_SOURCE_BASE_URL"),
+            RatesSyncCron = settings.OptionalText("FORTUNA_RATES_SYNC_CRON"),
+            RatesCurrencies = settings.CurrencyCodes("FORTUNA_RATES_CURRENCIES"),
+            ReconciliationAmountTolerance = settings.NonNegativeDecimal(
                 "FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE",
                 0.01m),
-            ReconciliationDateToleranceDays = NonNegativeInteger(
-                read("FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS"),
+            ReconciliationDateToleranceDays = settings.NonNegativeInteger(
                 "FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS",
                 1),
-            MetricsPort = Port(read("FORTUNA_METRICS_PORT"), "FORTUNA_METRICS_PORT", DefaultMetricsPort)
+            MetricsPort = settings.Port("FORTUNA_METRICS_PORT", DefaultMetricsPort),
+            ForwardedKnownNetworks = settings.Networks("FORTUNA_FORWARDED_KNOWN_NETWORKS"),
+            ForwardedKnownProxies = settings.Addresses("FORTUNA_FORWARDED_KNOWN_PROXIES"),
+            ApiPorts = settings.PortList("ASPNETCORE_HTTP_PORTS", "ASPNETCORE_HTTPS_PORTS")
         };
 
-        if (!DatabaseProvider.IsSupported(options.DataDatabaseType))
-        {
-            throw new InvalidOperationException(
-                "FORTUNA_DATA_DATABASETYPE must be 'PostgreSql' or 'SQLite'.");
-        }
-
-        if (string.Equals(provider, "Filesystem", StringComparison.OrdinalIgnoreCase))
-        {
-            _ = Required(read, "FORTUNA_STORAGE_PATH");
-        }
-        else if (string.Equals(provider, "S3", StringComparison.OrdinalIgnoreCase))
-        {
-            _ = Required(read, "FORTUNA_STORAGE_S3_ENDPOINT");
-            _ = Required(read, "FORTUNA_STORAGE_S3_BUCKET");
-            _ = Required(read, "FORTUNA_STORAGE_S3_ACCESS_KEY");
-            _ = Required(read, "FORTUNA_STORAGE_S3_SECRET_KEY");
-        }
-        else
-        {
-            throw new InvalidOperationException("FORTUNA_STORAGE_PROVIDER must be 'Filesystem' or 'S3'.");
-        }
-
-        if (options.RatesSourceBaseUri is not null)
-        {
-            if (string.IsNullOrWhiteSpace(options.RatesSyncCron))
-            {
-                throw new InvalidOperationException(
-                    "Required environment variable 'FORTUNA_RATES_SYNC_CRON' is not set.");
-            }
-
-            try
-            {
-                _ = Services.CronSchedule.Parse(options.RatesSyncCron);
-            }
-            catch (FormatException exception)
-            {
-                throw new InvalidOperationException(
-                    "FORTUNA_RATES_SYNC_CRON must be a valid five-field UTC cron expression.",
-                    exception);
-            }
-
-            if (options.RatesCurrencies.Count < 2)
-            {
-                throw new InvalidOperationException(
-                    "FORTUNA_RATES_CURRENCIES must contain at least two ISO 4217 codes.");
-            }
-        }
-
-        return options;
-    }
-
-    private static string Required(Func<string, string?> read, string key) =>
-        string.IsNullOrWhiteSpace(read(key))
-            ? throw new InvalidOperationException($"Required environment variable '{key}' is not set.")
-            : read(key)!;
-
-    private static string ConsentVersion(string? value)
-    {
-        var version = string.IsNullOrWhiteSpace(value) ? "1.0" : value.Trim();
-        return version.Length <= 50
-            ? version
-            : throw new InvalidOperationException(
-                "FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION cannot exceed 50 characters.");
-    }
-
-    private static int PositiveInteger(string? value, string key, int fallback)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return fallback;
-        }
-
-        return int.TryParse(value, out var parsed) && parsed > 0
-            ? parsed
-            : throw new InvalidOperationException($"Environment variable '{key}' must be a positive integer.");
-    }
-
-    private static bool Boolean(string? value, string key, bool fallback)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return fallback;
-        }
-
-        return bool.TryParse(value, out var parsed)
-            ? parsed
-            : throw new InvalidOperationException($"Environment variable '{key}' must be true or false.");
-    }
-
-    private static IReadOnlyCollection<string> ContentTypes(string? value)
-    {
-        var source = string.IsNullOrWhiteSpace(value)
-            ? "application/pdf,image/jpeg,image/png"
-            : value;
-        var values = source.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .Select(contentType => contentType.ToLowerInvariant())
+        var validation = new FortunaOptionsValidator().Validate(options);
+        var errors = settings.Errors
+            .Concat(validation.Errors.Select(failure => failure.ErrorMessage))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        if (values.Length == 0 || values.Any(contentType =>
-                !contentType.Contains('/', StringComparison.Ordinal) ||
-                contentType.Any(char.IsWhiteSpace)))
-        {
-            throw new InvalidOperationException(
-                "FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES must be a comma-separated list of MIME types.");
-        }
 
-        return values;
+        return new FortunaOptionsParseResult(options, errors);
     }
 
-    private static int NonNegativeInteger(string? value, string key, int fallback)
+    /// <summary>Parses and validates, throwing one exception that lists every problem.</summary>
+    public static FortunaOptions From(Func<string, string?> read)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return fallback;
-        }
+        var result = Parse(read);
 
-        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) &&
-            parsed >= 0
-            ? parsed
-            : throw new InvalidOperationException(
-                $"Environment variable '{key}' must be a non-negative integer.");
+        return result.IsValid
+            ? result.Options
+            : throw new FortunaConfigurationException(result.Errors);
     }
 
-    private static int Port(string? value, string key, int fallback)
+    /// <summary>
+    /// Converts raw environment values, recording a message for each one that cannot be
+    /// converted and substituting the default so the remaining settings are still checked.
+    /// </summary>
+    private sealed class SettingsReader(Func<string, string?> read)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        private readonly List<string> errors = [];
+
+        public IReadOnlyList<string> Errors => errors;
+
+        // Text values are kept verbatim (a secret's surrounding whitespace is part of the key);
+        // structured values are trimmed before they are converted.
+        public string Text(string key) => read(key) ?? string.Empty;
+
+        public string? OptionalText(string key)
         {
-            return fallback;
+            var value = read(key);
+
+            return string.IsNullOrWhiteSpace(value) ? null : value;
         }
 
-        return int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) &&
-            parsed <= IPEndPoint.MaxPort
-            ? parsed
-            : throw new InvalidOperationException(
-                $"Environment variable '{key}' must be a TCP port between 0 and 65535.");
-    }
+        public string? OptionalTrimmed(string key) => OptionalText(key)?.Trim();
 
-    private static decimal NonNegativeDecimal(string? value, string key, decimal fallback)
-    {
-        if (string.IsNullOrWhiteSpace(value))
+        public int PositiveInteger(string key, int fallback) =>
+            Convert(key, fallback, value =>
+                int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed > 0
+                    ? parsed
+                    : null,
+                ConfigurationMessages.PositiveInteger(key));
+
+        public int NonNegativeInteger(string key, int fallback) =>
+            Convert(key, fallback, value =>
+                int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed >= 0
+                    ? parsed
+                    : null,
+                ConfigurationMessages.NonNegativeInteger(key));
+
+        public int Port(string key, int fallback) =>
+            Convert(key, fallback, value =>
+                int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) &&
+                parsed <= IPEndPoint.MaxPort
+                    ? parsed
+                    : null,
+                ConfigurationMessages.Port(key));
+
+        public double PositiveNumber(string key, double fallback) =>
+            Convert(key, fallback, value =>
+                double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) &&
+                double.IsFinite(parsed) && parsed > 0
+                    ? parsed
+                    : null,
+                ConfigurationMessages.PositiveNumber(key));
+
+        public decimal NonNegativeDecimal(string key, decimal fallback) =>
+            Convert(key, fallback, value =>
+                decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) &&
+                parsed >= 0
+                    ? parsed
+                    : null,
+                ConfigurationMessages.NonNegativeDecimal(key));
+
+        public bool Boolean(string key, bool fallback) =>
+            Convert(key, fallback, value => bool.TryParse(value, out var parsed) ? parsed : null,
+                ConfigurationMessages.Boolean(key));
+
+        public string? CurrencyCode(string key)
         {
-            return fallback;
-        }
+            var value = OptionalTrimmed(key);
+            if (value is null)
+            {
+                return null;
+            }
 
-        return decimal.TryParse(
-                value,
-                NumberStyles.Number,
-                CultureInfo.InvariantCulture,
-                out var parsed) && parsed >= 0
-            ? parsed
-            : throw new InvalidOperationException(
-                $"Environment variable '{key}' must be a non-negative decimal.");
-    }
+            var code = value.ToUpperInvariant();
+            if (IsCurrencyCode(code))
+            {
+                return code;
+            }
 
-    private static double PositiveDouble(string? value, string key, double fallback)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return fallback;
-        }
+            errors.Add(ConfigurationMessages.CurrencyCode(key));
 
-        return double.TryParse(value, out var parsed) && parsed > 0
-            ? parsed
-            : throw new InvalidOperationException($"Environment variable '{key}' must be a positive number.");
-    }
-
-    private static string? CurrencyCode(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
             return null;
         }
 
-        var code = value.Trim().ToUpperInvariant();
-
-        return code.Length == 3 && code.All(char.IsAsciiLetter)
-            ? code
-            : throw new InvalidOperationException(
-                "FORTUNA_DEFAULT_DISPLAY_CURRENCY must be a three-letter ISO 4217 code when set.");
-    }
-
-    private static IReadOnlyCollection<string> CurrencyCodes(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
+        public IReadOnlyCollection<string> CurrencyCodes(string key)
         {
+            var value = OptionalTrimmed(key);
+            if (value is null)
+            {
+                return [];
+            }
+
+            var codes = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(code => code.ToUpperInvariant())
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            if (codes.All(IsCurrencyCode))
+            {
+                return codes;
+            }
+
+            errors.Add(ConfigurationMessages.CurrencyCodes(key));
+
             return [];
         }
 
-        return value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(code => CurrencyCode(code)!)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-    }
-
-    private static Uri? OptionalAbsoluteUri(string? value, string key)
-    {
-        if (string.IsNullOrWhiteSpace(value))
+        public IReadOnlyCollection<string> ContentTypes(string key)
         {
+            var source = OptionalTrimmed(key) ?? "application/pdf,image/jpeg,image/png";
+            var values = source.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Select(contentType => contentType.ToLowerInvariant())
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            if (values.Length > 0 && values.All(contentType =>
+                    contentType.Contains('/', StringComparison.Ordinal) &&
+                    !contentType.Any(char.IsWhiteSpace)))
+            {
+                return values;
+            }
+
+            errors.Add(ConfigurationMessages.UploadContentTypesInvalid);
+
+            return [];
+        }
+
+        public Uri? OptionalAbsoluteUri(string key)
+        {
+            var value = OptionalTrimmed(key);
+            if (value is null)
+            {
+                return null;
+            }
+
+            if (Uri.TryCreate(value.TrimEnd('/') + "/", UriKind.Absolute, out var uri) &&
+                uri.Scheme is "http" or "https")
+            {
+                return uri;
+            }
+
+            errors.Add(ConfigurationMessages.AbsoluteUri(key));
+
             return null;
         }
 
-        if (!Uri.TryCreate(value.Trim().TrimEnd('/') + "/", UriKind.Absolute, out var uri) ||
-            uri.Scheme is not ("http" or "https"))
+        public Uri RequiredHttpsUri(string key)
         {
-            throw new InvalidOperationException(
-                $"Environment variable '{key}' must be an absolute HTTP or HTTPS URL.");
-        }
-
-        return uri;
-    }
-
-    private static Uri RequiredAbsoluteUri(string? value, string key) =>
-        OptionalAbsoluteUri(value, key) ??
-        throw new InvalidOperationException($"Required environment variable '{key}' is not set.");
-
-    private static Uri RequiredHttpsUri(string? value, string key)
-    {
-        var uri = RequiredAbsoluteUri(value, key);
-        return uri.Scheme == Uri.UriSchemeHttps
-            ? uri
-            : throw new InvalidOperationException(
-                $"Environment variable '{key}' must be an absolute HTTPS URL.");
-    }
-
-    private static Guid RequiredGuid(string? value, string key) =>
-        Guid.TryParse(value, out var parsed) && parsed != Guid.Empty
-            ? parsed
-            : throw new InvalidOperationException(
-                $"Required environment variable '{key}' must be a non-empty GUID.");
-
-    private static string SpecificLocale(string? value)
-    {
-        const string key = "FORTUNA_LOCALE";
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException($"Required environment variable '{key}' is not set.");
-        }
-
-        try
-        {
-            var culture = CultureInfo.GetCultureInfo(value.Trim());
-            if (culture.IsNeutralCulture)
+            var fallback = new Uri("https://unconfigured.invalid/");
+            if (OptionalTrimmed(key) is null)
             {
-                throw new ArgumentException("A neutral culture does not identify a region.", key);
+                errors.Add(ConfigurationMessages.Required(key));
+
+                return fallback;
             }
 
-            _ = new RegionInfo(culture.Name);
+            var uri = OptionalAbsoluteUri(key);
+            if (uri is null)
+            {
+                return fallback;
+            }
 
-            return culture.Name;
+            if (uri.Scheme == Uri.UriSchemeHttps)
+            {
+                return uri;
+            }
+
+            errors.Add(ConfigurationMessages.HttpsUri(key));
+
+            return fallback;
         }
-        catch (ArgumentException exception)
+
+        public Guid RequiredGuid(string key)
         {
-            throw new InvalidOperationException(
-                $"Environment variable '{key}' must be a specific locale such as 'pt-BR'.",
-                exception);
+            if (Guid.TryParse(read(key), out var parsed) && parsed != Guid.Empty)
+            {
+                return parsed;
+            }
+
+            errors.Add(ConfigurationMessages.NonEmptyGuid(key));
+
+            return Guid.Empty;
+        }
+
+        public string SpecificLocale(string key)
+        {
+            var value = OptionalTrimmed(key);
+            if (value is null)
+            {
+                errors.Add(ConfigurationMessages.Required(key));
+
+                return string.Empty;
+            }
+
+            if (TryGetSpecificCulture(value, out var name))
+            {
+                return name;
+            }
+
+            errors.Add(ConfigurationMessages.SpecificLocale(key));
+
+            return string.Empty;
+        }
+
+        public IReadOnlyCollection<IPNetwork> Networks(string key)
+        {
+            var parts = List(key);
+            var networks = new List<IPNetwork>(parts.Length);
+            foreach (var part in parts)
+            {
+                if (!IPNetwork.TryParse(part, out var network))
+                {
+                    errors.Add(ConfigurationMessages.NetworksInvalid(key));
+
+                    return [];
+                }
+
+                networks.Add(network);
+            }
+
+            return networks;
+        }
+
+        public IReadOnlyCollection<IPAddress> Addresses(string key)
+        {
+            var parts = List(key);
+            var addresses = new List<IPAddress>(parts.Length);
+            foreach (var part in parts)
+            {
+                if (!IPAddress.TryParse(part, out var address))
+                {
+                    errors.Add(ConfigurationMessages.AddressesInvalid(key));
+
+                    return [];
+                }
+
+                addresses.Add(address);
+            }
+
+            return addresses;
+        }
+
+        /// <summary>
+        /// Reads Kestrel's own port lists leniently: they are validated by Kestrel, and are read
+        /// here only to detect a collision with the metrics port.
+        /// </summary>
+        public IReadOnlyCollection<int> PortList(params string[] keys) => keys
+            .SelectMany(List)
+            .Select(part => int.TryParse(part, NumberStyles.None, CultureInfo.InvariantCulture, out var port)
+                ? port
+                : -1)
+            .Where(port => port > 0)
+            .Distinct()
+            .ToArray();
+
+        private string[] List(string key) =>
+            (OptionalTrimmed(key) ?? string.Empty).Split(
+                [',', ';'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        private T Convert<T>(string key, T fallback, Func<string, T?> parse, string error)
+            where T : struct
+        {
+            var value = OptionalTrimmed(key);
+            if (value is null)
+            {
+                return fallback;
+            }
+
+            var parsed = parse(value);
+            if (parsed.HasValue)
+            {
+                return parsed.Value;
+            }
+
+            errors.Add(error);
+
+            return fallback;
+        }
+
+        private static bool IsCurrencyCode(string code) => code.Length == 3 && code.All(char.IsAsciiLetter);
+
+        private static bool TryGetSpecificCulture(string value, out string name)
+        {
+            name = string.Empty;
+            try
+            {
+                var culture = CultureInfo.GetCultureInfo(value, predefinedOnly: true);
+                if (culture.IsNeutralCulture || culture.Name.Length == 0)
+                {
+                    return false;
+                }
+
+                _ = new RegionInfo(culture.Name);
+                name = culture.Name;
+
+                return true;
+            }
+            catch (ArgumentException)
+            {
+                // CultureInfo reports an unknown name only by throwing; it is translated into a
+                // configuration error here and never escapes.
+                return false;
+            }
         }
     }
+}
+
+public sealed record FortunaOptionsParseResult(FortunaOptions Options, IReadOnlyList<string> Errors)
+{
+    public bool IsValid => Errors.Count == 0;
+}
+
+/// <summary>Thrown once at startup, listing every configuration problem found.</summary>
+public sealed class FortunaConfigurationException(IReadOnlyList<string> errors)
+    : InvalidOperationException(
+        $"{ConfigurationMessages.Invalid}{Environment.NewLine}{string.Join(Environment.NewLine, errors.Select(error => $" - {error}"))}")
+{
+    public IReadOnlyList<string> Errors { get; } = errors;
 }

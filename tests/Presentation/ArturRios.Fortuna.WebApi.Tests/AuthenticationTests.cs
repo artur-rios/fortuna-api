@@ -33,7 +33,7 @@ public sealed class AuthenticationTests
         var values = ValidSettings();
         values.Remove("FORTUNA_AUTH_TOKEN_SECRET");
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<FortunaConfigurationException>(
             () => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_AUTH_TOKEN_SECRET", exception.Message, StringComparison.Ordinal);
@@ -47,7 +47,7 @@ public sealed class AuthenticationTests
         var values = ValidSettings();
         values.Remove(key);
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<FortunaConfigurationException>(
             () => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains(key, exception.Message, StringComparison.Ordinal);
@@ -64,7 +64,7 @@ public sealed class AuthenticationTests
         var values = ValidSettings();
         values[key] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<FortunaConfigurationException>(
             () => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains(key, exception.Message, StringComparison.Ordinal);

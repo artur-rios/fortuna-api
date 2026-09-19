@@ -195,6 +195,7 @@ public sealed class CategoryViewTests : IAsyncLifetime
             "/api/categories",
             new { Name = name, ParentId = parentId });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<CategoryEnvelope>())!.Data!;
     }
 
@@ -208,6 +209,7 @@ public sealed class CategoryViewTests : IAsyncLifetime
             OpeningBalance = 0m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<AccountEnvelope>())!.Data!.Id;
     }
 
@@ -225,6 +227,7 @@ public sealed class CategoryViewTests : IAsyncLifetime
             CategoryId = categoryId
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<TransactionEnvelope>())!.Data!.Id;
     }
 
@@ -254,6 +257,7 @@ public sealed class CategoryViewTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

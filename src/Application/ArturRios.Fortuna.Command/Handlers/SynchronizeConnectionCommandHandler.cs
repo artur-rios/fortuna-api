@@ -3,18 +3,14 @@ using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class SynchronizeConnectionCommandHandler(
-    IValidator<SynchronizeConnectionCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IPluggySynchronizationStore synchronizations,
     IBackgroundJobQueue queue,
     TimeProvider timeProvider)
@@ -23,14 +19,7 @@ public sealed class SynchronizeConnectionCommandHandler(
     public async Task<DataOutput<SynchronizeConnectionCommandOutput?>> HandleAsync(
         SynchronizeConnectionCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<SynchronizeConnectionCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<SynchronizeConnectionCommandOutput?>.New.WithError(
@@ -52,13 +41,6 @@ public sealed class SynchronizeConnectionCommandHandler(
 
         return Resolve(result);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private static DataOutput<SynchronizeConnectionCommandOutput?> Resolve(
         QueueSynchronizationResult result)

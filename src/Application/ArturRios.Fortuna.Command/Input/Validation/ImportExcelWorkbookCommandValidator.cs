@@ -11,15 +11,21 @@ public sealed class ImportExcelWorkbookCommandValidator
     {
         RuleFor(command => command.TargetId)
             .NotEmpty()
-            .WithMessage(ExcelImportMessages.TargetNotFound);
+            .WithMessage(ExcelImportMessages.TargetIdRequired);
         RuleFor(command => command.TargetType)
             .IsInEnum()
             .WithMessage(ExcelImportMessages.TargetTypeInvalid);
         RuleFor(command => command.Content)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(ExcelImportMessages.FileRequired)
             .Must(content => content.Length <= options.MaximumFileBytes)
-            .WithMessage(ExcelImportMessages.FileTooLarge);
+            .WithMessage(ExcelImportMessages.FileTooLarge)
+            .Must(FileSignatures.IsZipPackage)
+            .WithMessage(ExcelImportMessages.WorkbookInvalid);
+        RuleFor(command => command.FileName)
+            .TrimmedMaximumLength(300)
+            .WithMessage(ExcelImportMessages.FileNameTooLong);
         RuleFor(command => command.Mapping.Date)
             .NotEmpty()
             .WithMessage(ExcelImportMessages.DateColumnRequired);
@@ -45,6 +51,7 @@ public sealed class ImportExcelWorkbookCommandValidator
             mapping.Category,
             mapping.ExternalId
         }.Where(column => !string.IsNullOrWhiteSpace(column)).Select(column => column!.Trim());
+
         return columns.Distinct(StringComparer.OrdinalIgnoreCase).Count() == columns.Count();
     }
 }

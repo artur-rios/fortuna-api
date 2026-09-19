@@ -2,19 +2,15 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class AttachDocumentCommandHandler(
-    IValidator<AttachDocumentCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IAttachmentMetadataStore metadata,
     IAttachmentStore storage,
     TimeProvider timeProvider,
@@ -25,18 +21,7 @@ public sealed class AttachDocumentCommandHandler(
         AttachDocumentCommand command)
     {
         var output = DataOutput<AttachDocumentCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(AttachmentMessages.ProfileNotFound);
@@ -60,6 +45,7 @@ public sealed class AttachDocumentCommandHandler(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Attachment storage health check failed");
+
             return output.WithError(AttachmentMessages.StorageUnavailable);
         }
 
@@ -73,6 +59,7 @@ public sealed class AttachDocumentCommandHandler(
         {
             logger.LogWarning(exception, "Attachment storage write failed");
             await TryDeleteAsync(key);
+
             return output.WithError(AttachmentMessages.StorageUnavailable);
         }
 
@@ -94,16 +81,19 @@ public sealed class AttachDocumentCommandHandler(
         {
             logger.LogWarning(exception, "Attachment metadata persistence failed");
             await TryDeleteAsync(key);
+
             return output.WithError(AttachmentMessages.PersistenceFailed);
         }
 
         if (result.Outcome != AttachmentMetadataOutcome.Succeeded || result.Attachment is null)
         {
             await TryDeleteAsync(key);
+
             return output.WithError(AttachmentMessages.TransactionNotFound);
         }
 
         var attachment = result.Attachment;
+
         return output
             .WithData(new AttachDocumentCommandOutput
             {

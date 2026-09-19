@@ -1,19 +1,15 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class MaterializeRecurringTransactionsCommandHandler(
-    IValidator<MaterializeRecurringTransactionsCommand> validator,
-    IRequestActorAccessor actors,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IRecurringTransactionMaterializer materializer,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<MaterializeRecurringTransactionsCommand,
@@ -23,18 +19,7 @@ public sealed class MaterializeRecurringTransactionsCommandHandler(
         MaterializeRecurringTransactionsCommand command)
     {
         var output = DataOutput<MaterializeRecurringTransactionsCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var actor = actors.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(RecurringTransactionMessages.ProfileNotFound);
@@ -45,6 +30,7 @@ public sealed class MaterializeRecurringTransactionsCommandHandler(
         var result = await materializer.MaterializeAsync(
             new RecurringMaterializationRun(profile.Id, through, now),
             CancellationToken.None);
+
         return output.WithData(new MaterializeRecurringTransactionsCommandOutput
         {
             MaterializedThrough = through,

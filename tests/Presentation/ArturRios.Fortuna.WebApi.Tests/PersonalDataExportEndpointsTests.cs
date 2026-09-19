@@ -57,6 +57,22 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenAdministrator_WhenArchiveOfOwnDataRequested_ThenJobIsQueuedAndReadable()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+
+        var response = await client.PostAsync("/api/me/data-export", null);
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var jobId = body.RootElement.GetProperty("data").GetProperty("jobId").GetGuid();
+        var handle = await client.GetAsync($"/api/me/data-export/{jobId}");
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, handle.StatusCode);
+    }
+
+    [FunctionalFact]
     public async Task GivenPendingArchive_WhenOwnerReadsHandle_ThenProgressIsReported()
     {
         var subject = Guid.NewGuid();
@@ -204,6 +220,7 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
             export.Fail(PersonalDataExportMessages.GenerationFailed, created.AddMinutes(2));
         }
         await context.SaveChangesAsync();
+
         return export.PublicId;
     }
 
@@ -213,6 +230,7 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
         {
             Environment.SetEnvironmentVariable(setting.Key, setting.Value);
         }
+
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(Environments.Development);
@@ -234,15 +252,16 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
             DatabaseDiagnosticsOptions.Disabled);
     }
 
-    private static void Authorize(HttpClient client, Guid subject)
+    private static void Authorize(HttpClient client, Guid subject, HeimdallRoles role = HeimdallRoles.User)
     {
-        var identity = new FortunaIdentity(subject, (int)HeimdallRoles.User, Guid.NewGuid(), [])
+        var identity = new FortunaIdentity(subject, (int)role, Guid.NewGuid(), [])
         {
             DisplayName = "Portable Owner"
         };
@@ -279,13 +298,14 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
             await content.CopyToAsync(copy, cancellationToken);
             values[key] = copy.ToArray();
         }
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
-            values.TryGetValue(key, out var content)
-                ? Task.FromResult<Stream>(new MemoryStream(content, writable: false))
-                : throw new AttachmentObjectNotFoundException(key);
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+            Task.FromResult(values.TryGetValue(key, out var content)
+                ? AttachmentReadResult.Found(new MemoryStream(content, writable: false))
+                : AttachmentReadResult.NotFound);
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {
             values.Remove(key);
+
             return Task.CompletedTask;
         }
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) => Task.FromResult(true);

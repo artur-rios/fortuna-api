@@ -1,22 +1,18 @@
-using System.Globalization;
 using ArturRios.Fortuna.Command.Input;
+using ArturRios.Fortuna.Command.Input.Validation;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class RequestDataExportCommandHandler(
-    IValidator<RequestDataExportCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     DataExportBuilder builder,
     IDataExportRenderer renderer,
     IDataExportStore exports,
@@ -29,22 +25,24 @@ public sealed class RequestDataExportCommandHandler(
         RequestDataExportCommand command)
     {
         var output = DataOutput<RequestDataExportCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(DataExportMessages.ProfileNotFound);
         }
 
-        var format = ParseFormat(command.Format);
-        var locale = string.IsNullOrWhiteSpace(command.Locale)
-            ? options.DefaultLocale
-            : CultureInfo.GetCultureInfo(command.Locale.Trim()).Name;
+        if (!DataExportInput.TryParseFormat(command.Format, out var format))
+        {
+            return output.WithError(DataExportMessages.FormatUnsupported);
+        }
+
+        var locale = options.DefaultLocale;
+        if (!string.IsNullOrWhiteSpace(command.Locale) &&
+            !DataExportInput.TryResolveLocale(command.Locale, out locale))
+        {
+            return output.WithError(DataExportMessages.LocaleInvalid);
+        }
+
         var specification = new DataExportSpecification(
             command.RecordSet.Trim(),
             command.Columns.Select(column => column.Trim()).ToArray(),
@@ -81,6 +79,7 @@ public sealed class RequestDataExportCommandHandler(
                 now.Add(options.Retention)),
                 CancellationToken.None);
             await queue.EnqueueAsync(queued.BackgroundJobId, CancellationToken.None);
+
             return output
                 .WithData(new RequestDataExportCommandOutput
                 {
@@ -95,6 +94,7 @@ public sealed class RequestDataExportCommandHandler(
         }
 
         var rendered = renderer.Render(built.Document!, format);
+
         return output
             .WithData(new RequestDataExportCommandOutput
             {
@@ -108,22 +108,6 @@ public sealed class RequestDataExportCommandHandler(
             .WithMessage(DataExportMessages.CreatedSuccessfully);
     }
 
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
-    private static DataExportFormat ParseFormat(string format) =>
-        format.Trim().ToLowerInvariant() switch
-        {
-            "csv" => DataExportFormat.Csv,
-            "xlsx" or "excel" => DataExportFormat.Excel,
-            "pdf" => DataExportFormat.Pdf,
-            _ => throw new InvalidOperationException("The validated export format was invalid.")
-        };
-
     private static string FileName(
         string recordSet,
         DataExportFormat format,
@@ -136,6 +120,7 @@ public sealed class RequestDataExportCommandHandler(
             DataExportFormat.Pdf => "pdf",
             _ => throw new ArgumentOutOfRangeException(nameof(format))
         };
+
         return $"fortuna-{recordSet.ToLowerInvariant()}-{createdAt:yyyyMMddHHmmss}.{extension}";
     }
 }

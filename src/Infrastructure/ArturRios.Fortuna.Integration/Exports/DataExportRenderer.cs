@@ -8,6 +8,8 @@ namespace ArturRios.Fortuna.Integration.Exports;
 
 public sealed class DataExportRenderer : IDataExportRenderer
 {
+    private static readonly char[] FormulaTriggers = ['=', '+', '-', '@', '\t', '\r'];
+
     public RenderedDataExport Render(DataExportDocument document, DataExportFormat format) =>
         format switch
         {
@@ -27,10 +29,11 @@ public sealed class DataExportRenderer : IDataExportRenderer
         foreach (var row in document.Rows)
         {
             output.AppendLine(string.Join(separator, document.Columns.Select(column =>
-                Escape(Format(RowValue(row, column.Name), culture), separator))));
+                Escape(CsvCell(RowValue(row, column.Name), culture), separator))));
         }
 
         AppendCsvTotals(output, document.Totals, culture, separator);
+
         return new RenderedDataExport(
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(output.ToString()),
             "text/csv; charset=utf-8",
@@ -65,6 +68,7 @@ public sealed class DataExportRenderer : IDataExportRenderer
         worksheet.ColumnsUsed().AdjustToContents();
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
+
         return new RenderedDataExport(
             stream.ToArray(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -111,6 +115,12 @@ public sealed class DataExportRenderer : IDataExportRenderer
         _ => value.ToString() ?? string.Empty
     };
 
+    private static string CsvCell(object? value, CultureInfo culture) =>
+        value is string text ? NeutralizeFormula(text) : Format(value, culture);
+
+    private static string NeutralizeFormula(string value) =>
+        value.Length > 0 && FormulaTriggers.Contains(value[0]) ? "'" + value : value;
+
     private static string Escape(string value, string separator) =>
         value.Contains(separator, StringComparison.Ordinal) ||
         value.Contains('"') || value.Contains('\r') || value.Contains('\n')
@@ -134,8 +144,8 @@ public sealed class DataExportRenderer : IDataExportRenderer
         foreach (var total in totals)
         {
             output.AppendLine(string.Join(separator,
-                Escape(total.Column, separator),
-                Escape(total.CurrencyCode ?? string.Empty, separator),
+                Escape(NeutralizeFormula(total.Column), separator),
+                Escape(NeutralizeFormula(total.CurrencyCode ?? string.Empty), separator),
                 Escape(total.Value.HasValue ? Format(total.Value.Value, culture) : string.Empty,
                     separator)));
         }
@@ -172,7 +182,7 @@ public sealed class DataExportRenderer : IDataExportRenderer
         public static byte[] Write(IReadOnlyCollection<string> source)
         {
             var pages = source
-                .Select(line => Ascii(line.Length <= 115 ? line : line[..115]))
+                .Select(line => WinAnsi(line.Length <= 115 ? line : line[..115]))
                 .Chunk(LinesPerPage)
                 .ToArray();
             if (pages.Length == 0)
@@ -200,7 +210,8 @@ public sealed class DataExportRenderer : IDataExportRenderer
                     content + "\nendstream");
             }
 
-            objects.Add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+            objects.Add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica " +
+                "/Encoding /WinAnsiEncoding >>");
             using var stream = new MemoryStream();
             WriteText(stream, "%PDF-1.4\n");
             var offsets = new List<long> { 0 };
@@ -220,11 +231,16 @@ public sealed class DataExportRenderer : IDataExportRenderer
 
             WriteText(stream, $"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\n" +
                 $"startxref\n{xref}\n%%EOF");
+
             return stream.ToArray();
         }
 
-        private static string Ascii(string value) => new(value
-            .Select(character => character is >= ' ' and <= '~' ? character : '?')
+        // WinAnsiEncoding matches Latin-1 for the printable ranges below, so
+        // Portuguese text renders; anything else becomes '?'.
+        private static string WinAnsi(string value) => new(value
+            .Select(character => character is >= ' ' and <= '~' or >= '\u00A0' and <= '\u00FF'
+                ? character
+                : '?')
             .ToArray());
 
         private static string PdfEscape(string value) => value
@@ -234,7 +250,7 @@ public sealed class DataExportRenderer : IDataExportRenderer
 
         private static void WriteText(Stream stream, string value)
         {
-            var bytes = Encoding.ASCII.GetBytes(value);
+            var bytes = Encoding.Latin1.GetBytes(value);
             stream.Write(bytes, 0, bytes.Length);
         }
     }

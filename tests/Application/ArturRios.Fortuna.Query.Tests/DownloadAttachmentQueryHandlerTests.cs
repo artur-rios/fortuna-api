@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -23,7 +25,7 @@ public sealed class DownloadAttachmentQueryHandlerTests
         var content = new MemoryStream([1, 2, 3]);
         var storage = Storage(healthy: true);
         storage.Setup(item => item.OpenReadAsync("attachments/key", CancellationToken.None))
-            .ReturnsAsync(content);
+            .ReturnsAsync(AttachmentReadResult.Found(content));
 
         var result = await Handler(Metadata(), storage).HandleAsync(Query());
 
@@ -52,7 +54,7 @@ public sealed class DownloadAttachmentQueryHandlerTests
     {
         var storage = Storage(healthy: true);
         storage.Setup(item => item.OpenReadAsync("attachments/key", CancellationToken.None))
-            .ThrowsAsync(new AttachmentObjectNotFoundException("attachments/key"));
+            .ReturnsAsync(AttachmentReadResult.NotFound);
         var audit = new Mock<IAuditEntryWriter>();
 
         var result = await Handler(Metadata(), storage, audit).HandleAsync(Query());
@@ -81,6 +83,26 @@ public sealed class DownloadAttachmentQueryHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenUnavailableStoredObject_WhenDownloaded_ThenServiceUnavailableIsReturned()
+    {
+        var storage = Storage(healthy: true);
+        storage.Setup(item => item.OpenReadAsync("attachments/key", CancellationToken.None))
+            .ReturnsAsync(AttachmentReadResult.Unavailable);
+        var audit = new Mock<IAuditEntryWriter>();
+
+        var result = await Handler(Metadata(), storage, audit).HandleAsync(Query());
+
+        Assert.False(result.Success);
+        Assert.Contains(AttachmentMessages.StorageUnavailable, result.Errors);
+        audit.Verify(writer => writer.WriteAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<Guid>(),
+            It.IsAny<bool>(),
+            It.IsAny<string>()), Times.Never);
+    }
+
+    [UnitFact]
     public async Task GivenStorageReadFailure_WhenDownloaded_ThenServiceUnavailableIsReturned()
     {
         var storage = Storage(healthy: true);
@@ -106,18 +128,18 @@ public sealed class DownloadAttachmentQueryHandlerTests
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    private static DownloadAttachmentQueryHandler Handler(
+    private static IQueryHandlerAsync<DownloadAttachmentQuery, DownloadAttachmentQueryOutput> Handler(
         Mock<IAttachmentMetadataReader> metadata,
         Mock<IAttachmentStore> storage,
-        Mock<IAuditEntryWriter>? audit = null) => new(
-        new DownloadAttachmentQueryValidator(),
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)),
+        Mock<IAuditEntryWriter>? audit = null) => new DownloadAttachmentQueryHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow))),
         metadata.Object,
         storage.Object,
         (audit ?? new Mock<IAuditEntryWriter>()).Object,
-        NullLogger<DownloadAttachmentQueryHandler>.Instance);
+        NullLogger<DownloadAttachmentQueryHandler>.Instance).Validated(new DownloadAttachmentQueryValidator());
 
     private static Mock<IAttachmentMetadataReader> Metadata(
         AttachmentReadSnapshot? snapshot = null,
@@ -133,6 +155,7 @@ public sealed class DownloadAttachmentQueryHandlerTests
                     "application/pdf",
                     3,
                     "attachments/key"));
+
         return metadata;
     }
 
@@ -140,6 +163,7 @@ public sealed class DownloadAttachmentQueryHandlerTests
     {
         var storage = new Mock<IAttachmentStore>();
         storage.Setup(item => item.IsHealthyAsync(CancellationToken.None)).ReturnsAsync(healthy);
+
         return storage;
     }
 

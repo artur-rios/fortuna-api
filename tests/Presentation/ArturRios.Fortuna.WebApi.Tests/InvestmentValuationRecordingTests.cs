@@ -269,6 +269,7 @@ public sealed class InvestmentValuationRecordingTests : IAsyncLifetime
 
         context.Investments.Add(investment);
         await context.SaveChangesAsync();
+
         return investment.PublicId;
     }
 
@@ -305,6 +306,7 @@ public sealed class InvestmentValuationRecordingTests : IAsyncLifetime
             Command(value, valuedOn));
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, body);
+
         return (await response.Content.ReadFromJsonAsync<ValuationEnvelope>())!;
     }
 
@@ -334,6 +336,7 @@ public sealed class InvestmentValuationRecordingTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

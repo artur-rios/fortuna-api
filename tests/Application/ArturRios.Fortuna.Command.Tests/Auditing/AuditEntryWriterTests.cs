@@ -48,6 +48,7 @@ public sealed class AuditEntryWriterTests
         public Task AppendAsync(AuditEntryWrite entry, CancellationToken cancellationToken)
         {
             Entry = entry;
+
             return Task.CompletedTask;
         }
     }

@@ -20,7 +20,7 @@ public static class InvestmentMessages
         "Investment valuation history retrieved successfully.";
     public const string DuplicateInstrument =
         "A live investment already uses this instrument name.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NotFound = "Investment not found.";
     public const string FinancialAccountNotFound = "Financial account not found.";
     public const string InstrumentRequired = "Instrument is required.";
@@ -39,6 +39,9 @@ public static class InvestmentMessages
         "Investment must be soft-deleted before permanent deletion.";
     public const string HardDeleteHasLiveGoal =
         "Investment cannot be permanently deleted while a live goal references it.";
+    public const string HardDeleteHasDependents =
+        "Investment cannot be permanently deleted while deleted goals or live transfers still " +
+        "reference it.";
     public const string InvestmentIdRequired = "InvestmentId is required.";
     public const string MovementTypeInvalid =
         "MovementType must be Contribution, Withdrawal, Yield or Fee.";
@@ -74,6 +77,4 @@ public static class InvestmentMessages
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
     public static string ReferencingGoal(string name) =>
         $"The investment is referenced by the live goal '{name}'.";
-    public static string UnsupportedFilter(string name) =>
-        $"Unsupported investment filter '{name}'.";
 }

@@ -297,18 +297,21 @@ public sealed class ImportJobRetryTests : IAsyncLifetime
             case ImportJobStatus.Running:
                 importJob.Start(Now.AddMinutes(1));
                 backgroundJob.Start(Now.AddMinutes(1));
+
                 break;
             case ImportJobStatus.Completed:
                 importJob.Start(Now.AddMinutes(1));
                 importJob.Complete(0, 0, 0, Now.AddMinutes(2));
                 backgroundJob.Start(Now.AddMinutes(1));
                 backgroundJob.Succeed(Now.AddMinutes(2));
+
                 break;
             case ImportJobStatus.Failed:
                 importJob.Start(Now.AddMinutes(1));
                 importJob.Fail(ExcelImportMessages.WorkbookInvalid, Now.AddMinutes(2));
                 backgroundJob.Start(Now.AddMinutes(1));
                 backgroundJob.Fail(ExcelImportMessages.WorkbookInvalid, Now.AddMinutes(2));
+
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(status));
@@ -321,6 +324,7 @@ public sealed class ImportJobRetryTests : IAsyncLifetime
         }
 
         await context.SaveChangesAsync();
+
         return new SeededJob(importJob.PublicId, backgroundJob.Id, account.PublicId);
     }
 
@@ -329,6 +333,7 @@ public sealed class ImportJobRetryTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -362,6 +367,7 @@ public sealed class ImportJobRetryTests : IAsyncLifetime
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
+
         return stream.ToArray();
     }
 

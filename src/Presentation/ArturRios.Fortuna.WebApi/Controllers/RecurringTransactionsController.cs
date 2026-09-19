@@ -4,33 +4,19 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
+using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/recurring-transactions")]
-public sealed class RecurringTransactionsController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+public sealed class RecurringTransactionsController : FortunaController
 {
-    private static readonly HashSet<string> ListQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber",
-        "PageSize",
-        "Active",
-        "IncludeDeleted",
-        "SortBy",
-        "Descending"
-    };
-
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [RecurringTransactionMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [RecurringTransactionMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
@@ -41,7 +27,6 @@ public sealed class RecurringTransactionsController(
             [RecurringTransactionMessages.MaterializedSuccessfully] = StatusCodes.Status200OK,
             [RecurringTransactionMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
             [RecurringTransactionMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
-            [RecurringTransactionMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [RecurringTransactionMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
             [RecurringTransactionMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
             [RecurringTransactionMessages.CategoryNotFound] = StatusCodes.Status404NotFound,
@@ -58,34 +43,28 @@ public sealed class RecurringTransactionsController(
             [RecurringTransactionMessages.CounterpartyTooLong] = StatusCodes.Status400BadRequest,
             [RecurringTransactionMessages.OwnerImmutable] = StatusCodes.Status400BadRequest,
             [RecurringTransactionMessages.IdRequired] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpGet]
+    [AllowedQuery("PageNumber", "PageSize", "Active", "IncludeDeleted", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<RecurringTransactionOutput>>> List(
         [FromQuery] ListRecurringTransactionsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<RecurringTransactionOutput>.New
-                .WithError(RecurringTransactionMessages.UnsupportedFilter(unsupported)));
-        }
-
-        var result = await queryMediator.ExecutePaginatedQueryAsync<
+        return await QueryPageAsync<
             ListRecurringTransactionsQuery,
             RecurringTransactionOutput>(query);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<RecurringTransactionOutput?>>> GetById(Guid id)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetRecurringTransactionByIdQuery,
             RecurringTransactionOutput>(new GetRecurringTransactionByIdQuery { Id = id });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost]
@@ -93,10 +72,9 @@ public sealed class RecurringTransactionsController(
     public async Task<ActionResult<DataOutput<DefineRecurringTransactionCommandOutput?>>> Define(
         [FromBody] DefineRecurringTransactionCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DefineRecurringTransactionCommand,
             DefineRecurringTransactionCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPut("{id:guid}")]
@@ -106,20 +84,19 @@ public sealed class RecurringTransactionsController(
         [FromBody] UpdateRecurringTransactionCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             UpdateRecurringTransactionCommand,
             UpdateRecurringTransactionCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<RecurringTransactionLifecycleCommandOutput?>>> Delete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DeleteRecurringTransactionCommand,
             RecurringTransactionLifecycleCommandOutput>(new DeleteRecurringTransactionCommand { Id = id });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("materialize")]
@@ -127,9 +104,8 @@ public sealed class RecurringTransactionsController(
     public async Task<ActionResult<DataOutput<MaterializeRecurringTransactionsCommandOutput?>>> Materialize(
         [FromBody] MaterializeRecurringTransactionsCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             MaterializeRecurringTransactionsCommand,
             MaterializeRecurringTransactionsCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

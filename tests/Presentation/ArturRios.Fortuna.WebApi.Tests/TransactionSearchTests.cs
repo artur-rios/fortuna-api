@@ -240,7 +240,8 @@ public sealed class TransactionSearchTests : IAsyncLifetime
             $"/api/transactions?DisplayCurrencyCode=BRL&FigureDate={Today:yyyy-MM-dd}");
 
         Assert.Equal(2, raw!.Data!.Totals.ByCurrency.Count);
-        Assert.Null(raw.Data.Totals.DisplayNet);
+        Assert.Equal("BRL", raw.Data.Totals.DisplayCurrencyCode);
+        Assert.Equal(-16m, raw.Data.Totals.DisplayNet);
         Assert.Equal(-6m, raw.Data.Totals.ByCurrency.Single(item =>
             item.CurrencyCode == "BRL").Net);
         Assert.Equal(-2m, raw.Data.Totals.ByCurrency.Single(item =>
@@ -371,6 +372,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -432,6 +434,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
             OpeningBalance = 0m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<AccountEnvelope>())!.Data!;
     }
 
@@ -448,6 +451,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<CardEnvelope>())!.Data!;
     }
 
@@ -476,6 +480,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
             Tags = tags
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<TransactionEnvelope>())!.Data!;
     }
 
@@ -505,6 +510,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

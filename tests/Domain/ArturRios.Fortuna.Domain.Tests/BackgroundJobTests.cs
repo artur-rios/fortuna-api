@@ -123,4 +123,33 @@ public sealed class BackgroundJobTests
 
         Assert.Equal("payload", exception.ParamName);
     }
+
+    [UnitFact]
+    public void GivenPaddedType_WhenJobIsCreated_ThenTypeIsTrimmed()
+    {
+        var job = BackgroundJob.Create(
+            "  excel-import  ",
+            "{}",
+            "key",
+            null,
+            DateTimeOffset.Parse("2026-09-04T12:00:00Z"));
+
+        Assert.Equal("excel-import", job.Type);
+    }
+
+    [UnitFact]
+    public void GivenPendingJob_WhenFailed_ThenItFailsLikeOtherJobs()
+    {
+        var job = BackgroundJob.Create(
+            "excel-import",
+            "{}",
+            "pending-failure",
+            null,
+            DateTimeOffset.Parse("2026-09-04T12:00:00Z"));
+
+        job.Fail(new string('x', 1500), DateTimeOffset.Parse("2026-09-04T12:01:00Z"));
+
+        Assert.Equal(BackgroundJobState.Failed, job.State);
+        Assert.Equal(1000, job.FailureReason!.Length);
+    }
 }

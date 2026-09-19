@@ -3,12 +3,14 @@ using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -183,6 +185,29 @@ public sealed class InvestmentQueryHandlerTests
         Assert.Contains(InvestmentMessages.ListedSuccessfully, result.Messages);
     }
 
+    [UnitFact]
+    public async Task GivenSeveralPositionsInOneCurrency_WhenListedWithConversion_ThenTheRateIsReadOnce()
+    {
+        var profile = Profile();
+        var rates = new StubRateReader(new ExchangeRateSnapshot(
+            "USD", "BRL", 5m, FigureDate, ExchangeRateSource.Published));
+
+        var result = await ListHandler(
+            profile,
+            new StubInvestmentReader(
+                Position(profile.Id, "First", "USD", 1m),
+                Position(profile.Id, "Second", "USD", 2m),
+                Position(profile.Id, "Third", "USD", 3m)),
+            rates: rates).HandleAsync(new ListInvestmentsQuery
+            {
+                DisplayCurrencyCode = "BRL",
+                FigureDate = FigureDate
+            });
+
+        Assert.Equal([5m, 10m, 15m], result.Data!.Select(item => item.DisplayPosition!.Value));
+        Assert.Equal(1, rates.CallCount);
+    }
+
     [UnitTheory]
     [InlineData("ValuedOn", false, 10)]
     [InlineData("ValuedOn", true, 20)]
@@ -228,7 +253,8 @@ public sealed class InvestmentQueryHandlerTests
     {
         var profile = Profile();
         var investment = Position(profile.Id, "Fund", "BRL", 0m);
-        var handler = HistoryHandler(profile, new StubInvestmentReader(investment));
+        var reader = new StubInvestmentReader(investment);
+        var handler = HistoryHandler(profile, reader);
 
         var result = await handler.HandleAsync(new ListInvestmentValuationsQuery
         {
@@ -240,6 +266,7 @@ public sealed class InvestmentQueryHandlerTests
         Assert.True(result.Success);
         Assert.Empty(result.Data!);
         Assert.Contains(InvestmentMessages.ValuationHistoryRetrievedSuccessfully, result.Messages);
+        Assert.Equal(0, reader.PositionLookups);
     }
 
     [UnitFact]
@@ -316,39 +343,34 @@ public sealed class InvestmentQueryHandlerTests
         Assert.Empty(result.Data!);
     }
 
-    private static GetInvestmentByIdQueryHandler DetailHandler(
+    private static IQueryHandlerAsync<GetInvestmentByIdQuery, InvestmentOutput> DetailHandler(
         UserProfileSnapshot? profile,
         IInvestmentReader investments,
-        ExchangeRateSnapshot? rate = null) => new(
-        new GetInvestmentByIdQueryValidator(),
-        new StubProfileReader(profile),
+        ExchangeRateSnapshot? rate = null) => new GetInvestmentByIdQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         investments,
         new StubCurrencyReader(),
         new StubRateReader(rate),
-        Actor(profile),
-        TimeProvider.System);
+        TimeProvider.System).Validated(new GetInvestmentByIdQueryValidator());
 
-    private static ListInvestmentsQueryHandler ListHandler(
+    private static IPaginatedQueryHandlerAsync<ListInvestmentsQuery, InvestmentOutput> ListHandler(
         UserProfileSnapshot? profile,
         IInvestmentReader investments,
-        int maximumPageSize = 100) => new(
-        new ListInvestmentsQueryValidator(),
-        new StubProfileReader(profile),
+        int maximumPageSize = 100,
+        StubRateReader? rates = null) => new ListInvestmentsQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         investments,
         new StubCurrencyReader(),
-        new StubRateReader(null),
-        Actor(profile),
+        rates ?? new StubRateReader(null),
         new PaginationOptions(maximumPageSize),
-        TimeProvider.System);
+        TimeProvider.System).Validated(new ListInvestmentsQueryValidator());
 
-    private static ListInvestmentValuationsQueryHandler HistoryHandler(
+    private static IPaginatedQueryHandlerAsync<ListInvestmentValuationsQuery, InvestmentValuationOutput> HistoryHandler(
         UserProfileSnapshot? profile,
-        IInvestmentReader investments) => new(
-        new ListInvestmentValuationsQueryValidator(),
-        new StubProfileReader(profile),
+        IInvestmentReader investments) => new ListInvestmentValuationsQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         investments,
-        Actor(profile),
-        new PaginationOptions(100));
+        new PaginationOptions(100)).Validated(new ListInvestmentValuationsQueryValidator());
 
     private static StubActor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));
@@ -437,7 +459,20 @@ public sealed class InvestmentQueryHandlerTests
         public Task<InvestmentPositionSnapshot?> FindByIdWithPositionAsync(
             Guid userId,
             Guid id,
-            CancellationToken cancellationToken) => Task.FromResult(Positions.SingleOrDefault(item =>
+            CancellationToken cancellationToken)
+        {
+            PositionLookups++;
+
+            return Task.FromResult(Positions.SingleOrDefault(item =>
+                item.UserId == userId && item.Id == id && !item.IsDeleted));
+        }
+
+        public int PositionLookups { get; private set; }
+
+        public Task<bool> ExistsAsync(
+            Guid userId,
+            Guid id,
+            CancellationToken cancellationToken) => Task.FromResult(Positions.Any(item =>
                 item.UserId == userId && item.Id == id && !item.IsDeleted));
 
         public IQueryable<InvestmentValuationReadSnapshot> QueryValuations(
@@ -479,11 +514,18 @@ public sealed class InvestmentQueryHandlerTests
 
     private sealed class StubRateReader(ExchangeRateSnapshot? rate) : IExchangeRateReader
     {
+        public int CallCount { get; private set; }
+
         public Task<ExchangeRateSnapshot?> FindApplicableAsync(
             string baseCurrencyCode,
             string quoteCurrencyCode,
             DateOnly figureDate,
-            CancellationToken cancellationToken) => Task.FromResult(rate);
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+
+            return Task.FromResult(rate);
+        }
     }
 
     private sealed class StubActor(RequestActor? actor) : IRequestActorAccessor

@@ -92,8 +92,8 @@ public sealed class CategoryUpdateTests : IAsyncLifetime
             ParentId = child.Id
         });
 
-        Assert.Equal(HttpStatusCode.BadRequest, self.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, descendant.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, self.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, descendant.StatusCode);
         Assert.Contains(CategoryMessages.CycleDetected, await self.Content.ReadAsStringAsync());
         Assert.Contains(CategoryMessages.CycleDetected, await descendant.Content.ReadAsStringAsync());
         await using var context = CreateContext();
@@ -286,6 +286,7 @@ public sealed class CategoryUpdateTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -319,6 +320,7 @@ public sealed class CategoryUpdateTests : IAsyncLifetime
         context.FinancialAccounts.Add(account);
         context.FinancialTransactions.Add(transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
@@ -331,6 +333,7 @@ public sealed class CategoryUpdateTests : IAsyncLifetime
             "/api/categories",
             new { Name = name, ParentId = parentId });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<CategoryEnvelope>())!.Data!;
     }
 

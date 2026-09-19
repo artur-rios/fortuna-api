@@ -9,6 +9,7 @@ public sealed class RecoveryCode
 
     internal RecoveryCode(LocalAccount localAccount, byte[] codeHash, DateTimeOffset createdAt)
     {
+        ArgumentNullException.ThrowIfNull(codeHash);
         if (codeHash.Length == 0)
         {
             throw new ArgumentException("A code hash is required.", nameof(codeHash));
@@ -16,7 +17,7 @@ public sealed class RecoveryCode
 
         LocalAccount = localAccount ?? throw new ArgumentNullException(nameof(localAccount));
         LocalAccountId = localAccount.Id;
-        CodeHash = codeHash;
+        CodeHash = codeHash.ToArray();
         CreatedAt = createdAt;
     }
 

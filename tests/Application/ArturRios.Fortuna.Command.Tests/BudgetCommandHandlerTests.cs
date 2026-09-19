@@ -25,11 +25,9 @@ public sealed class BudgetCommandHandlerTests
             Result = new BudgetMutationResult(snapshot, BudgetMutationOutcome.Succeeded)
         };
         var handler = new CreateBudgetCommandHandler(
-            new CreateBudgetCommandValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new CreateBudgetCommandValidator());
 
         var result = await handler.HandleAsync(new CreateBudgetCommand
         {
@@ -55,11 +53,9 @@ public sealed class BudgetCommandHandlerTests
     {
         var store = new StubBudgetStore();
         var handler = new CreateBudgetCommandHandler(
-            new CreateBudgetCommandValidator(),
-            Actor(Profile()),
-            new StubProfileReader(Profile()),
+            new CurrentProfileResolver(Actor(Profile()), new StubProfileReader(Profile())),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new CreateBudgetCommandValidator());
 
         var result = await handler.HandleAsync(new CreateBudgetCommand());
 
@@ -82,11 +78,9 @@ public sealed class BudgetCommandHandlerTests
             Result = new BudgetMutationResult(null, outcome)
         };
         var handler = new UpdateBudgetCommandHandler(
-            new UpdateBudgetCommandValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new UpdateBudgetCommandValidator());
 
         var result = await handler.HandleAsync(new UpdateBudgetCommand
         {
@@ -114,8 +108,7 @@ public sealed class BudgetCommandHandlerTests
             Result = new BudgetMutationResult(snapshot, BudgetMutationOutcome.Succeeded)
         };
         var handler = new DeleteBudgetCommandHandler(
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 
@@ -133,11 +126,9 @@ public sealed class BudgetCommandHandlerTests
     {
         var store = new StubBudgetStore();
         var handler = new CreateBudgetCommandHandler(
-            new CreateBudgetCommandValidator(),
-            Actor(null),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new CreateBudgetCommandValidator());
 
         var result = await handler.HandleAsync(new CreateBudgetCommand
         {
@@ -193,6 +184,7 @@ public sealed class BudgetCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(Result);
         }
 
@@ -201,6 +193,7 @@ public sealed class BudgetCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(Result);
         }
 
@@ -213,6 +206,7 @@ public sealed class BudgetCommandHandlerTests
         {
             DeletedAt = changedAt;
             AsOf = asOf;
+
             return Task.FromResult(Result);
         }
     }

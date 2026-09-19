@@ -87,6 +87,48 @@ public sealed class ClassificationTests
     }
 
     [UnitFact]
+    public void GivenDescendantAsParent_WhenCategoryUpdated_ThenCycleIsRejected()
+    {
+        var user = User();
+        var root = new Category(user, "Root", Now);
+        var child = new Category(user, "Child", Now, root);
+        var grandchild = new Category(user, "Grandchild", Now, child);
+
+        Assert.Throws<ArgumentException>(() =>
+            root.UpdateDetails("Root", grandchild, Now.AddMinutes(1)));
+        Assert.Null(root.Parent);
+    }
+
+    [UnitFact]
+    public void GivenDeletedParentOrRecord_WhenCategoryChanged_ThenItIsRejected()
+    {
+        var user = User();
+        var deletedParent = new Category(user, "Old", Now);
+        deletedParent.SoftDelete(Now);
+        var category = new Category(user, "Category", Now);
+
+        Assert.Throws<ArgumentException>(() => new Category(user, "Child", Now, deletedParent));
+        Assert.Throws<ArgumentException>(() =>
+            category.UpdateDetails("Category", deletedParent, Now));
+        category.SoftDelete(Now);
+        Assert.Throws<InvalidOperationException>(() =>
+            category.UpdateDetails("Renamed", null, Now));
+    }
+
+    [UnitFact]
+    public void GivenDeletedTagOrCounterparty_WhenRenamed_ThenItIsRefused()
+    {
+        var tag = new Tag(User(), "Tag", Now);
+        var counterparty = new Counterparty(User(), "Shop", Now);
+        tag.SoftDelete(Now);
+        counterparty.SoftDelete(Now);
+
+        Assert.Throws<InvalidOperationException>(() => tag.Rename("Other", Now));
+        Assert.Throws<InvalidOperationException>(() => counterparty.Rename("Other", Now));
+        Assert.Equal("Tag", tag.Name);
+    }
+
+    [UnitFact]
     public void GivenNewTagName_WhenRenamed_ThenNameAndTimestampChange()
     {
         var tag = new Tag(User(), "Before", Now);

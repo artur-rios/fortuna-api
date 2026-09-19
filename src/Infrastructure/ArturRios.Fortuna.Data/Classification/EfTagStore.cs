@@ -1,6 +1,8 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Shared.Classification;
+using ArturRios.Fortuna.Shared.Pagination;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Classification;
@@ -8,8 +10,6 @@ namespace ArturRios.Fortuna.Data.Classification;
 public sealed class EfTagStore(AppDbContext context, TagOptions options)
     : ITagStore, ITagReader, ITagUpdater, ITagLifecycleStore, ITransactionTagStore
 {
-    private const string LiveNameIndex = "ix_tag_user_id_normalized_name";
-
     public async Task<TagCreationResult> CreateAsync(
         TagCreation creation,
         CancellationToken cancellationToken)
@@ -36,29 +36,40 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
         catch (DbUpdateException exception) when (IsDuplicateName(exception))
         {
             context.Entry(tag).State = EntityState.Detached;
+
             return CreationResult(TagMutationOutcome.DuplicateName);
         }
 
         return new TagCreationResult(Snapshot(tag), TagMutationOutcome.Succeeded);
     }
 
-    public async Task<IReadOnlyCollection<TagSnapshot>> ListAsync(
+    public async Task<ReadPage<TagSnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
-        CancellationToken cancellationToken) => await context.Tags
-        .AsNoTracking()
-        .Where(item =>
-            item.User.PublicId == userId &&
-            (includeDeleted || !item.IsDeleted))
-        .OrderBy(item => item.Name)
-        .ThenBy(item => item.PublicId)
-        .Select(item => new TagSnapshot(
-            item.PublicId,
-            item.Name,
-            item.IsDeleted,
-            item.CreatedAt,
-            item.UpdatedAt))
-        .ToArrayAsync(cancellationToken);
+        PageRequest page,
+        CancellationToken cancellationToken)
+    {
+        var owned = context.Tags
+            .AsNoTracking()
+            .Where(item =>
+                item.User.PublicId == userId &&
+                (includeDeleted || !item.IsDeleted));
+        var totalItems = await owned.CountAsync(cancellationToken);
+        var tags = await owned
+            .OrderBy(item => item.Name)
+            .ThenBy(item => item.PublicId)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
+            .Select(item => new TagSnapshot(
+                item.PublicId,
+                item.Name,
+                item.IsDeleted,
+                item.CreatedAt,
+                item.UpdatedAt))
+            .ToArrayAsync(cancellationToken);
+
+        return new ReadPage<TagSnapshot>(tags, totalItems);
+    }
 
     public async Task<TagUpdateResult> UpdateAsync(
         TagUpdate update,
@@ -89,6 +100,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
         catch (DbUpdateException exception) when (IsDuplicateName(exception))
         {
             context.Entry(tag).State = EntityState.Detached;
+
             return UpdateResult(TagMutationOutcome.DuplicateName);
         }
 
@@ -118,6 +130,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
 
         tag.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new TagDeletionResult(
             Snapshot(tag),
             transactions.Count,
@@ -158,6 +171,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
 
         var changed = entities.Transaction.AttachTag(entities.Tag, assignment.ChangedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return AssignmentResult(
             TransactionTagAssignmentOutcome.Succeeded,
             entities.Transaction.PublicId,
@@ -213,6 +227,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
                 item.PublicId == assignment.TagId &&
                 !item.IsDeleted,
                 cancellationToken);
+
         return (transaction, tag);
     }
 
@@ -225,7 +240,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
             cancellationToken);
 
     private static bool IsDuplicateName(DbUpdateException exception) =>
-        DatabaseException.IsUniqueViolation(exception, LiveNameIndex);
+        DatabaseException.IsUniqueViolation(exception, TagMap.LiveNameIndex);
 
     private static TagSnapshot Snapshot(Tag tag) => new(
         tag.PublicId,

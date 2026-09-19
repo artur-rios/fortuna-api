@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Data.Attachments;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Users;
 using ArturRios.Fortuna.Domain.Accounts;
@@ -11,6 +12,7 @@ using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Attachments;
+using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -39,7 +41,7 @@ public sealed class UserErasureStoreTests
                 otherUserId = seeded.OtherUserId;
                 auditReference = seeded.AuditReference;
 
-                var result = await new EfUserErasureStore(context, objects).EraseAsync(
+                var result = await Store(context, objects).EraseAsync(
                     userId,
                     DateTimeOffset.Parse("2026-09-09T22:00:00Z"),
                     CancellationToken.None);
@@ -80,17 +82,53 @@ public sealed class UserErasureStoreTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 
     [FunctionalFact]
-    public async Task GivenObjectDeletionFailure_WhenErased_ThenDatabaseAndObjectsAreFullyRestored()
+    public async Task GivenObjectDeletionFailure_WhenErased_ThenErasureCommitsAndUndeletedObjectIsReported()
     {
         var path = TemporaryDatabasePath();
         try
         {
             var objects = new RecordingObjectStore { FailDeleteAt = 2 };
+            Guid userId;
+            long internalUserId;
+            UserErasureResult? result;
+            await using (var context = CreateContext(path))
+            {
+                await context.Database.MigrateAsync();
+                var seeded = await SeedAsync(context, objects, attachmentCount: 2);
+                userId = seeded.UserId;
+                internalUserId = seeded.InternalUserId;
+
+                result = await Store(context, objects).EraseAsync(
+                    userId,
+                    DateTimeOffset.Parse("2026-09-09T22:00:00Z"),
+                    CancellationToken.None);
+            }
+
+            await using var assertion = CreateContext(path);
+            Assert.NotNull(result);
+            Assert.False(await assertion.UserProfiles.AnyAsync(item => item.PublicId == userId));
+            Assert.False(await HasAnyOwnedRowAsync(assertion, internalUserId));
+            var undeleted = Assert.Single(result.UndeletedObjectKeys!);
+            Assert.Equal([undeleted], objects.Keys);
+        }
+        finally
+        {
+            SqliteTestDatabase.Delete(path);
+        }
+    }
+
+    [FunctionalFact]
+    public async Task GivenErasureFailsBeforeCommit_WhenErased_ThenNoStoredObjectIsDeleted()
+    {
+        var path = TemporaryDatabasePath();
+        try
+        {
+            var objects = new RecordingObjectStore();
             Guid userId;
             int rowCountBefore;
             await using (var context = CreateContext(path))
@@ -99,25 +137,31 @@ public sealed class UserErasureStoreTests
                 var seeded = await SeedAsync(context, objects, attachmentCount: 2);
                 userId = seeded.UserId;
                 rowCountBefore = await OwnedRowCountAsync(context, userId);
+                using var cancellation = new CancellationTokenSource();
+                context.SavingChanges += (_, _) => cancellation.Cancel();
 
-                await Assert.ThrowsAsync<IOException>(() =>
-                    new EfUserErasureStore(context, objects).EraseAsync(
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                    Store(context, objects).EraseAsync(
                         userId,
                         DateTimeOffset.Parse("2026-09-09T22:00:00Z"),
-                        CancellationToken.None));
+                        cancellation.Token));
             }
 
             await using var assertion = CreateContext(path);
             Assert.True(await assertion.UserProfiles.AnyAsync(item => item.PublicId == userId));
-            Assert.True(await assertion.AuditSubjects.AnyAsync(item => item.User.PublicId == userId));
             Assert.Equal(rowCountBefore, await OwnedRowCountAsync(assertion, userId));
             Assert.Equal(3, objects.Keys.Count);
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
+
+    private static EfUserErasureStore Store(AppDbContext context, RecordingObjectStore objects) => new(
+        context,
+        new EfAttachmentLifecycleStore(context, objects),
+        NullLogger<EfUserErasureStore>.Instance);
 
     private static async Task<SeedResult> SeedAsync(
         AppDbContext context,
@@ -206,6 +250,7 @@ public sealed class UserErasureStoreTests
     {
         var id = await context.UserProfiles.Where(item => item.PublicId == userId)
             .Select(item => item.Id).SingleAsync();
+
         return await context.FinancialAccounts.CountAsync(item => item.UserId == id) +
                await context.FinancialTransactions.CountAsync(item => item.UserId == id) +
                await context.Categories.CountAsync(item => item.UserId == id) +
@@ -220,6 +265,7 @@ public sealed class UserErasureStoreTests
     {
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         DatabaseProvider.Configure(builder, DatabaseProvider.SQLite, path);
+
         return new AppDbContext(
             builder.Options,
             NullLoggerFactory.Instance,
@@ -246,6 +292,7 @@ public sealed class UserErasureStoreTests
         public Task PutAsync(string key, string value)
         {
             objects[key] = System.Text.Encoding.UTF8.GetBytes(value);
+
             return Task.CompletedTask;
         }
 
@@ -256,15 +303,10 @@ public sealed class UserErasureStoreTests
             objects[key] = copy.ToArray();
         }
 
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken)
-        {
-            if (!objects.TryGetValue(key, out var content))
-            {
-                throw new AttachmentObjectNotFoundException(key);
-            }
-
-            return Task.FromResult<Stream>(new MemoryStream(content, writable: false));
-        }
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+            Task.FromResult(objects.TryGetValue(key, out var content)
+                ? AttachmentReadResult.Found(new MemoryStream(content, writable: false))
+                : AttachmentReadResult.NotFound);
 
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {
@@ -275,6 +317,7 @@ public sealed class UserErasureStoreTests
             }
 
             objects.Remove(key);
+
             return Task.CompletedTask;
         }
 

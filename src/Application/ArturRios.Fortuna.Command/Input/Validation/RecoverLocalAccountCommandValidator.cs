@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ArturRios.Fortuna.Shared.Messages;
 using FluentValidation;
 
@@ -7,10 +8,27 @@ public sealed class RecoverLocalAccountCommandValidator : AbstractValidator<Reco
 {
     public RecoverLocalAccountCommandValidator()
     {
+        RuleFor(command => command.Name)
+            .Cascade(CascadeMode.Stop)
+            .Must(name => !string.IsNullOrWhiteSpace(name))
+            .WithMessage(LocalAccountRecoveryMessages.NameRequired)
+            .Must(name => name.Trim().Length <= LocalAccountInputLimits.NameMaximumLength)
+            .WithMessage(LocalAccountRecoveryMessages.NameTooLong);
+
+        RuleFor(command => command.RecoveryCode)
+            .Cascade(CascadeMode.Stop)
+            .Must(code => !string.IsNullOrWhiteSpace(code))
+            .WithMessage(LocalAccountRecoveryMessages.RecoveryCodeRequired)
+            .Must(code => Regex.IsMatch(code.Trim(), LocalAccountInputLimits.RecoveryCodePattern))
+            .WithMessage(LocalAccountRecoveryMessages.RecoveryCodeFormatInvalid);
+
         RuleFor(command => command.NewSecret)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(LocalAccountRecoveryMessages.NewSecretRequired)
-            .MinimumLength(8)
-            .WithMessage(LocalAccountRecoveryMessages.NewSecretTooShort);
+            .MinimumLength(LocalAccountInputLimits.SecretMinimumLength)
+            .WithMessage(LocalAccountRecoveryMessages.NewSecretTooShort)
+            .MaximumLength(LocalAccountInputLimits.SecretMaximumLength)
+            .WithMessage(LocalAccountRecoveryMessages.NewSecretTooLong);
     }
 }

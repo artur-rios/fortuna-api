@@ -15,7 +15,7 @@ public sealed class UpdateCategoryCommandValidator : AbstractValidator<UpdateCat
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(CategoryMessages.NameRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(CategoryMessages.NameTooLong);
 
         RuleFor(command => command.ParentId)

@@ -3,6 +3,7 @@ using ArturRios.Fortuna.Domain.Attachments;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
@@ -25,6 +26,9 @@ public enum TransactionSourceType : short
 
 public sealed class FinancialTransaction : RecordLifecycleEntity
 {
+    private readonly List<Tag> _tags = [];
+    private readonly List<Attachment> _attachments = [];
+
     private FinancialTransaction()
     {
     }
@@ -96,61 +100,31 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         IReadOnlyCollection<Tag>? tags) : base(createdAt)
     {
         User = user ?? throw new ArgumentNullException(nameof(user));
-
-        var targetOwner = account?.User ?? card?.User;
-        if (targetOwner is null)
-        {
-            throw new ArgumentException("A transaction target is required.", targetParameterName);
-        }
-
-        if (user.PublicId != targetOwner.PublicId)
+        var target = TransactionTarget.Of(
+            account,
+            card,
+            targetParameterName,
+            "A transaction target is required.");
+        if (user.PublicId != target.Owner.PublicId)
         {
             throw new ArgumentException(
                 "The transaction and its target must have the same owner.",
                 targetParameterName);
         }
 
-        ArgumentNullException.ThrowIfNull(category);
-        if (category.User.PublicId != user.PublicId)
+        if (target.IsDeleted)
         {
             throw new ArgumentException(
-                "The transaction and its category must have the same owner.",
-                nameof(category));
+                "A transaction cannot target a deleted account or card.",
+                targetParameterName);
         }
 
-        if (counterparty is not null && counterparty.User.PublicId != user.PublicId)
-        {
-            throw new ArgumentException(
-                "The transaction and its counterparty must have the same owner.",
-                nameof(counterparty));
-        }
-
-        if (description?.Trim().Length > 500)
-        {
-            throw new ArgumentException(
-                "A description cannot exceed 500 characters.",
-                nameof(description));
-        }
-
-        var labels = tags?.DistinctBy(tag => tag.PublicId).ToArray() ?? [];
-        if (labels.Any(tag => tag.User.PublicId != user.PublicId))
-        {
-            throw new ArgumentException(
-                "The transaction and its tags must have the same owner.",
-                nameof(tags));
-        }
-
-        if (!Enum.IsDefined(direction))
-        {
-            throw new ArgumentOutOfRangeException(nameof(direction));
-        }
-
-        if (amount <= 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(amount),
-                "A transaction amount must be greater than zero.");
-        }
+        var labels = ValidateDetails(user, category, direction, amount, counterparty, tags);
+        description = BoundedText.Optional(
+            description,
+            500,
+            nameof(description),
+            "A description cannot exceed 500 characters.");
 
         UserId = user.Id;
         FinancialAccount = account;
@@ -163,14 +137,14 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         CounterpartyId = counterparty?.Id;
         Direction = direction;
         Amount = amount;
-        Currency = account?.Currency ?? card!.Currency;
+        Currency = target.Currency;
         CurrencyId = Currency.Id;
         OccurredOn = occurredOn;
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        Description = description;
         SourceType = TransactionSourceType.Manual;
         foreach (var tag in labels)
         {
-            Tags.Add(tag);
+            _tags.Add(tag);
         }
     }
 
@@ -210,11 +184,12 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
     public bool IsManuallyCorrected { get; private set; }
     public bool IsLateArriving { get; private set; }
     public bool IsPossibleDuplicate { get; private set; }
-    public ICollection<Tag> Tags { get; } = [];
-    public ICollection<Attachment> Attachments { get; } = [];
+    public IReadOnlyCollection<Tag> Tags => _tags;
+    public IReadOnlyCollection<Attachment> Attachments => _attachments;
 
     public bool AttachTag(Tag tag, DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         ArgumentNullException.ThrowIfNull(tag);
         if (tag.User.PublicId != User.PublicId)
         {
@@ -223,13 +198,19 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
                 nameof(tag));
         }
 
+        if (tag.IsDeleted)
+        {
+            throw new ArgumentException("A deleted tag cannot be attached.", nameof(tag));
+        }
+
         if (Tags.Any(item => item.PublicId == tag.PublicId))
         {
             return false;
         }
 
-        Tags.Add(tag);
+        _tags.Add(tag);
         MarkUpdated(updatedAt);
+
         return true;
     }
 
@@ -242,13 +223,15 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
             return false;
         }
 
-        Tags.Remove(attached);
+        _tags.Remove(attached);
         MarkUpdated(updatedAt);
+
         return true;
     }
 
     public void Reconcile(ImportedRecord importedRecord, DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         ArgumentNullException.ThrowIfNull(importedRecord);
         if (IsReconciled)
         {
@@ -295,6 +278,7 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
 
     public void Unreconcile(DateTimeOffset updatedAt)
     {
+        EnsureNotDeleted();
         if (!IsReconciled)
         {
             throw new InvalidOperationException("The transaction is not reconciled.");
@@ -345,46 +329,19 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         IReadOnlyCollection<Tag>? tags,
         DateTimeOffset updatedAt)
     {
-        ArgumentNullException.ThrowIfNull(category);
-        if (category.User.PublicId != User.PublicId)
-        {
-            throw new ArgumentException(
-                "The transaction and its category must have the same owner.",
-                nameof(category));
-        }
+        EnsureNotDeleted();
+        var labels = ValidateDetails(User, category, direction, amount, counterparty, tags);
+        description = BoundedText.Optional(
+            description,
+            500,
+            nameof(description),
+            "A description cannot exceed 500 characters.");
 
-        if (counterparty is not null && counterparty.User.PublicId != User.PublicId)
+        if (amount != Amount)
         {
-            throw new ArgumentException(
-                "The transaction and its counterparty must have the same owner.",
-                nameof(counterparty));
-        }
-
-        if (description?.Trim().Length > 500)
-        {
-            throw new ArgumentException(
-                "A description cannot exceed 500 characters.",
-                nameof(description));
-        }
-
-        var labels = tags?.DistinctBy(tag => tag.PublicId).ToArray() ?? [];
-        if (labels.Any(tag => tag.User.PublicId != User.PublicId))
-        {
-            throw new ArgumentException(
-                "The transaction and its tags must have the same owner.",
-                nameof(tags));
-        }
-
-        if (!Enum.IsDefined(direction))
-        {
-            throw new ArgumentOutOfRangeException(nameof(direction));
-        }
-
-        if (amount <= 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(amount),
-                "A transaction amount must be greater than zero.");
+            // The edited amount is expressed in the billed currency, so a recorded
+            // conversion no longer explains it and would report a stale original amount.
+            ClearForeignCurrencyDetails();
         }
 
         Category = category;
@@ -394,11 +351,11 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         Direction = direction;
         Amount = amount;
         OccurredOn = occurredOn;
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-        Tags.Clear();
+        Description = description;
+        _tags.Clear();
         foreach (var tag in labels)
         {
-            Tags.Add(tag);
+            _tags.Add(tag);
         }
 
         if (SourceType != TransactionSourceType.Manual)
@@ -456,7 +413,15 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
                 nameof(statement));
         }
 
-        if (statement.Status == CreditCardStatementStatus.Settled)
+        if (statement.IsDeleted)
+        {
+            throw new ArgumentException(
+                "A transaction cannot be assigned to a deleted statement.",
+                nameof(statement));
+        }
+
+        if (statement.Status == CreditCardStatementStatus.Settled ||
+            Statement?.Status == CreditCardStatementStatus.Settled)
         {
             throw new InvalidOperationException("A settled statement's composition is frozen.");
         }
@@ -467,7 +432,11 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         MarkUpdated(updatedAt);
     }
 
-    public void AssignToInstallmentPlan(
+    /// <summary>
+    /// Links the transaction to its plan. Only <see cref="InstallmentPlan.AddInstallment"/> may
+    /// call this, so the plan's numbering and composition rules cannot be bypassed.
+    /// </summary>
+    internal void AssignToInstallmentPlan(
         InstallmentPlan installmentPlan,
         short installmentNumber,
         DateTimeOffset updatedAt)
@@ -489,5 +458,77 @@ public sealed class FinancialTransaction : RecordLifecycleEntity
         InstallmentPlanId = installmentPlan.Id;
         InstallmentNumber = installmentNumber;
         MarkUpdated(updatedAt);
+    }
+
+    private static Tag[] ValidateDetails(
+        UserProfile owner,
+        Category category,
+        TransactionDirection direction,
+        decimal amount,
+        Counterparty? counterparty,
+        IReadOnlyCollection<Tag>? tags)
+    {
+        ArgumentNullException.ThrowIfNull(category);
+        if (category.User.PublicId != owner.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and its category must have the same owner.",
+                nameof(category));
+        }
+
+        if (category.IsDeleted)
+        {
+            throw new ArgumentException("A deleted category cannot be used.", nameof(category));
+        }
+
+        if (counterparty is not null && counterparty.User.PublicId != owner.PublicId)
+        {
+            throw new ArgumentException(
+                "The transaction and its counterparty must have the same owner.",
+                nameof(counterparty));
+        }
+
+        if (counterparty?.IsDeleted == true)
+        {
+            throw new ArgumentException(
+                "A deleted counterparty cannot be used.",
+                nameof(counterparty));
+        }
+
+        var labels = tags?.DistinctBy(tag => tag.PublicId).ToArray() ?? [];
+        if (labels.Any(tag => tag.User.PublicId != owner.PublicId))
+        {
+            throw new ArgumentException(
+                "The transaction and its tags must have the same owner.",
+                nameof(tags));
+        }
+
+        if (labels.Any(tag => tag.IsDeleted))
+        {
+            throw new ArgumentException("A deleted tag cannot be attached.", nameof(tags));
+        }
+
+        if (!Enum.IsDefined(direction))
+        {
+            throw new ArgumentOutOfRangeException(nameof(direction));
+        }
+
+        if (amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(amount),
+                "A transaction amount must be greater than zero.");
+        }
+
+        return labels;
+    }
+
+    private void ClearForeignCurrencyDetails()
+    {
+        OriginalAmount = null;
+        OriginalCurrency = null;
+        OriginalCurrencyId = null;
+        AppliedRate = null;
+        RateDate = null;
     }
 }

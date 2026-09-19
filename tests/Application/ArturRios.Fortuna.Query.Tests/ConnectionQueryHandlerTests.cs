@@ -5,11 +5,13 @@ using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -106,19 +108,18 @@ public sealed class ConnectionQueryHandlerTests
         Assert.Contains(ConnectionMessages.SortByUnsupported, result.Errors);
     }
 
-    private static GetConnectionByIdQueryHandler GetHandler(
+    private static IQueryHandlerAsync<GetConnectionByIdQuery, ConnectionOutput> GetHandler(
         UserProfileSnapshot? profile,
-        IConnectionReader reader) => new(
-        new StubProfileReader(profile), reader, Actor(profile));
+        IConnectionReader reader) => new GetConnectionByIdQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+        reader).Validated(new GetConnectionByIdQueryValidator());
 
-    private static ListConnectionsQueryHandler ListHandler(
+    private static IPaginatedQueryHandlerAsync<ListConnectionsQuery, ConnectionOutput> ListHandler(
         UserProfileSnapshot? profile,
-        IConnectionReader reader) => new(
-        new ListConnectionsQueryValidator(),
-        new StubProfileReader(profile),
+        IConnectionReader reader) => new ListConnectionsQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         reader,
-        Actor(profile),
-        new PaginationOptions(100));
+        new PaginationOptions(100)).Validated(new ListConnectionsQueryValidator());
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));
@@ -151,6 +152,7 @@ public sealed class ConnectionQueryHandlerTests
         {
             var connection = connections.SingleOrDefault(item =>
                 item.User.PublicId == userId && item.PublicId == id);
+
             return Task.FromResult(connection is null ? null : new ConnectionSnapshot(
                 connection.PublicId,
                 connection.DataSourceType,

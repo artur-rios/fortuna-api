@@ -4,7 +4,6 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
@@ -13,8 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetPersonalDataExportQueryHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IPersonalDataExportStore exports,
     IAttachmentStore storage,
     TimeProvider timeProvider,
@@ -24,39 +22,36 @@ public sealed class GetPersonalDataExportQueryHandler(
     public async Task<DataOutput<PersonalDataExportQueryOutput?>> HandleAsync(
         GetPersonalDataExportQuery query)
     {
-        if (query.JobId == Guid.Empty)
-        {
-            return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
-                PersonalDataExportMessages.NotFound);
-        }
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
                 PersonalDataExportMessages.ProfileNotFound);
         }
+
         var export = await exports.FindOwnedPersonalAsync(
             profile.Id,
             query.JobId,
             CancellationToken.None);
-        if (export is null || timeProvider.GetUtcNow() >= export.ExpiresAt)
+        if (export is null)
         {
             return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
-                export is null
-                    ? PersonalDataExportMessages.NotFound
-                    : PersonalDataExportMessages.Expired);
+                PersonalDataExportMessages.NotFound);
         }
+
+        if (ExportExpiry.HasExpired(export, timeProvider))
+        {
+            return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
+                PersonalDataExportMessages.Expired);
+        }
+
         if (export.Status != DataExportStatus.Completed)
         {
             return DataOutput<PersonalDataExportQueryOutput?>.New
                 .WithData(Project(export))
                 .WithMessage(PersonalDataExportMessages.RetrievedSuccessfully);
         }
+
         if (string.IsNullOrWhiteSpace(export.StorageKey) ||
             string.IsNullOrWhiteSpace(export.ContentType))
         {
@@ -71,19 +66,24 @@ public sealed class GetPersonalDataExportQueryHandler(
                 return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
                     PersonalDataExportMessages.StorageUnavailable);
             }
-            var content = await storage.OpenReadAsync(export.StorageKey, CancellationToken.None);
+
+            var read = await storage.OpenReadAsync(export.StorageKey, CancellationToken.None);
+            if (!read.IsFound)
+            {
+                return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
+                    read.Status == AttachmentReadStatus.NotFound
+                        ? PersonalDataExportMessages.FileNotFound
+                        : PersonalDataExportMessages.StorageUnavailable);
+            }
+
             return DataOutput<PersonalDataExportQueryOutput?>.New
-                .WithData(Project(export, content))
+                .WithData(Project(export, read.Content))
                 .WithMessage(PersonalDataExportMessages.RetrievedSuccessfully);
-        }
-        catch (AttachmentObjectNotFoundException)
-        {
-            return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
-                PersonalDataExportMessages.FileNotFound);
         }
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Personal data archive storage read failed");
+
             return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
                 PersonalDataExportMessages.StorageUnavailable);
         }

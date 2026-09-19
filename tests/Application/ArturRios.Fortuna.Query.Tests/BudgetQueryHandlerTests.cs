@@ -1,8 +1,10 @@
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Query.Handlers;
+using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
@@ -21,10 +23,10 @@ public sealed class BudgetQueryHandlerTests
         var profile = Profile();
         var store = new StubBudgetReader([Snapshot()]);
         var handler = new ListBudgetsQueryHandler(
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now),
+            new PaginationOptions(100)).Validated(new ListBudgetsQueryValidator());
 
         var result = await handler.HandleAsync(new ListBudgetsQuery
         {
@@ -47,10 +49,9 @@ public sealed class BudgetQueryHandlerTests
         var snapshot = Snapshot();
         var store = new StubBudgetReader([], snapshot);
         var handler = new GetBudgetByIdQueryHandler(
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetByIdQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetByIdQuery
         {
@@ -69,10 +70,9 @@ public sealed class BudgetQueryHandlerTests
     {
         var profile = Profile();
         var handler = new GetBudgetByIdQueryHandler(
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             new StubBudgetReader([]),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetByIdQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetByIdQuery
         {
@@ -88,10 +88,10 @@ public sealed class BudgetQueryHandlerTests
     {
         var store = new StubBudgetReader([]);
         var handler = new ListBudgetsQueryHandler(
-            Actor(null),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now),
+            new PaginationOptions(100)).Validated(new ListBudgetsQueryValidator());
 
         var result = await handler.HandleAsync(new ListBudgetsQuery());
 
@@ -112,10 +112,9 @@ public sealed class BudgetQueryHandlerTests
                 BudgetConsumptionOutcome.Succeeded)
         };
         var handler = new GetBudgetConsumptionQueryHandler(
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetConsumptionQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
         {
@@ -144,10 +143,9 @@ public sealed class BudgetQueryHandlerTests
                 BudgetConsumptionOutcome.PeriodPrecedesBudget)
         };
         var handler = new GetBudgetConsumptionQueryHandler(
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetConsumptionQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
         {
@@ -172,10 +170,9 @@ public sealed class BudgetQueryHandlerTests
                 BudgetConsumptionOutcome.NotFound)
         };
         var handler = new GetBudgetConsumptionQueryHandler(
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetConsumptionQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
         {
@@ -191,10 +188,9 @@ public sealed class BudgetQueryHandlerTests
     {
         var store = new StubBudgetReader([]);
         var handler = new GetBudgetConsumptionQueryHandler(
-            Actor(null),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetConsumptionQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
         {
@@ -268,16 +264,23 @@ public sealed class BudgetQueryHandlerTests
         public bool IncludeDeleted { get; private set; }
         public DateOnly? AsOf { get; private set; }
 
-        public Task<IReadOnlyCollection<BudgetSnapshot>> ListAsync(
+        public PageRequest? Page { get; private set; }
+
+        public Task<ReadPage<BudgetSnapshot>> ListAsync(
             Guid userId,
             bool includeDeleted,
             DateOnly asOf,
+            PageRequest page,
             CancellationToken cancellationToken)
         {
             UserId = userId;
             IncludeDeleted = includeDeleted;
             AsOf = asOf;
-            return Task.FromResult(budgets);
+            Page = page;
+
+            return Task.FromResult(new ReadPage<BudgetSnapshot>(
+                budgets.Skip(page.Skip).Take(page.PageSize).ToArray(),
+                budgets.Count));
         }
 
         public Task<BudgetSnapshot?> FindByIdAsync(
@@ -291,6 +294,7 @@ public sealed class BudgetQueryHandlerTests
             BudgetId = id;
             IncludeDeleted = includeDeleted;
             AsOf = asOf;
+
             return Task.FromResult(budget);
         }
 
@@ -303,6 +307,7 @@ public sealed class BudgetQueryHandlerTests
             UserId = userId;
             BudgetId = id;
             AsOf = periodDate;
+
             return Task.FromResult(ConsumptionResult);
         }
     }

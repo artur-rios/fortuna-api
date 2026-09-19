@@ -3,18 +3,14 @@ using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class ImportExcelWorkbookCommandHandler(
-    IValidator<ImportExcelWorkbookCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IExcelWorkbookParser parser,
     IExcelImportStore imports,
     IBackgroundJobQueue queue,
@@ -24,13 +20,6 @@ public sealed class ImportExcelWorkbookCommandHandler(
     public async Task<DataOutput<ImportExcelWorkbookCommandOutput?>> HandleAsync(
         ImportExcelWorkbookCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<ImportExcelWorkbookCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var workbook = parser.Validate(command.Content, command.Mapping);
         if (!workbook.IsValid)
         {
@@ -38,7 +27,7 @@ public sealed class ImportExcelWorkbookCommandHandler(
                 workbook.Error ?? ExcelImportMessages.WorkbookInvalid);
         }
 
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<ImportExcelWorkbookCommandOutput?>.New.WithError(
@@ -49,7 +38,7 @@ public sealed class ImportExcelWorkbookCommandHandler(
             profile.Id,
             command.TargetId,
             command.TargetType,
-            command.FileName,
+            command.FileName.Trim(),
             command.Content,
             command.Mapping,
             command.CreateMissingCategories,
@@ -62,13 +51,6 @@ public sealed class ImportExcelWorkbookCommandHandler(
 
         return Resolve(result);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private static DataOutput<ImportExcelWorkbookCommandOutput?> Resolve(
         QueueExcelImportResult result)

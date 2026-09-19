@@ -4,6 +4,9 @@ namespace ArturRios.Fortuna.Integration.Storage;
 
 public sealed class FilesystemAttachmentStore : IAttachmentStore
 {
+    private const int BufferSize = 81920;
+    private const string TemporarySuffix = ".tmp";
+
     private readonly string root;
 
     public FilesystemAttachmentStore(string root)
@@ -20,43 +23,99 @@ public sealed class FilesystemAttachmentStore : IAttachmentStore
     public async Task WriteAsync(string key, Stream content, CancellationToken cancellationToken)
     {
         var path = Resolve(key);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        await using var output = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-        await content.CopyToAsync(output, cancellationToken);
+        var directory = Path.GetDirectoryName(path)!;
+        Directory.CreateDirectory(directory);
+        var temporaryPath = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid():N}{TemporarySuffix}");
+        try
+        {
+            await using (var output = new FileStream(
+                temporaryPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                BufferSize,
+                useAsync: true))
+            {
+                await content.CopyToAsync(output, cancellationToken);
+                await output.FlushAsync(cancellationToken);
+            }
+
+            File.Move(temporaryPath, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
     }
 
-    public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken)
+    public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var path = Resolve(key);
+        if (!File.Exists(path))
+        {
+            return Task.FromResult(AttachmentReadResult.NotFound);
+        }
+
         try
         {
             Stream stream = new FileStream(
-                Resolve(key),
+                path,
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read,
-                81920,
+                BufferSize,
                 useAsync: true);
-            return Task.FromResult(stream);
+
+            return Task.FromResult(AttachmentReadResult.Found(stream));
         }
         catch (Exception exception) when (
             exception is FileNotFoundException or DirectoryNotFoundException)
         {
-            throw new AttachmentObjectNotFoundException(key);
+            // The object was removed between the existence check and the open.
+            return Task.FromResult(AttachmentReadResult.NotFound);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return Task.FromResult(AttachmentReadResult.Unavailable);
         }
     }
 
     public Task DeleteAsync(string key, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        File.Delete(Resolve(key));
+        var path = Resolve(key);
+        if (Directory.Exists(Path.GetDirectoryName(path)))
+        {
+            File.Delete(path);
+        }
+
         return Task.CompletedTask;
     }
 
-    public Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
+    public async Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(Directory.Exists(root));
+        if (!Directory.Exists(root))
+        {
+            return false;
+        }
+
+        var probe = Path.Combine(root, $".health-{Guid.NewGuid():N}{TemporarySuffix}");
+        try
+        {
+            await File.WriteAllBytesAsync(probe, [1], cancellationToken);
+            File.Delete(probe);
+
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private string Resolve(string key)

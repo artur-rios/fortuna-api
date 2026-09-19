@@ -2,19 +2,15 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class RecordTransferCommandHandler(
-    IValidator<RecordTransferCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ITransferStore transfers,
     ICreditCardStatementSettlementStore settlements,
     TimeProvider timeProvider)
@@ -24,24 +20,14 @@ public sealed class RecordTransferCommandHandler(
         RecordTransferCommand command)
     {
         var output = DataOutput<RecordTransferCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(TransferMessages.ProfileNotFound);
         }
 
         var createdAt = timeProvider.GetUtcNow();
+
         return command.DestinationStatementId.HasValue
             ? await RecordStatementSettlementAsync(command, profile.Id, createdAt, output)
             : await RecordAccountTransferAsync(command, profile.Id, createdAt, output);
@@ -80,6 +66,7 @@ public sealed class RecordTransferCommandHandler(
         }
 
         var transfer = result.Transfer;
+
         return output
             .WithData(new RecordTransferCommandOutput
             {
@@ -106,34 +93,22 @@ public sealed class RecordTransferCommandHandler(
         DateTimeOffset createdAt,
         DataOutput<RecordTransferCommandOutput?> output)
     {
-        var result = await settlements.SettleAsync(
+        var result = await CreditCardStatementPayment.PayAsync(
+            settlements,
             new CreditCardStatementSettlement(
                 userId,
                 command.DestinationStatementId!.Value,
                 command.OriginFinancialAccountId,
                 command.Amount,
                 command.OccurredOn,
-                createdAt),
-            CancellationToken.None);
-        if (result.Outcome != CreditCardStatementSettlementOutcome.Succeeded ||
-            result.Settlement is null)
+                createdAt));
+        if (result.Settlement is null)
         {
-            return output.WithError(result.Outcome switch
-            {
-                CreditCardStatementSettlementOutcome.StatementNotFound =>
-                    TransferMessages.DestinationStatementNotFound,
-                CreditCardStatementSettlementOutcome.FinancialAccountNotFound =>
-                    TransferMessages.OriginFinancialAccountNotFound,
-                CreditCardStatementSettlementOutcome.StatementOpen => TransferMessages.StatementOpen,
-                CreditCardStatementSettlementOutcome.StatementAlreadySettled =>
-                    TransferMessages.StatementAlreadySettled,
-                CreditCardStatementSettlementOutcome.ExchangeRateUnavailable =>
-                    TransferMessages.ExchangeRateUnavailable,
-                _ => throw new InvalidOperationException("Unknown statement settlement outcome.")
-            });
+            return output.WithError(result.Error!);
         }
 
         var settlement = result.Settlement;
+
         return output
             .WithData(new RecordTransferCommandOutput
             {

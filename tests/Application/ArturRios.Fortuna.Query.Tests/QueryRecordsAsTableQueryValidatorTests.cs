@@ -66,4 +66,60 @@ public sealed class QueryRecordsAsTableQueryValidatorTests
         Assert.Contains(result.Errors,
             error => error.ErrorMessage == TableReportMessages.ColumnsRequired);
     }
+
+    [UnitFact]
+    public async Task GivenNullCollections_WhenValidated_ThenTheyAreRejectedWithoutThrowing()
+    {
+        var result = await validator.ValidateAsync(new QueryRecordsAsTableQuery
+        {
+            RecordSet = "transactions",
+            Columns = null!,
+            Filters = null!,
+            Sorts = null!,
+            PageNumber = 1,
+            PageSize = 1
+        });
+        var errors = result.Errors.Select(error => error.ErrorMessage).ToArray();
+
+        Assert.Contains(TableReportMessages.ColumnsRequired, errors);
+        Assert.Contains(TableReportMessages.FiltersRequired, errors);
+        Assert.Contains(TableReportMessages.SortsRequired, errors);
+    }
+
+    [UnitFact]
+    public async Task GivenNullElements_WhenValidated_ThenEachIsRejected()
+    {
+        var result = await validator.ValidateAsync(new QueryRecordsAsTableQuery
+        {
+            RecordSet = "transactions",
+            Columns = ["id", null!],
+            Filters = [null!],
+            Sorts = [null!],
+            PageNumber = 1,
+            PageSize = 1
+        });
+        var errors = result.Errors.Select(error => error.ErrorMessage).ToArray();
+
+        Assert.Contains(TableReportMessages.ColumnsRequired, errors);
+        Assert.Contains(TableReportMessages.FilterRequired, errors);
+        Assert.Contains(TableReportMessages.SortRequired, errors);
+    }
+
+    [UnitTheory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(" brl ")]
+    public async Task GivenBlankOrPaddedDisplayCurrency_WhenValidated_ThenItIsAccepted(string code)
+    {
+        var result = await validator.ValidateAsync(new QueryRecordsAsTableQuery
+        {
+            RecordSet = "transactions",
+            Columns = ["id"],
+            DisplayCurrencyCode = code,
+            PageNumber = 1,
+            PageSize = 1
+        });
+
+        Assert.True(result.IsValid);
+    }
 }

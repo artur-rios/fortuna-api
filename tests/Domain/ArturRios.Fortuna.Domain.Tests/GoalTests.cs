@@ -101,6 +101,40 @@ public sealed class GoalTests
         Assert.Equal(updatedAt, goal.UpdatedAt);
     }
 
+    [UnitFact]
+    public void GivenExpiredGoal_WhenRenamedKeepingTargetDate_ThenEditIsAccepted()
+    {
+        var user = User();
+        var goal = new Goal(
+            user, "Home", 100m, user.DisplayCurrency,
+            new DateOnly(2026, 12, 31), [Account(user, "Savings")], [], Now);
+        var afterTarget = new DateTimeOffset(2027, 3, 1, 0, 0, 0, TimeSpan.Zero);
+
+        goal.UpdateDetails(
+            "Beach house", 150m, user.DisplayCurrency,
+            new DateOnly(2026, 12, 31), goal.Accounts, [], afterTarget);
+
+        Assert.Equal("Beach house", goal.Name);
+        Assert.Equal(new DateOnly(2026, 12, 31), goal.TargetDate);
+        Assert.True(goal.AcceptsTargetDate(goal.TargetDate, afterTarget));
+    }
+
+    [UnitFact]
+    public void GivenExpiredGoal_WhenTargetDateMovedToPast_ThenItIsRejected()
+    {
+        var user = User();
+        var goal = new Goal(
+            user, "Home", 100m, user.DisplayCurrency,
+            new DateOnly(2026, 12, 31), [Account(user, "Savings")], [], Now);
+        var afterTarget = new DateTimeOffset(2027, 3, 1, 0, 0, 0, TimeSpan.Zero);
+
+        Assert.False(goal.AcceptsTargetDate(new DateOnly(2027, 2, 1), afterTarget));
+        Assert.True(goal.AcceptsTargetDate(new DateOnly(2027, 3, 2), afterTarget));
+        Assert.Throws<ArgumentOutOfRangeException>(() => goal.UpdateDetails(
+            "Home", 100m, user.DisplayCurrency,
+            new DateOnly(2027, 2, 1), goal.Accounts, [], afterTarget));
+    }
+
     private static UserProfile User() => new(
         Guid.NewGuid(), "Owner", new Currency("BRL", "Brazilian real", 2), Now);
 

@@ -1,7 +1,7 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Shared.Currencies;
-using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Currencies;
@@ -28,12 +28,17 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
         var currencies = await context.Currencies
             .Where(currency => codes.Contains(currency.Code))
             .ToDictionaryAsync(currency => currency.Code, cancellationToken);
-        if (currencies.Count != codes.Count)
-        {
-            throw new InvalidOperationException(ExchangeRateSyncMessages.ConfiguredCurrencyNotFound);
-        }
+        var missingCodes = codes
+            .Where(code => !currencies.ContainsKey(code))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var storable = rates
+            .Where(rate =>
+                currencies.ContainsKey(rate.BaseCurrencyCode) &&
+                currencies.ContainsKey(rate.QuoteCurrencyCode))
+            .ToArray();
 
-        var publicationDates = rates.Select(rate => rate.PublicationDate).ToHashSet();
+        var publicationDates = storable.Select(rate => rate.PublicationDate).ToHashSet();
         var existing = await context.ExchangeRates
             .Where(rate =>
                 rate.Source == ExchangeRateSource.Published &&
@@ -44,13 +49,14 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
         var stored = 0;
         var unchanged = 0;
 
-        foreach (var candidate in rates)
+        foreach (var candidate in storable)
         {
             var baseId = currencies[candidate.BaseCurrencyCode].Id;
             var quoteId = currencies[candidate.QuoteCurrencyCode].Id;
+            var rate = ExchangeRateMap.RoundToStorage(candidate.Rate);
             if (byKey.TryGetValue((baseId, quoteId, candidate.PublicationDate), out var current))
             {
-                if (current.ReplacePublishedRate(candidate.Rate))
+                if (current.ReplacePublishedRate(rate))
                 {
                     stored++;
                 }
@@ -65,7 +71,7 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
             context.ExchangeRates.Add(new ExchangeRate(
                 baseId,
                 quoteId,
-                candidate.Rate,
+                rate,
                 candidate.PublicationDate,
                 ExchangeRateSource.Published));
             stored++;
@@ -73,7 +79,14 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
 
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return new PublishedRateUpsertResult(stored, unchanged);
+
+        return new PublishedRateUpsertResult(
+            stored,
+            unchanged,
+            missingCodes.Length == 0 ? null : missingCodes)
+        {
+            SkippedCount = rates.Count - storable.Length
+        };
     }
 
     public async Task<ManualRateUpsertResult> UpsertManualAsync(
@@ -91,8 +104,13 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
         if (!currencies.TryGetValue(rate.BaseCurrencyCode, out var baseCurrency) ||
             !currencies.TryGetValue(rate.QuoteCurrencyCode, out var quoteCurrency))
         {
-            throw new InvalidOperationException(ManualExchangeRateMessages.CurrencyNotSupported);
+            return new ManualRateUpsertResult(
+                rate.Rate,
+                false,
+                ManualRateUpsertOutcome.CurrencyNotSupported);
         }
+
+        var storedRate = ExchangeRateMap.RoundToStorage(rate.Rate);
 
         var current = await context.ExchangeRates.SingleOrDefaultAsync(
             candidate =>
@@ -107,18 +125,19 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
             current = new ExchangeRate(
                 baseCurrency.Id,
                 quoteCurrency.Id,
-                rate.Rate,
+                storedRate,
                 rate.RateDate,
                 ExchangeRateSource.Manual);
             context.ExchangeRates.Add(current);
         }
         else
         {
-            current.ReplaceManualRate(rate.Rate);
+            current.ReplaceManualRate(storedRate);
         }
 
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
         return new ManualRateUpsertResult(current.Rate, replacedExisting);
     }
 
@@ -127,14 +146,7 @@ public sealed class EfExchangeRateStore(AppDbContext context) : IExchangeRateSto
         string quoteCurrencyCode,
         DateOnly figureDate,
         CancellationToken cancellationToken) =>
-        await context.ExchangeRates
-            .AsNoTracking()
-            .Where(rate =>
-                rate.BaseCurrency.Code == baseCurrencyCode &&
-                rate.QuoteCurrency.Code == quoteCurrencyCode &&
-                rate.RateDate <= figureDate)
-            .OrderByDescending(rate => rate.RateDate)
-            .ThenByDescending(rate => rate.Source)
+        await ExchangeRateLookup.Applicable(context, baseCurrencyCode, quoteCurrencyCode, figureDate)
             .Select(rate => new ExchangeRateSnapshot(
                 rate.BaseCurrency.Code,
                 rate.QuoteCurrency.Code,

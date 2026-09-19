@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -36,61 +37,18 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
         Counterparty? counterparty = null) : base(createdAt)
     {
         User = user ?? throw new ArgumentNullException(nameof(user));
-        ArgumentNullException.ThrowIfNull(category);
-        if ((financialAccount is null) == (creditCard is null))
-        {
-            throw new ArgumentException("Exactly one transaction target is required.");
-        }
-
-        var targetUser = financialAccount?.User ?? creditCard!.User;
-        if (targetUser.PublicId != user.PublicId || category.User.PublicId != user.PublicId ||
-            (counterparty is not null && counterparty.User.PublicId != user.PublicId))
-        {
-            throw new ArgumentException("The recurring transaction references must share an owner.");
-        }
-
-        if (amount <= 0m)
-        {
-            throw new ArgumentOutOfRangeException(nameof(amount));
-        }
-
-        if (!Enum.IsDefined(direction))
-        {
-            throw new ArgumentOutOfRangeException(nameof(direction));
-        }
-
-        if (!Enum.IsDefined(frequency))
-        {
-            throw new ArgumentOutOfRangeException(nameof(frequency));
-        }
-
-        if (endsOn < startsOn)
-        {
-            throw new ArgumentOutOfRangeException(nameof(endsOn));
-        }
-
-        if (description?.Trim().Length > 500)
-        {
-            throw new ArgumentException("A description cannot exceed 500 characters.", nameof(description));
-        }
-
         UserId = user.Id;
-        FinancialAccount = financialAccount;
-        FinancialAccountId = financialAccount?.Id;
-        CreditCard = creditCard;
-        CreditCardId = creditCard?.Id;
-        Category = category;
-        CategoryId = category.Id;
-        Counterparty = counterparty;
-        CounterpartyId = counterparty?.Id;
-        Direction = direction;
-        Amount = amount;
-        Currency = financialAccount?.Currency ?? creditCard!.Currency;
-        CurrencyId = Currency.Id;
-        Frequency = frequency;
-        StartsOn = startsOn;
-        EndsOn = endsOn;
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        ApplyTemplate(
+            financialAccount,
+            creditCard,
+            category,
+            direction,
+            amount,
+            frequency,
+            startsOn,
+            endsOn,
+            description,
+            counterparty);
     }
 
     public long Id { get; private set; }
@@ -144,60 +102,22 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
         Counterparty? counterparty,
         DateTimeOffset updatedAt)
     {
-        ArgumentNullException.ThrowIfNull(category);
-        if ((financialAccount is null) == (creditCard is null))
-        {
-            throw new ArgumentException("Exactly one transaction target is required.");
-        }
+        EnsureNotDeleted();
 
-        var targetUser = financialAccount?.User ?? creditCard!.User;
-        if (targetUser.PublicId != User.PublicId || category.User.PublicId != User.PublicId ||
-            (counterparty is not null && counterparty.User.PublicId != User.PublicId))
-        {
-            throw new ArgumentException("The recurring transaction references must share an owner.");
-        }
-
-        if (amount <= 0m)
-        {
-            throw new ArgumentOutOfRangeException(nameof(amount));
-        }
-
-        if (!Enum.IsDefined(direction))
-        {
-            throw new ArgumentOutOfRangeException(nameof(direction));
-        }
-
-        if (!Enum.IsDefined(frequency))
-        {
-            throw new ArgumentOutOfRangeException(nameof(frequency));
-        }
-
-        if (endsOn < startsOn)
-        {
-            throw new ArgumentOutOfRangeException(nameof(endsOn));
-        }
-
-        if (description?.Trim().Length > 500)
-        {
-            throw new ArgumentException("A description cannot exceed 500 characters.", nameof(description));
-        }
-
-        FinancialAccount = financialAccount;
-        FinancialAccountId = financialAccount?.Id;
-        CreditCard = creditCard;
-        CreditCardId = creditCard?.Id;
-        Category = category;
-        CategoryId = category.Id;
-        Counterparty = counterparty;
-        CounterpartyId = counterparty?.Id;
-        Direction = direction;
-        Amount = amount;
-        Currency = financialAccount?.Currency ?? creditCard!.Currency;
-        CurrencyId = Currency.Id;
-        Frequency = frequency;
-        StartsOn = startsOn;
-        EndsOn = endsOn;
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        // LastMaterializedOn is kept on purpose, even when StartsOn moves earlier: a template
+        // change applies forward from the marker and never backfills past dates (whose schedule
+        // may no longer line up with the occurrences already materialized).
+        ApplyTemplate(
+            financialAccount,
+            creditCard,
+            category,
+            direction,
+            amount,
+            frequency,
+            startsOn,
+            endsOn,
+            description,
+            counterparty);
         MarkUpdated(updatedAt);
     }
 
@@ -278,5 +198,72 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
         }
 
         return dates;
+    }
+
+    private void ApplyTemplate(
+        FinancialAccount? financialAccount,
+        CreditCard? creditCard,
+        Category category,
+        TransactionDirection direction,
+        decimal amount,
+        RecurrenceFrequency frequency,
+        DateOnly startsOn,
+        DateOnly? endsOn,
+        string? description,
+        Counterparty? counterparty)
+    {
+        ArgumentNullException.ThrowIfNull(category);
+        var target = TransactionTarget.Of(financialAccount, creditCard);
+        if (target.Owner.PublicId != User.PublicId || category.User.PublicId != User.PublicId ||
+            (counterparty is not null && counterparty.User.PublicId != User.PublicId))
+        {
+            throw new ArgumentException("The recurring transaction references must share an owner.");
+        }
+
+        if (target.IsDeleted || category.IsDeleted || counterparty?.IsDeleted == true)
+        {
+            throw new ArgumentException("The recurring transaction references must be live.");
+        }
+
+        if (amount <= 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount));
+        }
+
+        if (!Enum.IsDefined(direction))
+        {
+            throw new ArgumentOutOfRangeException(nameof(direction));
+        }
+
+        if (!Enum.IsDefined(frequency))
+        {
+            throw new ArgumentOutOfRangeException(nameof(frequency));
+        }
+
+        if (endsOn < startsOn)
+        {
+            throw new ArgumentOutOfRangeException(nameof(endsOn));
+        }
+
+        Description = BoundedText.Optional(
+            description,
+            500,
+            nameof(description),
+            "A description cannot exceed 500 characters.");
+        FinancialAccount = financialAccount;
+        FinancialAccountId = financialAccount?.Id;
+        CreditCard = creditCard;
+        CreditCardId = creditCard?.Id;
+        Category = category;
+        CategoryId = category.Id;
+        Counterparty = counterparty;
+        CounterpartyId = counterparty?.Id;
+        Direction = direction;
+        Amount = amount;
+        Currency = target.Currency;
+        CurrencyId = Currency.Id;
+        Frequency = frequency;
+        StartsOn = startsOn;
+        EndsOn = endsOn;
     }
 }

@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
@@ -36,9 +34,8 @@ public sealed class RecoverLocalAccountCommandHandlerTests
         Assert.Equal("Local User", issuer.DisplayName);
         Assert.Equal(1, issuer.IssueCount);
         Assert.NotNull(store.Recovery);
-        Assert.Equal(
-            SHA256.HashData(Encoding.UTF8.GetBytes(RecoveryCode)),
-            store.Recovery.RecoveryCodeHash);
+        Assert.Equal(RecoveryCode, store.Recovery.RecoveryCode);
+        Assert.Equal("Local User", store.Recovery.Name);
         Assert.True(Hash.TextMatches(NewSecret, store.Recovery.NewSecretHash, store.Recovery.NewSalt));
         Assert.Equal(Now, store.Recovery.RecoveredAt);
     }
@@ -73,6 +70,38 @@ public sealed class RecoverLocalAccountCommandHandlerTests
 
         Assert.False(result.Success);
         Assert.Contains(result.Errors, error => error.Contains("NewSecret", StringComparison.Ordinal));
+        Assert.Null(store.Recovery);
+    }
+
+    [UnitFact]
+    public async Task GivenCodeWithOtherCaseAndWhitespace_WhenRecovering_ThenNormalizedCodeAndNameAreSubmitted()
+    {
+        var store = new StubStore(new LocalAccountRecoveryResult(LocalAccountRecoveryStatus.InvalidCode, null));
+        var command = ValidCommand();
+        command.RecoveryCode = "  abcd-1234 ";
+        command.Name = " Local User ";
+
+        await Handler(store, new StubTokenIssuer()).HandleAsync(command);
+
+        Assert.Equal(RecoveryCode, store.Recovery!.RecoveryCode);
+        Assert.Equal("Local User", store.Recovery.Name);
+    }
+
+    [UnitTheory]
+    [InlineData("", LocalAccountRecoveryMessages.RecoveryCodeRequired)]
+    [InlineData("ABCD1234", LocalAccountRecoveryMessages.RecoveryCodeFormatInvalid)]
+    [InlineData("ABCD-12345", LocalAccountRecoveryMessages.RecoveryCodeFormatInvalid)]
+    public async Task GivenMalformedRecoveryCode_WhenRecovering_ThenStoreIsNotCalled(
+        string code,
+        string expectedError)
+    {
+        var store = new StubStore(new LocalAccountRecoveryResult(LocalAccountRecoveryStatus.InvalidCode, null));
+        var command = ValidCommand();
+        command.RecoveryCode = code;
+
+        var result = await Handler(store, new StubTokenIssuer()).HandleAsync(command);
+
+        Assert.Equal([expectedError], result.Errors);
         Assert.Null(store.Recovery);
     }
 
@@ -129,6 +158,7 @@ public sealed class RecoverLocalAccountCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Recovery = recovery;
+
             return Task.FromResult(result);
         }
 
@@ -148,6 +178,7 @@ public sealed class RecoverLocalAccountCommandHandlerTests
             Subject = subject;
             DisplayName = displayName;
             IssueCount++;
+
             return new LocalAuthToken("local-token", Now.AddHours(1));
         }
     }

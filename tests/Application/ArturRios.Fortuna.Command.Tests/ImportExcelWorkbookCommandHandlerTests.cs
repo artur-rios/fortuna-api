@@ -1,12 +1,14 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -95,26 +97,27 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
         Assert.Equal(0, parser.ValidationCount);
     }
 
-    private static ImportExcelWorkbookCommandHandler Handler(
+    private static ICommandHandlerAsync<ImportExcelWorkbookCommand, ImportExcelWorkbookCommandOutput> Handler(
         StubStore store,
         StubQueue queue,
         StubParser parser,
-        int maximumBytes = 1024) => new(
-        new ImportExcelWorkbookCommandValidator(new ExcelImportOptions(maximumBytes)),
-        new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(new UserProfileSnapshot(
-            Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now)),
+        int maximumBytes = 1024) => new ImportExcelWorkbookCommandHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(new UserProfileSnapshot(
+                Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now))),
         parser,
         store,
         queue,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now))
+            .Validated(new ImportExcelWorkbookCommandValidator(new ExcelImportOptions(maximumBytes)));
 
     private static ImportExcelWorkbookCommand Command() => new()
     {
         TargetId = Guid.NewGuid(),
         TargetType = ImportTargetType.Account,
         FileName = "transactions.xlsx",
-        Content = [1, 2, 3],
+        Content = [0x50, 0x4B, 0x03, 0x04, 0x14],
         Mapping = new ExcelColumnMapping(
             "Date", "Amount", "Direction", "Description", "Category", "Id"),
         CreateMissingCategories = true,
@@ -135,6 +138,7 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
             var job = outcome == QueueExcelImportOutcome.Succeeded
                 ? new ExcelImportJobSnapshot(JobId, ImportJobStatus.Pending, Now, Now)
                 : null;
+
             return Task.FromResult(new QueueExcelImportResult(
                 job,
                 job is null ? null : BackgroundJobId,
@@ -145,13 +149,13 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
             Guid importJobId, DateTimeOffset startedAt, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task CompleteAsync(
+        public Task<ImportCompletionResult> CompleteAsync(
             Guid importJobId, Guid userId, Guid targetId, ImportTargetType targetType,
             bool createMissingCategories, IReadOnlyCollection<ExcelWorkbookRow> rows,
             DateTimeOffset completedAt, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task FailAsync(
+        public Task<JobTransitionOutcome> FailAsync(
             Guid importJobId, string reason, DateTimeOffset failedAt,
             CancellationToken cancellationToken) => throw new NotSupportedException();
     }
@@ -163,12 +167,13 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
         public ExcelWorkbookValidation Validate(byte[] content, ExcelColumnMapping mapping)
         {
             ValidationCount++;
+
             return new ExcelWorkbookValidation(
                 valid,
                 valid ? null : ExcelImportMessages.WorkbookInvalid);
         }
 
-        public IReadOnlyCollection<ExcelWorkbookRow> Parse(
+        public ExcelWorkbookParseResult Parse(
             byte[] content, ExcelColumnMapping mapping) => throw new NotSupportedException();
     }
 
@@ -180,6 +185,7 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 

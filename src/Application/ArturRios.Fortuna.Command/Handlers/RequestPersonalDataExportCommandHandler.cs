@@ -1,11 +1,9 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Exports;
-using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -13,8 +11,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class RequestPersonalDataExportCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IPersonalDataExportStore exports,
     IBackgroundJobQueue queue,
     DataExportOptions options,
@@ -24,12 +21,9 @@ public sealed class RequestPersonalDataExportCommandHandler(
     public async Task<DataOutput<RequestPersonalDataExportCommandOutput?>> HandleAsync(
         RequestPersonalDataExportCommand command)
     {
-        var actor = actorAccessor.Actor;
-        var profile = actor?.RoleId == (int)HeimdallRoles.User
-            ? actor.IsLocal
-                ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None)
-            : null;
+        // Any authenticated caller may export the data of the profile they own, whatever their
+        // role: an administrator's own profile is personal data too.
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<RequestPersonalDataExportCommandOutput?>.New.WithError(
@@ -47,6 +41,7 @@ public sealed class RequestPersonalDataExportCommandHandler(
                 expiresAt),
             CancellationToken.None);
         await queue.EnqueueAsync(queued.BackgroundJobId, CancellationToken.None);
+
         return DataOutput<RequestPersonalDataExportCommandOutput?>.New
             .WithData(new RequestPersonalDataExportCommandOutput
             {

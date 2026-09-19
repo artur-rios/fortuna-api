@@ -62,6 +62,7 @@ public sealed class HealthCheckTests : IAsyncLifetime
         {
             directory = directory.Parent;
         }
+
         return directory?.FullName ?? throw new DirectoryNotFoundException(
             "Could not locate the repository root.");
     }
@@ -233,6 +234,7 @@ public sealed class HealthCheckTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

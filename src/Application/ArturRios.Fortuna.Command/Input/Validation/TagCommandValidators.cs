@@ -11,7 +11,7 @@ public sealed class CreateTagCommandValidator : AbstractValidator<CreateTagComma
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(TagMessages.NameRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(TagMessages.NameTooLong);
     }
 }
@@ -24,7 +24,7 @@ public sealed class UpdateTagCommandValidator : AbstractValidator<UpdateTagComma
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(TagMessages.NameRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(TagMessages.NameTooLong);
     }
 }

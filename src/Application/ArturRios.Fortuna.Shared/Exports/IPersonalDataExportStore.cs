@@ -37,9 +37,27 @@ public sealed record PersonalDataArchive(
     int RecordCount,
     IReadOnlyCollection<string> Parts);
 
+public enum PersonalDataArchiveOutcome
+{
+    Built = 1,
+    UserNotFound = 2,
+    AttachmentNotFound = 3,
+    StorageUnavailable = 4
+}
+
+public sealed record PersonalDataArchiveResult(
+    PersonalDataArchiveOutcome Outcome,
+    PersonalDataArchive? Archive = null)
+{
+    public static PersonalDataArchiveResult Built(PersonalDataArchive archive) =>
+        new(PersonalDataArchiveOutcome.Built, archive);
+
+    public static PersonalDataArchiveResult Failed(PersonalDataArchiveOutcome outcome) => new(outcome);
+}
+
 public interface IPersonalDataArchiveBuilder
 {
-    Task<PersonalDataArchive> BuildAsync(
+    Task<PersonalDataArchiveResult> BuildAsync(
         Guid userId,
         DateTimeOffset generatedAt,
         DateTimeOffset expiresAt,

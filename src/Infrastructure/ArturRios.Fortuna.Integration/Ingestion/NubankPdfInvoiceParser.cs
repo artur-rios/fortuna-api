@@ -13,6 +13,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
 {
     public const string LayoutName = "Nubank credit card invoice";
     private const decimal ReconciliationTolerance = 0.01m;
+    private const double LineTolerance = 2.5;
 
     private static readonly CultureInfo BrazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
     private static readonly IReadOnlyDictionary<string, int> Months =
@@ -32,7 +33,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
             ["DEZ"] = 12
         };
 
-    public ParsedPdfInvoice Parse(byte[] content)
+    public PdfInvoiceParseResult Parse(byte[] content)
     {
         IReadOnlyList<InvoiceTextLine> lines;
         try
@@ -40,62 +41,68 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
             using var document = PdfDocument.Open(content);
             lines = document.GetPages().SelectMany(Lines).ToArray();
         }
-        catch (Exception exception) when (exception is not PdfInvoiceParseException)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            throw new PdfInvoiceParseException(PdfInvoiceImportMessages.FileInvalid);
+            // PdfPig reports a malformed document by throwing; that is this parser's boundary.
+            return PdfInvoiceParseResult.Failure(PdfInvoiceImportMessages.FileInvalid);
         }
 
         if (lines.Count == 0)
         {
-            throw new PdfInvoiceParseException(PdfInvoiceImportMessages.NoTextLayer);
+            return PdfInvoiceParseResult.Failure(PdfInvoiceImportMessages.NoTextLayer);
         }
 
         return ParseLines(lines);
     }
 
-    internal static ParsedPdfInvoice ParseTextLines(IEnumerable<string> textLines) =>
+    internal static PdfInvoiceParseResult ParseTextLines(IEnumerable<string> textLines) =>
         ParseLines(textLines.Select((text, index) => new InvoiceTextLine(1, index, Clean(text))).ToArray());
 
-    private static ParsedPdfInvoice ParseLines(IReadOnlyList<InvoiceTextLine> lines)
+    private static PdfInvoiceParseResult ParseLines(IReadOnlyList<InvoiceTextLine> lines)
     {
         var text = string.Join('\n', lines.Select(line => line.Text));
         if (!Contains(text, "Nubank") || !Contains(text, "FATURA") ||
             !Contains(text, "TRANSAÇÕES"))
         {
-            throw new PdfInvoiceParseException(PdfInvoiceImportMessages.UnsupportedLayout);
+            return PdfInvoiceParseResult.Failure(PdfInvoiceImportMessages.UnsupportedLayout);
         }
 
-        var dueDate = HeaderDate(text, DueDateRegex());
-        var issueDate = HeaderDate(text, IssueDateRegex());
-        var period = BillingPeriod(lines, issueDate);
-        var previousBalance = RequiredSummary(lines, PreviousBalanceRegex());
-        var paymentsReceived = Math.Abs(RequiredSummary(lines, PaymentsReceivedRegex()));
-        var purchaseTotal = RequiredSummary(lines, PurchaseTotalRegex());
-        var foreignTaxTotal = OptionalSummary(lines, ForeignTaxTotalRegex());
-        var otherEntries = OptionalSummary(lines, OtherEntriesRegex());
-        var amountDue = RequiredSummary(lines, AmountDueRegex());
-        var parsedLines = TransactionLines(lines, period.Start, period.End);
+        if (!TryHeaderDate(text, DueDateRegex(), out var dueDate) ||
+            !TryHeaderDate(text, IssueDateRegex(), out var issueDate) ||
+            !TryBillingPeriod(lines, issueDate, out var periodStart, out var periodEnd) ||
+            !TrySummary(lines, PreviousBalanceRegex(), out var previousBalance) ||
+            !TrySummary(lines, PaymentsReceivedRegex(), out var paymentsReceived) ||
+            !TrySummary(lines, PurchaseTotalRegex(), out var purchaseTotal) ||
+            !TrySummary(lines, AmountDueRegex(), out var amountDue))
+        {
+            return PdfInvoiceParseResult.Failure(PdfInvoiceImportMessages.InvoiceIncomplete);
+        }
+
+        paymentsReceived = Math.Abs(paymentsReceived);
+        var foreignTaxTotal = TrySummary(lines, ForeignTaxTotalRegex(), out var foreignTax) ? foreignTax : 0m;
+        var otherEntries = TrySummary(lines, OtherEntriesRegex(), out var other) ? other : 0m;
+        var parsedLines = TransactionLines(lines, periodStart, periodEnd);
         if (parsedLines.Count == 0)
         {
-            throw new PdfInvoiceParseException(PdfInvoiceImportMessages.InvoiceIncomplete);
+            return PdfInvoiceParseResult.Failure(PdfInvoiceImportMessages.InvoiceIncomplete);
         }
 
         var parsedAmountDue = previousBalance + parsedLines.Sum(line => line.SignedAmount);
         var difference = decimal.Round(parsedAmountDue - amountDue, 2);
         if (Math.Abs(difference) > ReconciliationTolerance)
         {
-            throw new PdfInvoiceParseException(PdfInvoiceImportMessages.ReconciliationFailed(
+            return PdfInvoiceParseResult.Failure(PdfInvoiceImportMessages.ReconciliationFailed(
                 parsedAmountDue,
                 amountDue,
                 difference));
         }
 
-        return new ParsedPdfInvoice(
+        return PdfInvoiceParseResult.Success(new ParsedPdfInvoice(
             LayoutName,
             dueDate,
             issueDate,
-            period.Start,
-            period.End,
+            periodStart,
+            periodEnd,
             previousBalance,
             paymentsReceived,
             purchaseTotal,
@@ -104,68 +111,70 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
             amountDue,
             parsedAmountDue,
             difference,
-            parsedLines);
+            parsedLines));
     }
 
+    /// <summary>
+    /// Groups the page's words into text lines. Words are visited top to bottom, so a word either
+    /// joins the line being built (its baseline is within tolerance of the line's average) or
+    /// starts a new one: one pass instead of comparing every word with every earlier line.
+    /// </summary>
     private static IReadOnlyList<InvoiceTextLine> Lines(Page page)
     {
-        var words = page.GetWords().OrderByDescending(word => word.BoundingBox.Bottom).ToArray();
-        var groups = new List<List<Word>>();
-        foreach (var word in words)
+        var groups = new List<WordLine>();
+        WordLine? current = null;
+        foreach (var word in page.GetWords().OrderByDescending(word => word.BoundingBox.Bottom))
         {
-            var group = groups.FirstOrDefault(candidate =>
-                Math.Abs(candidate.Average(item => item.BoundingBox.Bottom) -
-                    word.BoundingBox.Bottom) <= 2.5);
-            if (group is null)
+            if (current is null || Math.Abs(current.AverageBottom - word.BoundingBox.Bottom) > LineTolerance)
             {
-                group = [];
-                groups.Add(group);
+                current = new WordLine();
+                groups.Add(current);
             }
 
-            group.Add(word);
+            current.Add(word);
         }
 
         return groups
-            .OrderByDescending(group => group.Average(word => word.BoundingBox.Bottom))
             .Select((group, index) => new InvoiceTextLine(
                 page.Number,
                 index,
-                Clean(string.Join(' ', group.OrderBy(word => word.BoundingBox.Left)
+                Clean(string.Join(' ', group.Words.OrderBy(word => word.BoundingBox.Left)
                     .Select(word => word.Text)))))
             .Where(line => line.Text.Length > 0)
             .ToArray();
     }
 
-    private static DateOnly HeaderDate(string text, Regex expression)
+    private static bool TryHeaderDate(string text, Regex expression, out DateOnly date)
     {
+        date = default;
         var match = expression.Match(text);
-        if (!match.Success || !TryDate(
-                match.Groups["day"].Value,
-                match.Groups["month"].Value,
-                match.Groups["year"].Value,
-                out var date))
-        {
-            throw new PdfInvoiceParseException(PdfInvoiceImportMessages.InvoiceIncomplete);
-        }
 
-        return date;
+        return match.Success && TryDate(
+            match.Groups["day"].Value,
+            match.Groups["month"].Value,
+            match.Groups["year"].Value,
+            out date);
     }
 
-    private static (DateOnly Start, DateOnly End) BillingPeriod(
+    private static bool TryBillingPeriod(
         IEnumerable<InvoiceTextLine> lines,
-        DateOnly issueDate)
+        DateOnly issueDate,
+        out DateOnly periodStart,
+        out DateOnly periodEnd)
     {
+        periodStart = default;
+        periodEnd = default;
         var line = lines.Select(item => item.Text).FirstOrDefault(value =>
             Contains(value, "Total de compras") && PeriodRegex().IsMatch(value));
         var match = line is null ? Match.Empty : PeriodRegex().Match(line);
         if (!match.Success || !Month(match.Groups["startMonth"].Value, out var startMonth) ||
-            !Month(match.Groups["endMonth"].Value, out var endMonth))
+            !Month(match.Groups["endMonth"].Value, out var endMonth) ||
+            !int.TryParse(match.Groups["startDay"].Value, CultureInfo.InvariantCulture, out var startDay) ||
+            !int.TryParse(match.Groups["endDay"].Value, CultureInfo.InvariantCulture, out var endDay))
         {
-            throw new PdfInvoiceParseException(PdfInvoiceImportMessages.InvoiceIncomplete);
+            return false;
         }
 
-        var startDay = int.Parse(match.Groups["startDay"].Value, CultureInfo.InvariantCulture);
-        var endDay = int.Parse(match.Groups["endDay"].Value, CultureInfo.InvariantCulture);
         foreach (var endYear in new[] { issueDate.Year, issueDate.Year - 1 })
         {
             var startYear = startMonth > endMonth ? endYear - 1 : endYear;
@@ -177,39 +186,30 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
 
             if (start <= end && end <= issueDate && end.DayNumber - start.DayNumber <= 62)
             {
-                return (start, end);
+                periodStart = start;
+                periodEnd = end;
+
+                return true;
             }
         }
 
-        throw new PdfInvoiceParseException(PdfInvoiceImportMessages.InvoiceIncomplete);
+        return false;
     }
 
-    private static decimal RequiredSummary(IEnumerable<InvoiceTextLine> lines, Regex expression)
+    private static bool TrySummary(IEnumerable<InvoiceTextLine> lines, Regex expression, out decimal amount)
     {
         foreach (var line in lines.Select(item => item.Text))
         {
             var match = expression.Match(line);
-            if (match.Success && TryAmount(match.Groups["amount"].Value, out var amount))
+            if (match.Success && TryAmount(match.Groups["amount"].Value, out amount))
             {
-                return amount;
+                return true;
             }
         }
 
-        throw new PdfInvoiceParseException(PdfInvoiceImportMessages.InvoiceIncomplete);
-    }
+        amount = 0m;
 
-    private static decimal OptionalSummary(IEnumerable<InvoiceTextLine> lines, Regex expression)
-    {
-        foreach (var line in lines.Select(item => item.Text))
-        {
-            var match = expression.Match(line);
-            if (match.Success && TryAmount(match.Groups["amount"].Value, out var amount))
-            {
-                return amount;
-            }
-        }
-
-        return 0m;
+        return false;
     }
 
     private static IReadOnlyList<ParsedPdfInvoiceLine> TransactionLines(
@@ -324,6 +324,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         {
             line.OriginalCurrencyCode = rateMatch.Groups["currency"].Value.ToUpperInvariant();
             line.AppliedRate = statedRate;
+
             return line.OriginalCurrencyCode != "BRL";
         }
 
@@ -340,6 +341,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         line.OriginalCurrencyCode = detailMatch.Groups["currency"].Value.ToUpperInvariant();
         line.OriginalAmount = originalAmount;
         line.AppliedRate ??= decimal.Round(convertedAmount / originalAmount, 8);
+
         return line.OriginalCurrencyCode != "BRL";
     }
 
@@ -359,10 +361,12 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         foreach (var year in Enumerable.Range(periodStart.Year - 1,
                      periodEnd.Year - periodStart.Year + 3))
         {
+            // TryDate rejects years outside 1-9999, so the edges of the calendar are skipped.
             if (TryDate(day, month, year, out var candidate) &&
                 candidate >= periodStart && candidate <= periodEnd)
             {
                 date = candidate;
+
                 return true;
             }
         }
@@ -373,6 +377,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     private static bool TryDate(string day, string month, string year, out DateOnly date)
     {
         date = default;
+
         return int.TryParse(day, out var parsedDay) && Month(month, out var parsedMonth) &&
             int.TryParse(year, out var parsedYear) &&
             TryDate(parsedDay, parsedMonth, parsedYear, out date);
@@ -381,12 +386,14 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     private static bool TryDate(int day, int month, int year, out DateOnly date)
     {
         date = default;
-        if (day < 1 || month is < 1 or > 12 || day > DateTime.DaysInMonth(year, month))
+        if (year is < 1 or > 9999 || day < 1 || month is < 1 or > 12 ||
+            day > DateTime.DaysInMonth(year, month))
         {
             return false;
         }
 
         date = new DateOnly(year, month, day);
+
         return true;
     }
 
@@ -397,6 +404,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     {
         var normalized = Clean(value).Replace("R$", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace('−', '-').Replace(" ", string.Empty, StringComparison.Ordinal);
+
         return decimal.TryParse(
             normalized,
             NumberStyles.AllowLeadingSign | NumberStyles.AllowThousands | NumberStyles.AllowDecimalPoint,
@@ -407,6 +415,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     private static bool TryUnsignedForeignNumber(string value, out decimal amount)
     {
         var culture = value.Contains(',') ? BrazilianCulture : CultureInfo.InvariantCulture;
+
         return decimal.TryParse(value, NumberStyles.Number, culture, out amount) && amount > 0m;
     }
 
@@ -419,6 +428,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         }
 
         var digits = new string(value.Where(char.IsDigit).ToArray());
+
         return digits.Length == 0 ? value.Trim() : digits;
     }
 
@@ -440,6 +450,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
         }
 
         var value = ReferencePrefixRegex().Replace(description, string.Empty).Trim(' ', ':', '-', '–');
+
         return value.Length == 0 ? null : value;
     }
 
@@ -461,6 +472,7 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     private static string RemoveDiacritics(string value)
     {
         var normalized = value.Normalize(NormalizationForm.FormD);
+
         return new string(normalized.Where(character =>
             CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
             .ToArray()).Normalize(NormalizationForm.FormC);
@@ -469,6 +481,21 @@ public sealed partial class NubankPdfInvoiceParser : IPdfInvoiceParser
     private static string Clean(string value) => WhitespaceRegex().Replace(value, " ").Trim();
 
     private sealed record InvoiceTextLine(int Page, int Position, string Text);
+
+    private sealed class WordLine
+    {
+        private double bottomSum;
+
+        public List<Word> Words { get; } = [];
+
+        public double AverageBottom => bottomSum / Words.Count;
+
+        public void Add(Word word)
+        {
+            Words.Add(word);
+            bottomSum += word.BoundingBox.Bottom;
+        }
+    }
 
     private sealed class ParsedLineBuilder(
         int sequence,

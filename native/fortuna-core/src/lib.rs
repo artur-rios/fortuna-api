@@ -51,6 +51,9 @@ const AUTHENTICATED: &str = "Local account authenticated successfully.";
 const LOCAL_AUTH_DISABLED: &str = "Local authentication is not available in this deployment.";
 const NOT_INITIALIZED: &str = "The native core is not initialized.";
 const INTERNAL_ERROR: &str = "The native core could not complete the operation.";
+/// Upper bound for `tokenLifetimeSeconds`: 30 days. Anything longer is refused at
+/// initialization so the expiry arithmetic can never overflow.
+const MAXIMUM_TOKEN_LIFETIME_SECONDS: i64 = 30 * 24 * 60 * 60;
 
 static CORE: OnceLock<Mutex<Option<Arc<Core>>>> = OnceLock::new();
 static OUTSTANDING_STRINGS: AtomicUsize = AtomicUsize::new(0);
@@ -179,27 +182,16 @@ impl Core {
             return Err(AuthError::InvalidCredentials);
         };
         let user_id = Uuid::parse_str(&credentials.user_id).map_err(|_| AuthError::Internal)?;
-        let expires_at = Utc::now() + Duration::seconds(self.token_lifetime_seconds);
-        let token = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
-        let token_hash = Sha256::digest(token.as_bytes()).into();
+        let expires_at = self.session_expiry().ok_or(AuthError::Internal)?;
 
-        let mut sessions = self
-            .sessions
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        sessions.retain(|_, session| session.expires_at > Utc::now());
-        sessions.insert(
-            token_hash,
-            Session {
-                user_id,
-                expires_at,
-            },
-        );
+        Ok(self.issue_session(user_id, expires_at))
+    }
 
-        Ok(AuthenticationOutput {
-            token,
-            expires_at: wire_timestamp(expires_at),
-        })
+    /// When a session issued now expires, or `None` when the configured lifetime cannot be
+    /// represented. Callers compute this before any irreversible step (such as consuming a
+    /// recovery code) so a failure here never leaves the account half-updated.
+    fn session_expiry(&self) -> Option<DateTime<Utc>> {
+        session_expiry(Utc::now(), self.token_lifetime_seconds)
     }
 
     fn authorize(&self, token: &mut String) -> Result<Uuid, AuthError> {
@@ -216,8 +208,7 @@ impl Core {
             .ok_or(AuthError::InvalidCredentials)
     }
 
-    fn issue_session(&self, user_id: Uuid) -> AuthenticationOutput {
-        let expires_at = Utc::now() + Duration::seconds(self.token_lifetime_seconds);
+    fn issue_session(&self, user_id: Uuid, expires_at: DateTime<Utc>) -> AuthenticationOutput {
         let token = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
         let token_hash = Sha256::digest(token.as_bytes()).into();
         let mut sessions = self
@@ -254,6 +245,14 @@ fn default_token_lifetime() -> i64 {
     3600
 }
 
+fn session_expiry(now: DateTime<Utc>, lifetime_seconds: i64) -> Option<DateTime<Utc>> {
+    Duration::try_seconds(lifetime_seconds).and_then(|lifetime| now.checked_add_signed(lifetime))
+}
+
+fn is_valid_token_lifetime(lifetime_seconds: i64) -> bool {
+    (1..=MAXIMUM_TOKEN_LIFETIME_SECONDS).contains(&lifetime_seconds)
+}
+
 fn core_slot() -> &'static Mutex<Option<Arc<Core>>> {
     CORE.get_or_init(|| Mutex::new(None))
 }
@@ -266,7 +265,9 @@ fn current_core() -> Option<Arc<Core>> {
 }
 
 fn initialize_core(config: InitializeRequest) -> Result<(), c_int> {
-    if config.database_path.as_os_str().is_empty() || config.token_lifetime_seconds <= 0 {
+    if config.database_path.as_os_str().is_empty()
+        || !is_valid_token_lifetime(config.token_lifetime_seconds)
+    {
         return Err(FORTUNA_STATUS_BAD_REQUEST);
     }
 
@@ -385,7 +386,8 @@ include!(concat!(env!("OUT_DIR"), "/generated_operations.rs"));
 /// Initialize the native core from a UTF-8 JSON object.
 ///
 /// Request: `{"databasePath":"/absolute/path/fortuna.db","localAuthEnabled":true,
-/// "tokenLifetimeSeconds":3600}`. The database is created and migrated on demand.
+/// "tokenLifetimeSeconds":3600}`. `tokenLifetimeSeconds` must be between 1 and 2592000
+/// (30 days). The database is created and migrated on demand.
 /// Concurrent calls are supported; a second initialization returns 409.
 /// The response is always library-owned and must be released with `fortuna_string_free`.
 #[unsafe(no_mangle)]
@@ -413,7 +415,7 @@ pub extern "C" fn fortuna_initialize(
             Err(FORTUNA_STATUS_BAD_REQUEST) => (
                 FORTUNA_STATUS_BAD_REQUEST,
                 serialize(&DataOutput::<Value>::failure(
-                    "DatabasePath and a positive TokenLifetimeSeconds are required.",
+                    "DatabasePath and a TokenLifetimeSeconds between 1 and 2592000 are required.",
                 )),
             ),
             Err(FORTUNA_STATUS_CONFLICT) => (
@@ -1714,6 +1716,251 @@ mod tests {
                 body["errors"][0]
             );
         }
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_token_lifetime_outside_bounds_when_initializing_then_request_is_rejected() {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        for lifetime in [0, -1, MAXIMUM_TOKEN_LIFETIME_SECONDS + 1, i64::MAX] {
+            let response = call(
+                fortuna_initialize,
+                &serde_json::json!({
+                    "databasePath": path,
+                    "tokenLifetimeSeconds": lifetime
+                })
+                .to_string(),
+            );
+            assert_eq!(
+                FORTUNA_STATUS_BAD_REQUEST, response.status,
+                "{lifetime}: {}",
+                response.body
+            );
+            assert!(current_core().is_none());
+        }
+
+        let accepted = call(
+            fortuna_initialize,
+            &serde_json::json!({
+                "databasePath": path,
+                "tokenLifetimeSeconds": MAXIMUM_TOKEN_LIFETIME_SECONDS
+            })
+            .to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, accepted.status, "{}", accepted.body);
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_unrepresentable_lifetime_when_computing_session_expiry_then_none_is_returned() {
+        let now = Utc::now();
+
+        assert_eq!(None, session_expiry(now, i64::MAX));
+        assert_eq!(None, session_expiry(DateTime::<Utc>::MAX_UTC, 1));
+        assert_eq!(Some(now + Duration::seconds(60)), session_expiry(now, 60));
+    }
+
+    #[test]
+    fn given_session_cannot_be_issued_when_recovering_then_recovery_code_is_not_consumed() {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        assert_eq!(FORTUNA_STATUS_OK, initialize(&path, true).status);
+        let created = call(
+            fortuna_api_local_accounts_post,
+            r#"{"displayName":"Local User","secret":"initial-secret","storageMode":1}"#,
+        );
+        let code = serde_json::from_str::<Value>(&created.body).unwrap()["data"]["recoveryCodes"]
+            [0]
+        .as_str()
+        .unwrap()
+        .to_owned();
+        let recover = serde_json::json!({
+            "name":"Local User","recoveryCode":code,"newSecret":"recovered-secret"
+        })
+        .to_string();
+
+        // Swap in a core whose lifetime cannot be added to "now"; initialization refuses such a
+        // value, so this simulates any failure between validating and issuing the session.
+        let original = current_core().unwrap();
+        let broken = Arc::new(Core {
+            store: original.store.clone(),
+            local_auth_enabled: true,
+            token_lifetime_seconds: i64::MAX,
+            sessions: Mutex::new(HashMap::new()),
+        });
+        *core_slot().lock().unwrap() = Some(broken);
+        let failed = call(fortuna_api_local_accounts_recover_post, &recover);
+        assert_eq!(
+            FORTUNA_STATUS_INTERNAL_ERROR, failed.status,
+            "{}",
+            failed.body
+        );
+
+        *core_slot().lock().unwrap() = Some(original);
+        assert_eq!(
+            FORTUNA_STATUS_UNAUTHORIZED,
+            call(
+                fortuna_api_local_accounts_authenticate_post,
+                r#"{"name":"Local User","secret":"recovered-secret"}"#,
+            )
+            .status
+        );
+        let recovered = call(fortuna_api_local_accounts_recover_post, &recover);
+        assert_eq!(FORTUNA_STATUS_OK, recovered.status, "{}", recovered.body);
+        assert_eq!(
+            9,
+            serde_json::from_str::<Value>(&recovered.body).unwrap()["data"]["remainingRecoveryCodes"]
+        );
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_paginated_route_when_page_is_requested_then_only_that_page_is_returned() {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let token = create_local_user(&path);
+        for name in ["First", "Second", "Third"] {
+            let account = call(
+                fortuna_api_accounts_post,
+                &serde_json::json!({
+                    "token": token,
+                    "body": {"name":name,"institution":null,"accountType":1,"currencyCode":"BRL","openingBalance":0}
+                })
+                .to_string(),
+            );
+            assert_eq!(FORTUNA_STATUS_CREATED, account.status, "{}", account.body);
+        }
+        let audit = |query: Value| {
+            let response = call(
+                fortuna_api_audit_entries_get,
+                &serde_json::json!({"token": token, "query": query}).to_string(),
+            );
+            let body: Value = serde_json::from_str(&response.body).unwrap();
+            (response.status, body)
+        };
+
+        let (status, everything) = audit(serde_json::json!({}));
+        assert_eq!(FORTUNA_STATUS_OK, status);
+        let total = everything["totalItems"].as_u64().unwrap();
+        assert!(total >= 3);
+        assert_eq!(100, everything["pageSize"]);
+        assert_eq!(1, everything["pageNumber"]);
+
+        let (status, second) = audit(serde_json::json!({"PageNumber": 2, "PageSize": 2}));
+        assert_eq!(FORTUNA_STATUS_OK, status);
+        assert_eq!(
+            everything["data"].as_array().unwrap()[2..4.min(total as usize)],
+            second["data"].as_array().unwrap()[..]
+        );
+        assert_eq!(total, second["totalItems"].as_u64().unwrap());
+        assert_eq!(total.div_ceil(2), second["totalPages"].as_u64().unwrap());
+
+        let (status, from_strings) = audit(serde_json::json!({"PageNumber": "2", "PageSize": "2"}));
+        assert_eq!(FORTUNA_STATUS_OK, status);
+        assert_eq!(second["data"], from_strings["data"]);
+
+        let (status, past_end) = audit(serde_json::json!({"PageNumber": 1000, "PageSize": 2}));
+        assert_eq!(FORTUNA_STATUS_OK, status);
+        assert_eq!(0, past_end["data"].as_array().unwrap().len());
+
+        let (status, clamped) = audit(serde_json::json!({"PageSize": 1000}));
+        assert_eq!(FORTUNA_STATUS_OK, status);
+        assert_eq!(100, clamped["pageSize"]);
+
+        for (query, error) in [
+            (
+                serde_json::json!({"PageNumber": 0}),
+                "PageNumber must be at least 1.",
+            ),
+            (
+                serde_json::json!({"PageNumber": -1}),
+                "PageNumber must be at least 1.",
+            ),
+            (
+                serde_json::json!({"PageNumber": "x"}),
+                "PageNumber must be at least 1.",
+            ),
+            (
+                serde_json::json!({"PageSize": 0}),
+                "PageSize must be at least 1.",
+            ),
+            (
+                serde_json::json!({"PageSize": 1.5}),
+                "PageSize must be at least 1.",
+            ),
+        ] {
+            let (status, body) = audit(query.clone());
+            assert_eq!(FORTUNA_STATUS_BAD_REQUEST, status, "{query}");
+            assert_eq!(error, body["errors"][0], "{query}");
+        }
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn given_transaction_list_when_page_is_requested_then_items_are_paged() {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let token = create_local_user(&path);
+        let account = call(
+            fortuna_api_accounts_post,
+            &serde_json::json!({
+                "token": token,
+                "body": {"name":"Wallet","institution":null,"accountType":1,"currencyCode":"BRL","openingBalance":0}
+            })
+            .to_string(),
+        );
+        let account_id = serde_json::from_str::<Value>(&account.body).unwrap()["data"]["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        for amount in [1, 2, 3] {
+            let transaction = call(
+                fortuna_api_transactions_post,
+                &serde_json::json!({
+                    "token": token,
+                    "body": {"financialAccountId":account_id,"direction":2,"amount":amount,
+                        "description":"Offline purchase","occurredAt":"2026-09-09T12:00:00Z"}
+                })
+                .to_string(),
+            );
+            assert_eq!(
+                FORTUNA_STATUS_CREATED, transaction.status,
+                "{}",
+                transaction.body
+            );
+        }
+
+        let page = call(
+            fortuna_api_transactions_get,
+            &serde_json::json!({"token": token, "query": {"PageNumber": 2, "PageSize": 2}})
+                .to_string(),
+        );
+        assert_eq!(FORTUNA_STATUS_OK, page.status, "{}", page.body);
+        let body: Value = serde_json::from_str(&page.body).unwrap();
+        assert_eq!(1, body["data"]["items"].as_array().unwrap().len());
+        assert_eq!(2, body["data"]["pageNumber"]);
+        assert_eq!(2, body["data"]["pageSize"]);
+        assert_eq!(3, body["data"]["totalItems"]);
+        assert_eq!(2, body["data"]["totalPages"]);
+
+        let invalid = call(
+            fortuna_api_transactions_get,
+            &serde_json::json!({"token": token, "query": {"PageNumber": 0}}).to_string(),
+        );
+        assert_eq!(
+            FORTUNA_STATUS_BAD_REQUEST, invalid.status,
+            "{}",
+            invalid.body
+        );
         stop();
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
     }

@@ -262,6 +262,7 @@ public sealed class InstallmentPlanTests : IAsyncLifetime
             "/api/installment-plans",
             Request(card, category, total, count));
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<PlanEnvelope>())!.Data!;
     }
 
@@ -281,6 +282,7 @@ public sealed class InstallmentPlanTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -295,6 +297,7 @@ public sealed class InstallmentPlanTests : IAsyncLifetime
             OpeningBalance = 1000m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -313,6 +316,7 @@ public sealed class InstallmentPlanTests : IAsyncLifetime
             OccurredOn = Today
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<ChargeEnvelope>())!.Data!;
     }
 
@@ -324,6 +328,7 @@ public sealed class InstallmentPlanTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -371,6 +376,7 @@ public sealed class InstallmentPlanTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

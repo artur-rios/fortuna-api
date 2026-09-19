@@ -16,6 +16,7 @@ public sealed class AttachmentStorageOperationalHealthCheck(IAttachmentStore sto
         try
         {
             var healthy = await storage.IsHealthyAsync(cancellationToken);
+
             return Result(healthy
                 ? OperationalHealthStatus.Healthy
                 : OperationalHealthStatus.Unhealthy);
@@ -55,6 +56,7 @@ public sealed class JobRunnerOperationalHealthCheck(
             var status = age > options.MaximumPendingJobAge.TotalSeconds
                 ? OperationalHealthStatus.Unhealthy
                 : OperationalHealthStatus.Healthy;
+
             return new OperationalHealthCheckResult(
                 Name,
                 status,
@@ -100,6 +102,7 @@ public sealed class ExternalServiceOperationalHealthCheck(
                 string.Empty,
                 HttpCompletionOption.ResponseHeadersRead,
                 cancellationToken);
+
             return Result(OperationalHealthStatus.Healthy);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

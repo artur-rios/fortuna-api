@@ -12,7 +12,7 @@ public static class FinancialAccountMessages
     public const string HardDeletedSuccessfully = "Financial account permanently deleted successfully.";
     public const string NotFound = "Financial account not found.";
     public const string DuplicateName = "A live financial account already uses this name.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NameRequired = "Name is required.";
     public const string NameTooLong = "Name must not exceed 200 characters.";
     public const string InstitutionTooLong = "Institution must not exceed 200 characters.";
@@ -32,13 +32,14 @@ public static class FinancialAccountMessages
         "Financial account must be soft-deleted before permanent deletion.";
     public const string HardDeleteHasLiveTransactions =
         "Financial account cannot be permanently deleted while live transactions reference it.";
+    public const string HardDeleteHasDependents =
+        "Financial account cannot be permanently deleted while goals, recurring transactions, " +
+        "connections, live transfers or statement settlements still reference it.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string AsOfOutOfRange = "AsOf must be between 1900-01-01 and 2100-12-31.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SortByUnsupported =
         "SortBy must be Name, Institution, AccountType, CurrencyCode, OpeningBalance, CreatedAt or UpdatedAt.";
-
-    public static string UnsupportedFilter(string field) =>
-        $"Unsupported filter field '{field}'.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
 }

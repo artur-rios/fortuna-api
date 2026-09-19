@@ -22,9 +22,11 @@ public sealed record ProcessingConsentOptions(string ExternalDataProcessingVersi
                 StringComparison.OrdinalIgnoreCase))
         {
             purpose = ProcessingConsentPurpose.ExternalDataProcessing;
+
             return true;
         }
         purpose = default;
+
         return false;
     }
 

@@ -7,11 +7,13 @@ public static class FigureConversionMessages
     public const string DisplayCurrencyInvalid = "Display currency must be a three-letter code.";
     public const string FigureDateRequired = "Figure date is required.";
     public const string AmountsRequired = "Amounts are required.";
+    public const string AmountRequired = "Each amount must be an object.";
+    public const string TooManyAmounts = "At most 100 amounts can be converted at once.";
     public const string AmountCurrencyRequired = "Each amount must carry a currency.";
     public const string AmountCurrencyInvalid = "Each amount currency must be a three-letter code.";
     public const string AmountPrecisionInvalid = "Each amount must have at most 15 whole and 4 decimal digits.";
     public const string CurrencyNotSupported = "A supplied currency is not supported.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string RateUnavailable = "No exchange rate has ever been stored for this currency pair.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";

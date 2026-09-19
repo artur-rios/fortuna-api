@@ -10,6 +10,7 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -93,17 +94,17 @@ public sealed class RequestDataExportCommandHandlerTests
         var builder = new DataExportBuilder(
             reader,
             new StubCurrencyReader(),
-            new StubRateReader());
+            new StubRateReader(),
+            new FixedTimeProvider());
         var handler = new RequestDataExportCommandHandler(
-            new RequestDataExportCommandValidator(),
-            new StubActor(),
-            new StubProfileReader(missingProfile ? null : Profile),
+            new CurrentProfileResolver(new StubActor(), new StubProfileReader(missingProfile ? null : Profile)),
             builder,
             new StubRenderer(),
             store,
             queue,
             new DataExportOptions(threshold, TimeSpan.FromHours(24), "pt-BR"),
-            new FixedTimeProvider());
+            new FixedTimeProvider()).Validated(new RequestDataExportCommandValidator());
+
         return new TestContext(handler, reader, store, queue);
     }
 
@@ -116,7 +117,7 @@ public sealed class RequestDataExportCommandHandlerTests
     };
 
     private sealed record TestContext(
-        RequestDataExportCommandHandler Handler,
+        ICommandHandlerAsync<RequestDataExportCommand, RequestDataExportCommandOutput> Handler,
         StubTableReader Reader,
         StubExportStore Store,
         StubQueue Queue);
@@ -148,6 +149,7 @@ public sealed class RequestDataExportCommandHandlerTests
                     ["amount"] = 12.34m,
                     ["currencyCode"] = "BRL"
                 }];
+
             return Task.FromResult(new TableReportReadResult(
                 TableReportReadOutcome.Succeeded,
                 new TableReportSnapshot(
@@ -193,18 +195,19 @@ public sealed class RequestDataExportCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Request = request;
+
             return Task.FromResult(new QueueDataExportResult(ExportId, JobId));
         }
 
         public Task<DataExportWorkItem?> StartAsync(Guid exportId, DateTimeOffset startedAt,
             CancellationToken cancellationToken) => Task.FromResult<DataExportWorkItem?>(null);
 
-        public Task CompleteAsync(Guid exportId, int rowCount, string contentType,
+        public Task<JobTransitionOutcome> CompleteAsync(Guid exportId, int rowCount, string contentType,
             string storageKey, DateTimeOffset completedAt,
-            CancellationToken cancellationToken) => Task.CompletedTask;
+            CancellationToken cancellationToken) => Task.FromResult(JobTransitionOutcome.Applied);
 
-        public Task FailAsync(Guid exportId, string reason, DateTimeOffset failedAt,
-            CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<JobTransitionOutcome> FailAsync(Guid exportId, string reason, DateTimeOffset failedAt,
+            CancellationToken cancellationToken) => Task.FromResult(JobTransitionOutcome.Applied);
     }
 
     private sealed class StubQueue : IBackgroundJobQueue
@@ -216,6 +219,7 @@ public sealed class RequestDataExportCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 

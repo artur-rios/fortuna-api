@@ -90,7 +90,7 @@ public sealed class UserErasureEndpointsTests : IAsyncLifetime
     }
 
     [FunctionalFact]
-    public async Task GivenNonAdministratorOrUnknownTarget_WhenTargetErased_ThenNotFoundStoresNothing()
+    public async Task GivenNonAdministratorOrUnknownTarget_WhenTargetErased_ThenNothingIsStored()
     {
         var targetId = await CreateTargetAsync();
         var nonAdminStore = new RecordingErasureStore(Result());
@@ -100,7 +100,7 @@ public sealed class UserErasureEndpointsTests : IAsyncLifetime
             Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
             using var request = Delete(targetId);
             var response = await client.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
             Assert.Null(nonAdminStore.UserId);
         }
 
@@ -114,6 +114,23 @@ public sealed class UserErasureEndpointsTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
             Assert.Null(missingStore.UserId);
         }
+    }
+
+    [FunctionalFact]
+    public async Task GivenAdministrator_WhenSelfServiceProfileOrErasureRequested_ThenForbiddenIsReturned()
+    {
+        var store = new RecordingErasureStore(Result());
+        await using var factory = CreateFactory(store);
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+
+        var profile = await client.GetAsync("/api/me");
+        var erasure = await client.PostAsJsonAsync(
+            "/api/me/erasure", new { Confirmation = "ERASE" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, profile.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, erasure.StatusCode);
+        Assert.Null(store.UserId);
     }
 
     [FunctionalFact]
@@ -165,6 +182,7 @@ public sealed class UserErasureEndpointsTests : IAsyncLifetime
         var target = new UserProfile(Guid.NewGuid(), "Erasure Target", currency, DateTimeOffset.UtcNow);
         context.UserProfiles.Add(target);
         await context.SaveChangesAsync();
+
         return target.PublicId;
     }
 
@@ -208,6 +226,7 @@ public sealed class UserErasureEndpointsTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -264,6 +283,7 @@ public sealed class UserErasureEndpointsTests : IAsyncLifetime
             CancellationToken cancellationToken)
         {
             UserId = userId;
+
             return Task.FromResult(result);
         }
     }

@@ -4,10 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,23 +12,19 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/installment-plans")]
-public sealed class InstallmentPlansController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+public sealed class InstallmentPlansController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [InstallmentPlanMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [InstallmentPlanMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
             [InstallmentPlanMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [InstallmentPlanMessages.RestoredSuccessfully] = StatusCodes.Status200OK,
-            [InstallmentPlanMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [InstallmentPlanMessages.NotFound] = StatusCodes.Status404NotFound,
             [InstallmentPlanMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
             [InstallmentPlanMessages.CategoryNotFound] = StatusCodes.Status404NotFound,
             [InstallmentPlanMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest,
-            [InstallmentPlanMessages.ExchangeRateUnavailable] = StatusCodes.Status409Conflict,
             [InstallmentPlanMessages.AmountTooSmall] = StatusCodes.Status400BadRequest,
             [InstallmentPlanMessages.SettledStatementFrozen] = StatusCodes.Status409Conflict,
             [InstallmentPlanMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
@@ -46,7 +39,9 @@ public sealed class InstallmentPlansController(
             [InstallmentPlanMessages.CurrencyCodeInvalid] = StatusCodes.Status400BadRequest,
             [InstallmentPlanMessages.CounterpartyTooLong] = StatusCodes.Status400BadRequest,
             [InstallmentPlanMessages.OwnerImmutable] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpGet("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
@@ -54,14 +49,13 @@ public sealed class InstallmentPlansController(
         Guid id,
         [FromQuery] bool includeDeleted = false)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetInstallmentPlanByIdQuery,
             InstallmentPlanOutput>(new GetInstallmentPlanByIdQuery
             {
                 Id = id,
                 IncludeDeleted = includeDeleted
             });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost]
@@ -69,10 +63,9 @@ public sealed class InstallmentPlansController(
     public async Task<ActionResult<DataOutput<RecordInstallmentPlanCommandOutput?>>> Record(
         [FromBody] RecordInstallmentPlanCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RecordInstallmentPlanCommand,
             RecordInstallmentPlanCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}")]
@@ -80,10 +73,9 @@ public sealed class InstallmentPlansController(
     public async Task<ActionResult<DataOutput<InstallmentPlanLifecycleCommandOutput?>>> Delete(
         Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DeleteInstallmentPlanCommand,
             InstallmentPlanLifecycleCommandOutput>(new DeleteInstallmentPlanCommand { Id = id });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/restore")]
@@ -91,9 +83,8 @@ public sealed class InstallmentPlansController(
     public async Task<ActionResult<DataOutput<InstallmentPlanLifecycleCommandOutput?>>> Restore(
         Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RestoreInstallmentPlanCommand,
             InstallmentPlanLifecycleCommandOutput>(new RestoreInstallmentPlanCommand { Id = id });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

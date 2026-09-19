@@ -14,6 +14,17 @@ public interface ICategoryReader
         bool includeDeleted,
         bool includeUsageCounts,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reads one category and its visible descendants; empty when the category is not
+    /// visible to the user.
+    /// </summary>
+    Task<IReadOnlyCollection<CategoryReadSnapshot>> ListSubtreeAsync(
+        Guid userId,
+        Guid rootId,
+        bool includeDeleted,
+        bool includeUsageCounts,
+        CancellationToken cancellationToken);
 }
 
 public interface ICategoryUpdater
@@ -114,7 +125,8 @@ public enum CategoryLifecycleOutcome
     HardDeleteRequiresSoftDeletion = 4,
     HardDeleteHasLiveTransactions = 5,
     DuplicateSiblingName = 6,
-    AttachmentStorageUnavailable = 7
+    AttachmentStorageUnavailable = 7,
+    HardDeleteHasDependents = 8
 }
 
 public sealed record CategoryLifecycleResult(

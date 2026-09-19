@@ -24,6 +24,7 @@ public static class DatabaseProvider
                 postgres => postgres.MigrationsHistoryTable(
                     "__ef_migrations_history",
                     AppDbContext.Schema));
+
             return;
         }
 
@@ -37,6 +38,7 @@ public static class DatabaseProvider
                 sqlite => sqlite
                     .MigrationsAssembly(SQLiteMigrationsAssembly)
                     .MigrationsHistoryTable("__ef_migrations_history"));
+
             return;
         }
 

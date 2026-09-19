@@ -50,6 +50,32 @@ public sealed class DataExportTests
             0, "text/csv", "exports/result.csv", Now.AddMinutes(1)));
     }
 
+    [UnitTheory]
+    [InlineData(" ", "The job failed.")]
+    [InlineData("  disk full  ", "disk full")]
+    public void GivenFailureReason_WhenExportFails_ThenReasonIsNormalizedLikeOtherJobs(
+        string reason,
+        string expected)
+    {
+        var export = Export(User());
+        export.Start(Now);
+
+        export.Fail(reason, Now.AddMinutes(1));
+
+        Assert.Equal(DataExportStatus.Failed, export.Status);
+        Assert.Equal(expected, export.FailureReason);
+    }
+
+    [UnitFact]
+    public void GivenOverlongFailureReason_WhenExportFails_ThenReasonIsTruncatedToStorageLimit()
+    {
+        var export = Export(User());
+
+        export.Fail(new string('x', 1500), Now);
+
+        Assert.Equal(1000, export.FailureReason!.Length);
+    }
+
     [UnitFact]
     public void GivenPersonalArchive_WhenCreatedAsZip_ThenItsKindIsExplicit()
     {
@@ -83,6 +109,20 @@ public sealed class DataExportTests
             Now,
             Now.AddHours(24),
             kind));
+    }
+
+    [UnitTheory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public void GivenBlankReason_WhenExportFails_ThenGenericReasonIsRecorded(string? reason)
+    {
+        var export = Export(User());
+        export.Start(Now);
+
+        export.Fail(reason, Now.AddMinutes(1));
+
+        Assert.Equal(DataExportStatus.Failed, export.Status);
+        Assert.Equal("The job failed.", export.FailureReason);
     }
 
     private static DataExport Export(UserProfile user) => new(

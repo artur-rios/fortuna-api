@@ -29,6 +29,12 @@ const INVALID_REQUEST: &str =
     "The request does not contain the route values or body required by this operation.";
 const NOT_FOUND: &str = "The requested record was not found.";
 const RECOVERY_WARNING: &str = "Store these recovery codes securely. They are shown only once.";
+const INVALID_PAGE_NUMBER: &str = "PageNumber must be at least 1.";
+const INVALID_PAGE_SIZE: &str = "PageSize must be at least 1.";
+/// Mirrors the HTTP host: `BaseQuery.PageSize` defaults to 100 and every paginated handler
+/// clamps the requested size to `FORTUNA_PAGE_SIZE_MAX`, whose default is also 100.
+const DEFAULT_PAGE_SIZE: usize = 100;
+const MAXIMUM_PAGE_SIZE: usize = 100;
 
 #[derive(Clone, Copy, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -487,6 +493,14 @@ fn recover_local_account(core: &Core, request: &mut OperationRequest) -> (c_int,
             "The recovery code is invalid or already used.",
         );
     };
+    // Everything that can fail runs before the one-time code is consumed, so a failure never
+    // burns a code without issuing the session that should come with it.
+    let Ok(user_id) = Uuid::parse_str(&account.user_id) else {
+        return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
+    };
+    let Some(expires_at) = core.session_expiry() else {
+        return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
+    };
     let Ok(new_hash) = hash_secret(new_secret) else {
         return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
     };
@@ -498,10 +512,7 @@ fn recover_local_account(core: &Core, request: &mut OperationRequest) -> (c_int,
         &timestamp,
     ) {
         Ok(Some(remaining)) => {
-            let Ok(user_id) = Uuid::parse_str(&account.user_id) else {
-                return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
-            };
-            let session = core.issue_session(user_id);
+            let session = core.issue_session(user_id, expires_at);
             success(
                 FORTUNA_STATUS_OK,
                 serde_json::json!({
@@ -1381,35 +1392,82 @@ fn zeroize_sensitive(value: &mut Value, key: Option<&str>) {
     }
 }
 
+/// A validated page request: `number` is 1-based and `size` is within 1..=MAXIMUM_PAGE_SIZE.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Page {
+    number: usize,
+    size: usize,
+}
+
+impl Page {
+    fn from_request(request: &OperationRequest) -> Result<Self, &'static str> {
+        let number = match page_parameter(request, "PageNumber") {
+            None => 1,
+            Some(Some(number)) if number >= 1 => number,
+            Some(_) => return Err(INVALID_PAGE_NUMBER),
+        };
+        let size = match page_parameter(request, "PageSize") {
+            None => DEFAULT_PAGE_SIZE,
+            Some(Some(size)) if size >= 1 => size.min(MAXIMUM_PAGE_SIZE),
+            Some(_) => return Err(INVALID_PAGE_SIZE),
+        };
+
+        Ok(Self { number, size })
+    }
+
+    /// Keep only the items on this page; a page past the end is empty.
+    fn slice<T>(self, items: Vec<T>) -> Vec<T> {
+        let Some(skip) = (self.number - 1).checked_mul(self.size) else {
+            return Vec::new();
+        };
+
+        items.into_iter().skip(skip).take(self.size).collect()
+    }
+
+    fn total_pages(self, total_items: usize) -> usize {
+        total_items.div_ceil(self.size)
+    }
+}
+
+/// `None` when the parameter is absent; `Some(None)` when it is present but not a
+/// non-negative integer (HTTP query values may arrive as JSON numbers or strings).
+fn page_parameter(request: &OperationRequest, name: &str) -> Option<Option<usize>> {
+    let value = request
+        .query
+        .get(name)
+        .or_else(|| request.query.get(&lower_first(name)))?;
+    let parsed = match value {
+        Value::Number(number) => number.as_u64(),
+        Value::String(text) => text.trim().parse::<u64>().ok(),
+        _ => None,
+    };
+
+    Some(parsed.and_then(|number| usize::try_from(number).ok()))
+}
+
 fn paginated<T: Serialize>(
     data: Vec<T>,
     request: &OperationRequest,
     message: &str,
 ) -> (c_int, String) {
+    let page = match Page::from_request(request) {
+        Ok(page) => page,
+        Err(error) => return failure(FORTUNA_STATUS_BAD_REQUEST, error),
+    };
     let total_items = data.len();
-    let page_number = request
-        .query
-        .get("PageNumber")
-        .and_then(Value::as_u64)
-        .unwrap_or(1) as usize;
-    let page_size = request
-        .query
-        .get("PageSize")
-        .and_then(Value::as_u64)
-        .unwrap_or(total_items.max(1) as u64) as usize;
-    let total_pages = total_items.div_ceil(page_size.max(1));
+
     (
         FORTUNA_STATUS_OK,
         serialize(&PaginatedOutput {
-            data,
+            data: page.slice(data),
             messages: vec![message.to_owned()],
             errors: Vec::new(),
             timestamp: wire_timestamp(Utc::now()),
             success: true,
-            page_number,
-            page_size,
+            page_number: page.number,
+            page_size: page.size,
             total_items,
-            total_pages,
+            total_pages: page.total_pages(total_items),
         }),
     )
 }
@@ -1453,25 +1511,19 @@ fn list_result(
             message,
         ),
         "/api/transactions" => {
+            let page = match Page::from_request(request) {
+                Ok(page) => page,
+                Err(error) => return failure(FORTUNA_STATUS_BAD_REQUEST, error),
+            };
             let total_items = records.len();
-            let page_number = request
-                .query
-                .get("PageNumber")
-                .and_then(Value::as_u64)
-                .unwrap_or(1);
-            let page_size = request
-                .query
-                .get("PageSize")
-                .and_then(Value::as_u64)
-                .unwrap_or(total_items.max(1) as u64);
             success(
                 FORTUNA_STATUS_OK,
                 serde_json::json!({
-                    "items": records,
-                    "pageNumber": page_number,
-                    "pageSize": page_size,
+                    "items": page.slice(records),
+                    "pageNumber": page.number,
+                    "pageSize": page.size,
                     "totalItems": total_items,
-                    "totalPages": total_items.div_ceil(page_size.max(1) as usize),
+                    "totalPages": page.total_pages(total_items),
                     "totals": {
                         "byCurrency": [],
                         "displayCurrencyCode": null,

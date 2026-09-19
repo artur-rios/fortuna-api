@@ -16,7 +16,7 @@ public sealed class NubankPdfInvoiceParserTests
     [UnitFact]
     public void GivenSanitizedNubankFixture_WhenParsed_ThenAllSupportedLineFormsAreResolved()
     {
-        var invoice = NubankPdfInvoiceParser.ParseTextLines(Fixture());
+        var invoice = Parsed(Fixture());
 
         Assert.Equal(NubankPdfInvoiceParser.LayoutName, invoice.Layout);
         Assert.Equal(new DateOnly(2027, 2, 10), invoice.DueDate);
@@ -66,7 +66,7 @@ public sealed class NubankPdfInvoiceParserTests
         lines[6] = "IOF de compras internacionais R$ 7,00";
         lines[10] = "Total a pagar R$ 162,00";
 
-        var invoice = NubankPdfInvoiceParser.ParseTextLines(lines);
+        var invoice = Parsed(lines);
 
         var unmatched = Assert.Single(invoice.Lines, line => line.IsUnmatchedReference);
         Assert.Equal(PdfInvoiceLineKind.Tax, unmatched.Kind);
@@ -76,7 +76,7 @@ public sealed class NubankPdfInvoiceParserTests
     [UnitFact]
     public void GivenAsciiAndUnicodeMinusSigns_WhenParsed_ThenBothBecomeNegativeAmounts()
     {
-        var invoice = NubankPdfInvoiceParser.ParseTextLines(Fixture());
+        var invoice = Parsed(Fixture());
 
         Assert.Contains(invoice.Lines, line => line.SignedAmount == -5m);
         Assert.Contains(invoice.Lines, line => line.SignedAmount == -1m);
@@ -89,22 +89,21 @@ public sealed class NubankPdfInvoiceParserTests
         var lines = Fixture().ToList();
         lines[10] = "Total a pagar R$ 161,00";
 
-        var exception = Assert.Throws<PdfInvoiceParseException>(() =>
-            NubankPdfInvoiceParser.ParseTextLines(lines));
+        var result = NubankPdfInvoiceParser.ParseTextLines(lines);
 
-        Assert.Contains("parsed amount due 160.00", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("stated amount due 161.00", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("discrepancy -1.00", exception.Message, StringComparison.Ordinal);
+        Assert.False(result.IsSuccess);
+        Assert.Contains("parsed amount due 160.00", result.Error, StringComparison.Ordinal);
+        Assert.Contains("stated amount due 161.00", result.Error, StringComparison.Ordinal);
+        Assert.Contains("discrepancy -1.00", result.Error, StringComparison.Ordinal);
     }
 
     [UnitFact]
     public void GivenUnknownLayout_WhenParsed_ThenSupportedLayoutIsNamed()
     {
-        var exception = Assert.Throws<PdfInvoiceParseException>(() =>
-            NubankPdfInvoiceParser.ParseTextLines(["Another bank", "STATEMENT"]));
+        var result = NubankPdfInvoiceParser.ParseTextLines(["Another bank", "STATEMENT"]);
 
-        Assert.Equal(PdfInvoiceImportMessages.UnsupportedLayout, exception.Message);
-        Assert.Contains(NubankPdfInvoiceParser.LayoutName, exception.Message,
+        Assert.Equal(PdfInvoiceImportMessages.UnsupportedLayout, result.Error);
+        Assert.Contains(NubankPdfInvoiceParser.LayoutName, result.Error,
             StringComparison.OrdinalIgnoreCase);
     }
 
@@ -114,10 +113,41 @@ public sealed class NubankPdfInvoiceParserTests
         using var builder = new PdfDocumentBuilder();
         _ = builder.AddPage(PageSize.A4);
 
-        var exception = Assert.Throws<PdfInvoiceParseException>(() =>
-            new NubankPdfInvoiceParser().Parse(builder.Build()));
+        var result = new NubankPdfInvoiceParser().Parse(builder.Build());
 
-        Assert.Equal(PdfInvoiceImportMessages.NoTextLayer, exception.Message);
+        Assert.Equal(PdfInvoiceImportMessages.NoTextLayer, result.Error);
+    }
+
+    [UnitFact]
+    public void GivenBytesThatAreNotAPdf_WhenParsed_ThenFileInvalidIsReturned()
+    {
+        var result = new NubankPdfInvoiceParser().Parse([1, 2, 3, 4]);
+
+        Assert.Equal(PdfInvoiceImportMessages.FileInvalid, result.Error);
+    }
+
+    [UnitTheory]
+    [InlineData("FATURA 10 FEV 0000 EMISSÃO E ENVIO 01 FEV 2027")]
+    [InlineData("FATURA 10 FEV 2027 EMISSÃO E ENVIO 01 FEV 0000")]
+    [InlineData("FATURA 30 FEV 2027 EMISSÃO E ENVIO 01 FEV 2027")]
+    public void GivenImpossibleHeaderDate_WhenParsed_ThenInvoiceIsIncompleteInsteadOfCrashing(string header)
+    {
+        var lines = Fixture().ToList();
+        lines[1] = header;
+
+        var result = NubankPdfInvoiceParser.ParseTextLines(lines);
+
+        Assert.Equal(PdfInvoiceImportMessages.InvoiceIncomplete, result.Error);
+    }
+
+    [UnitFact]
+    public void GivenMissingRequiredSummary_WhenParsed_ThenInvoiceIsIncomplete()
+    {
+        var lines = Fixture().Where(line => !line.StartsWith("Total a pagar", StringComparison.Ordinal));
+
+        var result = NubankPdfInvoiceParser.ParseTextLines(lines);
+
+        Assert.Equal(PdfInvoiceImportMessages.InvoiceIncomplete, result.Error);
     }
 
     [UnitFact]
@@ -127,10 +157,20 @@ public sealed class NubankPdfInvoiceParserTests
             .Replace('−', '-')
             .Replace("•••• ", string.Empty, StringComparison.Ordinal)));
 
-        var invoice = new NubankPdfInvoiceParser().Parse(content);
+        var result = new NubankPdfInvoiceParser().Parse(content);
 
+        Assert.True(result.IsSuccess, result.Error);
+        var invoice = result.Invoice;
         Assert.Equal(8, invoice.Lines.Count);
         Assert.Equal(160m, invoice.ParsedAmountDue);
+    }
+
+    private static ParsedPdfInvoice Parsed(IEnumerable<string> lines)
+    {
+        var result = NubankPdfInvoiceParser.ParseTextLines(lines);
+        Assert.True(result.IsSuccess, result.Error);
+
+        return result.Invoice;
     }
 
     private static IReadOnlyList<string> Fixture() =>

@@ -8,10 +8,12 @@ public static class CounterpartyMessages
     public const string DeletedSuccessfully = "Counterparty deleted successfully.";
     public const string MergedSuccessfully = "Counterparties merged successfully.";
     public const string ListedSuccessfully = "Counterparties retrieved successfully.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SuggestedSuccessfully = "Category suggestion retrieved successfully.";
     public const string NoSuggestion = "No prior category was found for this counterparty.";
     public const string NotFound = "Counterparty not found.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string DuplicateName = "A live counterparty already uses this name.";
     public const string SameCounterparty = "A counterparty cannot be merged into itself.";
     public const string NameRequired = "Name is required.";

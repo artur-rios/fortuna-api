@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -114,11 +116,11 @@ public sealed class UpdateCategoryCommandHandlerTests
                 command.Id, userId, command.Name, null, false, Now, Now),
             CategoryUpdateOutcome.Succeeded));
         var handler = new UpdateCategoryCommandHandler(
-            new UpdateCategoryCommandValidator(),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new UpdateCategoryCommandValidator());
 
         var result = await handler.HandleAsync(command);
 
@@ -126,15 +128,15 @@ public sealed class UpdateCategoryCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static UpdateCategoryCommandHandler Handler(
+    private static ICommandHandlerAsync<UpdateCategoryCommand, UpdateCategoryCommandOutput> Handler(
         Guid subject,
         UserProfileSnapshot? profile,
-        ICategoryUpdater store) => new(
-            new UpdateCategoryCommandValidator(),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+        ICategoryUpdater store) => new UpdateCategoryCommandHandler(
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new UpdateCategoryCommandValidator());
 
     private static UpdateCategoryCommand ValidCommand() => new()
     {
@@ -160,6 +162,7 @@ public sealed class UpdateCategoryCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(result);
         }
     }
@@ -177,6 +180,7 @@ public sealed class UpdateCategoryCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

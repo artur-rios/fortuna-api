@@ -14,6 +14,7 @@ internal static class DatabaseLock
             await context.Database.ExecuteSqlInterpolatedAsync(
                 $"SELECT pg_advisory_xact_lock({lockId})",
                 cancellationToken);
+
             return;
         }
 

@@ -36,9 +36,9 @@ The run fails when merged line coverage falls below MINIMUM_LINE_COVERAGE, in CI
 The report is still written when the threshold fails, because the report is how you find out which
 classes carry the gap.
 
-Requires the ReportGenerator global tool:
+Requires the ReportGenerator local tool pinned in .config/dotnet-tools.json:
 
-    dotnet tool install --global dotnet-reportgenerator-globaltool
+    dotnet tool restore
 """
 
 import argparse
@@ -135,6 +135,9 @@ def generate_report():
         shutil.rmtree(REPORT_DIR)
 
     command = [
+        "dotnet",
+        "tool",
+        "run",
         "reportgenerator",
         f"-reports:{';'.join(str(path) for path in files)}",
         f"-targetdir:{REPORT_DIR}",

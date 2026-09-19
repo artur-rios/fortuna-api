@@ -324,6 +324,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -358,6 +359,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
             OpeningBalance = openingBalance
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -370,6 +372,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
             CurrencyCode = "BRL"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -394,6 +397,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
     private static async Task<GoalData> GoalFromResponseAsync(HttpResponseMessage response)
     {
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<GoalEnvelope>())!.Data!;
     }
 
@@ -401,6 +405,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
     {
         var response = await client.GetAsync($"/api/goals/{goalId}/progress");
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<GoalProgressEnvelope>())!.Data!;
     }
 

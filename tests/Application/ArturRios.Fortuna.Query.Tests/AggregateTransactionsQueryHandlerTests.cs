@@ -3,11 +3,13 @@ using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -49,7 +51,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
         Assert.Equal(5m, Assert.Single(buckets[2].Conversions).AppliedRate);
         Assert.Equal("key-1", buckets[0].DrillDownKey);
         var key = codec.Payloads[0];
-        Assert.Equal("period", key.Dimension);
+        Assert.Equal(AggregationDimension.Period, key.Dimension);
         Assert.Equal(Start, Assert.Single(key.Selections).From);
         Assert.Equal(1, key.RecordCount);
         Assert.Equal(Now.AddMinutes(15), key.ExpiresAt);
@@ -102,6 +104,23 @@ public sealed class AggregateTransactionsQueryHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenMixedCaseModes_WhenHandled_ThenReaderReceivesParsedEnums()
+    {
+        var reader = new StubAggregationReader([]);
+        var query = Valid();
+        query.Dimension = " Period ";
+        query.Granularity = "WEEK";
+
+        var result = await Handler(reader: reader).HandleAsync(query);
+
+        Assert.True(result.Success);
+        Assert.Equal(AggregationDimension.Period, reader.Criteria!.Dimension);
+        Assert.Equal(AggregationGranularity.Week, reader.Criteria.Granularity);
+        Assert.Equal("period", result.Data!.Dimension);
+        Assert.Equal("week", result.Data.Granularity);
+    }
+
+    [UnitFact]
     public async Task GivenLocalActor_WhenHandled_ThenProfileIsResolvedByPublicId()
     {
         var profiles = new StubProfileReader(Profile());
@@ -113,7 +132,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static AggregateTransactionsQueryHandler Handler(
+    private static IQueryHandlerAsync<AggregateTransactionsQuery, TransactionAggregationOutput> Handler(
         StubAggregationReader? reader = null,
         bool missingProfile = false,
         StubProfileReader? profiles = null,
@@ -122,17 +141,19 @@ public sealed class AggregateTransactionsQueryHandlerTests
         ExchangeRateSnapshot? rate = null)
     {
         var resolved = missingProfile ? null : Profile();
+
         return new AggregateTransactionsQueryHandler(
-            new AggregateTransactionsQueryValidator(new TransactionAggregationOptions(366)),
-            profiles ?? new StubProfileReader(resolved),
+            new CurrentProfileResolver(
+                new StubActor(actor ?? new RequestActor(
+                    resolved?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+                profiles ?? new StubProfileReader(resolved)),
             reader ?? new StubAggregationReader([]),
             new StubCurrencyReader(),
             new StubRateReader(rate),
-            new StubActor(actor ?? new RequestActor(
-                resolved?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
             codec ?? new StubKeyCodec(),
             new TransactionDrillDownOptions(TimeSpan.FromMinutes(15)),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now))
+                .Validated(new AggregateTransactionsQueryValidator(new TransactionAggregationOptions(366)));
     }
 
     private static AggregateTransactionsQuery Valid() => new()
@@ -163,6 +184,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
             CancellationToken cancellationToken)
         {
             Criteria = criteria;
+
             return Task.FromResult(figures);
         }
     }
@@ -201,6 +223,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }
@@ -217,12 +240,14 @@ public sealed class AggregateTransactionsQueryHandlerTests
         public string Encode(TransactionDrillDownKeyPayload payload)
         {
             Payloads.Add(payload);
+
             return $"key-{Payloads.Count}";
         }
 
         public bool TryDecode(string key, out TransactionDrillDownKeyPayload? payload)
         {
             payload = null;
+
             return false;
         }
     }

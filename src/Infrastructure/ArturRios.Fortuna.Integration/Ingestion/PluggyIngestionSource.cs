@@ -19,6 +19,7 @@ public sealed class PluggyIngestionSource(PluggySourceOptions options) : IIngest
             !string.IsNullOrWhiteSpace(options.ClientSecret) &&
             options.BaseUri is not null;
         var available = options.IsNetworkAvailable && configured;
+
         return new DataSourceSnapshot(
             Name,
             DataSourceKind.Network,

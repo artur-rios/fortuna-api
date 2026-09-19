@@ -218,7 +218,7 @@ public sealed class TableReportTests : IAsyncLifetime
     }
 
     [FunctionalFact]
-    public async Task GivenSeveralCurrencies_WhenQueried_ThenTotalsSplitOrConvertWithRates()
+    public async Task GivenSeveralCurrencies_WhenQueried_ThenTotalsConvertToTheDisplayCurrency()
     {
         var subject = Guid.NewGuid();
         await using var factory = CreateFactory();
@@ -240,9 +240,9 @@ public sealed class TableReportTests : IAsyncLifetime
         var converted = await convertedResponse.Content.ReadFromJsonAsync<TableEnvelope>();
 
         Assert.Equal(HttpStatusCode.OK, rawResponse.StatusCode);
-        Assert.Equal(2, raw!.Data!.Totals.Count);
-        Assert.Equal(10m, raw.Data.Totals.Single(total => total.CurrencyCode == "BRL").Value);
-        Assert.Equal(2m, raw.Data.Totals.Single(total => total.CurrencyCode == "USD").Value);
+        var profileTotal = Assert.Single(raw!.Data!.Totals);
+        Assert.Equal("BRL", profileTotal.CurrencyCode);
+        Assert.Equal(20m, profileTotal.Value);
         var total = Assert.Single(converted!.Data!.Totals);
         Assert.Equal("BRL", total.CurrencyCode);
         Assert.Equal(20m, total.Value);
@@ -345,6 +345,7 @@ public sealed class TableReportTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -388,6 +389,7 @@ public sealed class TableReportTests : IAsyncLifetime
             OpeningBalance = 0m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -409,6 +411,7 @@ public sealed class TableReportTests : IAsyncLifetime
             Description = description
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -428,6 +431,7 @@ public sealed class TableReportTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -459,6 +463,7 @@ public sealed class TableReportTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

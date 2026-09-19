@@ -1,38 +1,23 @@
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetInstallmentPlanByIdQueryHandler(
-    IValidator<GetInstallmentPlanByIdQuery> validator,
-    IUserProfileReader profiles,
-    IInstallmentPlanReader plans,
-    IRequestActorAccessor actorAccessor)
+    ICurrentProfileResolver profileResolver,
+    IInstallmentPlanReader plans)
     : IQueryHandlerAsync<GetInstallmentPlanByIdQuery, InstallmentPlanOutput>
 {
     public async Task<DataOutput<InstallmentPlanOutput?>> HandleAsync(
         GetInstallmentPlanByIdQuery query)
     {
         var output = DataOutput<InstallmentPlanOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(InstallmentPlanMessages.ProfileNotFound);

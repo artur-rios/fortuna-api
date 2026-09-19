@@ -274,6 +274,7 @@ public sealed class CategoryTransactionReassignmentTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -315,12 +316,14 @@ public sealed class CategoryTransactionReassignmentTests : IAsyncLifetime
         context.FinancialAccounts.Add(account);
         context.FinancialTransactions.Add(transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
     private async Task<Guid> TransactionCategoryAsync(Guid transactionId)
     {
         await using var context = CreateContext();
+
         return await context.FinancialTransactions
             .Where(item => item.PublicId == transactionId)
             .Select(item => item.Category.PublicId)
@@ -366,6 +369,7 @@ public sealed class CategoryTransactionReassignmentTests : IAsyncLifetime
             "/api/categories",
             new { Name = name, ParentId = parentId });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<CategoryEnvelope>())!.Data!;
     }
 
@@ -379,6 +383,7 @@ public sealed class CategoryTransactionReassignmentTests : IAsyncLifetime
             $"/api/categories/{sourceId}/reassign",
             new { TargetCategoryId = targetId, IncludeDescendants = includeDescendants });
         var envelope = (await response.Content.ReadFromJsonAsync<ReassignmentEnvelope>())!;
+
         return envelope with { StatusCode = response.StatusCode };
     }
 

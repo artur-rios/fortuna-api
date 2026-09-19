@@ -113,6 +113,7 @@ public sealed class HeimdallAuthGateway(
                     logger?.LogWarning(
                         "Heimdall request to {Path} returned a successful response without data.",
                         path);
+
                     return new(HeimdallAuthOutcome.Unavailable);
                 }
 
@@ -140,6 +141,7 @@ public sealed class HeimdallAuthGateway(
                 "Heimdall request to {Path} could not be completed ({FailureType}).",
                 path,
                 exception.GetType().Name);
+
             return new(HeimdallAuthOutcome.Unavailable);
         }
     }

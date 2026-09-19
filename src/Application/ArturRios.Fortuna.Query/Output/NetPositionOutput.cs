@@ -10,6 +10,7 @@ public sealed class NetPositionOutput : QueryOutput
     public decimal? Total { get; set; }
     public bool IsFullyConverted { get; set; }
     public IReadOnlyCollection<NetPositionCurrencyOutput> CurrencyGroups { get; set; } = [];
+    public IReadOnlyCollection<MissingExchangeRateOutput> MissingRates { get; set; } = [];
 }
 
 public sealed class NetPositionCurrencyOutput

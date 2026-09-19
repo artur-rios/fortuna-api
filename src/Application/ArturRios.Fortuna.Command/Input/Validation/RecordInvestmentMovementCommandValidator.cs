@@ -21,7 +21,7 @@ public sealed class RecordInvestmentMovementCommandValidator
             .Cascade(CascadeMode.Stop)
             .GreaterThan(0m)
             .WithMessage(InvestmentMessages.MovementAmountPositive)
-            .PrecisionScale(19, 4, false)
+            .Money()
             .WithMessage(InvestmentMessages.MovementAmountPrecisionInvalid);
         RuleFor(command => command.OccurredOn)
             .Cascade(CascadeMode.Stop)

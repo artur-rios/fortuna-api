@@ -12,6 +12,7 @@ public sealed class TransactionAggregationOutput : QueryOutput
     public string DisplayCurrencyCode { get; set; } = string.Empty;
     public bool IsFullyConverted { get; set; }
     public IReadOnlyCollection<TransactionAggregationBucketOutput> Buckets { get; set; } = [];
+    public IReadOnlyCollection<MissingExchangeRateOutput> MissingRates { get; set; } = [];
 }
 
 public sealed class TransactionAggregationBucketOutput

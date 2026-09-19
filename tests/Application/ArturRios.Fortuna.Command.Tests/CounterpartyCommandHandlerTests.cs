@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -199,40 +201,33 @@ public sealed class CounterpartyCommandHandlerTests
         Assert.Null(store.Creation);
     }
 
-    private static CreateCounterpartyCommandHandler CreateHandler(
+    private static ICommandHandlerAsync<CreateCounterpartyCommand, CounterpartyCommandOutput> CreateHandler(
         UserProfileSnapshot? profile,
-        ICounterpartyStore store) => new(
-        new CreateCounterpartyCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        ICounterpartyStore store) => new CreateCounterpartyCommandHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new CreateCounterpartyCommandValidator());
 
-    private static UpdateCounterpartyCommandHandler UpdateHandler(
+    private static ICommandHandlerAsync<UpdateCounterpartyCommand, CounterpartyCommandOutput> UpdateHandler(
         UserProfileSnapshot profile,
-        ICounterpartyUpdater store) => new(
-        new UpdateCounterpartyCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        ICounterpartyUpdater store) => new UpdateCounterpartyCommandHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new UpdateCounterpartyCommandValidator());
 
     private static DeleteCounterpartyCommandHandler DeleteHandler(
         UserProfileSnapshot profile,
         ICounterpartyLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
-    private static MergeCounterpartiesCommandHandler MergeHandler(
+    private static ICommandHandlerAsync<MergeCounterpartiesCommand, CounterpartyMergeCommandOutput> MergeHandler(
         UserProfileSnapshot profile,
-        ICounterpartyMerger store) => new(
-        new MergeCounterpartiesCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        ICounterpartyMerger store) => new MergeCounterpartiesCommandHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new MergeCounterpartiesCommandValidator());
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));
@@ -264,6 +259,7 @@ public sealed class CounterpartyCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(CreationResult);
         }
 
@@ -272,6 +268,7 @@ public sealed class CounterpartyCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(MutationResult);
         }
 
@@ -282,6 +279,7 @@ public sealed class CounterpartyCommandHandlerTests
             CancellationToken cancellationToken)
         {
             DeletedAt = changedAt;
+
             return Task.FromResult(MutationResult);
         }
 
@@ -290,6 +288,7 @@ public sealed class CounterpartyCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Merge = merge;
+
             return Task.FromResult(MergeResult);
         }
     }

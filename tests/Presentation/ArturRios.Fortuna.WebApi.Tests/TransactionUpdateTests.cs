@@ -429,6 +429,7 @@ public sealed class TransactionUpdateTests : IAsyncLifetime
 
         context.AddRange(account, oldCategory, newCategory, oldTag, transaction);
         await context.SaveChangesAsync();
+
         return new AccountSeed(
             transaction.PublicId,
             account.PublicId,
@@ -489,6 +490,7 @@ public sealed class TransactionUpdateTests : IAsyncLifetime
         }
 
         await context.SaveChangesAsync();
+
         return new CardSeed(
             transaction.PublicId,
             card.PublicId,
@@ -540,6 +542,7 @@ public sealed class TransactionUpdateTests : IAsyncLifetime
         var transfer = new Transfer(outbound, inbound, null, null, DateTimeOffset.UtcNow);
         context.AddRange(origin, destination, oldCategory, newCategory, outbound, inbound, transfer);
         await context.SaveChangesAsync();
+
         return new TransferSeed(outbound.PublicId, newCategory.PublicId, occurredOn);
     }
 
@@ -597,6 +600,7 @@ public sealed class TransactionUpdateTests : IAsyncLifetime
             historicalStatement,
             payment);
         await context.SaveChangesAsync();
+
         return new LateReassignmentSeed(
             transaction.PublicId,
             category.PublicId,
@@ -612,6 +616,7 @@ public sealed class TransactionUpdateTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -652,6 +657,7 @@ public sealed class TransactionUpdateTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

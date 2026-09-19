@@ -12,7 +12,7 @@ public static class TransactionMessages
         "Transaction permanently deleted successfully.";
     public const string RetrievedSuccessfully = "Transaction retrieved successfully.";
     public const string ListedSuccessfully = "Transactions retrieved successfully.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NotFound = "Transaction not found.";
     public const string ImportedRecordNotFound = "Imported record not found.";
     public const string AlreadyReconciled = "Transaction is already reconciled; unreconcile it first.";
@@ -81,8 +81,6 @@ public static class TransactionMessages
     public const string DisplayCurrencyInvalid =
         "DisplayCurrencyCode must contain three characters.";
     public const string SortByUnsupported = "SortBy is not supported.";
-
-    public static string UnsupportedFilter(string filter) => $"Filter '{filter}' is not supported.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
 

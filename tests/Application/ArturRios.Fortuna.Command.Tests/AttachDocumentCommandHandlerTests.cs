@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -29,8 +31,8 @@ public sealed class AttachDocumentCommandHandlerTests
         Assert.Equal(TransactionId, result.Data?.TransactionId);
         Assert.Equal("receipt.pdf", result.Data?.FileName);
         Assert.Equal("application/pdf", result.Data?.ContentType);
-        Assert.Equal(3, result.Data?.SizeInBytes);
-        Assert.Equal([1, 2, 3], storage.WrittenContent);
+        Assert.Equal(8, result.Data?.SizeInBytes);
+        Assert.Equal("%PDF-1.7"u8.ToArray(), storage.WrittenContent);
         Assert.Equal(storage.WrittenKey, metadata.Write?.StorageKey);
         Assert.Null(storage.DeletedKey);
     }
@@ -130,27 +132,28 @@ public sealed class AttachDocumentCommandHandlerTests
         Assert.Null(metadata.Write);
     }
 
-    private static AttachDocumentCommandHandler Handler(
+    private static ICommandHandlerAsync<AttachDocumentCommand, AttachDocumentCommandOutput> Handler(
         StubMetadataStore metadata,
         StubAttachmentStore storage,
-        int maximumBytes = 1024) => new(
-        new AttachDocumentCommandValidator(new AttachmentOptions(
-            maximumBytes,
-            ["application/pdf", "image/png"])),
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, Now, Now)),
+        int maximumBytes = 1024) => new AttachDocumentCommandHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, Now, Now))),
         metadata,
         storage,
         new FixedTimeProvider(),
-        NullLogger<AttachDocumentCommandHandler>.Instance);
+        NullLogger<AttachDocumentCommandHandler>.Instance)
+            .Validated(new AttachDocumentCommandValidator(new AttachmentOptions(
+            maximumBytes,
+            ["application/pdf", "image/png"])));
 
     private static AttachDocumentCommand Command() => new()
     {
         TransactionId = TransactionId,
         FileName = "receipt.pdf",
         ContentType = "application/pdf",
-        Content = [1, 2, 3]
+        Content = "%PDF-1.7"u8.ToArray()
     };
 
     private sealed class StubMetadataStore : IAttachmentMetadataStore
@@ -183,6 +186,7 @@ public sealed class AttachDocumentCommandHandlerTests
                     write.SizeInBytes,
                     write.CreatedAt)
                 : null;
+
             return Task.FromResult(new AttachmentMetadataResult(Outcome, snapshot));
         }
     }
@@ -216,10 +220,11 @@ public sealed class AttachDocumentCommandHandlerTests
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {
             DeletedKey = key;
+
             return Task.CompletedTask;
         }
 
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
     }
 

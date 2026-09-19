@@ -7,10 +7,12 @@ using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
 using ArturRios.Util.Hashing;
 using ArturRios.Util.Random;
+using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class AuthenticateLocalAccountCommandHandler(
+    IValidator<AuthenticateLocalAccountCommand> validator,
     ILocalAccountStore accounts,
     ILocalAuthTokenIssuer tokenIssuer,
     LocalAccountOptions options)
@@ -27,11 +29,17 @@ public sealed class AuthenticateLocalAccountCommandHandler(
             return output.WithError(LocalAccountMessages.Disabled);
         }
 
+        var validation = await validator.ValidateAsync(command);
+        if (!validation.IsValid)
+        {
+            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var dummy = DummyCredentials.Value;
-        var account = await accounts.FindForAuthenticationAsync(command.Name ?? string.Empty, CancellationToken.None);
+        var account = await accounts.FindForAuthenticationAsync(command.Name.Trim(), CancellationToken.None);
         var hash = account?.SecretHash ?? dummy.Hash;
         var salt = account?.Salt ?? dummy.Salt;
-        var secretMatches = Hash.TextMatches(command.Secret ?? string.Empty, hash, salt);
+        var secretMatches = Hash.TextMatches(command.Secret, hash, salt);
 
         if (account is null || !secretMatches)
         {

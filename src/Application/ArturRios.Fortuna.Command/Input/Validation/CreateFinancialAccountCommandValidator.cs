@@ -12,11 +12,11 @@ public sealed class CreateFinancialAccountCommandValidator
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(FinancialAccountMessages.NameRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(FinancialAccountMessages.NameTooLong);
 
         RuleFor(command => command.Institution)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(FinancialAccountMessages.InstitutionTooLong);
 
         RuleFor(command => command.AccountType)
@@ -27,11 +27,11 @@ public sealed class CreateFinancialAccountCommandValidator
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(FinancialAccountMessages.CurrencyRequired)
-            .Length(3)
+            .CurrencyCode()
             .WithMessage(FinancialAccountMessages.CurrencyInvalid);
 
         RuleFor(command => command.OpeningBalance)
-            .PrecisionScale(19, 4, false)
+            .Money()
             .WithMessage(FinancialAccountMessages.OpeningBalancePrecisionInvalid);
     }
 }

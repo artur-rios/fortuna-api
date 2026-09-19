@@ -4,38 +4,22 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
+using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/accounts")]
-public sealed class AccountsController(CommandMediator commandMediator, QueryMediator queryMediator) : Controller
+public sealed class AccountsController : FortunaController
 {
-    private static readonly HashSet<string> ListQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber",
-        "PageSize",
-        "Name",
-        "Institution",
-        "AccountType",
-        "CurrencyCode",
-        "IncludeDeleted",
-        "SortBy",
-        "Descending"
-    };
-
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [FinancialAccountMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [FinancialAccountMessages.DuplicateName] = StatusCodes.Status409Conflict,
-            [FinancialAccountMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [FinancialAccountMessages.NameRequired] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.NameTooLong] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.InstitutionTooLong] = StatusCodes.Status400BadRequest,
@@ -50,23 +34,24 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
             [FinancialAccountMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [FinancialAccountMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [FinancialAccountMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict,
-            [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable,
+            [FinancialAccountMessages.HardDeleteHasDependents] = StatusCodes.Status409Conflict,
             [FinancialAccountMessages.NotFound] = StatusCodes.Status404NotFound,
             [FinancialAccountMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [FinancialAccountMessages.AsOfOutOfRange] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.SortByUnsupported] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CreateFinancialAccountCommandOutput?>>> Create(
         [FromBody] CreateFinancialAccountCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             CreateFinancialAccountCommand,
             CreateFinancialAccountCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPut("{id:guid}")]
@@ -76,11 +61,10 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
         [FromBody] UpdateFinancialAccountCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             UpdateFinancialAccountCommand,
             UpdateFinancialAccountCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}")]
@@ -89,15 +73,13 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
         Guid id,
         [FromQuery] bool includeDeleted = false)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetFinancialAccountByIdQuery,
             FinancialAccountOutput>(new GetFinancialAccountByIdQuery
             {
                 Id = id,
                 IncludeDeleted = includeDeleted
             });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}/balance")]
@@ -106,66 +88,52 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
         Guid id,
         [FromQuery] DateOnly? asOf = null)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetFinancialAccountBalanceQuery,
             FinancialAccountBalanceOutput>(new GetFinancialAccountBalanceQuery
             {
                 Id = id,
                 AsOf = asOf
             });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<FinancialAccountLifecycleCommandOutput?>>> Delete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DeleteFinancialAccountCommand,
             FinancialAccountLifecycleCommandOutput>(new DeleteFinancialAccountCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/restore")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<FinancialAccountLifecycleCommandOutput?>>> Restore(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RestoreFinancialAccountCommand,
             FinancialAccountLifecycleCommandOutput>(new RestoreFinancialAccountCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}/hard")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<FinancialAccountLifecycleCommandOutput?>>> HardDelete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             HardDeleteFinancialAccountCommand,
             FinancialAccountLifecycleCommandOutput>(new HardDeleteFinancialAccountCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet]
+    [AllowedQuery(
+        "PageNumber", "PageSize", "Name", "Institution", "AccountType", "CurrencyCode", "IncludeDeleted", "SortBy",
+        "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<FinancialAccountOutput>>> List(
         [FromQuery] ListFinancialAccountsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<FinancialAccountOutput>.New
-                .WithError(FinancialAccountMessages.UnsupportedFilter(unsupported)));
-        }
-
-        var result = await queryMediator.ExecutePaginatedQueryAsync<
+        return await QueryPageAsync<
             ListFinancialAccountsQuery,
             FinancialAccountOutput>(query);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

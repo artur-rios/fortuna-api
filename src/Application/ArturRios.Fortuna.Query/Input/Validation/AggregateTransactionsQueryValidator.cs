@@ -7,10 +7,10 @@ namespace ArturRios.Fortuna.Query.Input.Validation;
 public sealed class AggregateTransactionsQueryValidator : AbstractValidator<AggregateTransactionsQuery>
 {
     public static readonly IReadOnlyCollection<string> SupportedDimensions =
-        ["period", "category", "account", "card", "counterparty", "tag"];
+        AggregationModes.DimensionNames;
 
     public static readonly IReadOnlyCollection<string> SupportedGranularities =
-        ["day", "week", "month", "quarter", "year"];
+        AggregationModes.GranularityNames;
 
     public AggregateTransactionsQueryValidator(TransactionAggregationOptions options)
     {
@@ -89,20 +89,19 @@ public sealed class AggregateTransactionsQueryValidator : AbstractValidator<Aggr
             .MaximumLength(500)
             .WithMessage(TransactionAggregationMessages.TextTooLong);
         RuleFor(query => query.DisplayCurrencyCode)
-            .Must(code => code is null ||
-                code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .OptionalCurrencyCode()
             .WithMessage(TransactionAggregationMessages.DisplayCurrencyInvalid);
     }
 
     private static bool IsPeriod(string? value) =>
-        string.Equals(value?.Trim(), "period", StringComparison.OrdinalIgnoreCase);
+        AggregationModes.TryParseDimension(value, out var dimension) &&
+        dimension == AggregationDimension.Period;
 
     private static bool IsSupportedDimension(string? value) =>
-        !string.IsNullOrWhiteSpace(value) &&
-        SupportedDimensions.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+        AggregationModes.TryParseDimension(value, out _);
 
     private static bool IsSupportedGranularity(string value) =>
-        SupportedGranularities.Contains(value.Trim(), StringComparer.OrdinalIgnoreCase);
+        AggregationModes.TryParseGranularity(value, out _);
 
     private static bool IsOptionalIdentifier(Guid? value) => value is null || value != Guid.Empty;
 }

@@ -194,7 +194,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Reporting bounds | `FORTUNA_REPORT_MAX_RANGE_DAYS`, `FORTUNA_REPORT_KEY_TTL_MINUTES`, `FORTUNA_PROJECTION_MAX_HORIZON_DAYS`, `FORTUNA_PAGE_SIZE_MAX` | The limits the endpoints validate against, including drill-down key lifetime. |
 | Transaction tags | `FORTUNA_TRANSACTION_MAX_TAGS` | Maximum number of live tags attached to one transaction; defaults to `50`. |
 | Reconciliation | `FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE`, `FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS` | Differences beyond these non-negative amount and day tolerances are accepted but flagged. Defaults to `0.01` and `1`. |
-| Metrics | `FORTUNA_METRICS_PORT` | Local port whose listener serves `GET /metrics` (IR-27). Defaults to `9464`; `0` disables the exporter. The port must also be one Kestrel listens on (`ASPNETCORE_HTTP_PORTS`). |
+| Metrics | `FORTUNA_METRICS_PORT` | Local port whose listener serves `GET /metrics` (IR-27). Defaults to `9464`; `0` disables the exporter. The container entrypoint opens this port next to `8080`; outside the container it must also be one Kestrel listens on (`ASPNETCORE_HTTP_PORTS`). |
 | CORS | `FORTUNA_CORS_ALLOWED_ORIGINS` | Empty by default, which refuses every cross-origin request; a browser client does not reach the API until its origin is listed. |
 | Logging | `FORTUNA_LOG_DIRECTORY`, `FORTUNA_LOG_LEVEL` | The log directory is a mounted volume in a container. |
 
@@ -341,13 +341,15 @@ service name `fortuna-api`: ASP.NET Core request and outbound `HttpClient` instr
 built-in `System.Runtime`, `Microsoft.AspNetCore.Server.Kestrel`, `Microsoft.EntityFrameworkCore` and
 `Npgsql` meters. The native desktop core is a separate Rust library and exposes no metrics.
 
-The container listens on two ports (`ASPNETCORE_HTTP_PORTS=8080;9464`). The reverse proxy routes
-only `8080`; Prometheus scrapes `http://<container>:9464/metrics` over the private Docker network, and
-the compose file never publishes `9464` on the host. A request is served as a scrape only when its
-path is `/metrics` **and** the connection's local port equals `FORTUNA_METRICS_PORT` (IR-27). The
-`Host` header plays no part: the proxy forwards the caller's, so a client could forge any value. The
-private port still answers the ordinary API routes as well; what keeps it private is that nothing
-outside the Docker network can reach it.
+The container listens on two ports: `8080` and `FORTUNA_METRICS_PORT` (`9464` by default). The
+entrypoint derives `ASPNETCORE_HTTP_PORTS` from that setting (`8080;9464`, or just `8080` when the
+exporter is disabled) and refuses to start when it equals the API port; an explicit
+`ASPNETCORE_HTTP_PORTS` still takes precedence. The reverse proxy routes only `8080`; Prometheus
+scrapes `http://<container>:9464/metrics` over the private Docker network, and the compose file never
+publishes `9464` on the host. A request is served as a scrape only when its path is `/metrics` **and**
+the connection's local port equals `FORTUNA_METRICS_PORT` (IR-27). The `Host` header plays no part:
+the proxy forwards the caller's, so a client could forge any value. The private port serves nothing
+but the scrape: every other path that arrives on it is answered `404` before it reaches the API.
 
 The exporter runs before request logging, rate limiting, authentication and authorization, so a
 scrape needs no token and is not logged; it is middleware rather than a controller, so it is absent

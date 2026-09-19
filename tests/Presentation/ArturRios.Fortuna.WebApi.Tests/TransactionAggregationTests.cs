@@ -266,6 +266,37 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenMonthBucketInWiderRange_WhenDrilled_ThenFinerBucketsStayInsideTheMonth()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Narrow drill", "BRL");
+        var category = await SeedCategoryAsync(subject, "Narrow category");
+        await SeedTransactionAsync(account, category.Id, TransactionDirection.Expense, 1m,
+            Start, "september one");
+        await SeedTransactionAsync(account, category.Id, TransactionDirection.Expense, 2m,
+            Start.AddDays(1), "september two");
+        await SeedTransactionAsync(account, category.Id, TransactionDirection.Expense, 4m,
+            Start.AddMonths(1).AddDays(4), "october");
+
+        var aggregate = await AggregateAsync(
+            client,
+            "period",
+            "&granularity=month",
+            Start.AddMonths(2).AddDays(-1));
+        var september = aggregate.Data!.Buckets.Single(bucket => bucket.PeriodStart == Start);
+        var finer = await DrillAsync(client, september.DrillDownKey);
+
+        Assert.Equal("aggregation", finer.Data!.Mode);
+        Assert.Equal(30, finer.Data.Buckets.Count);
+        Assert.All(finer.Data.Buckets, bucket =>
+            Assert.InRange(bucket.PeriodStart!.Value, Start, Start.AddMonths(1).AddDays(-1)));
+        Assert.Equal(-3m, finer.Data.Buckets.Sum(bucket => bucket.Total ?? 0m));
+    }
+
+    [FunctionalFact]
     public async Task GivenBucketAndOptionalDimension_WhenDrilled_ThenNestedAndPagedResultsReturn()
     {
         var subject = Guid.NewGuid();
@@ -381,6 +412,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             $"/api/reports/aggregate?dimension={dimension}&from={Start:yyyy-MM-dd}" +
             $"&to={to ?? Start:yyyy-MM-dd}{suffix}");
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<AggregationEnvelope>())!;
     }
 
@@ -391,6 +423,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
     {
         var response = await client.GetAsync(DrillUrl(key, suffix));
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<DrillEnvelope>())!;
     }
 
@@ -405,6 +438,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category;
     }
 
@@ -421,6 +455,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         var tag = new Tag(user, "Coffee", DateTimeOffset.UtcNow);
         context.AddRange(child, counterparty, tag);
         await context.SaveChangesAsync();
+
         return new ClassificationSeed(root, child, counterparty, tag);
     }
 
@@ -467,6 +502,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             attachedTags);
         context.FinancialTransactions.Add(transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
@@ -495,6 +531,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             description);
         context.FinancialTransactions.Add(transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
@@ -574,6 +611,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             OpeningBalance = 0m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -593,6 +631,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -631,6 +670,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

@@ -8,16 +8,20 @@ public sealed class CreateLocalAccountCommandValidator : AbstractValidator<Creat
     public CreateLocalAccountCommandValidator()
     {
         RuleFor(command => command.DisplayName)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(LocalAccountMessages.NameRequired)
-            .MaximumLength(200)
+            .MaximumLength(LocalAccountInputLimits.NameMaximumLength)
             .WithMessage(LocalAccountMessages.NameTooLong);
 
         RuleFor(command => command.Secret)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(LocalAccountMessages.SecretRequired)
-            .MinimumLength(8)
-            .WithMessage(LocalAccountMessages.SecretTooShort);
+            .MinimumLength(LocalAccountInputLimits.SecretMinimumLength)
+            .WithMessage(LocalAccountMessages.SecretTooShort)
+            .MaximumLength(LocalAccountInputLimits.SecretMaximumLength)
+            .WithMessage(LocalAccountMessages.SecretTooLong);
 
         RuleFor(command => command.StorageMode)
             .IsInEnum()

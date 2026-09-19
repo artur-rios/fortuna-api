@@ -20,6 +20,7 @@ public sealed class DetailedHealthCheckController(
     {
         var report = await health.EvaluateAsync(cancellationToken);
         var response = OperationalHealthOutput.From(report);
+
         return report.Status == OperationalHealthStatus.Unhealthy
             ? StatusCode(StatusCodes.Status503ServiceUnavailable, response)
             : Ok(response);

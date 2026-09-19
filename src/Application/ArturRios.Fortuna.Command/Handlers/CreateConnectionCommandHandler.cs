@@ -5,18 +5,14 @@ using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class CreateConnectionCommandHandler(
-    IValidator<CreateConnectionCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IConnectionStore connections,
     IPluggyConnectionGateway pluggy,
     IConnectionAccessTokenProtector protector,
@@ -28,14 +24,7 @@ public sealed class CreateConnectionCommandHandler(
     public async Task<DataOutput<CreateConnectionCommandOutput?>> HandleAsync(
         CreateConnectionCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<CreateConnectionCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<CreateConnectionCommandOutput?>.New.WithError(
@@ -52,7 +41,13 @@ public sealed class CreateConnectionCommandHandler(
                 ProcessingConsentMessages.ExternalDataProcessingRequired);
         }
 
-        var externalReference = Guid.Parse(command.ExternalReference.Trim()).ToString();
+        if (!Guid.TryParse(command.ExternalReference?.Trim(), out var itemId))
+        {
+            return DataOutput<CreateConnectionCommandOutput?>.New.WithError(
+                ConnectionMessages.ExternalReferenceInvalid);
+        }
+
+        var externalReference = itemId.ToString();
         var verified = await pluggy.ValidateAsync(externalReference, CancellationToken.None);
         if (verified.Outcome != PluggyConnectionValidationOutcome.Succeeded)
         {
@@ -67,15 +62,14 @@ public sealed class CreateConnectionCommandHandler(
                 protector.Protect(verified.AccessToken!),
                 timeProvider.GetUtcNow()),
             CancellationToken.None);
-        return Result(result.Connection, verified.Institution!, result.Outcome);
-    }
+        if (result.Outcome == ConnectionMutationOutcome.ProfileNotFound)
+        {
+            return DataOutput<CreateConnectionCommandOutput?>.New
+                .WithError(ConnectionMessages.ProfileNotFound);
+        }
 
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        return Result(result.Connection!, verified.Institution!, result.Outcome);
+    }
 
     private static DataOutput<CreateConnectionCommandOutput?> Failure(
         PluggyConnectionValidationOutcome outcome)
@@ -87,6 +81,7 @@ public sealed class CreateConnectionCommandHandler(
             PluggyConnectionValidationOutcome.NotConfigured => ConnectionMessages.SourceNotAvailable,
             _ => throw new ArgumentOutOfRangeException(nameof(outcome))
         };
+
         return DataOutput<CreateConnectionCommandOutput?>.New.WithError(message);
     }
 
@@ -106,6 +101,7 @@ public sealed class CreateConnectionCommandHandler(
                 CreatedAt = connection.CreatedAt,
                 UpdatedAt = connection.UpdatedAt
             });
+
         return outcome == ConnectionMutationOutcome.Succeeded
             ? output.WithMessage(ConnectionMessages.CreatedSuccessfully)
             : output.WithError(ConnectionMessages.Duplicate);

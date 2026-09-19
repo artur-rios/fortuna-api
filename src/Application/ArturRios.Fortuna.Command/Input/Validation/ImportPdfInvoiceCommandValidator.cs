@@ -10,11 +10,17 @@ public sealed class ImportPdfInvoiceCommandValidator : AbstractValidator<ImportP
     {
         RuleFor(command => command.CreditCardId)
             .NotEmpty()
-            .WithMessage(PdfInvoiceImportMessages.CreditCardNotFound);
+            .WithMessage(PdfInvoiceImportMessages.CreditCardIdRequired);
         RuleFor(command => command.Content)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(PdfInvoiceImportMessages.FileRequired)
             .Must(content => content.Length <= options.MaximumFileBytes)
-            .WithMessage(PdfInvoiceImportMessages.FileTooLarge);
+            .WithMessage(PdfInvoiceImportMessages.FileTooLarge)
+            .Must(FileSignatures.IsPdf)
+            .WithMessage(PdfInvoiceImportMessages.FileInvalid);
+        RuleFor(command => command.FileName)
+            .TrimmedMaximumLength(300)
+            .WithMessage(PdfInvoiceImportMessages.FileNameTooLong);
     }
 }

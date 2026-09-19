@@ -62,8 +62,9 @@ public sealed class CloseCreditCardStatementCommandHandlerTests
     private static CloseCreditCardStatementCommandHandler Handler(
         UserProfileSnapshot? profile,
         ICreditCardStatementCloser store) => new(
-        new ActorAccessor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new Profiles(profile),
+        new CurrentProfileResolver(
+            new ActorAccessor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new Profiles(profile)),
         store,
         new FixedTimeProvider(Now));
 
@@ -93,6 +94,7 @@ public sealed class CloseCreditCardStatementCommandHandlerTests
             Called = true;
             ExplicitRequest = explicitRequest;
             AsOf = asOf;
+
             return Task.FromResult(result);
         }
     }

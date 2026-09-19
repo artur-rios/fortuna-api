@@ -1,4 +1,8 @@
+using ArturRios.Fortuna.Data.Cards;
+using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
+using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
@@ -40,11 +44,8 @@ public sealed class EfTransactionStore(
         CancellationToken cancellationToken)
     {
         var grouped = await Filter(criteria)
-            .Where(transaction =>
-                !transaction.IsDeleted &&
-                !context.Transfers.Any(transfer =>
-                    transfer.OutboundTransactionId == transaction.Id ||
-                    transfer.InboundTransactionId == transaction.Id))
+            .WhereLive()
+            .WhereNotTransfer(context)
             .GroupBy(transaction => new
             {
                 transaction.Currency.Code,
@@ -116,16 +117,12 @@ public sealed class EfTransactionStore(
                 return Result(TransactionRecordOutcome.CurrencyNotSupported);
             }
 
-            exchangeRate = await context.ExchangeRates
-                .Include(rate => rate.BaseCurrency)
-                .Include(rate => rate.QuoteCurrency)
-                .Where(rate =>
-                    rate.BaseCurrency.Code == sourceCode &&
-                    rate.QuoteCurrency.Code == targetCurrency.Code &&
-                    rate.RateDate <= record.OccurredOn)
-                .OrderByDescending(rate => rate.RateDate)
-                .ThenByDescending(rate => rate.Source)
-                .FirstOrDefaultAsync(cancellationToken);
+            exchangeRate = await ExchangeRateLookup.FindLatestAsync(
+                context,
+                sourceCode,
+                targetCurrency.Code,
+                record.OccurredOn,
+                cancellationToken);
             if (exchangeRate is null)
             {
                 return Result(TransactionRecordOutcome.ExchangeRateUnavailable);
@@ -141,12 +138,14 @@ public sealed class EfTransactionStore(
             }
         }
 
-        var counterparty = await ResolveCounterpartyAsync(
+        var counterparty = await ClassificationResolver.GetOrCreateCounterpartyAsync(
+            context,
             user,
             record.Counterparty,
             record.CreatedAt,
             cancellationToken);
-        var tags = await ResolveTagsAsync(
+        var tags = await ClassificationResolver.GetOrCreateTagsAsync(
+            context,
             user,
             record.Tags,
             record.CreatedAt,
@@ -184,16 +183,22 @@ public sealed class EfTransactionStore(
                 record.CreatedAt);
         }
 
+        context.FinancialTransactions.Add(transaction);
         if (card is not null)
         {
-            await AssignToStatementAsync(
+            await CreditCardStatementResolver.AssignAsync(
+                context,
                 transaction,
                 card,
                 record.CreatedAt,
                 cancellationToken);
+            await CreditCardStatementResolver.RefreshTotalsAsync(
+                context,
+                [transaction.Statement],
+                record.CreatedAt,
+                cancellationToken);
         }
 
-        context.FinancialTransactions.Add(transaction);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
 
@@ -309,17 +314,18 @@ public sealed class EfTransactionStore(
             return UpdateResult(TransactionUpdateOutcome.CategoryNotFound);
         }
 
-        var counterparty = await ResolveCounterpartyAsync(
+        var counterparty = await ClassificationResolver.GetOrCreateCounterpartyAsync(
+            context,
             transaction.User,
             update.Counterparty,
             update.UpdatedAt,
             cancellationToken);
-        var tags = await ResolveTagsAsync(
+        var tags = await ClassificationResolver.GetOrCreateTagsAsync(
+            context,
             transaction.User,
             update.Tags,
             update.UpdatedAt,
             cancellationToken);
-        var oldSignedAmount = SignedAmount(oldDirection, oldAmount);
         transaction.UpdateDetails(
             category,
             update.Direction,
@@ -329,59 +335,23 @@ public sealed class EfTransactionStore(
             counterparty,
             tags,
             update.UpdatedAt);
-        var newSignedAmount = SignedAmount(update.Direction, update.Amount);
-
-        if (transaction.CreditCard is not null)
+        if (transaction.CreditCard is not null && requiresStatementAssignment)
         {
-            if (requiresStatementAssignment)
-            {
-                var assignment = await ResolveStatementAsync(
-                    transaction.CreditCard,
-                    update.OccurredOn,
-                    update.UpdatedAt,
-                    cancellationToken);
-                if (oldStatement?.Id != assignment.Statement.Id)
-                {
-                    if (oldStatement is not null)
-                    {
-                        oldStatement.RecalculatePurchaseTotal(
-                            oldStatement.PurchaseTotal - oldSignedAmount,
-                            update.UpdatedAt);
-                    }
+            await CreditCardStatementResolver.AssignAsync(
+                context,
+                transaction,
+                transaction.CreditCard,
+                update.UpdatedAt,
+                cancellationToken);
+        }
 
-                    var destinationTotal = assignment.Statement.Id == 0
-                        ? 0m
-                        : await StatementTotalAsync(
-                            assignment.Statement.Id,
-                            cancellationToken);
-                    transaction.AssignToStatement(
-                        assignment.Statement,
-                        assignment.IsLateArriving,
-                        update.UpdatedAt);
-                    assignment.Statement.RecalculatePurchaseTotal(
-                        destinationTotal + newSignedAmount,
-                        update.UpdatedAt);
-                }
-                else
-                {
-                    transaction.AssignToStatement(
-                        assignment.Statement,
-                        assignment.IsLateArriving,
-                        update.UpdatedAt);
-                    if (signedAmountChanged)
-                    {
-                        assignment.Statement.RecalculatePurchaseTotal(
-                            assignment.Statement.PurchaseTotal - oldSignedAmount + newSignedAmount,
-                            update.UpdatedAt);
-                    }
-                }
-            }
-            else if (oldStatement is not null && signedAmountChanged)
-            {
-                oldStatement.RecalculatePurchaseTotal(
-                    oldStatement.PurchaseTotal - oldSignedAmount + newSignedAmount,
-                    update.UpdatedAt);
-            }
+        if (signedAmountChanged || requiresStatementAssignment)
+        {
+            await CreditCardStatementResolver.RefreshTotalsAsync(
+                context,
+                [oldStatement, transaction.Statement],
+                update.UpdatedAt,
+                cancellationToken);
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -391,6 +361,7 @@ public sealed class EfTransactionStore(
             update.Id,
             includeDeleted: false,
             cancellationToken);
+
         return UpdateResult(TransactionUpdateOutcome.Succeeded, snapshot);
     }
 
@@ -398,12 +369,30 @@ public sealed class EfTransactionStore(
         TransactionReconciliation change,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        var transactionId = await context.FinancialTransactions
+            .AsNoTracking()
+            .Where(item =>
+                item.User.PublicId == change.UserId &&
+                item.PublicId == change.TransactionId)
+            .Select(item => (long?)item.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (transactionId is null)
+        {
+            return ReconciliationResult(
+                TransactionReconciliationOutcome.TransactionNotFound);
+        }
+
+        await RowLock.LockForUpdateAsync<FinancialTransaction>(
+            context,
+            [transactionId.Value],
+            cancellationToken);
         var transaction = await context.FinancialTransactions
             .Include(item => item.User)
             .Include(item => item.Statement)
             .SingleOrDefaultAsync(item =>
-                item.User.PublicId == change.UserId &&
-                item.PublicId == change.TransactionId &&
+                item.Id == transactionId.Value &&
                 !item.IsDeleted,
                 cancellationToken);
         if (transaction is null)
@@ -428,6 +417,8 @@ public sealed class EfTransactionStore(
 
             transaction.Unreconcile(change.ChangedAt);
             await context.SaveChangesAsync(cancellationToken);
+            await databaseTransaction.CommitAsync(cancellationToken);
+
             return await SuccessfulReconciliationAsync(change, cancellationToken);
         }
 
@@ -454,21 +445,42 @@ public sealed class EfTransactionStore(
                 TransactionReconciliationOutcome.ImportedRecordNotFound);
         }
 
-        var existing = await context.FinancialTransactions
-            .AsNoTracking()
-            .SingleOrDefaultAsync(item => item.ImportedRecordId == importedRecord.Id,
-                cancellationToken);
+        var existing = await MatchedTransactionIdAsync(importedRecord.Id, cancellationToken);
         if (existing is not null)
         {
             return ReconciliationResult(
                 TransactionReconciliationOutcome.ImportedRecordAlreadyMatched,
-                existing.PublicId);
+                existing);
         }
 
         transaction.Reconcile(importedRecord, change.ChangedAt);
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(
+            exception,
+            FinancialTransactionMap.ImportedRecordIndex))
+        {
+            context.ChangeTracker.Clear();
+
+            return ReconciliationResult(
+                TransactionReconciliationOutcome.ImportedRecordAlreadyMatched,
+                await MatchedTransactionIdAsync(importedRecord.Id, cancellationToken));
+        }
+
+        await databaseTransaction.CommitAsync(cancellationToken);
+
         return await SuccessfulReconciliationAsync(change, cancellationToken);
     }
+
+    private Task<Guid?> MatchedTransactionIdAsync(
+        long importedRecordId,
+        CancellationToken cancellationToken) => context.FinancialTransactions
+        .AsNoTracking()
+        .Where(item => item.ImportedRecordId == importedRecordId)
+        .Select(item => (Guid?)item.PublicId)
+        .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<TransactionLifecycleResult> SoftDeleteAsync(
         Guid userId,
@@ -496,21 +508,14 @@ public sealed class EfTransactionStore(
 
         if (transfer is null && installmentPlan is null)
         {
-            var deletion = transaction.SoftDelete(changedAt);
-            if (deletion.Changed)
-            {
-                AdjustStatementTotal(transaction, deleting: true, changedAt);
-            }
+            transaction.SoftDelete(changedAt);
         }
         else if (transfer is not null)
         {
             var cascadeId = transfer.SoftDelete(changedAt).CascadeId;
             foreach (var leg in transactionLegs)
             {
-                if (SoftDeleteToCascade(leg, cascadeId, changedAt))
-                {
-                    AdjustStatementTotal(leg, deleting: true, changedAt);
-                }
+                SoftDeleteToCascade(leg, cascadeId, changedAt);
             }
 
             if (transfer.InboundInvestmentMovement is not null)
@@ -526,10 +531,7 @@ public sealed class EfTransactionStore(
             var cascadeId = installmentPlan!.SoftDelete(changedAt).CascadeId;
             foreach (var leg in transactionLegs)
             {
-                if (SoftDeleteToCascade(leg, cascadeId, changedAt))
-                {
-                    AdjustStatementTotal(leg, deleting: true, changedAt);
-                }
+                SoftDeleteToCascade(leg, cascadeId, changedAt);
             }
         }
 
@@ -537,9 +539,14 @@ public sealed class EfTransactionStore(
             DeletionCascades(transactionLegs),
             changedAt,
             cancellationToken);
-
+        await CreditCardStatementResolver.RefreshTotalsAsync(
+            context,
+            transactionLegs.Select(leg => leg.Statement),
+            changedAt,
+            cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
     }
 
@@ -577,7 +584,6 @@ public sealed class EfTransactionStore(
         if (transfer is null && installmentPlan is null)
         {
             transaction.Restore(changedAt);
-            AdjustStatementTotal(transaction, deleting: false, changedAt);
         }
         else if (transfer is not null)
         {
@@ -588,10 +594,7 @@ public sealed class EfTransactionStore(
 
             foreach (var leg in transactionLegs)
             {
-                if (RestoreIfDeleted(leg, changedAt))
-                {
-                    AdjustStatementTotal(leg, deleting: false, changedAt);
-                }
+                RestoreIfDeleted(leg, changedAt);
             }
 
             if (transfer.InboundInvestmentMovement is not null)
@@ -608,10 +611,7 @@ public sealed class EfTransactionStore(
 
             foreach (var leg in transactionLegs)
             {
-                if (RestoreIfDeleted(leg, changedAt))
-                {
-                    AdjustStatementTotal(leg, deleting: false, changedAt);
-                }
+                RestoreIfDeleted(leg, changedAt);
             }
         }
 
@@ -619,9 +619,14 @@ public sealed class EfTransactionStore(
             attachmentCascades,
             changedAt,
             cancellationToken);
-
+        await CreditCardStatementResolver.RefreshTotalsAsync(
+            context,
+            transactionLegs.Select(leg => leg.Statement),
+            changedAt,
+            cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
     }
 
@@ -658,9 +663,10 @@ public sealed class EfTransactionStore(
             return LifecycleResult(TransactionLifecycleOutcome.SettledStatementFrozen);
         }
 
-        if (!await attachments.HardDeleteForTransactionsAsync(
-                transactionLegs.Select(leg => leg.Id).ToArray(),
-                cancellationToken))
+        var removal = await attachments.RemoveForTransactionsAsync(
+            transactionLegs.Select(leg => leg.Id).ToArray(),
+            cancellationToken);
+        if (!removal.StorageAvailable)
         {
             return LifecycleResult(TransactionLifecycleOutcome.AttachmentStorageUnavailable);
         }
@@ -682,6 +688,8 @@ public sealed class EfTransactionStore(
         context.FinancialTransactions.RemoveRange(transactionLegs);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+        await attachments.DeleteObjectsAsync(removal.StorageKeys, CancellationToken.None);
+
         return LifecycleResult(TransactionLifecycleOutcome.Succeeded, transaction.PublicId);
     }
 
@@ -754,6 +762,7 @@ public sealed class EfTransactionStore(
         }
 
         var transactionIds = transactions.Select(item => item.Id).ToArray();
+
         return await context.CreditCardStatements.AnyAsync(statement =>
             statement.Status == CreditCardStatementStatus.Settled &&
             statement.SettlementTransactionId.HasValue &&
@@ -768,7 +777,7 @@ public sealed class EfTransactionStore(
             .Where(transaction => transaction.User.PublicId == criteria.UserId);
         if (!criteria.IncludeDeleted)
         {
-            transactions = transactions.Where(transaction => !transaction.IsDeleted);
+            transactions = transactions.WhereLive();
         }
 
         if (criteria.From.HasValue)
@@ -806,14 +815,14 @@ public sealed class EfTransactionStore(
         if (criteria.TagId.HasValue)
         {
             transactions = transactions.Where(transaction => transaction.Tags.Any(tag =>
-                tag.PublicId == criteria.TagId.Value));
+                tag.PublicId == criteria.TagId.Value && !tag.IsDeleted));
         }
 
         foreach (var tagId in criteria.RequiredTagIds)
         {
             var requiredTagId = tagId;
             transactions = transactions.Where(transaction => transaction.Tags.Any(tag =>
-                tag.PublicId == requiredTagId));
+                tag.PublicId == requiredTagId && !tag.IsDeleted));
         }
 
         if (criteria.CounterpartyId.HasValue)
@@ -927,202 +936,14 @@ public sealed class EfTransactionStore(
             UpdatedAt = transaction.UpdatedAt
         });
 
-    private async Task<Counterparty?> ResolveCounterpartyAsync(
-        UserProfile user,
-        string? name,
-        DateTimeOffset createdAt,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return null;
-        }
-
-        var normalizedName = name.Trim().ToUpperInvariant();
-        var counterparty = await context.Counterparties.SingleOrDefaultAsync(item =>
-            item.UserId == user.Id &&
-            item.NormalizedName == normalizedName &&
-            !item.IsDeleted,
-            cancellationToken);
-        if (counterparty is not null)
-        {
-            return counterparty;
-        }
-
-        counterparty = new Counterparty(user, name, createdAt);
-        context.Counterparties.Add(counterparty);
-        return counterparty;
-    }
-
-    private async Task<IReadOnlyCollection<Tag>> ResolveTagsAsync(
-        UserProfile user,
-        IReadOnlyCollection<string> names,
-        DateTimeOffset createdAt,
-        CancellationToken cancellationToken)
-    {
-        var requested = names
-            .Select(name => new { Name = name.Trim(), Normalized = name.Trim().ToUpperInvariant() })
-            .DistinctBy(item => item.Normalized)
-            .ToArray();
-        if (requested.Length == 0)
-        {
-            return [];
-        }
-
-        var normalizedNames = requested.Select(item => item.Normalized).ToArray();
-        var existing = await context.Tags.Where(item =>
-            item.UserId == user.Id &&
-            normalizedNames.Contains(item.NormalizedName) &&
-            !item.IsDeleted).ToListAsync(cancellationToken);
-        var byName = existing.ToDictionary(item => item.NormalizedName);
-        var tags = new List<Tag>(requested.Length);
-        foreach (var requestedTag in requested)
-        {
-            if (!byName.TryGetValue(requestedTag.Normalized, out var tag))
-            {
-                tag = new Tag(user, requestedTag.Name, createdAt);
-                context.Tags.Add(tag);
-                byName.Add(requestedTag.Normalized, tag);
-            }
-
-            tags.Add(tag);
-        }
-
-        return tags;
-    }
-
-    private async Task AssignToStatementAsync(
-        FinancialTransaction transaction,
-        CreditCard card,
-        DateTimeOffset changedAt,
-        CancellationToken cancellationToken)
-    {
-        var statements = await context.CreditCardStatements
-            .Where(item => item.CreditCardId == card.Id && !item.IsDeleted)
-            .OrderBy(item => item.PeriodStart)
-            .ToListAsync(cancellationToken);
-        var intendedCycle = BillingCycle.Containing(
-            transaction.OccurredOn,
-            card.ClosingDay,
-            card.DueDay);
-        var statement = statements.SingleOrDefault(item =>
-            item.PeriodStart == intendedCycle.PeriodStart &&
-            item.PeriodEnd == intendedCycle.PeriodEnd);
-        var isLateArriving = statement?.Status == CreditCardStatementStatus.Settled;
-
-        if (isLateArriving)
-        {
-            var cycle = intendedCycle.Next(card.ClosingDay, card.DueDay);
-            while (true)
-            {
-                statement = statements.SingleOrDefault(item =>
-                    item.PeriodStart == cycle.PeriodStart &&
-                    item.PeriodEnd == cycle.PeriodEnd);
-                if (statement is null)
-                {
-                    statement = new CreditCardStatement(card, cycle, changedAt);
-                    context.CreditCardStatements.Add(statement);
-                    break;
-                }
-
-                if (statement.Status == CreditCardStatementStatus.Open)
-                {
-                    break;
-                }
-
-                cycle = cycle.Next(card.ClosingDay, card.DueDay);
-            }
-        }
-        else if (statement is null)
-        {
-            statement = new CreditCardStatement(card, intendedCycle, changedAt);
-            context.CreditCardStatements.Add(statement);
-        }
-
-        var existingTotal = statement.Id == 0
-            ? 0m
-            : await context.FinancialTransactions
-                .Where(item => item.StatementId == statement.Id && !item.IsDeleted)
-                .Select(item => (decimal?)(item.Direction == TransactionDirection.Expense
-                    ? item.Amount
-                    : -item.Amount))
-                .SumAsync(cancellationToken) ?? 0m;
-        var signedAmount = transaction.Direction == TransactionDirection.Expense
-            ? transaction.Amount
-            : -transaction.Amount;
-        transaction.AssignToStatement(statement, isLateArriving, changedAt);
-        statement.RecalculatePurchaseTotal(existingTotal + signedAmount, changedAt);
-    }
-
-    private async Task<(CreditCardStatement Statement, bool IsLateArriving)> ResolveStatementAsync(
-        CreditCard card,
-        DateOnly occurredOn,
-        DateTimeOffset changedAt,
-        CancellationToken cancellationToken)
-    {
-        var statements = await context.CreditCardStatements
-            .Where(item => item.CreditCardId == card.Id && !item.IsDeleted)
-            .OrderBy(item => item.PeriodStart)
-            .ToListAsync(cancellationToken);
-        var intendedCycle = BillingCycle.Containing(
-            occurredOn,
-            card.ClosingDay,
-            card.DueDay);
-        var statement = statements.SingleOrDefault(item =>
-            item.PeriodStart == intendedCycle.PeriodStart &&
-            item.PeriodEnd == intendedCycle.PeriodEnd);
-        var isLateArriving = statement?.Status == CreditCardStatementStatus.Settled;
-        if (isLateArriving)
-        {
-            var cycle = intendedCycle.Next(card.ClosingDay, card.DueDay);
-            while (true)
-            {
-                statement = statements.SingleOrDefault(item =>
-                    item.PeriodStart == cycle.PeriodStart &&
-                    item.PeriodEnd == cycle.PeriodEnd);
-                if (statement is null)
-                {
-                    statement = new CreditCardStatement(card, cycle, changedAt);
-                    context.CreditCardStatements.Add(statement);
-                    break;
-                }
-
-                if (statement.Status == CreditCardStatementStatus.Open)
-                {
-                    break;
-                }
-
-                cycle = cycle.Next(card.ClosingDay, card.DueDay);
-            }
-        }
-        else if (statement is null)
-        {
-            statement = new CreditCardStatement(card, intendedCycle, changedAt);
-            context.CreditCardStatements.Add(statement);
-        }
-
-        return (statement, isLateArriving);
-    }
-
-    private async Task<decimal> StatementTotalAsync(
-        long statementId,
-        CancellationToken cancellationToken) => await context.FinancialTransactions
-        .Where(item => item.StatementId == statementId && !item.IsDeleted)
-        .Select(item => (decimal?)(item.Direction == TransactionDirection.Expense
-            ? item.Amount
-            : -item.Amount))
-        .SumAsync(cancellationToken) ?? 0m;
-
     private static bool CounterpartyMatches(Counterparty? current, string? requested)
     {
         var normalizedRequested = string.IsNullOrWhiteSpace(requested)
             ? null
             : requested.Trim().ToUpperInvariant();
+
         return current?.NormalizedName == normalizedRequested;
     }
-
-    private static decimal SignedAmount(TransactionDirection direction, decimal amount) =>
-        direction == TransactionDirection.Expense ? amount : -amount;
 
     private static IReadOnlyCollection<FinancialTransaction> TransactionLegs(
         FinancialTransaction transaction,
@@ -1158,6 +979,7 @@ public sealed class EfTransactionStore(
         }
 
         entity.SoftDeleteFromCascade(cascadeId, changedAt);
+
         return !wasDeleted;
     }
 
@@ -1171,23 +993,8 @@ public sealed class EfTransactionStore(
         }
 
         entity.Restore(changedAt);
+
         return true;
-    }
-
-    private static void AdjustStatementTotal(
-        FinancialTransaction transaction,
-        bool deleting,
-        DateTimeOffset changedAt)
-    {
-        if (transaction.Statement is null)
-        {
-            return;
-        }
-
-        var signedAmount = SignedAmount(transaction.Direction, transaction.Amount);
-        transaction.Statement.RecalculatePurchaseTotal(
-            transaction.Statement.PurchaseTotal + (deleting ? -signedAmount : signedAmount),
-            changedAt);
     }
 
     private static TransactionRecordResult Result(
@@ -1207,6 +1014,7 @@ public sealed class EfTransactionStore(
             change.TransactionId,
             includeDeleted: false,
             cancellationToken);
+
         return ReconciliationResult(
             TransactionReconciliationOutcome.Succeeded,
             transaction: snapshot);

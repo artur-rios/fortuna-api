@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Transactions;
@@ -119,16 +120,12 @@ public sealed class EfTransferStore(
         var inboundAmount = record.Amount;
         if (origin.Currency.Code != destination.Currency.Code)
         {
-            exchangeRate = await context.ExchangeRates
-                .Include(rate => rate.BaseCurrency)
-                .Include(rate => rate.QuoteCurrency)
-                .Where(rate =>
-                    rate.BaseCurrency.Code == origin.Currency.Code &&
-                    rate.QuoteCurrency.Code == destination.Currency.Code &&
-                    rate.RateDate <= record.OccurredOn)
-                .OrderByDescending(rate => rate.RateDate)
-                .ThenByDescending(rate => rate.Source)
-                .FirstOrDefaultAsync(cancellationToken);
+            exchangeRate = await ExchangeRateLookup.FindLatestAsync(
+                context,
+                origin.Currency.Code,
+                destination.Currency.Code,
+                record.OccurredOn,
+                cancellationToken);
             if (exchangeRate is null)
             {
                 return Result(TransferRecordOutcome.ExchangeRateUnavailable);
@@ -254,6 +251,7 @@ public sealed class EfTransferStore(
         }
 
         var result = await change(transfer.OutboundTransactionId, cancellationToken);
+
         return result.Outcome switch
         {
             TransactionLifecycleOutcome.Succeeded => LifecycleResult(

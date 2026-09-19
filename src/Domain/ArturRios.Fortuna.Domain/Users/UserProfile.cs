@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 
 namespace ArturRios.Fortuna.Domain.Users;
@@ -30,12 +31,11 @@ public sealed class UserProfile : RecordLifecycleEntity
         Currency displayCurrency,
         DateTimeOffset createdAt) : base(createdAt)
     {
-        if (string.IsNullOrWhiteSpace(displayName) || displayName.Length > 200)
-        {
-            throw new ArgumentException("A display name between 1 and 200 characters is required.", nameof(displayName));
-        }
-
-        DisplayName = displayName;
+        DisplayName = BoundedText.Required(
+            displayName,
+            200,
+            nameof(displayName),
+            "A display name between 1 and 200 characters is required.");
         DisplayCurrency = displayCurrency ?? throw new ArgumentNullException(nameof(displayCurrency));
         DisplayCurrencyId = displayCurrency.Id;
     }
