@@ -103,7 +103,10 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
         DateTimeOffset updatedAt)
     {
         EnsureNotDeleted();
-        var previousStart = StartsOn;
+
+        // LastMaterializedOn is kept on purpose, even when StartsOn moves earlier: a template
+        // change applies forward from the marker and never backfills past dates (whose schedule
+        // may no longer line up with the occurrences already materialized).
         ApplyTemplate(
             financialAccount,
             creditCard,
@@ -115,14 +118,6 @@ public sealed class RecurringTransaction : RecordLifecycleEntity
             endsOn,
             description,
             counterparty);
-        if (startsOn < previousStart)
-        {
-            // Occurrences between the new and the old start were never materialized; the
-            // marker would make materialization skip them, so it restarts from the new start.
-            // Occurrences that already exist are recognized and not duplicated.
-            LastMaterializedOn = null;
-        }
-
         MarkUpdated(updatedAt);
     }
 

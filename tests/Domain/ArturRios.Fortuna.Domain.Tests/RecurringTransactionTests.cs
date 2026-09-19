@@ -272,7 +272,7 @@ public sealed class RecurringTransactionTests
     }
 
     [UnitFact]
-    public void GivenMaterializedRule_WhenStartMovesEarlier_ThenMarkerIsReset()
+    public void GivenMaterializedRule_WhenStartMovesEarlier_ThenMarkerIsKeptSoPastIsNotBackfilled()
     {
         var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 3, 1));
         rule.MarkMaterializedThrough(new DateOnly(2026, 4, 1), Now);
@@ -290,7 +290,7 @@ public sealed class RecurringTransactionTests
             rule.Counterparty,
             Now.AddDays(1));
 
-        Assert.Null(rule.LastMaterializedOn);
+        Assert.Equal(new DateOnly(2026, 4, 1), rule.LastMaterializedOn);
         Assert.Equal(new DateOnly(2026, 1, 1), rule.StartsOn);
     }
 
