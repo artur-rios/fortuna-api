@@ -12,7 +12,7 @@ public sealed class ListAuditEntriesQueryValidator : AbstractValidator<ListAudit
             .WithMessage(AuditEntryMessages.InvalidPageNumber);
 
         RuleFor(query => query.PageSize)
-            .InclusiveBetween(1, 100)
+            .GreaterThanOrEqualTo(1)
             .WithMessage(AuditEntryMessages.InvalidPageSize);
 
         RuleFor(query => query.EntityType)

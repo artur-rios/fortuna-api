@@ -53,16 +53,18 @@ public sealed class ListCreditCardStatementsQueryHandler(
             filtered = filtered.Where(statement => statement.Status == status);
         }
 
+        // A statement matches when its period overlaps the requested range, so one that
+        // straddles either bound is still listed.
         if (query.From.HasValue)
         {
             var from = query.From.Value;
-            filtered = filtered.Where(statement => statement.PeriodStart >= from);
+            filtered = filtered.Where(statement => statement.PeriodEnd >= from);
         }
 
         if (query.To.HasValue)
         {
             var to = query.To.Value;
-            filtered = filtered.Where(statement => statement.PeriodEnd <= to);
+            filtered = filtered.Where(statement => statement.PeriodStart <= to);
         }
 
         var ordered = Order(filtered, query.SortBy.Trim(), query.Descending);
@@ -87,43 +89,25 @@ public sealed class ListCreditCardStatementsQueryHandler(
     private static IOrderedQueryable<CreditCardStatementReadSnapshot> Order(
         IQueryable<CreditCardStatementReadSnapshot> statements,
         string sortBy,
-        bool descending) => (sortBy.ToLowerInvariant(), descending) switch
+        bool descending) => sortBy.ToLowerInvariant() switch
         {
-            ("periodend", false) => statements.OrderBy(statement => statement.PeriodEnd)
-                .ThenBy(statement => statement.Id),
-            ("periodend", true) => statements.OrderByDescending(statement => statement.PeriodEnd)
-                .ThenByDescending(statement => statement.Id),
-            ("closingdate", false) => statements.OrderBy(statement => statement.ClosingDate)
-                .ThenBy(statement => statement.Id),
-            ("closingdate", true) => statements.OrderByDescending(statement => statement.ClosingDate)
-                .ThenByDescending(statement => statement.Id),
-            ("duedate", false) => statements.OrderBy(statement => statement.DueDate)
-                .ThenBy(statement => statement.Id),
-            ("duedate", true) => statements.OrderByDescending(statement => statement.DueDate)
-                .ThenByDescending(statement => statement.Id),
-            ("status", false) => statements.OrderBy(statement => statement.Status)
-                .ThenBy(statement => statement.Id),
-            ("status", true) => statements.OrderByDescending(statement => statement.Status)
-                .ThenByDescending(statement => statement.Id),
-            ("purchasetotal", false) => statements.OrderBy(statement => statement.PurchaseTotal)
-                .ThenBy(statement => statement.Id),
-            ("purchasetotal", true) => statements.OrderByDescending(statement => statement.PurchaseTotal)
-                .ThenByDescending(statement => statement.Id),
-            ("amountdue", false) => statements.OrderBy(statement => statement.AmountDue)
-                .ThenBy(statement => statement.Id),
-            ("amountdue", true) => statements.OrderByDescending(statement => statement.AmountDue)
-                .ThenByDescending(statement => statement.Id),
-            ("createdat", false) => statements.OrderBy(statement => statement.CreatedAt)
-                .ThenBy(statement => statement.Id),
-            ("createdat", true) => statements.OrderByDescending(statement => statement.CreatedAt)
-                .ThenByDescending(statement => statement.Id),
-            ("updatedat", false) => statements.OrderBy(statement => statement.UpdatedAt)
-                .ThenBy(statement => statement.Id),
-            ("updatedat", true) => statements.OrderByDescending(statement => statement.UpdatedAt)
-                .ThenByDescending(statement => statement.Id),
-            (_, false) => statements.OrderBy(statement => statement.PeriodStart)
-                .ThenBy(statement => statement.Id),
-            _ => statements.OrderByDescending(statement => statement.PeriodStart)
-                .ThenByDescending(statement => statement.Id)
+            "periodend" => statements
+                .SortBy(statement => statement.PeriodEnd, statement => statement.Id, descending),
+            "closingdate" => statements
+                .SortBy(statement => statement.ClosingDate, statement => statement.Id, descending),
+            "duedate" => statements
+                .SortBy(statement => statement.DueDate, statement => statement.Id, descending),
+            "status" => statements
+                .SortBy(statement => statement.Status, statement => statement.Id, descending),
+            "purchasetotal" => statements
+                .SortBy(statement => statement.PurchaseTotal, statement => statement.Id, descending),
+            "amountdue" => statements
+                .SortBy(statement => statement.AmountDue, statement => statement.Id, descending),
+            "createdat" => statements
+                .SortBy(statement => statement.CreatedAt, statement => statement.Id, descending),
+            "updatedat" => statements
+                .SortBy(statement => statement.UpdatedAt, statement => statement.Id, descending),
+            _ => statements
+                .SortBy(statement => statement.PeriodStart, statement => statement.Id, descending)
         };
 }
