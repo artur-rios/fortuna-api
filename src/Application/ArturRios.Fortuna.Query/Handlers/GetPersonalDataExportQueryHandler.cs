@@ -4,19 +4,15 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetPersonalDataExportQueryHandler(
-    IValidator<GetPersonalDataExportQuery> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IPersonalDataExportStore exports,
     IAttachmentStore storage,
     TimeProvider timeProvider,
@@ -26,19 +22,7 @@ public sealed class GetPersonalDataExportQueryHandler(
     public async Task<DataOutput<PersonalDataExportQueryOutput?>> HandleAsync(
         GetPersonalDataExportQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<PersonalDataExportQueryOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(

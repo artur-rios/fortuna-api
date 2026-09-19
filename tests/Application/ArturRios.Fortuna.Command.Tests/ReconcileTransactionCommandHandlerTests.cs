@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -152,12 +154,12 @@ public sealed class ReconcileTransactionCommandHandlerTests
             Snapshot(command),
             TransactionReconciliationOutcome.Succeeded));
         var handler = new ReconcileTransactionCommandHandler(
-            new ReconcileTransactionCommandValidator(),
-            new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new ReconciliationOptions(0.01m, 1),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new ReconcileTransactionCommandValidator());
 
         var result = await handler.HandleAsync(command);
 
@@ -165,15 +167,15 @@ public sealed class ReconcileTransactionCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static ReconcileTransactionCommandHandler Handler(
+    private static ICommandHandlerAsync<ReconcileTransactionCommand, ReconcileTransactionCommandOutput> Handler(
         UserProfileSnapshot? profile,
-        ITransactionReconciliationStore store) => new(
-        new ReconcileTransactionCommandValidator(),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        ITransactionReconciliationStore store) => new ReconcileTransactionCommandHandler(
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         store,
         new ReconciliationOptions(0.01m, 1),
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new ReconcileTransactionCommandValidator());
 
     private static ReconcileTransactionCommand ValidCommand() => new()
     {

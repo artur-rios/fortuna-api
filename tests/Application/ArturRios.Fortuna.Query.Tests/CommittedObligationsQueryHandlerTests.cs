@@ -2,11 +2,13 @@ using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Projections;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -119,7 +121,7 @@ public sealed class CommittedObligationsQueryHandlerTests
             unsupported.Errors);
     }
 
-    private static ListCommittedObligationsQueryHandler Handler(
+    private static IQueryHandlerAsync<ListCommittedObligationsQuery, CommittedObligationListOutput> Handler(
         StubReader reader,
         StubRateReader? rates = null,
         bool missingProfile = false,
@@ -128,14 +130,15 @@ public sealed class CommittedObligationsQueryHandlerTests
         var options = new CashFlowProjectionOptions(366, 90, 30);
 
         return new ListCommittedObligationsQueryHandler(
-            new ListCommittedObligationsQueryValidator(options),
-            new StubProfileReader(missingProfile ? null : Profile),
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(Profile.ExternalSubject!.Value, 3, null, [])),
+                new StubProfileReader(missingProfile ? null : Profile)),
             reader,
             new StubCurrencyReader(supportsCurrency),
             rates ?? new StubRateReader(null),
-            new StubActor(new RequestActor(Profile.ExternalSubject!.Value, 3, null, [])),
             new FixedTimeProvider(new DateTimeOffset(
-                Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))));
+                Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))))
+                    .Validated(new ListCommittedObligationsQueryValidator(options));
     }
 
     private sealed class StubReader(IReadOnlyCollection<CommittedObligationSnapshot> items)

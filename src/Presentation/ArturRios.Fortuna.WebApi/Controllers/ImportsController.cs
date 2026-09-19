@@ -5,9 +5,7 @@ using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Filters;
 using ArturRios.Fortuna.WebApi.Requests;
-using ArturRios.Mediator.Command;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,14 +14,12 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 [ApiController]
 [Route("api/imports")]
 public sealed class ImportsController(
-    CommandMediator commandMediator,
-    UploadLimits uploadLimits) : Controller
+    UploadLimits uploadLimits) : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [ExcelImportMessages.Accepted] = StatusCodes.Status202Accepted,
-            [ExcelImportMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [ExcelImportMessages.TargetIdRequired] = StatusCodes.Status400BadRequest,
             [ExcelImportMessages.TargetNotFound] = StatusCodes.Status404NotFound,
             [ExcelImportMessages.TargetDeleted] = StatusCodes.Status409Conflict,
@@ -36,7 +32,6 @@ public sealed class ImportsController(
             [ExcelImportMessages.DirectionColumnRequired] = StatusCodes.Status400BadRequest,
             [ExcelImportMessages.ColumnsMustBeDistinct] = StatusCodes.Status400BadRequest,
             [PdfInvoiceImportMessages.Accepted] = StatusCodes.Status202Accepted,
-            [PdfInvoiceImportMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [PdfInvoiceImportMessages.CreditCardIdRequired] = StatusCodes.Status400BadRequest,
             [PdfInvoiceImportMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
             [PdfInvoiceImportMessages.CreditCardDeleted] = StatusCodes.Status409Conflict,
@@ -45,7 +40,9 @@ public sealed class ImportsController(
             [PdfInvoiceImportMessages.FileInvalid] = StatusCodes.Status400BadRequest,
             [PdfInvoiceImportMessages.FileNameTooLong] = StatusCodes.Status400BadRequest,
             [ExcelImportMessages.FileNameTooLong] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost("excel")]
     [Consumes("multipart/form-data")]
@@ -80,11 +77,10 @@ public sealed class ImportsController(
             CreateMissingCategories = request.CreateMissingCategories,
             CorrelationId = HttpContext.TraceIdentifier
         };
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             ImportExcelWorkbookCommand,
             ImportExcelWorkbookCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("pdf")]
@@ -111,11 +107,10 @@ public sealed class ImportsController(
             Content = file.Content,
             CorrelationId = HttpContext.TraceIdentifier
         };
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             ImportPdfInvoiceCommand,
             ImportPdfInvoiceCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }
 

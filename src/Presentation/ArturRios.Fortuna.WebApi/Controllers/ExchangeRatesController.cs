@@ -3,13 +3,9 @@ using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Security;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,19 +13,14 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/exchange-rates")]
-public sealed class ExchangeRatesController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator,
-    IRequestActorAccessor actorAccessor) : Controller
+public sealed class ExchangeRatesController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [ExchangeRateSyncMessages.Accepted] = StatusCodes.Status200OK,
             [ExchangeRateSyncMessages.AlreadyQueued] = StatusCodes.Status200OK,
             [ExchangeRateSyncMessages.SourceNotConfigured] = StatusCodes.Status503ServiceUnavailable,
-            [ExchangeRateSyncMessages.AdministratorRequired] = StatusCodes.Status403Forbidden,
-            [ManualExchangeRateMessages.AdministratorRequired] = StatusCodes.Status403Forbidden,
             [ManualExchangeRateMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [ManualExchangeRateMessages.ReplacedSuccessfully] = StatusCodes.Status200OK,
             [ManualExchangeRateMessages.BaseCurrencyRequired] = StatusCodes.Status400BadRequest,
@@ -49,20 +40,17 @@ public sealed class ExchangeRatesController(
             [FigureConversionMessages.AmountCurrencyRequired] = StatusCodes.Status400BadRequest,
             [FigureConversionMessages.AmountCurrencyInvalid] = StatusCodes.Status400BadRequest,
             [FigureConversionMessages.AmountPrecisionInvalid] = StatusCodes.Status400BadRequest,
-            [FigureConversionMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest,
-            [FigureConversionMessages.ProfileNotFound] = StatusCodes.Status404NotFound
-        };
+            [FigureConversionMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost("convert")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<ConvertFigureQueryOutput?>>> Convert(
         [FromBody] ConvertFigureQuery query)
     {
-        query.ExternalSubject = actorAccessor.Actor!.SubjectId;
-        query.IsLocal = actorAccessor.Actor.IsLocal;
-        var result = await queryMediator.ExecuteQueryAsync<ConvertFigureQuery, ConvertFigureQueryOutput>(query);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
+        return await QueryAsync<ConvertFigureQuery, ConvertFigureQueryOutput>(query);
     }
 
     [HttpPost]
@@ -70,11 +58,9 @@ public sealed class ExchangeRatesController(
     public async Task<ActionResult<DataOutput<RecordManualExchangeRateCommandOutput?>>> RecordManual(
         [FromBody] RecordManualExchangeRateCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RecordManualExchangeRateCommand,
             RecordManualExchangeRateCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("sync")]
@@ -84,10 +70,9 @@ public sealed class ExchangeRatesController(
     {
         command ??= new SynchronizeExchangeRatesCommand();
         command.CorrelationId = HttpContext.TraceIdentifier;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             SynchronizeExchangeRatesCommand,
             SynchronizeExchangeRatesCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -83,11 +85,11 @@ public sealed class RecordTransactionCommandHandlerTests
             Snapshot(ValidCommand()),
             TransactionRecordOutcome.Succeeded));
         var handler = new RecordTransactionCommandHandler(
-            new RecordTransactionCommandValidator(new FixedTimeProvider(Now)),
-            new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new RecordTransactionCommandValidator(new FixedTimeProvider(Now)));
 
         var result = await handler.HandleAsync(ValidCommand());
 
@@ -95,14 +97,14 @@ public sealed class RecordTransactionCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static RecordTransactionCommandHandler Handler(
+    private static ICommandHandlerAsync<RecordTransactionCommand, RecordTransactionCommandOutput> Handler(
         UserProfileSnapshot? profile,
-        ITransactionStore store) => new(
-        new RecordTransactionCommandValidator(new FixedTimeProvider(Now)),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        ITransactionStore store) => new RecordTransactionCommandHandler(
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         store,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new RecordTransactionCommandValidator(new FixedTimeProvider(Now)));
 
     private static RecordTransactionCommand ValidCommand() => new()
     {

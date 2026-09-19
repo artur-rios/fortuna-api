@@ -6,24 +6,20 @@ using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Reporting;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class DrillIntoAggregationQueryHandler(
-    IValidator<DrillIntoAggregationQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ITransactionDrillDownKeyCodec keyCodec,
     ITransactionReader transactions,
     ICategoryReader categories,
     IQueryHandlerAsync<AggregateTransactionsQuery, TransactionAggregationOutput> aggregationHandler,
-    IRequestActorAccessor actorAccessor,
     PaginationOptions pagination,
     TimeProvider timeProvider)
     : IQueryHandlerAsync<DrillIntoAggregationQuery, TransactionDrillDownOutput>
@@ -32,13 +28,7 @@ public sealed class DrillIntoAggregationQueryHandler(
         DrillIntoAggregationQuery query)
     {
         var output = DataOutput<TransactionDrillDownOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(TransactionDrillDownMessages.ProfileNotFound);
@@ -330,13 +320,6 @@ public sealed class DrillIntoAggregationQueryHandler(
 
         return changed ? output.WithMessage(TransactionDrillDownMessages.RecordsChanged) : output;
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private sealed record TargetAggregation(
         AggregationDimension Dimension,

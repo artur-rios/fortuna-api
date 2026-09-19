@@ -2,11 +2,13 @@ using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -142,7 +144,7 @@ public sealed class NetPositionQueryHandlerTests
         Assert.True(profiles.PublicLookupUsed);
     }
 
-    private static GetNetPositionQueryHandler Handler(
+    private static IQueryHandlerAsync<GetNetPositionQuery, NetPositionOutput> Handler(
         StubPositionReader positionReader,
         StubRateReader? rateReader = null,
         StubCurrencyReader? currencyReader = null,
@@ -153,15 +155,14 @@ public sealed class NetPositionQueryHandlerTests
         var profile = missingProfile ? null : Profile;
 
         return new GetNetPositionQueryHandler(
-            new GetNetPositionQueryValidator(),
-            profiles ?? new StubProfileReader(profile),
+            new CurrentProfileResolver(new StubActor(actor ?? new RequestActor(
+                profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])), profiles ?? new StubProfileReader(profile)),
             positionReader,
             currencyReader ?? new StubCurrencyReader(true),
             rateReader ?? new StubRateReader(null),
-            new StubActor(actor ?? new RequestActor(
-                profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
             new FixedTimeProvider(new DateTimeOffset(
-                Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))));
+                Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))))
+                    .Validated(new GetNetPositionQueryValidator());
     }
 
     private sealed class StubPositionReader(

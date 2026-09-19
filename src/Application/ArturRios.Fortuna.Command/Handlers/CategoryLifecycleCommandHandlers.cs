@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -10,8 +9,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DeleteCategoryCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ICategoryLifecycleStore categories,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteCategoryCommand, CategoryLifecycleCommandOutput>
@@ -19,9 +17,7 @@ public sealed class DeleteCategoryCommandHandler(
     public async Task<DataOutput<CategoryLifecycleCommandOutput?>> HandleAsync(
         DeleteCategoryCommand command)
     {
-        var profile = await CategoryLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return CategoryLifecycleHandler.ProfileNotFound();
@@ -38,8 +34,7 @@ public sealed class DeleteCategoryCommandHandler(
 }
 
 public sealed class RestoreCategoryCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ICategoryLifecycleStore categories,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<RestoreCategoryCommand, CategoryLifecycleCommandOutput>
@@ -47,9 +42,7 @@ public sealed class RestoreCategoryCommandHandler(
     public async Task<DataOutput<CategoryLifecycleCommandOutput?>> HandleAsync(
         RestoreCategoryCommand command)
     {
-        var profile = await CategoryLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return CategoryLifecycleHandler.ProfileNotFound();
@@ -66,17 +59,14 @@ public sealed class RestoreCategoryCommandHandler(
 }
 
 public sealed class HardDeleteCategoryCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ICategoryLifecycleStore categories)
     : ICommandHandlerAsync<HardDeleteCategoryCommand, CategoryLifecycleCommandOutput>
 {
     public async Task<DataOutput<CategoryLifecycleCommandOutput?>> HandleAsync(
         HardDeleteCategoryCommand command)
     {
-        var profile = await CategoryLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return CategoryLifecycleHandler.ProfileNotFound();
@@ -93,14 +83,6 @@ public sealed class HardDeleteCategoryCommandHandler(
 
 internal static class CategoryLifecycleHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static DataOutput<CategoryLifecycleCommandOutput?> ProfileNotFound() =>
         DataOutput<CategoryLifecycleCommandOutput?>.New
             .WithError(CategoryMessages.ProfileNotFound);

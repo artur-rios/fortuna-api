@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -48,10 +49,57 @@ public sealed class UserProfileProvisioningMiddlewareTests
             DisplayName = "Erasing User"
         };
 
-        await middleware.InvokeAsync(context, new StubActorAccessor(actor), provisioner);
+        await middleware.InvokeAsync(context, new StubActorAccessor(actor), provisioner, Cache());
 
         Assert.True(nextCalled);
         Assert.Equal(expectedProvisioning, provisioner.Calls);
+    }
+
+    [UnitFact]
+    public async Task GivenProvisionedSubject_WhenItRequestsAgain_ThenProfileIsNotLookedUpAgain()
+    {
+        var provisioner = new CountingProvisioner();
+        var cache = Cache();
+        var actor = new RequestActor(Guid.NewGuid(), (int)HeimdallRoles.User, Guid.NewGuid(), [])
+        {
+            DisplayName = "Returning User"
+        };
+        var middleware = new UserProfileProvisioningMiddleware(_ => Task.CompletedTask);
+
+        await middleware.InvokeAsync(Context("/api/me"), new StubActorAccessor(actor), provisioner, cache);
+        await middleware.InvokeAsync(Context("/api/me"), new StubActorAccessor(actor), provisioner, cache);
+
+        Assert.Equal(1, provisioner.Calls);
+    }
+
+    [UnitFact]
+    public async Task GivenErasedSubject_WhenItRequestsAgain_ThenProfileIsProvisionedAgain()
+    {
+        var provisioner = new CountingProvisioner();
+        var cache = Cache();
+        var actor = new RequestActor(Guid.NewGuid(), (int)HeimdallRoles.User, Guid.NewGuid(), [])
+        {
+            DisplayName = "Erased User"
+        };
+        var middleware = new UserProfileProvisioningMiddleware(_ => Task.CompletedTask);
+
+        await middleware.InvokeAsync(Context("/api/me"), new StubActorAccessor(actor), provisioner, cache);
+        cache.Forget(actor.SubjectId);
+        await middleware.InvokeAsync(Context("/api/me"), new StubActorAccessor(actor), provisioner, cache);
+        await middleware.InvokeAsync(Context("/api/me"), new StubActorAccessor(actor), provisioner, cache);
+
+        Assert.Equal(3, provisioner.Calls);
+    }
+
+    private static MemoryProvisionedProfileCache Cache() =>
+        new(new MemoryCache(new MemoryCacheOptions()));
+
+    private static DefaultHttpContext Context(string path)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = path;
+
+        return context;
     }
 
     private sealed class StubActorAccessor(RequestActor? actor) : IRequestActorAccessor

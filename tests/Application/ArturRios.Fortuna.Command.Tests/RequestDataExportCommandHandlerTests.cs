@@ -10,6 +10,7 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -96,15 +97,13 @@ public sealed class RequestDataExportCommandHandlerTests
             new StubRateReader(),
             new FixedTimeProvider());
         var handler = new RequestDataExportCommandHandler(
-            new RequestDataExportCommandValidator(),
-            new StubActor(),
-            new StubProfileReader(missingProfile ? null : Profile),
+            new CurrentProfileResolver(new StubActor(), new StubProfileReader(missingProfile ? null : Profile)),
             builder,
             new StubRenderer(),
             store,
             queue,
             new DataExportOptions(threshold, TimeSpan.FromHours(24), "pt-BR"),
-            new FixedTimeProvider());
+            new FixedTimeProvider()).Validated(new RequestDataExportCommandValidator());
 
         return new TestContext(handler, reader, store, queue);
     }
@@ -118,7 +117,7 @@ public sealed class RequestDataExportCommandHandlerTests
     };
 
     private sealed record TestContext(
-        RequestDataExportCommandHandler Handler,
+        ICommandHandlerAsync<RequestDataExportCommand, RequestDataExportCommandOutput> Handler,
         StubTableReader Reader,
         StubExportStore Store,
         StubQueue Queue);

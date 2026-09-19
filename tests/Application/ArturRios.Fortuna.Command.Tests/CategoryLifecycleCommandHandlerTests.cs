@@ -149,8 +149,9 @@ public sealed class CategoryLifecycleCommandHandlerTests
         var profiles = new StubUserProfileReader(profile);
         var store = new StubLifecycleStore { SoftDeleteResult = Success(Guid.NewGuid()) };
         var handler = new DeleteCategoryCommandHandler(
-            new StubActorAccessor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(Now));
 
@@ -163,24 +164,21 @@ public sealed class CategoryLifecycleCommandHandlerTests
     private static DeleteCategoryCommandHandler DeleteHandler(
         UserProfileSnapshot? profile,
         ICategoryLifecycleStore store) => new(
-        Actor(profile),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static RestoreCategoryCommandHandler RestoreHandler(
         UserProfileSnapshot profile,
         ICategoryLifecycleStore store) => new(
-        Actor(profile),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static HardDeleteCategoryCommandHandler HardDeleteHandler(
         UserProfileSnapshot profile,
         ICategoryLifecycleStore store) => new(
-        Actor(profile),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         store);
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(

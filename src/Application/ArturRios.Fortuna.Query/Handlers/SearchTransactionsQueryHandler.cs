@@ -4,22 +4,18 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class SearchTransactionsQueryHandler(
-    IValidator<SearchTransactionsQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ITransactionReader transactions,
     ICurrencyReader currencies,
     IExchangeRateReader rates,
-    IRequestActorAccessor actorAccessor,
     PaginationOptions paginationOptions,
     TimeProvider timeProvider)
     : IQueryHandlerAsync<SearchTransactionsQuery, TransactionSearchOutput>
@@ -28,13 +24,7 @@ public sealed class SearchTransactionsQueryHandler(
         SearchTransactionsQuery query)
     {
         var output = DataOutput<TransactionSearchOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(TransactionMessages.ProfileNotFound);
@@ -152,13 +142,6 @@ public sealed class SearchTransactionsQueryHandler(
             Text = string.IsNullOrWhiteSpace(query.Text) ? null : query.Text.Trim(),
             IncludeDeleted = query.IncludeDeleted
         };
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private DateOnly Today() => DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 

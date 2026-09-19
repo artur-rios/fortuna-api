@@ -3,32 +3,21 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListGoalsQueryHandler(
-    IValidator<ListGoalsQuery> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IGoalReader goals,
     TimeProvider timeProvider,
     PaginationOptions paginationOptions) : IQueryHandlerAsync<ListGoalsQuery, GoalListOutput>
 {
     public async Task<DataOutput<GoalListOutput?>> HandleAsync(ListGoalsQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalListOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var profile = await GoalQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<GoalListOutput?>.New.WithError(GoalMessages.ProfileNotFound);
@@ -55,23 +44,14 @@ public sealed class ListGoalsQueryHandler(
 }
 
 public sealed class GetGoalByIdQueryHandler(
-    IValidator<GetGoalByIdQuery> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IGoalReader goals,
     TimeProvider timeProvider) : IQueryHandlerAsync<GetGoalByIdQuery, GoalOutput>
 {
     public async Task<DataOutput<GoalOutput?>> HandleAsync(GetGoalByIdQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<GoalOutput?>.New;
-        var profile = await GoalQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(GoalMessages.ProfileNotFound);
@@ -92,24 +72,15 @@ public sealed class GetGoalByIdQueryHandler(
 }
 
 public sealed class GetGoalProgressQueryHandler(
-    IValidator<GetGoalProgressQuery> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IGoalProgressReader goals,
     TimeProvider timeProvider) : IQueryHandlerAsync<GetGoalProgressQuery, GoalProgressDetailOutput>
 {
     public async Task<DataOutput<GoalProgressDetailOutput?>> HandleAsync(
         GetGoalProgressQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalProgressDetailOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<GoalProgressDetailOutput?>.New;
-        var profile = await GoalQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(GoalMessages.ProfileNotFound);
@@ -165,14 +136,6 @@ public sealed class GetGoalProgressQueryHandler(
 
 internal static class GoalQueryHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static GoalOutput ToOutput(GoalSnapshot goal) => new()
     {
         Id = goal.Id,

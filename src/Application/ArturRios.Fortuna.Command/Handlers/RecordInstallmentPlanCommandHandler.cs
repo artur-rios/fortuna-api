@@ -1,19 +1,15 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class RecordInstallmentPlanCommandHandler(
-    IValidator<RecordInstallmentPlanCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IInstallmentPlanStore plans,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<RecordInstallmentPlanCommand, RecordInstallmentPlanCommandOutput>
@@ -22,15 +18,7 @@ public sealed class RecordInstallmentPlanCommandHandler(
         RecordInstallmentPlanCommand command)
     {
         var output = DataOutput<RecordInstallmentPlanCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var profile = await InstallmentPlanHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(InstallmentPlanMessages.ProfileNotFound);

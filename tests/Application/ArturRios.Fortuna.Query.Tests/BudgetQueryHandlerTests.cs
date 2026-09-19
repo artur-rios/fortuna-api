@@ -23,12 +23,10 @@ public sealed class BudgetQueryHandlerTests
         var profile = Profile();
         var store = new StubBudgetReader([Snapshot()]);
         var handler = new ListBudgetsQueryHandler(
-            new ListBudgetsQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now),
-            new PaginationOptions(100));
+            new PaginationOptions(100)).Validated(new ListBudgetsQueryValidator());
 
         var result = await handler.HandleAsync(new ListBudgetsQuery
         {
@@ -51,11 +49,9 @@ public sealed class BudgetQueryHandlerTests
         var snapshot = Snapshot();
         var store = new StubBudgetReader([], snapshot);
         var handler = new GetBudgetByIdQueryHandler(
-            new GetBudgetByIdQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetByIdQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetByIdQuery
         {
@@ -74,11 +70,9 @@ public sealed class BudgetQueryHandlerTests
     {
         var profile = Profile();
         var handler = new GetBudgetByIdQueryHandler(
-            new GetBudgetByIdQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             new StubBudgetReader([]),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetByIdQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetByIdQuery
         {
@@ -94,12 +88,10 @@ public sealed class BudgetQueryHandlerTests
     {
         var store = new StubBudgetReader([]);
         var handler = new ListBudgetsQueryHandler(
-            new ListBudgetsQueryValidator(),
-            Actor(null),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
             store,
             new FixedTimeProvider(Now),
-            new PaginationOptions(100));
+            new PaginationOptions(100)).Validated(new ListBudgetsQueryValidator());
 
         var result = await handler.HandleAsync(new ListBudgetsQuery());
 
@@ -120,11 +112,9 @@ public sealed class BudgetQueryHandlerTests
                 BudgetConsumptionOutcome.Succeeded)
         };
         var handler = new GetBudgetConsumptionQueryHandler(
-            new GetBudgetConsumptionQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetConsumptionQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
         {
@@ -153,11 +143,9 @@ public sealed class BudgetQueryHandlerTests
                 BudgetConsumptionOutcome.PeriodPrecedesBudget)
         };
         var handler = new GetBudgetConsumptionQueryHandler(
-            new GetBudgetConsumptionQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetConsumptionQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
         {
@@ -182,11 +170,9 @@ public sealed class BudgetQueryHandlerTests
                 BudgetConsumptionOutcome.NotFound)
         };
         var handler = new GetBudgetConsumptionQueryHandler(
-            new GetBudgetConsumptionQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetConsumptionQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
         {
@@ -202,11 +188,9 @@ public sealed class BudgetQueryHandlerTests
     {
         var store = new StubBudgetReader([]);
         var handler = new GetBudgetConsumptionQueryHandler(
-            new GetBudgetConsumptionQueryValidator(),
-            Actor(null),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetBudgetConsumptionQueryValidator());
 
         var result = await handler.HandleAsync(new GetBudgetConsumptionQuery
         {

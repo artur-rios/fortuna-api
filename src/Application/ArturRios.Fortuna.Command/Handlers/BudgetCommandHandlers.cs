@@ -2,32 +2,21 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Planning;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class CreateBudgetCommandHandler(
-    IValidator<CreateBudgetCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IBudgetStore budgets,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<CreateBudgetCommand, BudgetCommandOutput>
 {
     public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(CreateBudgetCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await BudgetHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<BudgetCommandOutput?>.New.WithError(BudgetMessages.ProfileNotFound);
@@ -50,23 +39,14 @@ public sealed class CreateBudgetCommandHandler(
 }
 
 public sealed class UpdateBudgetCommandHandler(
-    IValidator<UpdateBudgetCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IBudgetUpdater budgets,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<UpdateBudgetCommand, BudgetCommandOutput>
 {
     public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(UpdateBudgetCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await BudgetHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<BudgetCommandOutput?>.New.WithError(BudgetMessages.ProfileNotFound);
@@ -90,8 +70,7 @@ public sealed class UpdateBudgetCommandHandler(
 }
 
 public sealed class DeleteBudgetCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IBudgetLifecycleStore budgets,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteBudgetCommand, BudgetCommandOutput>
@@ -99,7 +78,7 @@ public sealed class DeleteBudgetCommandHandler(
     public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(DeleteBudgetCommand command)
     {
         var now = timeProvider.GetUtcNow();
-        var profile = await BudgetHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<BudgetCommandOutput?>.New.WithError(BudgetMessages.ProfileNotFound);
@@ -118,14 +97,6 @@ public sealed class DeleteBudgetCommandHandler(
 
 internal static class BudgetHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static DataOutput<BudgetCommandOutput?> Resolve(
         BudgetMutationResult result,
         string successMessage)

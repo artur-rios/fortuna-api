@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -10,8 +9,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DeleteAttachmentCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IAttachmentLifecycleStore attachments,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteAttachmentCommand, AttachmentLifecycleCommandOutput>
@@ -19,9 +17,7 @@ public sealed class DeleteAttachmentCommandHandler(
     public async Task<DataOutput<AttachmentLifecycleCommandOutput?>> HandleAsync(
         DeleteAttachmentCommand command)
     {
-        var profile = await AttachmentLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return AttachmentLifecycleHandler.ProfileNotFound();
@@ -40,17 +36,14 @@ public sealed class DeleteAttachmentCommandHandler(
 }
 
 public sealed class HardDeleteAttachmentCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IAttachmentLifecycleStore attachments)
     : ICommandHandlerAsync<HardDeleteAttachmentCommand, AttachmentLifecycleCommandOutput>
 {
     public async Task<DataOutput<AttachmentLifecycleCommandOutput?>> HandleAsync(
         HardDeleteAttachmentCommand command)
     {
-        var profile = await AttachmentLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return AttachmentLifecycleHandler.ProfileNotFound();
@@ -69,14 +62,6 @@ public sealed class HardDeleteAttachmentCommandHandler(
 
 internal static class AttachmentLifecycleHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static DataOutput<AttachmentLifecycleCommandOutput?> ProfileNotFound() =>
         DataOutput<AttachmentLifecycleCommandOutput?>.New
             .WithError(AttachmentMessages.ProfileNotFound);

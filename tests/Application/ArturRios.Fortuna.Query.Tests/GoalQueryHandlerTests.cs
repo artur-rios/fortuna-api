@@ -21,9 +21,10 @@ public sealed class GoalQueryHandlerTests
         var profile = Profile();
         var store = new StubGoalReader([Snapshot()]);
         var handler = new ListGoalsQueryHandler(
-            new ListGoalsQueryValidator(),
-            Actor(profile), new StubProfileReader(profile), store, new FixedTimeProvider(Now),
-            new PaginationOptions(100));
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+            store,
+            new FixedTimeProvider(Now),
+            new PaginationOptions(100)).Validated(new ListGoalsQueryValidator());
 
         var result = await handler.HandleAsync(new ListGoalsQuery { IncludeDeleted = true });
 
@@ -43,8 +44,9 @@ public sealed class GoalQueryHandlerTests
         var snapshot = Snapshot();
         var store = new StubGoalReader([], snapshot);
         var handler = new GetGoalByIdQueryHandler(
-            new GetGoalByIdQueryValidator(),
-            Actor(profile), new StubProfileReader(profile), store, new FixedTimeProvider(Now));
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+            store,
+            new FixedTimeProvider(Now)).Validated(new GetGoalByIdQueryValidator());
 
         var result = await handler.HandleAsync(new GetGoalByIdQuery { Id = snapshot.Id });
 
@@ -60,9 +62,9 @@ public sealed class GoalQueryHandlerTests
     {
         var profile = Profile();
         var handler = new GetGoalByIdQueryHandler(
-            new GetGoalByIdQueryValidator(),
-            Actor(profile), new StubProfileReader(profile), new StubGoalReader([]),
-            new FixedTimeProvider(Now));
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+            new StubGoalReader([]),
+            new FixedTimeProvider(Now)).Validated(new GetGoalByIdQueryValidator());
 
         var result = await handler.HandleAsync(new GetGoalByIdQuery { Id = Guid.NewGuid() });
 
@@ -75,9 +77,10 @@ public sealed class GoalQueryHandlerTests
     {
         var store = new StubGoalReader([]);
         var handler = new ListGoalsQueryHandler(
-            new ListGoalsQueryValidator(),
-            Actor(null), new StubProfileReader(null), store, new FixedTimeProvider(Now),
-            new PaginationOptions(100));
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
+            store,
+            new FixedTimeProvider(Now),
+            new PaginationOptions(100)).Validated(new ListGoalsQueryValidator());
 
         var result = await handler.HandleAsync(new ListGoalsQuery());
 
@@ -94,8 +97,9 @@ public sealed class GoalQueryHandlerTests
         var store = new StubProgressReader(new GoalProgressResult(
             progress, GoalProgressOutcome.Succeeded));
         var handler = new GetGoalProgressQueryHandler(
-            new GetGoalProgressQueryValidator(),
-            Actor(profile), new StubProfileReader(profile), store, new FixedTimeProvider(Now));
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+            store,
+            new FixedTimeProvider(Now)).Validated(new GetGoalProgressQueryValidator());
 
         var result = await handler.HandleAsync(new GetGoalProgressQuery
         {
@@ -116,11 +120,9 @@ public sealed class GoalQueryHandlerTests
     {
         var profile = Profile();
         var handler = new GetGoalProgressQueryHandler(
-            new GetGoalProgressQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             new StubProgressReader(new GoalProgressResult(null, GoalProgressOutcome.NotFound)),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetGoalProgressQueryValidator());
 
         var result = await handler.HandleAsync(new GetGoalProgressQuery { Id = Guid.NewGuid() });
 
@@ -142,12 +144,10 @@ public sealed class GoalQueryHandlerTests
             IsFullyConverted = false
         };
         var handler = new GetGoalProgressQueryHandler(
-            new GetGoalProgressQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             new StubProgressReader(new GoalProgressResult(
                 progress, GoalProgressOutcome.Succeeded)),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetGoalProgressQueryValidator());
 
         var result = await handler.HandleAsync(new GetGoalProgressQuery { Id = Guid.NewGuid() });
 
@@ -161,8 +161,9 @@ public sealed class GoalQueryHandlerTests
         var store = new StubProgressReader(new GoalProgressResult(
             Progress(), GoalProgressOutcome.Succeeded));
         var handler = new GetGoalProgressQueryHandler(
-            new GetGoalProgressQueryValidator(),
-            Actor(null), new StubProfileReader(null), store, new FixedTimeProvider(Now));
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
+            store,
+            new FixedTimeProvider(Now)).Validated(new GetGoalProgressQueryValidator());
 
         var result = await handler.HandleAsync(new GetGoalProgressQuery { Id = Guid.NewGuid() });
 

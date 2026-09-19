@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -90,14 +92,17 @@ public sealed class SettleCreditCardStatementCommandHandlerTests
         Assert.False(store.Called);
     }
 
-    private static SettleCreditCardStatementCommandHandler Handler(
+    private static ICommandHandlerAsync<
+        SettleCreditCardStatementCommand,
+        SettleCreditCardStatementCommandOutput> Handler(
         UserProfileSnapshot? profile,
-        ICreditCardStatementSettlementStore store) => new(
-        new SettleCreditCardStatementCommandValidator(new FixedTimeProvider(Now)),
-        new ActorAccessor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new Profiles(profile),
+        ICreditCardStatementSettlementStore store) => new SettleCreditCardStatementCommandHandler(
+        new CurrentProfileResolver(
+            new ActorAccessor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new Profiles(profile)),
         store,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now))
+            .Validated(new SettleCreditCardStatementCommandValidator(new FixedTimeProvider(Now)));
 
     private static SettleCreditCardStatementCommand Command() => new()
     {

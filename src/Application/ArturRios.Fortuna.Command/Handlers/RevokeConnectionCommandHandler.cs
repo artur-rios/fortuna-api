@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -10,8 +9,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class RevokeConnectionCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IConnectionRevocationStore connections,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<RevokeConnectionCommand, RevokeConnectionCommandOutput>
@@ -20,7 +18,7 @@ public sealed class RevokeConnectionCommandHandler(
         RevokeConnectionCommand command)
     {
         var output = DataOutput<RevokeConnectionCommandOutput?>.New;
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(ConnectionMessages.ProfileNotFound);
@@ -55,11 +53,4 @@ public sealed class RevokeConnectionCommandHandler(
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 }

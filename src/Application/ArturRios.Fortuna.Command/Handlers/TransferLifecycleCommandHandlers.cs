@@ -1,7 +1,6 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
@@ -10,8 +9,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DeleteTransferCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ITransferLifecycleStore transfers,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteTransferCommand, TransferLifecycleCommandOutput>
@@ -19,9 +17,7 @@ public sealed class DeleteTransferCommandHandler(
     public async Task<DataOutput<TransferLifecycleCommandOutput?>> HandleAsync(
         DeleteTransferCommand command)
     {
-        var profile = await TransferLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return TransferLifecycleHandler.ProfileNotFound();
@@ -38,8 +34,7 @@ public sealed class DeleteTransferCommandHandler(
 }
 
 public sealed class RestoreTransferCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ITransferLifecycleStore transfers,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<RestoreTransferCommand, TransferLifecycleCommandOutput>
@@ -47,9 +42,7 @@ public sealed class RestoreTransferCommandHandler(
     public async Task<DataOutput<TransferLifecycleCommandOutput?>> HandleAsync(
         RestoreTransferCommand command)
     {
-        var profile = await TransferLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return TransferLifecycleHandler.ProfileNotFound();
@@ -67,14 +60,6 @@ public sealed class RestoreTransferCommandHandler(
 
 internal static class TransferLifecycleHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static DataOutput<TransferLifecycleCommandOutput?> ProfileNotFound() =>
         DataOutput<TransferLifecycleCommandOutput?>.New
             .WithError(TransferMessages.ProfileNotFound);

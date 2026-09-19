@@ -2,9 +2,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,13 +10,12 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/reports")]
-public sealed class ReportsController(QueryMediator queryMediator) : Controller
+public sealed class ReportsController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [TableReportMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
-            [TableReportMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [TableReportMessages.RecordSetRequired] = StatusCodes.Status400BadRequest,
             [TableReportMessages.ColumnsRequired] = StatusCodes.Status400BadRequest,
             [TableReportMessages.ColumnsMustBeUnique] = StatusCodes.Status400BadRequest,
@@ -34,18 +31,41 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
             [TableReportMessages.SortRequired] = StatusCodes.Status400BadRequest,
             [TableReportMessages.DisplayCurrencyInvalid] = StatusCodes.Status400BadRequest,
             [TableReportMessages.DisplayCurrencyUnsupported] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    private static readonly IReadOnlyDictionary<string, int> AggregationStatuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
+        {
+            [TransactionAggregationMessages.RetrievedSuccessfully] = StatusCodes.Status200OK
+        });
+
+    private static readonly IReadOnlyDictionary<string, int> DrillDownStatuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
+        {
+            [TransactionDrillDownMessages.AggregationRetrieved] = StatusCodes.Status200OK,
+            [TransactionDrillDownMessages.TransactionsRetrieved] = StatusCodes.Status200OK,
+            [TransactionDrillDownMessages.TransactionRetrieved] = StatusCodes.Status200OK,
+            [TransactionDrillDownMessages.BucketNotFound] = StatusCodes.Status404NotFound
+        });
+
+    private static readonly IReadOnlyDictionary<string, int> NetPositionStatuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
+        {
+            [NetPositionMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
+            [NetPositionMessages.PartiallyConverted] = StatusCodes.Status200OK,
+            [NetPositionMessages.AsOfOutOfRange] = StatusCodes.Status400BadRequest
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost("table")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TableReportOutput?>>> QueryTable(
         [FromBody] QueryRecordsAsTableQuery query)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             QueryRecordsAsTableQuery,
             TableReportOutput>(query);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("aggregate")]
@@ -53,15 +73,9 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
     public async Task<ActionResult<DataOutput<TransactionAggregationOutput?>>> Aggregate(
         [FromQuery] AggregateTransactionsQuery query)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             AggregateTransactionsQuery,
-            TransactionAggregationOutput>(query);
-
-        return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
-        {
-            [TransactionAggregationMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
-            [TransactionAggregationMessages.ProfileNotFound] = StatusCodes.Status404NotFound
-        });
+            TransactionAggregationOutput>(query, AggregationStatuses);
     }
 
     [HttpGet("drill-down")]
@@ -69,18 +83,9 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
     public async Task<ActionResult<DataOutput<TransactionDrillDownOutput?>>> DrillDown(
         [FromQuery] DrillIntoAggregationQuery query)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             DrillIntoAggregationQuery,
-            TransactionDrillDownOutput>(query);
-
-        return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
-        {
-            [TransactionDrillDownMessages.AggregationRetrieved] = StatusCodes.Status200OK,
-            [TransactionDrillDownMessages.TransactionsRetrieved] = StatusCodes.Status200OK,
-            [TransactionDrillDownMessages.TransactionRetrieved] = StatusCodes.Status200OK,
-            [TransactionDrillDownMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
-            [TransactionDrillDownMessages.BucketNotFound] = StatusCodes.Status404NotFound
-        });
+            TransactionDrillDownOutput>(query, DrillDownStatuses);
     }
 
     [HttpGet("net-position")]
@@ -88,15 +93,6 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
     public async Task<ActionResult<DataOutput<NetPositionOutput?>>> NetPosition(
         [FromQuery] GetNetPositionQuery query)
     {
-        var result = await queryMediator.ExecuteQueryAsync<GetNetPositionQuery, NetPositionOutput>(
-            query);
-
-        return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
-        {
-            [NetPositionMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
-            [NetPositionMessages.PartiallyConverted] = StatusCodes.Status200OK,
-            [NetPositionMessages.AsOfOutOfRange] = StatusCodes.Status400BadRequest,
-            [NetPositionMessages.ProfileNotFound] = StatusCodes.Status404NotFound
-        });
+        return await QueryAsync<GetNetPositionQuery, NetPositionOutput>(query, NetPositionStatuses);
     }
 }

@@ -1,12 +1,14 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -77,17 +79,18 @@ public sealed class ImportPdfInvoiceCommandHandlerTests
         Assert.Null(store.Request);
     }
 
-    private static ImportPdfInvoiceCommandHandler Handler(
+    private static ICommandHandlerAsync<ImportPdfInvoiceCommand, ImportPdfInvoiceCommandOutput> Handler(
         StubStore store,
         StubQueue queue,
-        int maximumBytes = 1024) => new(
-        new ImportPdfInvoiceCommandValidator(new PdfInvoiceImportOptions(maximumBytes)),
-        new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(new UserProfileSnapshot(
-            Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now)),
+        int maximumBytes = 1024) => new ImportPdfInvoiceCommandHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(new UserProfileSnapshot(
+                Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now))),
         store,
         queue,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now))
+            .Validated(new ImportPdfInvoiceCommandValidator(new PdfInvoiceImportOptions(maximumBytes)));
 
     private static ImportPdfInvoiceCommand Command() => new()
     {

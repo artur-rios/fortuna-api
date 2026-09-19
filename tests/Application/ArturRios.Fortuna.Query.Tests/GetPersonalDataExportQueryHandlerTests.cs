@@ -2,11 +2,13 @@ using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -112,16 +114,14 @@ public sealed class GetPersonalDataExportQueryHandlerTests
         Assert.Contains(PersonalDataExportMessages.StorageUnavailable, unavailable.Errors);
     }
 
-    private static GetPersonalDataExportQueryHandler Handler(
+    private static IQueryHandlerAsync<GetPersonalDataExportQuery, PersonalDataExportQueryOutput> Handler(
         DataExportReadSnapshot? snapshot,
-        StubStorage storage) => new(
-        new GetPersonalDataExportQueryValidator(),
-        new StubActor(),
-        new StubProfiles(),
+        StubStorage storage) => new GetPersonalDataExportQueryHandler(
+        new CurrentProfileResolver(new StubActor(), new StubProfiles()),
         new StubExports(snapshot),
         storage,
         new FixedTimeProvider(Now),
-        NullLogger<GetPersonalDataExportQueryHandler>.Instance);
+        NullLogger<GetPersonalDataExportQueryHandler>.Instance).Validated(new GetPersonalDataExportQueryValidator());
 
     private static GetPersonalDataExportQuery Query() => new() { JobId = JobId };
 

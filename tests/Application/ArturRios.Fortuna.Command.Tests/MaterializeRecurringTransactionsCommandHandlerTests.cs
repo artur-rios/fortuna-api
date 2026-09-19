@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -80,14 +82,16 @@ public sealed class MaterializeRecurringTransactionsCommandHandlerTests
         Assert.Null(materializer.Run);
     }
 
-    private static MaterializeRecurringTransactionsCommandHandler Handler(
+    private static ICommandHandlerAsync<
+        MaterializeRecurringTransactionsCommand,
+        MaterializeRecurringTransactionsCommandOutput> Handler(
         UserProfileSnapshot? profile,
-        IRecurringTransactionMaterializer materializer) => new(
-        new MaterializeRecurringTransactionsCommandValidator(),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfiles(profile),
+        IRecurringTransactionMaterializer materializer) => new MaterializeRecurringTransactionsCommandHandler(
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
         materializer,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new MaterializeRecurringTransactionsCommandValidator());
 
     private sealed class StubMaterializer(RecurringMaterializationResult result)
         : IRecurringTransactionMaterializer

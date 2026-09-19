@@ -1,12 +1,14 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -135,12 +137,12 @@ public sealed class CreateInvestmentCommandHandlerTests
                 "BRL", false, Now, Now),
             false));
         var handler = new CreateInvestmentCommandHandler(
-            new CreateInvestmentCommandValidator(),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             new StubCurrencyReader(["BRL"]),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new CreateInvestmentCommandValidator());
 
         var result = await handler.HandleAsync(ValidCommand());
 
@@ -148,17 +150,17 @@ public sealed class CreateInvestmentCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static CreateInvestmentCommandHandler Handler(
+    private static ICommandHandlerAsync<CreateInvestmentCommand, CreateInvestmentCommandOutput> Handler(
         Guid subject,
         UserProfileSnapshot? profile,
         IInvestmentStore store,
-        IReadOnlyCollection<string> currencies) => new(
-            new CreateInvestmentCommandValidator(),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+        IReadOnlyCollection<string> currencies) => new CreateInvestmentCommandHandler(
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             new StubCurrencyReader(currencies),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new CreateInvestmentCommandValidator());
 
     private static CreateInvestmentCommand ValidCommand() => new()
     {

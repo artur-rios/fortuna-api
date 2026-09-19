@@ -2,18 +2,14 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class RecordInvestmentMovementCommandHandler(
-    IValidator<RecordInvestmentMovementCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IInvestmentMovementStore movements,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<RecordInvestmentMovementCommand,
@@ -23,18 +19,7 @@ public sealed class RecordInvestmentMovementCommandHandler(
         RecordInvestmentMovementCommand command)
     {
         var output = DataOutput<RecordInvestmentMovementCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(InvestmentMessages.ProfileNotFound);

@@ -3,13 +3,17 @@ using ArturRios.Fortuna.Shared.Users;
 
 namespace ArturRios.Fortuna.WebApi.Security;
 
-/// <summary>Ensures every authenticated Heimdall subject has one local Fortuna profile.</summary>
+/// <summary>
+///     Ensures every authenticated Heimdall subject has one local Fortuna profile. A subject known
+///     to be provisioned is not looked up again until its cache entry expires or it is erased.
+/// </summary>
 public sealed class UserProfileProvisioningMiddleware(RequestDelegate next)
 {
     public async Task InvokeAsync(
         HttpContext context,
         IRequestActorAccessor actorAccessor,
-        IUserProfileProvisioner profiles)
+        IUserProfileProvisioner profiles,
+        IProvisionedProfileCache provisioned)
     {
         var actor = actorAccessor.Actor;
         // Erasure must only operate on an existing Fortuna account. Provisioning here would
@@ -25,10 +29,14 @@ public sealed class UserProfileProvisioningMiddleware(RequestDelegate next)
                 return;
             }
 
-            await profiles.GetOrCreateAsync(
-                actor.SubjectId,
-                actor.DisplayName,
-                context.RequestAborted);
+            if (!provisioned.IsProvisioned(actor.SubjectId))
+            {
+                await profiles.GetOrCreateAsync(
+                    actor.SubjectId,
+                    actor.DisplayName,
+                    context.RequestAborted);
+                provisioned.MarkProvisioned(actor.SubjectId);
+            }
         }
 
         await next(context);

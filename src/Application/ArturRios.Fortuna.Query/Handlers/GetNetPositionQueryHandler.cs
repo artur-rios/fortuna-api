@@ -4,34 +4,24 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Reporting;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetNetPositionQueryHandler(
-    IValidator<GetNetPositionQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     INetPositionReader positions,
     ICurrencyReader currencies,
     IExchangeRateReader rates,
-    IRequestActorAccessor actorAccessor,
     TimeProvider timeProvider)
     : IQueryHandlerAsync<GetNetPositionQuery, NetPositionOutput>
 {
     public async Task<DataOutput<NetPositionOutput?>> HandleAsync(GetNetPositionQuery query)
     {
         var output = DataOutput<NetPositionOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(item => item.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(NetPositionMessages.ProfileNotFound);
@@ -89,11 +79,4 @@ public sealed class GetNetPositionQueryHandler(
                 ? NetPositionMessages.RetrievedSuccessfully
                 : NetPositionMessages.PartiallyConverted);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 }

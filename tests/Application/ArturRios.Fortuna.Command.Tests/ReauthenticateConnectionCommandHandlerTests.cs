@@ -2,6 +2,7 @@ using System.Text.Json;
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -9,6 +10,7 @@ using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -107,7 +109,7 @@ public sealed class ReauthenticateConnectionCommandHandlerTests
         Assert.Equal(0, gateway.CallCount);
     }
 
-    private static ReauthenticateConnectionCommandHandler Handler(
+    private static ICommandHandlerAsync<ReauthenticateConnectionCommand, ReauthenticateConnectionCommandOutput> Handler(
         ConnectionSnapshot connection,
         StubStore store,
         StubGateway gateway,
@@ -117,14 +119,14 @@ public sealed class ReauthenticateConnectionCommandHandlerTests
             Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now);
 
         return new ReauthenticateConnectionCommandHandler(
-            new ReauthenticateConnectionCommandValidator(),
-            new StubActorAccessor(new RequestActor(profile.ExternalSubject!.Value, 3, null, [])),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(profile.ExternalSubject!.Value, 3, null, [])),
+                new StubProfileReader(profile)),
             new StubReader(profile.Id, connection),
             store,
             gateway,
             protector,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new ReauthenticateConnectionCommandValidator());
     }
 
     private static ReauthenticateConnectionCommand Command() => new()

@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -130,20 +132,21 @@ public sealed class AttachDocumentCommandHandlerTests
         Assert.Null(metadata.Write);
     }
 
-    private static AttachDocumentCommandHandler Handler(
+    private static ICommandHandlerAsync<AttachDocumentCommand, AttachDocumentCommandOutput> Handler(
         StubMetadataStore metadata,
         StubAttachmentStore storage,
-        int maximumBytes = 1024) => new(
-        new AttachDocumentCommandValidator(new AttachmentOptions(
-            maximumBytes,
-            ["application/pdf", "image/png"])),
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, Now, Now)),
+        int maximumBytes = 1024) => new AttachDocumentCommandHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, Now, Now))),
         metadata,
         storage,
         new FixedTimeProvider(),
-        NullLogger<AttachDocumentCommandHandler>.Instance);
+        NullLogger<AttachDocumentCommandHandler>.Instance)
+            .Validated(new AttachDocumentCommandValidator(new AttachmentOptions(
+            maximumBytes,
+            ["application/pdf", "image/png"])));
 
     private static AttachDocumentCommand Command() => new()
     {

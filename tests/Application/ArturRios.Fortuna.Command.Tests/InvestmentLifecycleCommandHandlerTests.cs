@@ -150,8 +150,9 @@ public sealed class InvestmentLifecycleCommandHandlerTests
         var profiles = new StubProfileReader(profile);
         var store = new StubLifecycleStore { SoftDeleteResult = Success(Guid.NewGuid()) };
         var handler = new DeleteInvestmentCommandHandler(
-            new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(Now));
 
@@ -164,24 +165,21 @@ public sealed class InvestmentLifecycleCommandHandlerTests
     private static DeleteInvestmentCommandHandler DeleteHandler(
         UserProfileSnapshot? profile,
         IInvestmentLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static RestoreInvestmentCommandHandler RestoreHandler(
         UserProfileSnapshot profile,
         IInvestmentLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static HardDeleteInvestmentCommandHandler HardDeleteHandler(
         UserProfileSnapshot profile,
         IInvestmentLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store);
 
     private static StubActor Actor(UserProfileSnapshot? profile) => new(

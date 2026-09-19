@@ -2,18 +2,14 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class UpdateFinancialAccountCommandHandler(
-    IValidator<UpdateFinancialAccountCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IFinancialAccountUpdater accounts,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<UpdateFinancialAccountCommand, UpdateFinancialAccountCommandOutput>
@@ -22,18 +18,7 @@ public sealed class UpdateFinancialAccountCommandHandler(
         UpdateFinancialAccountCommand command)
     {
         var output = DataOutput<UpdateFinancialAccountCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(FinancialAccountMessages.ProfileNotFound);

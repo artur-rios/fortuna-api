@@ -23,11 +23,9 @@ public sealed class CounterpartyQueryHandlerTests
             new CounterpartySnapshot(Guid.NewGuid(), "Shop", false, Now, Now)
         ]);
         var handler = new ListCounterpartiesQueryHandler(
-            new ListCounterpartiesQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
-            new PaginationOptions(100));
+            new PaginationOptions(100)).Validated(new ListCounterpartiesQueryValidator());
 
         var result = await handler.HandleAsync(new ListCounterpartiesQuery
         {
@@ -53,10 +51,8 @@ public sealed class CounterpartyQueryHandlerTests
             "Dining",
             CounterpartyCategorySuggestionOutcome.Succeeded));
         var handler = new SuggestCounterpartyCategoryQueryHandler(
-            new SuggestCounterpartyCategoryQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
-            store);
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+            store).Validated(new SuggestCounterpartyCategoryQueryValidator());
 
         var result = await handler.HandleAsync(new SuggestCounterpartyCategoryQuery
         {
@@ -81,10 +77,8 @@ public sealed class CounterpartyQueryHandlerTests
             null,
             CounterpartyCategorySuggestionOutcome.Succeeded));
         var handler = new SuggestCounterpartyCategoryQueryHandler(
-            new SuggestCounterpartyCategoryQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
-            store);
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+            store).Validated(new SuggestCounterpartyCategoryQueryValidator());
 
         var result = await handler.HandleAsync(new SuggestCounterpartyCategoryQuery
         {
@@ -107,10 +101,8 @@ public sealed class CounterpartyQueryHandlerTests
             null,
             CounterpartyCategorySuggestionOutcome.NotFound));
         var handler = new SuggestCounterpartyCategoryQueryHandler(
-            new SuggestCounterpartyCategoryQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
-            store);
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+            store).Validated(new SuggestCounterpartyCategoryQueryValidator());
 
         var result = await handler.HandleAsync(new SuggestCounterpartyCategoryQuery
         {
@@ -126,11 +118,9 @@ public sealed class CounterpartyQueryHandlerTests
     {
         var store = new StubCounterpartyReader([]);
         var handler = new ListCounterpartiesQueryHandler(
-            new ListCounterpartiesQueryValidator(),
-            Actor(null),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
             store,
-            new PaginationOptions(100));
+            new PaginationOptions(100)).Validated(new ListCounterpartiesQueryValidator());
 
         var result = await handler.HandleAsync(new ListCounterpartiesQuery());
 

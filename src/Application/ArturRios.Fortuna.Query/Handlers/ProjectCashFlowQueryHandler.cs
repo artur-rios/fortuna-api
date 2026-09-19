@@ -5,21 +5,17 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Projections;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ProjectCashFlowQueryHandler(
-    IValidator<ProjectCashFlowQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ICashFlowProjectionReader projections,
     ICurrencyReader currencies,
     IExchangeRateReader rates,
-    IRequestActorAccessor actorAccessor,
     TimeProvider timeProvider,
     CashFlowProjectionOptions options)
     : IQueryHandlerAsync<ProjectCashFlowQuery, CashFlowProjectionOutput>
@@ -27,18 +23,12 @@ public sealed class ProjectCashFlowQueryHandler(
     public async Task<DataOutput<CashFlowProjectionOutput?>> HandleAsync(ProjectCashFlowQuery query)
     {
         var output = DataOutput<CashFlowProjectionOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(item => item.ErrorMessage));
-        }
-
         if (!Enum.IsDefined(query.Periodicity))
         {
             return output.WithError(CashFlowProjectionMessages.PeriodicityInvalid);
         }
 
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(CashFlowProjectionMessages.ProfileNotFound);
@@ -190,13 +180,6 @@ public sealed class ProjectCashFlowQueryHandler(
                 ? CashFlowProjectionMessages.RetrievedSuccessfully
                 : CashFlowProjectionMessages.PartiallyConverted);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private static IReadOnlyList<(DateOnly Start, DateOnly End)> PeriodRanges(
         DateOnly first, DateOnly through, CashFlowPeriodicity periodicity)

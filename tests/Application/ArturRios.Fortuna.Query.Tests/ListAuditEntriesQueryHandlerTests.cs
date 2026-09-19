@@ -2,11 +2,13 @@ using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -143,14 +145,12 @@ public sealed class ListAuditEntriesQueryHandlerTests
         var actorUserId = Guid.NewGuid();
         var profiles = new StubUserProfileReader(Profile(actorUserId, null));
         var handler = new ListAuditEntriesQueryHandler(
-            new ListAuditEntriesQueryValidator(),
-            profiles,
-            new StubAuditEntryReader(Entry(actorUserId, "LocalWrite")),
-            new StubRequestActorAccessor(new RequestActor(actorUserId, 3, null, [])
+            new CurrentProfileResolver(new StubRequestActorAccessor(new RequestActor(actorUserId, 3, null, [])
             {
                 IsLocal = true
-            }),
-            new PaginationOptions(100));
+            }), profiles),
+            new StubAuditEntryReader(Entry(actorUserId, "LocalWrite")),
+            new PaginationOptions(100)).Validated(new ListAuditEntriesQueryValidator());
 
         var result = await handler.HandleAsync(new ListAuditEntriesQuery());
 
@@ -193,7 +193,7 @@ public sealed class ListAuditEntriesQueryHandlerTests
         Assert.Contains(AuditEntryMessages.PeriodInvalid, result.Errors);
     }
 
-    private static ListAuditEntriesQueryHandler Handler(
+    private static IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput> Handler(
         UserProfileSnapshot? profile,
         IAuditEntryReader entries,
         int maximumPageSize = 100)
@@ -201,11 +201,11 @@ public sealed class ListAuditEntriesQueryHandlerTests
         var subject = profile?.ExternalSubject ?? Guid.NewGuid();
 
         return new ListAuditEntriesQueryHandler(
-            new ListAuditEntriesQueryValidator(),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubRequestActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             entries,
-            new StubRequestActorAccessor(new RequestActor(subject, 3, null, [])),
-            new PaginationOptions(maximumPageSize));
+            new PaginationOptions(maximumPageSize)).Validated(new ListAuditEntriesQueryValidator());
     }
 
     private static UserProfileSnapshot Profile(Guid id, Guid? externalSubject) => new(

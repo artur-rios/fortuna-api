@@ -1,12 +1,14 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -95,19 +97,20 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
         Assert.Equal(0, parser.ValidationCount);
     }
 
-    private static ImportExcelWorkbookCommandHandler Handler(
+    private static ICommandHandlerAsync<ImportExcelWorkbookCommand, ImportExcelWorkbookCommandOutput> Handler(
         StubStore store,
         StubQueue queue,
         StubParser parser,
-        int maximumBytes = 1024) => new(
-        new ImportExcelWorkbookCommandValidator(new ExcelImportOptions(maximumBytes)),
-        new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(new UserProfileSnapshot(
-            Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now)),
+        int maximumBytes = 1024) => new ImportExcelWorkbookCommandHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(new UserProfileSnapshot(
+                Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now))),
         parser,
         store,
         queue,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now))
+            .Validated(new ImportExcelWorkbookCommandValidator(new ExcelImportOptions(maximumBytes)));
 
     private static ImportExcelWorkbookCommand Command() => new()
     {

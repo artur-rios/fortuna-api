@@ -2,18 +2,14 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class CreateCounterpartyCommandHandler(
-    IValidator<CreateCounterpartyCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ICounterpartyStore counterparties,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<CreateCounterpartyCommand, CounterpartyCommandOutput>
@@ -21,14 +17,7 @@ public sealed class CreateCounterpartyCommandHandler(
     public async Task<DataOutput<CounterpartyCommandOutput?>> HandleAsync(
         CreateCounterpartyCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<CounterpartyCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await CounterpartyHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<CounterpartyCommandOutput?>.New.WithError(
@@ -50,9 +39,7 @@ public sealed class CreateCounterpartyCommandHandler(
 }
 
 public sealed class UpdateCounterpartyCommandHandler(
-    IValidator<UpdateCounterpartyCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ICounterpartyUpdater counterparties,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<UpdateCounterpartyCommand, CounterpartyCommandOutput>
@@ -60,14 +47,7 @@ public sealed class UpdateCounterpartyCommandHandler(
     public async Task<DataOutput<CounterpartyCommandOutput?>> HandleAsync(
         UpdateCounterpartyCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<CounterpartyCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await CounterpartyHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<CounterpartyCommandOutput?>.New.WithError(
@@ -90,8 +70,7 @@ public sealed class UpdateCounterpartyCommandHandler(
 }
 
 public sealed class DeleteCounterpartyCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ICounterpartyLifecycleStore counterparties,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteCounterpartyCommand, CounterpartyCommandOutput>
@@ -99,7 +78,7 @@ public sealed class DeleteCounterpartyCommandHandler(
     public async Task<DataOutput<CounterpartyCommandOutput?>> HandleAsync(
         DeleteCounterpartyCommand command)
     {
-        var profile = await CounterpartyHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<CounterpartyCommandOutput?>.New.WithError(
@@ -120,9 +99,7 @@ public sealed class DeleteCounterpartyCommandHandler(
 }
 
 public sealed class MergeCounterpartiesCommandHandler(
-    IValidator<MergeCounterpartiesCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ICounterpartyMerger counterparties,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<MergeCounterpartiesCommand, CounterpartyMergeCommandOutput>
@@ -131,13 +108,7 @@ public sealed class MergeCounterpartiesCommandHandler(
         MergeCounterpartiesCommand command)
     {
         var output = DataOutput<CounterpartyMergeCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await CounterpartyHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(CounterpartyMessages.ProfileNotFound);
@@ -172,14 +143,6 @@ public sealed class MergeCounterpartiesCommandHandler(
 
 internal static class CounterpartyHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static DataOutput<CounterpartyCommandOutput?> Resolve(
         CounterpartySnapshot? counterparty,
         CounterpartyMutationOutcome outcome,

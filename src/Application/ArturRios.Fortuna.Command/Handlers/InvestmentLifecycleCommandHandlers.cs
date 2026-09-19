@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -10,8 +9,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DeleteInvestmentCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IInvestmentLifecycleStore investments,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteInvestmentCommand, InvestmentLifecycleCommandOutput>
@@ -19,9 +17,7 @@ public sealed class DeleteInvestmentCommandHandler(
     public async Task<DataOutput<InvestmentLifecycleCommandOutput?>> HandleAsync(
         DeleteInvestmentCommand command)
     {
-        var profile = await InvestmentLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return InvestmentLifecycleHandler.ProfileNotFound();
@@ -38,8 +34,7 @@ public sealed class DeleteInvestmentCommandHandler(
 }
 
 public sealed class RestoreInvestmentCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IInvestmentLifecycleStore investments,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<RestoreInvestmentCommand, InvestmentLifecycleCommandOutput>
@@ -47,9 +42,7 @@ public sealed class RestoreInvestmentCommandHandler(
     public async Task<DataOutput<InvestmentLifecycleCommandOutput?>> HandleAsync(
         RestoreInvestmentCommand command)
     {
-        var profile = await InvestmentLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return InvestmentLifecycleHandler.ProfileNotFound();
@@ -66,17 +59,14 @@ public sealed class RestoreInvestmentCommandHandler(
 }
 
 public sealed class HardDeleteInvestmentCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IInvestmentLifecycleStore investments)
     : ICommandHandlerAsync<HardDeleteInvestmentCommand, InvestmentLifecycleCommandOutput>
 {
     public async Task<DataOutput<InvestmentLifecycleCommandOutput?>> HandleAsync(
         HardDeleteInvestmentCommand command)
     {
-        var profile = await InvestmentLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return InvestmentLifecycleHandler.ProfileNotFound();
@@ -95,14 +85,6 @@ public sealed class HardDeleteInvestmentCommandHandler(
 
 internal static class InvestmentLifecycleHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static DataOutput<InvestmentLifecycleCommandOutput?> ProfileNotFound() =>
         DataOutput<InvestmentLifecycleCommandOutput?>.New
             .WithError(InvestmentMessages.ProfileNotFound);

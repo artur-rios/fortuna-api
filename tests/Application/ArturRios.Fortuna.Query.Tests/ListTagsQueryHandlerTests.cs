@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -96,19 +98,17 @@ public sealed class ListTagsQueryHandlerTests
         Assert.Null(store.UserId);
     }
 
-    private static ListTagsQueryHandler Handler(
+    private static IQueryHandlerAsync<ListTagsQuery, TagListOutput> Handler(
         UserProfileSnapshot? profile,
         ITagReader store,
-        int maximumPageSize = 100) => new(
-        new ListTagsQueryValidator(),
-        new StubActorAccessor(new RequestActor(
+        int maximumPageSize = 100) => new ListTagsQueryHandler(
+        new CurrentProfileResolver(new StubActorAccessor(new RequestActor(
             profile?.ExternalSubject ?? Guid.NewGuid(),
             3,
             null,
-            [])),
-        new StubProfileReader(profile),
+            [])), new StubProfileReader(profile)),
         store,
-        new PaginationOptions(maximumPageSize));
+        new PaginationOptions(maximumPageSize)).Validated(new ListTagsQueryValidator());
 
     private static UserProfileSnapshot Profile() => new(
         Guid.NewGuid(),

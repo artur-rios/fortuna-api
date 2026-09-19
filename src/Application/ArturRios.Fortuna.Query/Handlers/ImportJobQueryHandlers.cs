@@ -4,33 +4,22 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetImportJobByIdQueryHandler(
-    IValidator<GetImportJobByIdQuery> validator,
-    IUserProfileReader profiles,
-    IImportJobReader jobs,
-    IRequestActorAccessor actorAccessor)
+    ICurrentProfileResolver profileResolver,
+    IImportJobReader jobs)
     : IQueryHandlerAsync<GetImportJobByIdQuery, ImportJobOutput>
 {
     public async Task<DataOutput<ImportJobOutput?>> HandleAsync(GetImportJobByIdQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<ImportJobOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<ImportJobOutput?>.New;
-        var profile = await ImportJobActor.ResolveAsync(profiles, actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(ImportJobMessages.ProfileNotFound);
@@ -46,23 +35,14 @@ public sealed class GetImportJobByIdQueryHandler(
 }
 
 public sealed class ListImportJobsQueryHandler(
-    IValidator<ListImportJobsQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IImportJobReader jobs,
-    IRequestActorAccessor actorAccessor,
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListImportJobsQuery, ImportJobOutput>
 {
     public async Task<PaginatedOutput<ImportJobOutput>> HandleAsync(ListImportJobsQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return PaginatedOutput<ImportJobOutput>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await ImportJobActor.ResolveAsync(profiles, actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return PaginatedOutput<ImportJobOutput>.New.WithError(
@@ -104,24 +84,15 @@ public sealed class ListImportJobsQueryHandler(
 }
 
 public sealed class ListImportedRecordsQueryHandler(
-    IValidator<ListImportedRecordsQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IImportJobReader jobs,
-    IRequestActorAccessor actorAccessor,
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListImportedRecordsQuery, ImportedRecordOutput>
 {
     public async Task<PaginatedOutput<ImportedRecordOutput>> HandleAsync(
         ListImportedRecordsQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return PaginatedOutput<ImportedRecordOutput>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await ImportJobActor.ResolveAsync(profiles, actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return PaginatedOutput<ImportedRecordOutput>.New.WithError(
@@ -203,13 +174,3 @@ internal static class ImportJobProjection
     };
 }
 
-internal static class ImportJobActor
-{
-    public static Task<UserProfileSnapshot?> ResolveAsync(
-        IUserProfileReader profiles,
-        RequestActor? actor) => actor?.IsLocal == true
-        ? profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? Task.FromResult<UserProfileSnapshot?>(null)
-            : profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-}

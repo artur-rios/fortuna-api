@@ -3,12 +3,14 @@ using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -341,40 +343,34 @@ public sealed class InvestmentQueryHandlerTests
         Assert.Empty(result.Data!);
     }
 
-    private static GetInvestmentByIdQueryHandler DetailHandler(
+    private static IQueryHandlerAsync<GetInvestmentByIdQuery, InvestmentOutput> DetailHandler(
         UserProfileSnapshot? profile,
         IInvestmentReader investments,
-        ExchangeRateSnapshot? rate = null) => new(
-        new GetInvestmentByIdQueryValidator(),
-        new StubProfileReader(profile),
+        ExchangeRateSnapshot? rate = null) => new GetInvestmentByIdQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         investments,
         new StubCurrencyReader(),
         new StubRateReader(rate),
-        Actor(profile),
-        TimeProvider.System);
+        TimeProvider.System).Validated(new GetInvestmentByIdQueryValidator());
 
-    private static ListInvestmentsQueryHandler ListHandler(
+    private static IPaginatedQueryHandlerAsync<ListInvestmentsQuery, InvestmentOutput> ListHandler(
         UserProfileSnapshot? profile,
         IInvestmentReader investments,
         int maximumPageSize = 100,
-        StubRateReader? rates = null) => new(
-        new ListInvestmentsQueryValidator(),
-        new StubProfileReader(profile),
+        StubRateReader? rates = null) => new ListInvestmentsQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         investments,
         new StubCurrencyReader(),
         rates ?? new StubRateReader(null),
-        Actor(profile),
         new PaginationOptions(maximumPageSize),
-        TimeProvider.System);
+        TimeProvider.System).Validated(new ListInvestmentsQueryValidator());
 
-    private static ListInvestmentValuationsQueryHandler HistoryHandler(
+    private static IPaginatedQueryHandlerAsync<ListInvestmentValuationsQuery, InvestmentValuationOutput> HistoryHandler(
         UserProfileSnapshot? profile,
-        IInvestmentReader investments) => new(
-        new ListInvestmentValuationsQueryValidator(),
-        new StubProfileReader(profile),
+        IInvestmentReader investments) => new ListInvestmentValuationsQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         investments,
-        Actor(profile),
-        new PaginationOptions(100));
+        new PaginationOptions(100)).Validated(new ListInvestmentValuationsQueryValidator());
 
     private static StubActor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));

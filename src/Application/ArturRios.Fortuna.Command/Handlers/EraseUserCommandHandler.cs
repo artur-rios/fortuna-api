@@ -6,34 +6,25 @@ using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class EraseUserCommandHandler(
-    IValidator<EraseUserCommand> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IUserErasureStore erasure,
+    IProvisionedProfileCache provisionedProfiles,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<EraseUserCommand, EraseUserCommandOutput>
 {
     public async Task<DataOutput<EraseUserCommandOutput?>> HandleAsync(EraseUserCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<EraseUserCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var actor = actorAccessor.Actor;
         UserProfileSnapshot? target = null;
         if (command.IsSelfService && actor?.RoleId == (int)HeimdallRoles.User)
         {
-            target = actor.IsLocal
-                ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+            target = await profileResolver.ResolveAsync();
         }
         else if (!command.IsSelfService &&
                  actor?.RoleId == (int)HeimdallRoles.SystemAdmin &&
@@ -56,6 +47,11 @@ public sealed class EraseUserCommandHandler(
         {
             return DataOutput<EraseUserCommandOutput?>.New.WithError(
                 UserErasureMessages.UserNotFound);
+        }
+
+        if (target.ExternalSubject is { } externalSubject)
+        {
+            provisionedProfiles.Forget(externalSubject);
         }
 
         return DataOutput<EraseUserCommandOutput?>.New

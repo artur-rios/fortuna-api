@@ -4,10 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,12 +12,10 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/goals")]
-public sealed class GoalsController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+public sealed class GoalsController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [GoalMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [GoalMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
@@ -32,7 +27,6 @@ public sealed class GoalsController(
             [GoalMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [GoalMessages.NotFound] = StatusCodes.Status404NotFound,
             [GoalMessages.ResourceNotFound] = StatusCodes.Status404NotFound,
-            [GoalMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [GoalMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest,
             [GoalMessages.NameRequired] = StatusCodes.Status400BadRequest,
             [GoalMessages.NameTooLong] = StatusCodes.Status400BadRequest,
@@ -43,18 +37,18 @@ public sealed class GoalsController(
             [GoalMessages.TargetDateMustBeFuture] = StatusCodes.Status400BadRequest,
             [GoalMessages.ResourcesRequired] = StatusCodes.Status400BadRequest,
             [GoalMessages.ResourceIdInvalid] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<GoalCommandOutput?>>> Create(
         [FromBody] CreateGoalCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             CreateGoalCommand,
             GoalCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet]
@@ -64,15 +58,13 @@ public sealed class GoalsController(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 100)
     {
-        var result = await queryMediator.ExecuteQueryAsync<ListGoalsQuery, GoalListOutput>(
+        return await QueryAsync<ListGoalsQuery, GoalListOutput>(
             new ListGoalsQuery
             {
                 IncludeDeleted = includeDeleted,
                 PageNumber = pageNumber,
                 PageSize = pageSize
             });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}")]
@@ -81,10 +73,8 @@ public sealed class GoalsController(
         Guid id,
         [FromQuery] bool includeDeleted = false)
     {
-        var result = await queryMediator.ExecuteQueryAsync<GetGoalByIdQuery, GoalOutput>(
+        return await QueryAsync<GetGoalByIdQuery, GoalOutput>(
             new GetGoalByIdQuery { Id = id, IncludeDeleted = includeDeleted });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPut("{id:guid}")]
@@ -94,32 +84,27 @@ public sealed class GoalsController(
         [FromBody] UpdateGoalCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             UpdateGoalCommand,
             GoalCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}/progress")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<GoalProgressDetailOutput?>>> GetProgress(Guid id)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetGoalProgressQuery,
             GoalProgressDetailOutput>(new GetGoalProgressQuery { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<GoalCommandOutput?>>> Delete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DeleteGoalCommand,
             GoalCommandOutput>(new DeleteGoalCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

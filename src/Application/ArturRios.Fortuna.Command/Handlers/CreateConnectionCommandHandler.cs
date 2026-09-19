@@ -5,18 +5,14 @@ using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class CreateConnectionCommandHandler(
-    IValidator<CreateConnectionCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IConnectionStore connections,
     IPluggyConnectionGateway pluggy,
     IConnectionAccessTokenProtector protector,
@@ -28,14 +24,7 @@ public sealed class CreateConnectionCommandHandler(
     public async Task<DataOutput<CreateConnectionCommandOutput?>> HandleAsync(
         CreateConnectionCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<CreateConnectionCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<CreateConnectionCommandOutput?>.New.WithError(
@@ -81,13 +70,6 @@ public sealed class CreateConnectionCommandHandler(
 
         return Result(result.Connection!, verified.Institution!, result.Outcome);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private static DataOutput<CreateConnectionCommandOutput?> Failure(
         PluggyConnectionValidationOutcome outcome)

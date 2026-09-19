@@ -4,11 +4,13 @@ using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -247,14 +249,12 @@ public sealed class FinancialAccountQueryHandlerTests
         var profile = Profile(user, externalSubject: null);
         var profiles = new StubUserProfileReader(profile);
         var handler = new ListFinancialAccountsQueryHandler(
-            new ListFinancialAccountsQueryValidator(),
-            profiles,
-            new StubFinancialAccountReader(Account(user, "Local")),
-            new StubRequestActorAccessor(new RequestActor(profile.Id, 3, null, [])
+            new CurrentProfileResolver(new StubRequestActorAccessor(new RequestActor(profile.Id, 3, null, [])
             {
                 IsLocal = true
-            }),
-            new PaginationOptions(100));
+            }), profiles),
+            new StubFinancialAccountReader(Account(user, "Local")),
+            new PaginationOptions(100)).Validated(new ListFinancialAccountsQueryValidator());
 
         var result = await handler.HandleAsync(new ListFinancialAccountsQuery());
 
@@ -275,23 +275,19 @@ public sealed class FinancialAccountQueryHandlerTests
         Assert.Contains(FinancialAccountMessages.ProfileNotFound, list.Errors);
     }
 
-    private static GetFinancialAccountByIdQueryHandler GetHandler(
+    private static IQueryHandlerAsync<GetFinancialAccountByIdQuery, FinancialAccountOutput> GetHandler(
         UserProfileSnapshot? profile,
-        IFinancialAccountReader accounts) => new(
-        new GetFinancialAccountByIdQueryValidator(),
-        new StubUserProfileReader(profile),
-        accounts,
-        Actor(profile));
+        IFinancialAccountReader accounts) => new GetFinancialAccountByIdQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
+        accounts).Validated(new GetFinancialAccountByIdQueryValidator());
 
-    private static ListFinancialAccountsQueryHandler ListHandler(
+    private static IPaginatedQueryHandlerAsync<ListFinancialAccountsQuery, FinancialAccountOutput> ListHandler(
         UserProfileSnapshot? profile,
         IFinancialAccountReader accounts,
-        int maximumPageSize = 100) => new(
-        new ListFinancialAccountsQueryValidator(),
-        new StubUserProfileReader(profile),
+        int maximumPageSize = 100) => new ListFinancialAccountsQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         accounts,
-        Actor(profile),
-        new PaginationOptions(maximumPageSize));
+        new PaginationOptions(maximumPageSize)).Validated(new ListFinancialAccountsQueryValidator());
 
     private static StubRequestActorAccessor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));

@@ -2,31 +2,20 @@ using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Planning;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class CreateGoalCommandHandler(
-    IValidator<CreateGoalCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IGoalStore goals,
     TimeProvider timeProvider) : ICommandHandlerAsync<CreateGoalCommand, GoalCommandOutput>
 {
     public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(CreateGoalCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(item => item.ErrorMessage));
-        }
-
-        var profile = await GoalHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<GoalCommandOutput?>.New.WithError(GoalMessages.ProfileNotFound);
@@ -47,22 +36,13 @@ public sealed class CreateGoalCommandHandler(
 }
 
 public sealed class UpdateGoalCommandHandler(
-    IValidator<UpdateGoalCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IGoalUpdater goals,
     TimeProvider timeProvider) : ICommandHandlerAsync<UpdateGoalCommand, GoalCommandOutput>
 {
     public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(UpdateGoalCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(item => item.ErrorMessage));
-        }
-
-        var profile = await GoalHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<GoalCommandOutput?>.New.WithError(GoalMessages.ProfileNotFound);
@@ -84,15 +64,14 @@ public sealed class UpdateGoalCommandHandler(
 }
 
 public sealed class DeleteGoalCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IGoalLifecycleStore goals,
     TimeProvider timeProvider) : ICommandHandlerAsync<DeleteGoalCommand, GoalCommandOutput>
 {
     public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(DeleteGoalCommand command)
     {
         var now = timeProvider.GetUtcNow();
-        var profile = await GoalHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<GoalCommandOutput?>.New.WithError(GoalMessages.ProfileNotFound);
@@ -111,14 +90,6 @@ public sealed class DeleteGoalCommandHandler(
 
 internal static class GoalHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static DataOutput<GoalCommandOutput?> Resolve(
         GoalMutationResult result,
         string message)

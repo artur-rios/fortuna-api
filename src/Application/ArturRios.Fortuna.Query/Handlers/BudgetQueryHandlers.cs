@@ -3,32 +3,21 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListBudgetsQueryHandler(
-    IValidator<ListBudgetsQuery> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IBudgetReader budgets,
     TimeProvider timeProvider,
     PaginationOptions paginationOptions) : IQueryHandlerAsync<ListBudgetsQuery, BudgetListOutput>
 {
     public async Task<DataOutput<BudgetListOutput?>> HandleAsync(ListBudgetsQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetListOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var profile = await BudgetQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<BudgetListOutput?>.New.WithError(BudgetMessages.ProfileNotFound);
@@ -57,23 +46,14 @@ public sealed class ListBudgetsQueryHandler(
 }
 
 public sealed class GetBudgetByIdQueryHandler(
-    IValidator<GetBudgetByIdQuery> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IBudgetReader budgets,
     TimeProvider timeProvider) : IQueryHandlerAsync<GetBudgetByIdQuery, BudgetOutput>
 {
     public async Task<DataOutput<BudgetOutput?>> HandleAsync(GetBudgetByIdQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<BudgetOutput?>.New;
-        var profile = await BudgetQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(BudgetMessages.ProfileNotFound);
@@ -95,9 +75,7 @@ public sealed class GetBudgetByIdQueryHandler(
 }
 
 public sealed class GetBudgetConsumptionQueryHandler(
-    IValidator<GetBudgetConsumptionQuery> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IBudgetConsumptionReader budgets,
     TimeProvider timeProvider)
     : IQueryHandlerAsync<GetBudgetConsumptionQuery, BudgetConsumptionDetailOutput>
@@ -105,17 +83,8 @@ public sealed class GetBudgetConsumptionQueryHandler(
     public async Task<DataOutput<BudgetConsumptionDetailOutput?>> HandleAsync(
         GetBudgetConsumptionQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetConsumptionDetailOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<BudgetConsumptionDetailOutput?>.New;
-        var profile = await BudgetQueryHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(BudgetMessages.ProfileNotFound);
@@ -152,14 +121,6 @@ public sealed class GetBudgetConsumptionQueryHandler(
 
 internal static class BudgetQueryHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static BudgetOutput ToOutput(BudgetSnapshot budget) => new()
     {
         Id = budget.Id,

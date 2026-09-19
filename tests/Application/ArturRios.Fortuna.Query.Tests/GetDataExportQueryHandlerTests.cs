@@ -2,11 +2,13 @@ using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -156,17 +158,17 @@ public sealed class GetDataExportQueryHandlerTests
         Assert.Contains(DataExportMessages.FileNotFound, result.Errors);
     }
 
-    private static GetDataExportQueryHandler Handler(
+    private static IQueryHandlerAsync<GetDataExportQuery, RetrieveDataExportQueryOutput> Handler(
         Mock<IDataExportReader> reader,
-        Mock<IAttachmentStore> storage) => new(
-        new GetDataExportQueryValidator(),
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, Now, Now)),
+        Mock<IAttachmentStore> storage) => new GetDataExportQueryHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, Now, Now))),
         reader.Object,
         storage.Object,
         new FixedTimeProvider(),
-        NullLogger<GetDataExportQueryHandler>.Instance);
+        NullLogger<GetDataExportQueryHandler>.Instance).Validated(new GetDataExportQueryValidator());
 
     private static Mock<IDataExportReader> Reader(DataExportReadSnapshot? snapshot)
     {

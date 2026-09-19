@@ -2,34 +2,23 @@ using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetFinancialAccountBalanceQueryHandler(
-    IValidator<GetFinancialAccountBalanceQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IFinancialAccountReader accounts,
-    IRequestActorAccessor actorAccessor,
     TimeProvider timeProvider)
     : IQueryHandlerAsync<GetFinancialAccountBalanceQuery, FinancialAccountBalanceOutput>
 {
     public async Task<DataOutput<FinancialAccountBalanceOutput?>> HandleAsync(
         GetFinancialAccountBalanceQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<FinancialAccountBalanceOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<FinancialAccountBalanceOutput?>.New;
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(FinancialAccountMessages.ProfileNotFound);
@@ -56,11 +45,4 @@ public sealed class GetFinancialAccountBalanceQueryHandler(
             })
             .WithMessage(FinancialAccountMessages.BalanceRetrievedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 }

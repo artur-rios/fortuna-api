@@ -4,10 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
@@ -16,19 +13,16 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/connections")]
-public sealed class ConnectionsController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+public sealed class ConnectionsController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [ConnectionMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [ConnectionMessages.Duplicate] = StatusCodes.Status409Conflict,
             [ConnectionMessages.InvalidReference] = StatusCodes.Status400BadRequest,
             [ConnectionMessages.SourceUnavailable] = StatusCodes.Status503ServiceUnavailable,
             [ConnectionMessages.SourceNotAvailable] = StatusCodes.Status503ServiceUnavailable,
-            [ConnectionMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [ConnectionMessages.DataSourceRequired] = StatusCodes.Status400BadRequest,
             [ConnectionMessages.DataSourceInvalid] = StatusCodes.Status400BadRequest,
             [ConnectionMessages.ExternalReferenceRequired] = StatusCodes.Status400BadRequest,
@@ -42,21 +36,19 @@ public sealed class ConnectionsController(
             [ConnectionMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [ConnectionMessages.SortByUnsupported] = StatusCodes.Status400BadRequest,
             [ConnectionMessages.DataSourceTypeInvalid] = StatusCodes.Status400BadRequest,
-            [ConnectionMessages.StatusInvalid] = StatusCodes.Status400BadRequest,
-            [ProcessingConsentMessages.ExternalDataProcessingRequired] =
-                StatusCodes.Status403Forbidden
-        };
+            [ConnectionMessages.StatusInvalid] = StatusCodes.Status400BadRequest
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CreateConnectionCommandOutput?>>> Create(
         [FromBody] CreateConnectionCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             CreateConnectionCommand,
             CreateConnectionCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/reauthenticate")]
@@ -66,33 +58,28 @@ public sealed class ConnectionsController(
         [FromBody] ReauthenticateConnectionCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             ReauthenticateConnectionCommand,
             ReauthenticateConnectionCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/revoke")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<RevokeConnectionCommandOutput?>>> Revoke(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RevokeConnectionCommand,
             RevokeConnectionCommandOutput>(new RevokeConnectionCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<ConnectionOutput?>>> GetById(Guid id)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetConnectionByIdQuery,
             ConnectionOutput>(new GetConnectionByIdQuery { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet]
@@ -101,10 +88,8 @@ public sealed class ConnectionsController(
     public async Task<ActionResult<PaginatedOutput<ConnectionOutput>>> List(
         [FromQuery] ListConnectionsQuery query)
     {
-        var result = await queryMediator.ExecutePaginatedQueryAsync<
+        return await QueryPageAsync<
             ListConnectionsQuery,
             ConnectionOutput>(query);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

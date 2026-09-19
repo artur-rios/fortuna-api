@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -134,11 +136,11 @@ public sealed class UpdateFinancialAccountCommandHandlerTests
             Snapshot(update.Id, userId, update.Name, update.Institution, update.AccountType),
             false));
         var handler = new UpdateFinancialAccountCommandHandler(
-            new UpdateFinancialAccountCommandValidator(),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
-            new FixedTimeProvider(UpdatedAt));
+            new FixedTimeProvider(UpdatedAt)).Validated(new UpdateFinancialAccountCommandValidator());
 
         var result = await handler.HandleAsync(ValidCommand());
 
@@ -146,15 +148,15 @@ public sealed class UpdateFinancialAccountCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static UpdateFinancialAccountCommandHandler Handler(
+    private static ICommandHandlerAsync<UpdateFinancialAccountCommand, UpdateFinancialAccountCommandOutput> Handler(
         Guid subject,
         UserProfileSnapshot? profile,
-        IFinancialAccountUpdater store) => new(
-        new UpdateFinancialAccountCommandValidator(),
-        new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-        new StubUserProfileReader(profile),
+        IFinancialAccountUpdater store) => new UpdateFinancialAccountCommandHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+            new StubUserProfileReader(profile)),
         store,
-        new FixedTimeProvider(UpdatedAt));
+        new FixedTimeProvider(UpdatedAt)).Validated(new UpdateFinancialAccountCommandValidator());
 
     private static UpdateFinancialAccountCommand ValidCommand() => new()
     {

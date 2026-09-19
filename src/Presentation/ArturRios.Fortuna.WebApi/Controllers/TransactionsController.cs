@@ -6,10 +6,7 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Filters;
 using ArturRios.Fortuna.WebApi.Requests;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,12 +15,10 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 [ApiController]
 [Route("api/transactions")]
 public sealed class TransactionsController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator,
-    UploadLimits uploadLimits) : Controller
+    UploadLimits uploadLimits) : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [TransactionMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [TransactionMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
@@ -32,12 +27,10 @@ public sealed class TransactionsController(
             [TransactionMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [TransactionMessages.RestoredSuccessfully] = StatusCodes.Status200OK,
             [TransactionMessages.HardDeletedSuccessfully] = StatusCodes.Status200OK,
-            [TransactionMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.FinancialAccountNotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.CreditCardNotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.CategoryNotFound] = StatusCodes.Status404NotFound,
             [TransactionMessages.CurrencyNotSupported] = StatusCodes.Status400BadRequest,
-            [TransactionMessages.ExchangeRateUnavailable] = StatusCodes.Status409Conflict,
             [TransactionMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest,
             [TransactionMessages.AmountPositive] = StatusCodes.Status400BadRequest,
             [TransactionMessages.AmountPrecisionInvalid] = StatusCodes.Status400BadRequest,
@@ -84,23 +77,22 @@ public sealed class TransactionsController(
             [AttachmentMessages.ListedSuccessfully] = StatusCodes.Status200OK,
             [AttachmentMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
             [AttachmentMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
-            [AttachmentMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [AttachmentMessages.TransactionNotFound] = StatusCodes.Status404NotFound,
             [AttachmentMessages.FileRequired] = StatusCodes.Status400BadRequest,
             [AttachmentMessages.FileNameRequired] = StatusCodes.Status400BadRequest,
             [AttachmentMessages.FileNameTooLong] = StatusCodes.Status400BadRequest,
-            [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable,
             [AttachmentMessages.PersistenceFailed] = StatusCodes.Status500InternalServerError,
             [TagMessages.AttachedSuccessfully] = StatusCodes.Status200OK,
             [TagMessages.AlreadyAttached] = StatusCodes.Status200OK,
             [TagMessages.DetachedSuccessfully] = StatusCodes.Status200OK,
             [TagMessages.AlreadyDetached] = StatusCodes.Status200OK,
             [TagMessages.AssignmentNotFound] = StatusCodes.Status404NotFound,
-            [TagMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [TagMessages.TransactionIdInvalid] = StatusCodes.Status400BadRequest,
             [TagMessages.TagIdInvalid] = StatusCodes.Status400BadRequest,
             [TagMessages.MaximumExceeded] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpGet]
     [AllowedQuery(
@@ -111,11 +103,9 @@ public sealed class TransactionsController(
     public async Task<ActionResult<DataOutput<TransactionSearchOutput?>>> Search(
         [FromQuery] SearchTransactionsQuery query)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             SearchTransactionsQuery,
             TransactionSearchOutput>(query);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}")]
@@ -124,15 +114,13 @@ public sealed class TransactionsController(
         Guid id,
         [FromQuery] bool includeDeleted = false)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             GetTransactionByIdQuery,
             TransactionOutput>(new GetTransactionByIdQuery
             {
                 Id = id,
                 IncludeDeleted = includeDeleted
             });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost]
@@ -140,11 +128,9 @@ public sealed class TransactionsController(
     public async Task<ActionResult<DataOutput<RecordTransactionCommandOutput?>>> Record(
         [FromBody] RecordTransactionCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RecordTransactionCommand,
             RecordTransactionCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}/attachments")]
@@ -161,11 +147,10 @@ public sealed class TransactionsController(
             PageNumber = request.PageNumber,
             PageSize = request.PageSize
         };
-        var result = await queryMediator.ExecutePaginatedQueryAsync<
+
+        return await QueryPageAsync<
             ListTransactionAttachmentsQuery,
             AttachmentOutput>(query);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/attachments")]
@@ -193,11 +178,10 @@ public sealed class TransactionsController(
             ContentType = file.ContentType,
             Content = file.Content
         };
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             AttachDocumentCommand,
             AttachDocumentCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPut("{id:guid}")]
@@ -207,11 +191,10 @@ public sealed class TransactionsController(
         [FromBody] UpdateTransactionCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             UpdateTransactionCommand,
             UpdateTransactionCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/tags/{tagId:guid}")]
@@ -220,15 +203,13 @@ public sealed class TransactionsController(
         Guid id,
         Guid tagId)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             AttachTransactionTagCommand,
             TransactionTagCommandOutput>(new AttachTransactionTagCommand
             {
                 Id = id,
                 TagId = tagId
             });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}/tags/{tagId:guid}")]
@@ -237,15 +218,13 @@ public sealed class TransactionsController(
         Guid id,
         Guid tagId)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DetachTransactionTagCommand,
             TransactionTagCommandOutput>(new DetachTransactionTagCommand
             {
                 Id = id,
                 TagId = tagId
             });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/reconcile")]
@@ -255,33 +234,28 @@ public sealed class TransactionsController(
         [FromBody] ReconcileTransactionCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             ReconcileTransactionCommand,
             ReconcileTransactionCommandOutput>(command);
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TransactionLifecycleCommandOutput?>>> Delete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DeleteTransactionCommand,
             TransactionLifecycleCommandOutput>(new DeleteTransactionCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/restore")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TransactionLifecycleCommandOutput?>>> Restore(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RestoreTransactionCommand,
             TransactionLifecycleCommandOutput>(new RestoreTransactionCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}/hard")]
@@ -289,11 +263,9 @@ public sealed class TransactionsController(
     public async Task<ActionResult<DataOutput<TransactionLifecycleCommandOutput?>>> HardDelete(
         Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             HardDeleteTransactionCommand,
             TransactionLifecycleCommandOutput>(new HardDeleteTransactionCommand { Id = id });
-
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }
 

@@ -3,20 +3,16 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListCreditCardStatementsQueryHandler(
-    IValidator<ListCreditCardStatementsQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ICreditCardReader cards,
     ICreditCardStatementReader statements,
-    IRequestActorAccessor actorAccessor,
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListCreditCardStatementsQuery, CreditCardStatementOutput>
 {
@@ -24,13 +20,7 @@ public sealed class ListCreditCardStatementsQueryHandler(
         ListCreditCardStatementsQuery query)
     {
         var output = PaginatedOutput<CreditCardStatementOutput>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(CreditCardStatementMessages.ProfileNotFound);
@@ -78,13 +68,6 @@ public sealed class ListCreditCardStatementsQueryHandler(
 
         return page.WithMessage(CreditCardStatementMessages.ListedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private static IOrderedQueryable<CreditCardStatementReadSnapshot> Order(
         IQueryable<CreditCardStatementReadSnapshot> statements,

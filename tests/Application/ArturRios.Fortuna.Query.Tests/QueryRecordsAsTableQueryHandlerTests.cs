@@ -2,12 +2,14 @@ using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -226,7 +228,7 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
         Assert.Contains(TableReportMessages.ReadFailed, result.Errors);
     }
 
-    private static QueryRecordsAsTableQueryHandler Handler(
+    private static IQueryHandlerAsync<QueryRecordsAsTableQuery, TableReportOutput> Handler(
         StubTableReader? reader = null,
         bool missingProfile = false,
         StubProfileReader? profiles = null,
@@ -238,18 +240,19 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
         var resolvedProfile = missingProfile ? null : Profile();
 
         return new QueryRecordsAsTableQueryHandler(
-            new QueryRecordsAsTableQueryValidator(),
-            profiles ?? new StubProfileReader(resolvedProfile),
+            new CurrentProfileResolver(
+                new StubActor(actor ?? new RequestActor(
+                    resolvedProfile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+                profiles ?? new StubProfileReader(resolvedProfile)),
             reader ?? new StubTableReader(new TableReportReadResult(
                 TableReportReadOutcome.Succeeded,
                 Report([]))),
             new StubCurrencyReader(),
             rates ?? new StubRateReader(rate),
-            new StubActor(actor ?? new RequestActor(
-                resolvedProfile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
             new PaginationOptions(maximumPageSize),
             new FixedTimeProvider(new DateTimeOffset(
-                Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))));
+                Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))))
+                    .Validated(new QueryRecordsAsTableQueryValidator());
     }
 
     private static QueryRecordsAsTableQuery Query() => new()

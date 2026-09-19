@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Ingestion;
@@ -8,6 +9,7 @@ using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -99,16 +101,16 @@ public sealed class SynchronizeConnectionCommandHandlerTests
         Assert.Equal(0, store.CallCount);
     }
 
-    private static SynchronizeConnectionCommandHandler Handler(
+    private static ICommandHandlerAsync<SynchronizeConnectionCommand, SynchronizeConnectionCommandOutput> Handler(
         StubStore store,
-        StubQueue queue) => new(
-        new SynchronizeConnectionCommandValidator(),
-        new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(new UserProfileSnapshot(
-            Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now)),
+        StubQueue queue) => new SynchronizeConnectionCommandHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(new UserProfileSnapshot(
+                Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now))),
         store,
         queue,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new SynchronizeConnectionCommandValidator());
 
     private sealed class StubStore(QueueSynchronizationOutcome outcome)
         : IPluggySynchronizationStore

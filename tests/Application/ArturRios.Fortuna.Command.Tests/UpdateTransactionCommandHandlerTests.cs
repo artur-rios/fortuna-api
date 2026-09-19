@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -95,11 +97,11 @@ public sealed class UpdateTransactionCommandHandlerTests
             Snapshot(ValidCommand()),
             TransactionUpdateOutcome.Succeeded));
         var handler = new UpdateTransactionCommandHandler(
-            new UpdateTransactionCommandValidator(new FixedTimeProvider(Now)),
-            new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             updater,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new UpdateTransactionCommandValidator(new FixedTimeProvider(Now)));
 
         var result = await handler.HandleAsync(ValidCommand());
 
@@ -107,14 +109,14 @@ public sealed class UpdateTransactionCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static UpdateTransactionCommandHandler Handler(
+    private static ICommandHandlerAsync<UpdateTransactionCommand, UpdateTransactionCommandOutput> Handler(
         UserProfileSnapshot? profile,
-        ITransactionUpdater updater) => new(
-        new UpdateTransactionCommandValidator(new FixedTimeProvider(Now)),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        ITransactionUpdater updater) => new UpdateTransactionCommandHandler(
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         updater,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new UpdateTransactionCommandValidator(new FixedTimeProvider(Now)));
 
     private static UpdateTransactionCommand ValidCommand() => new()
     {

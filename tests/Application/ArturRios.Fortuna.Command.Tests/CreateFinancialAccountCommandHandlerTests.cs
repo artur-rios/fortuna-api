@@ -1,12 +1,14 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -139,12 +141,12 @@ public sealed class CreateFinancialAccountCommandHandlerTests
                 "BRL", 0, false, Now, Now),
             false));
         var handler = new CreateFinancialAccountCommandHandler(
-            new CreateFinancialAccountCommandValidator(),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             new StubCurrencyReader(["BRL"]),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new CreateFinancialAccountCommandValidator());
 
         var result = await handler.HandleAsync(ValidCommand());
 
@@ -152,17 +154,17 @@ public sealed class CreateFinancialAccountCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static CreateFinancialAccountCommandHandler Handler(
+    private static ICommandHandlerAsync<CreateFinancialAccountCommand, CreateFinancialAccountCommandOutput> Handler(
         Guid subject,
         UserProfileSnapshot? profile,
         IFinancialAccountStore store,
-        IReadOnlyCollection<string> currencies) => new(
-            new CreateFinancialAccountCommandValidator(),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+        IReadOnlyCollection<string> currencies) => new CreateFinancialAccountCommandHandler(
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             new StubCurrencyReader(currencies),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new CreateFinancialAccountCommandValidator());
 
     private static CreateFinancialAccountCommand ValidCommand() => new()
     {

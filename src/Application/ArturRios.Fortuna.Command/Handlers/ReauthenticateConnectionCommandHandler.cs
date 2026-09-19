@@ -4,18 +4,14 @@ using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class ReauthenticateConnectionCommandHandler(
-    IValidator<ReauthenticateConnectionCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IConnectionReader connectionReader,
     IConnectionReauthenticationStore connections,
     IPluggyConnectionGateway pluggy,
@@ -27,13 +23,7 @@ public sealed class ReauthenticateConnectionCommandHandler(
     public async Task<DataOutput<ReauthenticateConnectionCommandOutput?>> HandleAsync(
         ReauthenticateConnectionCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return Output().WithErrors(validation.Errors.Select(error => error.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return Output().WithError(ConnectionMessages.ProfileNotFound);
@@ -79,13 +69,6 @@ public sealed class ReauthenticateConnectionCommandHandler(
 
         return Resolve(result, verified.Institution!);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private static DataOutput<ReauthenticateConnectionCommandOutput?> PluggyFailure(
         PluggyConnectionValidationOutcome outcome)
