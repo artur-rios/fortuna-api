@@ -3,7 +3,7 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class AttachmentMessages
 {
     public const string AttachedSuccessfully = "Document attached successfully.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string TransactionNotFound = "The transaction was not found.";
     public const string FileRequired = "A document file is required.";
     public const string FileNameRequired = "A document file name is required.";

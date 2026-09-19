@@ -11,7 +11,7 @@ public static class CreditCardMessages
     public const string HardDeletedSuccessfully = "Credit card permanently deleted successfully.";
     public const string NotFound = "Credit card not found.";
     public const string DuplicateName = "A live credit card already uses this name.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NameRequired = "Name is required.";
     public const string NameTooLong = "Name must not exceed 200 characters.";
     public const string IssuerRequired = "Issuer is required.";

@@ -12,7 +12,7 @@ public static class FinancialAccountMessages
     public const string HardDeletedSuccessfully = "Financial account permanently deleted successfully.";
     public const string NotFound = "Financial account not found.";
     public const string DuplicateName = "A live financial account already uses this name.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NameRequired = "Name is required.";
     public const string NameTooLong = "Name must not exceed 200 characters.";
     public const string InstitutionTooLong = "Institution must not exceed 200 characters.";

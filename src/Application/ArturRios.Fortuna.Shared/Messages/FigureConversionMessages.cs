@@ -11,7 +11,7 @@ public static class FigureConversionMessages
     public const string AmountCurrencyInvalid = "Each amount currency must be a three-letter code.";
     public const string AmountPrecisionInvalid = "Each amount must have at most 15 whole and 4 decimal digits.";
     public const string CurrencyNotSupported = "A supplied currency is not supported.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string RateUnavailable = "No exchange rate has ever been stored for this currency pair.";
 
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";

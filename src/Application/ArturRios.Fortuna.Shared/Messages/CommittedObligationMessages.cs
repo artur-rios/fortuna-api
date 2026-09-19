@@ -6,7 +6,7 @@ public static class CommittedObligationMessages
         "The committed obligations were retrieved successfully.";
     public const string PartiallyConverted =
         "The committed obligations include source amounts because one or more rates were unavailable.";
-    public const string ProfileNotFound = "The user profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string HorizonRequired = "HorizonDays must be greater than zero.";
     public const string DisplayCurrencyInvalid =
         "DisplayCurrencyCode must be a three-letter currency code.";

@@ -2,7 +2,7 @@ namespace ArturRios.Fortuna.Shared.Messages;
 
 public static class ImportJobMessages
 {
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NotFound = "The import job was not found.";
     public const string NoLongerRunning = "The import job is no longer running.";
     public const string ProcessingFailed = "The import could not be processed.";

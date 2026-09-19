@@ -5,7 +5,7 @@ public static class DataExportMessages
     public const string CreatedSuccessfully = "The export was created successfully.";
     public const string Accepted = "The export was queued successfully.";
     public const string RetrievedSuccessfully = "The export was retrieved successfully.";
-    public const string ProfileNotFound = "The user profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NotFound = "The export was not found.";
     public const string Expired =
         "The export file has expired and was removed. Request a new export.";

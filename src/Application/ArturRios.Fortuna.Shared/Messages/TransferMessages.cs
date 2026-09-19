@@ -6,7 +6,7 @@ public static class TransferMessages
     public const string RetrievedSuccessfully = "Transfer retrieved successfully.";
     public const string DeletedSuccessfully = "Transfer deleted successfully.";
     public const string RestoredSuccessfully = "Transfer restored successfully.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string OriginFinancialAccountNotFound = "Origin financial account not found.";
     public const string DestinationFinancialAccountNotFound =
         "Destination financial account not found.";

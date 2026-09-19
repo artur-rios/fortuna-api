@@ -20,7 +20,7 @@ public static class InvestmentMessages
         "Investment valuation history retrieved successfully.";
     public const string DuplicateInstrument =
         "A live investment already uses this instrument name.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NotFound = "Investment not found.";
     public const string FinancialAccountNotFound = "Financial account not found.";
     public const string InstrumentRequired = "Instrument is required.";

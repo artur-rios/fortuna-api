@@ -3,7 +3,7 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class CashFlowProjectionMessages
 {
     public const string RetrievedSuccessfully = "The cash-flow projection was retrieved successfully.";
-    public const string ProfileNotFound = "The user profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string HorizonRequired = "HorizonDays must be greater than zero.";
     public const string DisplayCurrencyInvalid =
         "DisplayCurrencyCode must be a three-letter currency code.";
