@@ -72,6 +72,43 @@ public sealed class ExchangeRateSynchronizationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenRepeatedRequests_WhenSynchronizationIsQueued_ThenTheQueuedJobIsReused()
+    {
+        var queue = new RecordingQueue();
+        await using var factory = CreateFactory(configured: true, queue);
+        using var client = factory.CreateClient();
+        Authorize(client);
+
+        var first = await client.PostAsJsonAsync("/api/exchange-rates/sync", new { RequestedDate = "2026-08-20" });
+        var second = await client.PostAsJsonAsync("/api/exchange-rates/sync", new { RequestedDate = "2026-08-20" });
+        var firstEnvelope = await first.Content.ReadFromJsonAsync<JobEnvelope>();
+        var secondEnvelope = await second.Content.ReadFromJsonAsync<JobEnvelope>();
+
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Equal(firstEnvelope!.Data!.JobId, secondEnvelope!.Data!.JobId);
+        Assert.Equal(1, queue.EnqueueCount);
+        await using var context = CreateContext();
+        Assert.Equal(1, await context.BackgroundJobs.CountAsync(job =>
+            job.IdempotencyKey.StartsWith("manual:exchange-rate-sync:20260820:")));
+    }
+
+    [FunctionalFact]
+    public async Task GivenRegularUser_WhenSynchronizationIsRequested_ThenForbiddenCreatesNoJob()
+    {
+        await using var beforeContext = CreateContext();
+        var before = await beforeContext.BackgroundJobs.CountAsync();
+        await using var factory = CreateFactory(configured: true, new RecordingQueue());
+        using var client = factory.CreateClient();
+        Authorize(client, HeimdallRoles.User);
+
+        var response = await client.PostAsJsonAsync("/api/exchange-rates/sync", new { });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        await using var afterContext = CreateContext();
+        Assert.Equal(before, await afterContext.BackgroundJobs.CountAsync());
+    }
+
+    [FunctionalFact]
     public async Task GivenNoToken_WhenSynchronizationIsRequested_ThenUnauthorizedCreatesNoJob()
     {
         await using var beforeContext = CreateContext();
@@ -130,11 +167,11 @@ public sealed class ExchangeRateSynchronizationTests : IAsyncLifetime
             DatabaseDiagnosticsOptions.Disabled);
     }
 
-    private static void Authorize(HttpClient client)
+    private static void Authorize(HttpClient client, HeimdallRoles role = HeimdallRoles.SystemAdmin)
     {
         var identity = new FortunaIdentity(
             Guid.NewGuid(),
-            (int)HeimdallRoles.User,
+            (int)role,
             Guid.NewGuid(),
             [])
         {
@@ -178,10 +215,12 @@ public sealed class ExchangeRateSynchronizationTests : IAsyncLifetime
     {
         public int Depth => JobId.HasValue ? 1 : 0;
         public Guid? JobId { get; private set; }
+        public int EnqueueCount { get; private set; }
 
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+            EnqueueCount++;
 
             return ValueTask.CompletedTask;
         }

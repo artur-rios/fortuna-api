@@ -3,6 +3,7 @@ using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
 using FluentValidation;
@@ -12,13 +13,22 @@ namespace ArturRios.Fortuna.Command.Handlers;
 public sealed class RecordManualExchangeRateCommandHandler(
     IValidator<RecordManualExchangeRateCommand> validator,
     ICurrencyReader currencies,
-    IExchangeRateStore rates)
+    IExchangeRateStore rates,
+    IRequestActorAccessor actorAccessor)
     : ICommandHandlerAsync<RecordManualExchangeRateCommand, RecordManualExchangeRateCommandOutput>
 {
     public async Task<DataOutput<RecordManualExchangeRateCommandOutput?>> HandleAsync(
         RecordManualExchangeRateCommand command)
     {
         var output = DataOutput<RecordManualExchangeRateCommandOutput?>.New;
+
+        // Manual rates are global: they take precedence for every user, so only whoever
+        // administers the installation may write them.
+        if (!InstallationAdministration.IsAdministrator(actorAccessor.Actor))
+        {
+            return output.WithError(ManualExchangeRateMessages.AdministratorRequired);
+        }
+
         var validation = await validator.ValidateAsync(command);
         if (!validation.IsValid)
         {

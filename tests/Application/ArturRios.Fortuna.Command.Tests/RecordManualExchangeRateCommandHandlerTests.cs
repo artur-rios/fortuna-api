@@ -1,8 +1,10 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -76,12 +78,60 @@ public sealed class RecordManualExchangeRateCommandHandlerTests
         Assert.Null(store.Candidate);
     }
 
+    [UnitFact]
+    public async Task GivenLocalInstallationOwner_WhenRecorded_ThenRateIsStored()
+    {
+        var store = new StubRateStore(new ManualRateUpsertResult(5.25m, false));
+        var owner = new RequestActor(Guid.NewGuid(), (int)HeimdallRoles.User, null, [])
+        {
+            IsLocal = true
+        };
+
+        var result = await Handler(store, ["USD", "BRL"], owner).HandleAsync(ValidCommand());
+
+        Assert.True(result.Success);
+        Assert.NotNull(store.Candidate);
+    }
+
+    [UnitFact]
+    public async Task GivenRegularUser_WhenRecorded_ThenAdministratorIsRequiredAndNothingIsStored()
+    {
+        var store = new StubRateStore(new ManualRateUpsertResult(5.25m, false));
+        var user = new RequestActor(Guid.NewGuid(), (int)HeimdallRoles.User, Guid.NewGuid(), []);
+
+        var result = await Handler(store, ["USD", "BRL"], user).HandleAsync(ValidCommand());
+
+        Assert.False(result.Success);
+        Assert.Equal([ManualExchangeRateMessages.AdministratorRequired], result.Errors);
+        Assert.Null(store.Candidate);
+    }
+
+    [UnitFact]
+    public async Task GivenNoActor_WhenRecorded_ThenAdministratorIsRequired()
+    {
+        var store = new StubRateStore(new ManualRateUpsertResult(5.25m, false));
+
+        var result = await Handler(store, ["USD", "BRL"], actor: null).HandleAsync(ValidCommand());
+
+        Assert.Contains(ManualExchangeRateMessages.AdministratorRequired, result.Errors);
+        Assert.Null(store.Candidate);
+    }
+
+    private static readonly RequestActor Administrator =
+        new(Guid.NewGuid(), (int)HeimdallRoles.SystemAdmin, Guid.NewGuid(), []);
+
     private static RecordManualExchangeRateCommandHandler Handler(
         StubRateStore store,
-        IReadOnlyCollection<string> supported) => new(
+        IReadOnlyCollection<string> supported) => Handler(store, supported, Administrator);
+
+    private static RecordManualExchangeRateCommandHandler Handler(
+        StubRateStore store,
+        IReadOnlyCollection<string> supported,
+        RequestActor? actor) => new(
             new RecordManualExchangeRateCommandValidator(),
             new StubCurrencyReader(supported),
-            store);
+            store,
+            new StubActorAccessor(actor));
 
     private static RecordManualExchangeRateCommand ValidCommand(
         string baseCode = "USD",
@@ -122,5 +172,10 @@ public sealed class RecordManualExchangeRateCommandHandlerTests
 
             return Task.FromResult(result);
         }
+    }
+
+    private sealed class StubActorAccessor(RequestActor? actor) : IRequestActorAccessor
+    {
+        public RequestActor? Actor { get; } = actor;
     }
 }

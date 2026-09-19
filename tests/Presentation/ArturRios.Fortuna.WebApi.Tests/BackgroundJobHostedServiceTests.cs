@@ -123,6 +123,11 @@ public sealed class BackgroundJobHostedServiceTests
             string idempotencyKey,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
+        public Task<BackgroundJob?> FindActiveAsync(
+            string type,
+            string idempotencyKeyPrefix,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public Task<IReadOnlyList<BackgroundJob>> RecoverAsync(CancellationToken cancellationToken)
         {
             RecoverCount++;

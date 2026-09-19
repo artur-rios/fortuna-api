@@ -41,6 +41,17 @@ public sealed class EfBackgroundJobStore(AppDbContext context)
             x => x.IdempotencyKey == idempotencyKey,
             cancellationToken);
 
+    public Task<BackgroundJob?> FindActiveAsync(
+        string type,
+        string idempotencyKeyPrefix,
+        CancellationToken cancellationToken) =>
+        context.BackgroundJobs
+            .Where(x => x.Type == type &&
+                x.IdempotencyKey.StartsWith(idempotencyKeyPrefix) &&
+                (x.State == BackgroundJobState.Pending || x.State == BackgroundJobState.Running))
+            .OrderBy(x => x.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<IReadOnlyList<BackgroundJob>> RecoverAsync(CancellationToken cancellationToken)
     {
         var jobs = await context.BackgroundJobs

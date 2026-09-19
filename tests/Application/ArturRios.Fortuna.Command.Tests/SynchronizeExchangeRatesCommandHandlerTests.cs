@@ -2,9 +2,11 @@ using System.Text.Json;
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Domain.Jobs;
+using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -12,6 +14,8 @@ namespace ArturRios.Fortuna.Command.Tests;
 public sealed class SynchronizeExchangeRatesCommandHandlerTests
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-09-04T12:00:00Z");
+    private static readonly RequestActor Administrator =
+        new(Guid.NewGuid(), (int)HeimdallRoles.SystemAdmin, Guid.NewGuid(), []);
 
     [UnitFact]
     public async Task GivenConfiguredSource_WhenSynchronizationIsRequested_ThenDurableJobIsQueued()
@@ -62,21 +66,107 @@ public sealed class SynchronizeExchangeRatesCommandHandlerTests
         Assert.Null(queue.JobId);
     }
 
+    [UnitFact]
+    public async Task GivenSyncAlreadyQueuedForDate_WhenSynchronizationIsRequested_ThenExistingJobIsReused()
+    {
+        var existing = BackgroundJob.Create(
+            ExchangeRateSyncJob.Type,
+            "{}",
+            "manual:exchange-rate-sync:20260901:existing",
+            null,
+            Now);
+        var store = new StubJobStore { Active = existing };
+        var queue = new StubQueue();
+
+        var result = await Handler(store, queue, configured: true)
+            .HandleAsync(new SynchronizeExchangeRatesCommand { RequestedDate = new DateOnly(2026, 9, 1) });
+
+        Assert.True(result.Success);
+        Assert.Equal(existing.Id, result.Data!.JobId);
+        Assert.Contains(ExchangeRateSyncMessages.AlreadyQueued, result.Messages);
+        Assert.Equal("manual:exchange-rate-sync:20260901:", store.ActivePrefix);
+        Assert.Null(store.Created);
+        Assert.Null(queue.JobId);
+    }
+
+    [UnitFact]
+    public async Task GivenNewSync_WhenJobIsCreated_ThenIdempotencyKeyCarriesTheDatePrefix()
+    {
+        var store = new StubJobStore();
+
+        await Handler(store, new StubQueue(), configured: true)
+            .HandleAsync(new SynchronizeExchangeRatesCommand { RequestedDate = new DateOnly(2026, 9, 1) });
+
+        Assert.StartsWith("manual:exchange-rate-sync:20260901:", store.Created!.IdempotencyKey, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GivenCallerIsNotAdministrator_WhenSynchronizationIsRequested_ThenNoJobIsCreated(bool anonymous)
+    {
+        var store = new StubJobStore();
+        var queue = new StubQueue();
+        RequestActor? actor = anonymous
+            ? null
+            : new RequestActor(Guid.NewGuid(), (int)HeimdallRoles.User, Guid.NewGuid(), []);
+
+        var result = await Handler(store, queue, configured: true, actor)
+            .HandleAsync(new SynchronizeExchangeRatesCommand());
+
+        Assert.False(result.Success);
+        Assert.Equal([ExchangeRateSyncMessages.AdministratorRequired], result.Errors);
+        Assert.Null(store.Created);
+        Assert.Null(queue.JobId);
+    }
+
+    [UnitFact]
+    public async Task GivenLocalInstallationOwner_WhenSynchronizationIsRequested_ThenJobIsQueued()
+    {
+        var store = new StubJobStore();
+        var owner = new RequestActor(Guid.NewGuid(), (int)HeimdallRoles.User, null, []) { IsLocal = true };
+
+        var result = await Handler(store, new StubQueue(), configured: true, owner)
+            .HandleAsync(new SynchronizeExchangeRatesCommand());
+
+        Assert.True(result.Success);
+        Assert.NotNull(store.Created);
+    }
+
     private static SynchronizeExchangeRatesCommandHandler Handler(
         StubJobStore store,
         StubQueue queue,
-        bool configured) => new(
+        bool configured) => Handler(store, queue, configured, Administrator);
+
+    private static SynchronizeExchangeRatesCommandHandler Handler(
+        StubJobStore store,
+        StubQueue queue,
+        bool configured,
+        RequestActor? actor) => new(
             store,
             queue,
             new RateSyncOptions(
                 configured ? new Uri("https://rates.example.test/") : null,
                 configured ? "0 18 * * 1-5" : null,
                 configured ? ["BRL", "USD"] : []),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now),
+            new StubActorAccessor(actor));
 
     private sealed class StubJobStore : IBackgroundJobStore
     {
         public BackgroundJob? Created { get; private set; }
+        public BackgroundJob? Active { get; init; }
+        public string? ActivePrefix { get; private set; }
+
+        public Task<BackgroundJob?> FindActiveAsync(
+            string type,
+            string idempotencyKeyPrefix,
+            CancellationToken cancellationToken)
+        {
+            ActivePrefix = idempotencyKeyPrefix;
+
+            return Task.FromResult(Active);
+        }
 
         public Task<BackgroundJob> CreateAsync(
             string type,
@@ -123,5 +213,10 @@ public sealed class SynchronizeExchangeRatesCommandHandlerTests
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class StubActorAccessor(RequestActor? actor) : IRequestActorAccessor
+    {
+        public RequestActor? Actor { get; } = actor;
     }
 }

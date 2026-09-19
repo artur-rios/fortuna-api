@@ -36,7 +36,7 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
         var subject = Guid.NewGuid();
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        Authorize(client, subject, HeimdallRoles.User);
+        Authorize(client, subject, HeimdallRoles.SystemAdmin);
 
         var response = await client.PostAsJsonAsync(
             "/api/exchange-rates",
@@ -79,7 +79,7 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
         var subject = Guid.NewGuid();
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        Authorize(client, subject, HeimdallRoles.User);
+        Authorize(client, subject, HeimdallRoles.SystemAdmin);
 
         var response = await client.PostAsJsonAsync(
             "/api/exchange-rates",
@@ -106,7 +106,7 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
         var date = new DateOnly(2026, 8, 27);
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
 
         var response = await client.PostAsJsonAsync(
             "/api/exchange-rates",
@@ -123,7 +123,7 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
     {
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
 
         var response = await client.PostAsJsonAsync(
             "/api/exchange-rates",
@@ -146,7 +146,7 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
     {
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
 
         var response = await client.PostAsJsonAsync(
             "/api/exchange-rates",
@@ -164,7 +164,7 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
         var subject = Guid.NewGuid();
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        Authorize(client, subject, HeimdallRoles.User);
+        Authorize(client, subject, HeimdallRoles.SystemAdmin);
 
         var created = await client.PostAsJsonAsync(
             "/api/exchange-rates",
@@ -209,12 +209,12 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
     }
 
     [FunctionalFact]
-    public async Task GivenInstanceAdministrator_WhenManualRateIsRecorded_ThenForbiddenStoresNoRate()
+    public async Task GivenRegularUser_WhenManualRateIsRecorded_ThenForbiddenStoresNoRate()
     {
         var date = new DateOnly(2026, 9, 4);
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        Authorize(client, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
 
         var response = await client.PostAsJsonAsync(
             "/api/exchange-rates",

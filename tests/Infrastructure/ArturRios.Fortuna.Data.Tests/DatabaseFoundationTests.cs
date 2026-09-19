@@ -383,6 +383,30 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenJobsWithSharedKeyPrefix_WhenFindingActive_ThenOnlyPendingOrRunningMatchIsReturned()
+    {
+        await using var context = CreateContext();
+        var prefix = $"manual:active-test:{Guid.NewGuid():N}:";
+        var finished = BackgroundJob.Create("active-test", "{}", prefix + "finished", null, DateTimeOffset.UtcNow);
+        finished.Start(DateTimeOffset.UtcNow);
+        finished.Fail("done", DateTimeOffset.UtcNow);
+        var otherType = BackgroundJob.Create("other-type", "{}", prefix + "other", null, DateTimeOffset.UtcNow);
+        context.BackgroundJobs.AddRange(finished, otherType);
+        await context.SaveChangesAsync(CancellationToken.None);
+        var store = new EfBackgroundJobStore(context);
+
+        var none = await store.FindActiveAsync("active-test", prefix, CancellationToken.None);
+        var running = BackgroundJob.Create("active-test", "{}", prefix + "running", null, DateTimeOffset.UtcNow);
+        running.Start(DateTimeOffset.UtcNow);
+        context.BackgroundJobs.Add(running);
+        await context.SaveChangesAsync(CancellationToken.None);
+        var found = await store.FindActiveAsync("active-test", prefix, CancellationToken.None);
+
+        Assert.Null(none);
+        Assert.Equal(running.Id, found?.Id);
+    }
+
+    [FunctionalFact]
     public async Task GivenConcurrentLocalAccountCreations_WhenPersisted_ThenExactlyOneWins()
     {
         await using var seedContext = CreateContext();

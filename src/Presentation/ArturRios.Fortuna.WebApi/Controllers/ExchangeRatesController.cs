@@ -5,6 +5,7 @@ using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Mediator.Command;
 using ArturRios.Mediator.Query;
 using ArturRios.Output;
@@ -24,7 +25,11 @@ public sealed class ExchangeRatesController(
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
+            [ExchangeRateSyncMessages.Accepted] = StatusCodes.Status200OK,
+            [ExchangeRateSyncMessages.AlreadyQueued] = StatusCodes.Status200OK,
             [ExchangeRateSyncMessages.SourceNotConfigured] = StatusCodes.Status400BadRequest,
+            [ExchangeRateSyncMessages.AdministratorRequired] = StatusCodes.Status403Forbidden,
+            [ManualExchangeRateMessages.AdministratorRequired] = StatusCodes.Status403Forbidden,
             [ManualExchangeRateMessages.RecordedSuccessfully] = StatusCodes.Status201Created,
             [ManualExchangeRateMessages.ReplacedSuccessfully] = StatusCodes.Status200OK,
             [ManualExchangeRateMessages.BaseCurrencyRequired] = StatusCodes.Status400BadRequest,
@@ -59,7 +64,7 @@ public sealed class ExchangeRatesController(
     }
 
     [HttpPost]
-    [RoleRequirement((int)HeimdallRoles.User)]
+    [InstallationAdministratorRequirement]
     public async Task<ActionResult<DataOutput<RecordManualExchangeRateCommandOutput?>>> RecordManual(
         [FromBody] RecordManualExchangeRateCommand command)
     {
@@ -71,6 +76,7 @@ public sealed class ExchangeRatesController(
     }
 
     [HttpPost("sync")]
+    [InstallationAdministratorRequirement]
     public async Task<ActionResult<DataOutput<SynchronizeExchangeRatesCommandOutput?>>> Synchronize(
         [FromBody] SynchronizeExchangeRatesCommand? command)
     {

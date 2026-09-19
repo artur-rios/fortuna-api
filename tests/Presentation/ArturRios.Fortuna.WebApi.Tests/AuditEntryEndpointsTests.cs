@@ -139,20 +139,14 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
         using var client = factory.CreateClient();
         Authorize(client, subject, HeimdallRoles.User);
 
-        var refused = await client.PostAsJsonAsync("/api/exchange-rates", new
-        {
-            BaseCurrencyCode = "USD",
-            QuoteCurrencyCode = "BRL",
-            Rate = 0,
-            RateDate = new DateOnly(2026, 9, 4)
-        });
+        var refused = await client.PostAsJsonAsync("/api/tags", new { Name = "" });
         var envelope = await client.GetFromJsonAsync<AuditPageEnvelope>(
-            "/api/audit-entries?operation=RecordManualExchangeRateCommand&outcome=Refused");
+            "/api/audit-entries?operation=CreateTagCommand&outcome=Refused");
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         var item = Assert.Single(envelope!.Data!);
         Assert.Equal(AuditOutcome.Refused, item.Outcome);
-        Assert.Equal("Rate must be greater than zero.", item.Reason);
+        Assert.Equal("Name is required.", item.Reason);
     }
 
     [FunctionalTheory]

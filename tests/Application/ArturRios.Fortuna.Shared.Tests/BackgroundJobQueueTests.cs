@@ -208,6 +208,11 @@ public sealed class BackgroundJobProcessorTests
             string idempotencyKey,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
+        public Task<BackgroundJob?> FindActiveAsync(
+            string type,
+            string idempotencyKeyPrefix,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
         public Task<IReadOnlyList<BackgroundJob>> RecoverAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<BackgroundJob>>([]);
 
