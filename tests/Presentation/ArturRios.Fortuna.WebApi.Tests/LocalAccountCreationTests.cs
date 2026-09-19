@@ -229,6 +229,25 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenTooManyAnonymousAttempts_WhenAuthenticating_ThenRateLimitIsReturned()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+
+        HttpResponseMessage? response = null;
+        for (var attempt = 0; attempt < 11; attempt++)
+        {
+            response?.Dispose();
+            response = await client.PostAsJsonAsync("/api/local-accounts/authenticate", ValidLogin());
+        }
+
+        using (response)
+        {
+            Assert.Equal(HttpStatusCode.TooManyRequests, response!.StatusCode);
+        }
+    }
+
+    [FunctionalFact]
     public async Task GivenLocalAuthenticationDisabled_WhenAuthenticating_ThenEndpointIsHidden()
     {
         await using var factory = CreateFactory(enabled: false);

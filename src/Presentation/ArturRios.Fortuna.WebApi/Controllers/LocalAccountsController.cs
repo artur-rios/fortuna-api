@@ -7,6 +7,7 @@ using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
 
@@ -44,6 +45,7 @@ public sealed class LocalAccountsController(
 
     [HttpPost("authenticate")]
     [AllowAnonymous]
+    [EnableRateLimiting(AuthController.AnonymousRateLimitPolicy)]
     public async Task<ActionResult<DataOutput<AuthenticateLocalAccountCommandOutput?>>> Authenticate(
         [FromBody] AuthenticateLocalAccountCommand command)
     {
@@ -55,6 +57,7 @@ public sealed class LocalAccountsController(
 
     [HttpPost("recover")]
     [AllowAnonymous]
+    [EnableRateLimiting(AuthController.AnonymousRateLimitPolicy)]
     public async Task<ActionResult<DataOutput<RecoverLocalAccountCommandOutput?>>> Recover(
         [FromBody] RecoverLocalAccountCommand command)
     {

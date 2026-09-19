@@ -77,6 +77,40 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenCodeTypedInLowercaseWithSpaces_WhenRecovering_ThenItIsRedeemed()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+        var created = await CreateAccountAsync(client);
+
+        var response = await RecoverAsync(
+            client,
+            $"  {created.RecoveryCodes.First().ToLowerInvariant()} ",
+            NewSecret);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenTooManyAnonymousAttempts_WhenRecovering_ThenRateLimitIsReturned()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+
+        HttpResponseMessage? response = null;
+        for (var attempt = 0; attempt < 11; attempt++)
+        {
+            response?.Dispose();
+            response = await RecoverAsync(client, "WRNG-CODE", NewSecret);
+        }
+
+        using (response)
+        {
+            Assert.Equal(HttpStatusCode.TooManyRequests, response!.StatusCode);
+        }
+    }
+
+    [FunctionalFact]
     public async Task GivenAlreadyUsedRecoveryCode_WhenRecoveringAgain_ThenUnauthorizedLeavesFirstSecret()
     {
         await using var factory = CreateFactory(enabled: true);
