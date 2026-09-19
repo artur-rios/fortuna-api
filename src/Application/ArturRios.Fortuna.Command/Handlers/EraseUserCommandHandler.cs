@@ -14,6 +14,7 @@ public sealed class EraseUserCommandHandler(
     IUserProfileReader profiles,
     ICurrentProfileResolver profileResolver,
     IUserErasureStore erasure,
+    IProvisionedProfileCache provisionedProfiles,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<EraseUserCommand, EraseUserCommandOutput>
 {
@@ -46,6 +47,11 @@ public sealed class EraseUserCommandHandler(
         {
             return DataOutput<EraseUserCommandOutput?>.New.WithError(
                 UserErasureMessages.UserNotFound);
+        }
+
+        if (target.ExternalSubject is { } externalSubject)
+        {
+            provisionedProfiles.Forget(externalSubject);
         }
 
         return DataOutput<EraseUserCommandOutput?>.New

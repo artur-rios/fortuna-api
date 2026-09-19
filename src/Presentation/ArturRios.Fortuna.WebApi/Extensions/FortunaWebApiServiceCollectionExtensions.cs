@@ -38,6 +38,8 @@ public static class FortunaWebApiServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<IRequestActorAccessor, HttpContextRequestActorAccessor>();
         services.AddScoped<ICurrentProfileResolver, CurrentProfileResolver>();
+        services.AddMemoryCache();
+        services.AddSingleton<IProvisionedProfileCache, MemoryProvisionedProfileCache>();
         services.AddPrometheusMetrics(options.MetricsPort);
         services.AddControllers()
             .AddJsonOptions(json => json.JsonSerializerOptions.Converters.Add(new ExactDecimalJsonConverter()))
