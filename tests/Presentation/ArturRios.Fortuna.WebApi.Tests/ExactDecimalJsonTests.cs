@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.WebApi.Output;
@@ -98,7 +99,8 @@ public sealed class ExactDecimalJsonTests
         Assert.NotEmpty(decimalProperties);
         foreach (var (type, property) in decimalProperties)
         {
-            var name = JsonNamingPolicy.CamelCase.ConvertName(property.Name);
+            var name = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ??
+                JsonNamingPolicy.CamelCase.ConvertName(property.Name);
             if (schemas.TryGetProperty(type.Name, out var schema))
             {
                 Assert.True(schema.GetProperty("properties").TryGetProperty(name, out var field),
