@@ -1,4 +1,3 @@
-using System.Globalization;
 using ArturRios.Fortuna.Shared.Messages;
 using FluentValidation;
 
@@ -22,10 +21,11 @@ public sealed class RequestDataExportCommandValidator
             .NotEmpty()
             .WithMessage(TableReportMessages.ColumnsRequired);
         RuleFor(command => command.Format)
-            .Must(IsSupportedFormat)
+            .Must(format => DataExportInput.TryParseFormat(format, out _))
             .WithMessage(DataExportMessages.FormatUnsupported);
         RuleFor(command => command.Locale)
-            .Must(locale => locale is null || IsSpecificCulture(locale))
+            .Must(locale => string.IsNullOrWhiteSpace(locale) ||
+                DataExportInput.TryResolveLocale(locale, out _))
             .WithMessage(DataExportMessages.LocaleInvalid);
         RuleFor(command => command.DisplayCurrencyCode)
             .OptionalCurrencyCode()
@@ -42,20 +42,5 @@ public sealed class RequestDataExportCommandValidator
         RuleForEach(command => command.Sorts).ChildRules(sort =>
             sort.RuleFor(item => item.Field)
                 .NotEmpty().WithMessage(TableReportMessages.SortFieldRequired));
-    }
-
-    private static bool IsSupportedFormat(string? format) =>
-        format?.Trim().ToLowerInvariant() is "csv" or "xlsx" or "excel" or "pdf";
-
-    private static bool IsSpecificCulture(string locale)
-    {
-        try
-        {
-            return !CultureInfo.GetCultureInfo(locale.Trim()).IsNeutralCulture;
-        }
-        catch (CultureNotFoundException)
-        {
-            return false;
-        }
     }
 }

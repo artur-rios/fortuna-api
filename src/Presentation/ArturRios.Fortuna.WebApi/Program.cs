@@ -445,6 +445,10 @@ try
         RequestDataExportCommandOutput, RequestDataExportCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RequestPersonalDataExportCommand,
         RequestPersonalDataExportCommandOutput, RequestPersonalDataExportCommandHandler>();
+    builder.Services.AddScoped<IValidator<GrantProcessingConsentCommand>,
+        GrantProcessingConsentCommandValidator>();
+    builder.Services.AddScoped<IValidator<WithdrawProcessingConsentCommand>,
+        WithdrawProcessingConsentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<GrantProcessingConsentCommand,
         GrantProcessingConsentCommandOutput, GrantProcessingConsentCommandHandler>();
     builder.Services.AddAuditedCommandHandler<WithdrawProcessingConsentCommand,

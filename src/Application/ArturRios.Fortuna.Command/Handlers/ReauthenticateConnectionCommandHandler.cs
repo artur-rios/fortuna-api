@@ -56,7 +56,12 @@ public sealed class ReauthenticateConnectionCommandHandler(
             return Output().WithError(ConnectionMessages.ReauthenticationNotRequired);
         }
 
-        var externalReference = Guid.Parse(command.ExternalReference.Trim()).ToString();
+        if (!Guid.TryParse(command.ExternalReference?.Trim(), out var itemId))
+        {
+            return Output().WithError(ConnectionMessages.ExternalReferenceInvalid);
+        }
+
+        var externalReference = itemId.ToString();
         var verified = await pluggy.ValidateAsync(externalReference, CancellationToken.None);
         if (verified.Outcome != PluggyConnectionValidationOutcome.Succeeded)
         {
