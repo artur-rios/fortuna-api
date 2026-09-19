@@ -22,7 +22,7 @@ public sealed class LocalAccountsController(
             [LocalAccountMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [LocalAccountMessages.Disabled] = StatusCodes.Status404NotFound,
             [LocalAccountMessages.AlreadyExists] = StatusCodes.Status409Conflict,
-            [LocalAccountMessages.CredentialStoreUnavailable] = StatusCodes.Status503ServiceUnavailable,
+            [LocalAccountMessages.CredentialStoreUnavailable] = StatusCodes.Status400BadRequest,
             [LocalAuthenticationMessages.InvalidCredentials] = StatusCodes.Status401Unauthorized,
             [LocalAuthenticationMessages.PasswordResetUnavailable] = StatusCodes.Status404NotFound,
             [LocalAccountRecoveryMessages.InvalidRecoveryCode] = StatusCodes.Status401Unauthorized,
