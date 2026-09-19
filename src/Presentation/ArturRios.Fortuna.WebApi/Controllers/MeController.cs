@@ -40,6 +40,7 @@ public sealed class MeController(
         };
 
     [HttpGet]
+    [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<UserProfileOutput?>>> Get()
     {
         var query = new GetMyProfileQuery
@@ -53,6 +54,7 @@ public sealed class MeController(
     }
 
     [HttpPost("erasure")]
+    [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<EraseUserCommandOutput?>>> Erase(
         [FromBody] EraseUserCommand command)
     {
