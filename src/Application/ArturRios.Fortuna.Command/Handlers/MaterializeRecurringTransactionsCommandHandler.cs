@@ -12,7 +12,7 @@ namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class MaterializeRecurringTransactionsCommandHandler(
     IValidator<MaterializeRecurringTransactionsCommand> validator,
-    IRequestActorAccessor actors,
+    IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IRecurringTransactionMaterializer materializer,
     TimeProvider timeProvider)
@@ -29,7 +29,7 @@ public sealed class MaterializeRecurringTransactionsCommandHandler(
             return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
         }
 
-        var actor = actors.Actor;
+        var actor = actorAccessor.Actor;
         var profile = actor?.IsLocal == true
             ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
             : actor is null

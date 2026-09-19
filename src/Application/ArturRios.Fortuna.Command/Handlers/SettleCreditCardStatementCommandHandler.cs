@@ -40,32 +40,18 @@ public sealed class SettleCreditCardStatementCommandHandler(
             return output.WithError(CreditCardStatementMessages.ProfileNotFound);
         }
 
-        var result = await settlements.SettleAsync(
+        var result = await CreditCardStatementPayment.PayAsync(
+            settlements,
             new CreditCardStatementSettlement(
                 profile.Id,
                 command.Id,
                 command.FinancialAccountId,
                 command.Amount,
                 command.PaymentDate,
-                timeProvider.GetUtcNow()),
-            CancellationToken.None);
-        if (result.Outcome != CreditCardStatementSettlementOutcome.Succeeded ||
-            result.Settlement is null)
+                timeProvider.GetUtcNow()));
+        if (result.Settlement is null)
         {
-            return output.WithError(result.Outcome switch
-            {
-                CreditCardStatementSettlementOutcome.StatementNotFound =>
-                    CreditCardStatementMessages.NotFound,
-                CreditCardStatementSettlementOutcome.FinancialAccountNotFound =>
-                    CreditCardStatementMessages.FinancialAccountNotFound,
-                CreditCardStatementSettlementOutcome.StatementOpen =>
-                    CreditCardStatementMessages.StatementOpen,
-                CreditCardStatementSettlementOutcome.StatementAlreadySettled =>
-                    CreditCardStatementMessages.StatementAlreadySettled,
-                CreditCardStatementSettlementOutcome.ExchangeRateUnavailable =>
-                    CreditCardStatementMessages.ExchangeRateUnavailable,
-                _ => throw new InvalidOperationException("Unknown statement settlement outcome.")
-            });
+            return output.WithError(result.Error!);
         }
 
         var settlement = result.Settlement;

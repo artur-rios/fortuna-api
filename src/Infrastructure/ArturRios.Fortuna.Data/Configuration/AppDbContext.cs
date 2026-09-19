@@ -28,6 +28,8 @@ public sealed class AppDbContext(
         value => value.UtcTicks,
         value => new DateTimeOffset(value, TimeSpan.Zero));
 
+    private readonly DbContextOptions<AppDbContext> contextOptions = options;
+
     public DbSet<Currency> Currencies => Set<Currency>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
     public DbSet<DataExport> DataExports => Set<DataExport>();
@@ -59,6 +61,12 @@ public sealed class AppDbContext(
     public DbSet<Connection> Connections => Set<Connection>();
     public DbSet<ConnectionResource> ConnectionResources => Set<ConnectionResource>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
+    /// <summary>
+    ///     Opens a separate context on the same database, so a write through it can never commit
+    ///     changes another component left tracked (and unsaved) on this one.
+    /// </summary>
+    public AppDbContext CreateIsolatedContext() => new(contextOptions, loggerFactory, diagnostics);
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

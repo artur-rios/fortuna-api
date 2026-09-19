@@ -84,15 +84,15 @@ public sealed class RecordTransferCommandHandlerTests
 
     [UnitTheory]
     [InlineData(CreditCardStatementSettlementOutcome.StatementNotFound,
-        TransferMessages.DestinationStatementNotFound)]
+        CreditCardStatementMessages.NotFound)]
     [InlineData(CreditCardStatementSettlementOutcome.FinancialAccountNotFound,
-        TransferMessages.OriginFinancialAccountNotFound)]
+        CreditCardStatementMessages.FinancialAccountNotFound)]
     [InlineData(CreditCardStatementSettlementOutcome.StatementOpen,
-        TransferMessages.StatementOpen)]
+        CreditCardStatementMessages.StatementOpen)]
     [InlineData(CreditCardStatementSettlementOutcome.StatementAlreadySettled,
-        TransferMessages.StatementAlreadySettled)]
+        CreditCardStatementMessages.StatementAlreadySettled)]
     [InlineData(CreditCardStatementSettlementOutcome.ExchangeRateUnavailable,
-        TransferMessages.ExchangeRateUnavailable)]
+        CreditCardStatementMessages.ExchangeRateUnavailable)]
     public async Task GivenSettlementRefusal_WhenHandled_ThenCanonicalErrorIsReturned(
         CreditCardStatementSettlementOutcome outcome,
         string expected)

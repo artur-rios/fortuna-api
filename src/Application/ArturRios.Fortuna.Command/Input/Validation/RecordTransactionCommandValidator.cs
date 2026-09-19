@@ -23,7 +23,7 @@ public sealed class RecordTransactionCommandValidator : AbstractValidator<Record
             .GreaterThan(0m)
             .WithMessage(TransactionMessages.AmountPositive);
         RuleFor(command => command.Amount)
-            .Must(MoneyFitsStorage)
+            .Money()
             .When(command => command.Amount > 0m)
             .WithMessage(TransactionMessages.AmountPrecisionInvalid);
         RuleFor(command => command.Direction)
@@ -38,14 +38,13 @@ public sealed class RecordTransactionCommandValidator : AbstractValidator<Record
             .NotEmpty()
             .WithMessage(TransactionMessages.CategoryIdRequired);
         RuleFor(command => command.CurrencyCode)
-            .Length(3)
-            .When(command => !string.IsNullOrWhiteSpace(command.CurrencyCode))
+            .OptionalCurrencyCode()
             .WithMessage(TransactionMessages.CurrencyInvalid);
         RuleFor(command => command.Description)
             .MaximumLength(500)
             .WithMessage(TransactionMessages.DescriptionTooLong);
         RuleFor(command => command.Counterparty)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(TransactionMessages.CounterpartyTooLong);
         RuleFor(command => command.Tags)
             .Must(tags => WithinTagLimit(tags, maximumTags))
@@ -56,16 +55,12 @@ public sealed class RecordTransactionCommandValidator : AbstractValidator<Record
         RuleForEach(command => command.Tags)
             .NotEmpty()
             .WithMessage(TransactionMessages.TagRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(TransactionMessages.TagTooLong);
         RuleFor(command => command.OwnerId)
             .Null()
             .WithMessage(TransactionMessages.OwnerImmutable);
     }
-
-    private static bool MoneyFitsStorage(decimal amount) =>
-        decimal.GetBits(amount)[3] >> 16 <= 4 &&
-        Math.Abs(amount) < 1_000_000_000_000_000m;
 
     private static bool WithinTagLimit(IReadOnlyCollection<string>? tags, int maximum) =>
         tags is null || tags

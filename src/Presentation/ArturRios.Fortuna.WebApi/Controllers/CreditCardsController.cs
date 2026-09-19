@@ -10,6 +10,7 @@ using ArturRios.Mediator.Query;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
+using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
@@ -20,30 +21,6 @@ public sealed class CreditCardsController(
     CommandMediator commandMediator,
     QueryMediator queryMediator) : Controller
 {
-    private static readonly HashSet<string> ListQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber",
-        "PageSize",
-        "Name",
-        "Issuer",
-        "CurrencyCode",
-        "IncludeDeleted",
-        "SortBy",
-        "Descending"
-    };
-
-    private static readonly HashSet<string> StatementListQueryFields =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "PageNumber",
-            "PageSize",
-            "Status",
-            "From",
-            "To",
-            "SortBy",
-            "Descending"
-        };
-
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
@@ -151,17 +128,11 @@ public sealed class CreditCardsController(
     }
 
     [HttpGet]
+    [AllowedQuery("PageNumber", "PageSize", "Name", "Issuer", "CurrencyCode", "IncludeDeleted", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<CreditCardOutput>>> List(
         [FromQuery] ListCreditCardsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<CreditCardOutput>.New
-                .WithError(CreditCardMessages.UnsupportedFilter(unsupported)));
-        }
-
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListCreditCardsQuery,
             CreditCardOutput>(query);
@@ -170,19 +141,12 @@ public sealed class CreditCardsController(
     }
 
     [HttpGet("{id:guid}/statements")]
+    [AllowedQuery("PageNumber", "PageSize", "Status", "From", "To", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<CreditCardStatementOutput>>> ListStatements(
         Guid id,
         [FromQuery] ListCreditCardStatementsRequest request)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key =>
-            !StatementListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<CreditCardStatementOutput>.New
-                .WithError(CreditCardStatementMessages.UnsupportedFilter(unsupported)));
-        }
-
         var query = new ListCreditCardStatementsQuery
         {
             CreditCardId = id,

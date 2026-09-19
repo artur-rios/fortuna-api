@@ -9,7 +9,7 @@ public sealed class CreateCounterpartyCommandValidator : AbstractValidator<Creat
         .Cascade(CascadeMode.Stop)
         .NotEmpty()
         .WithMessage(CounterpartyMessages.NameRequired)
-        .MaximumLength(200)
+        .TrimmedMaximumLength(200)
         .WithMessage(CounterpartyMessages.NameTooLong);
 }
 
@@ -19,7 +19,7 @@ public sealed class UpdateCounterpartyCommandValidator : AbstractValidator<Updat
         .Cascade(CascadeMode.Stop)
         .NotEmpty()
         .WithMessage(CounterpartyMessages.NameRequired)
-        .MaximumLength(200)
+        .TrimmedMaximumLength(200)
         .WithMessage(CounterpartyMessages.NameTooLong);
 }
 

@@ -16,8 +16,10 @@ public static class BudgetMessages
     public const string NotFound = "Budget not found.";
     public const string CategoryNotFound = "One or more categories were not found.";
     public const string CurrencyNotSupported = "The currency is not supported.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string AmountMustBePositive = "Amount must be greater than zero.";
+    public const string AmountPrecisionInvalid =
+        "Amount must have at most 4 decimal places and 15 integer digits.";
     public const string CurrencyRequired = "CurrencyCode is required.";
     public const string CurrencyInvalid = "CurrencyCode must contain three characters.";
     public const string PeriodTypeInvalid = "PeriodType is invalid.";

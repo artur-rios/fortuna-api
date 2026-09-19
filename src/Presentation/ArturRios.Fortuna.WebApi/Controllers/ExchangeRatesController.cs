@@ -27,7 +27,7 @@ public sealed class ExchangeRatesController(
         {
             [ExchangeRateSyncMessages.Accepted] = StatusCodes.Status200OK,
             [ExchangeRateSyncMessages.AlreadyQueued] = StatusCodes.Status200OK,
-            [ExchangeRateSyncMessages.SourceNotConfigured] = StatusCodes.Status400BadRequest,
+            [ExchangeRateSyncMessages.SourceNotConfigured] = StatusCodes.Status503ServiceUnavailable,
             [ExchangeRateSyncMessages.AdministratorRequired] = StatusCodes.Status403Forbidden,
             [ManualExchangeRateMessages.AdministratorRequired] = StatusCodes.Status403Forbidden,
             [ManualExchangeRateMessages.RecordedSuccessfully] = StatusCodes.Status201Created,

@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.Filters;
 using ArturRios.Fortuna.WebApi.Requests;
 using ArturRios.Mediator.Command;
 using ArturRios.Mediator.Query;
@@ -18,38 +19,9 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 [Route("api/transactions")]
 public sealed class TransactionsController(
     CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+    QueryMediator queryMediator,
+    UploadLimits uploadLimits) : Controller
 {
-    private static readonly HashSet<string> SearchQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber",
-        "PageSize",
-        "From",
-        "To",
-        "FinancialAccountId",
-        "CreditCardId",
-        "CategoryId",
-        "TagId",
-        "CounterpartyId",
-        "Direction",
-        "MinimumAmount",
-        "MaximumAmount",
-        "Text",
-        "IncludeDeleted",
-        "DisplayCurrencyCode",
-        "FigureDate",
-        "SortBy",
-        "Descending"
-    };
-
-    private static readonly HashSet<string> AttachmentListQueryFields =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "PageNumber",
-            "PageSize",
-            "IncludeDeleted"
-        };
-
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
@@ -131,18 +103,14 @@ public sealed class TransactionsController(
         };
 
     [HttpGet]
+    [AllowedQuery(
+        "PageNumber", "PageSize", "From", "To", "FinancialAccountId", "CreditCardId", "CategoryId", "TagId",
+        "CounterpartyId", "Direction", "MinimumAmount", "MaximumAmount", "Text", "IncludeDeleted",
+        "DisplayCurrencyCode", "FigureDate", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TransactionSearchOutput?>>> Search(
         [FromQuery] SearchTransactionsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key =>
-            !SearchQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(DataOutput<TransactionSearchOutput?>.New
-                .WithError(TransactionMessages.UnsupportedFilter(unsupported)));
-        }
-
         var result = await queryMediator.ExecuteQueryAsync<
             SearchTransactionsQuery,
             TransactionSearchOutput>(query);
@@ -180,19 +148,12 @@ public sealed class TransactionsController(
     }
 
     [HttpGet("{id:guid}/attachments")]
+    [AllowedQuery("PageNumber", "PageSize", "IncludeDeleted")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<AttachmentOutput>>> ListAttachments(
         Guid id,
         [FromQuery] ListTransactionAttachmentsRequest request)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key =>
-            !AttachmentListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<AttachmentOutput>.New
-                .WithError(AttachmentMessages.UnsupportedFilter(unsupported)));
-        }
-
         var query = new ListTransactionAttachmentsQuery
         {
             TransactionId = id,
@@ -209,31 +170,32 @@ public sealed class TransactionsController(
 
     [HttpPost("{id:guid}/attachments")]
     [Consumes("multipart/form-data")]
-    [RequestFormLimits(MultipartBodyLengthLimit = 52_428_800)]
+    [UploadLimit(UploadKind.Attachment)]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<AttachDocumentCommandOutput?>>> AttachDocument(
         Guid id,
         [FromForm] AttachDocumentRequest request)
     {
-        await using var stream = request.File?.OpenReadStream() ?? Stream.Null;
-        using var content = new MemoryStream();
-        await stream.CopyToAsync(content, HttpContext.RequestAborted);
+        var file = await UploadedFile.ReadAsync(
+            request.File,
+            uploadLimits.MaximumFileBytes(UploadKind.Attachment),
+            HttpContext.RequestAborted);
+        if (file.TooLarge)
+        {
+            return BadRequest(DataOutput<AttachDocumentCommandOutput?>.New
+                .WithError(uploadLimits.FileTooLarge(UploadKind.Attachment)));
+        }
+
         var command = new AttachDocumentCommand
         {
             TransactionId = id,
-            FileName = Path.GetFileName(request.File?.FileName ?? string.Empty),
-            ContentType = request.File?.ContentType ?? string.Empty,
-            Content = content.ToArray()
+            FileName = Path.GetFileName(file.FileName),
+            ContentType = file.ContentType,
+            Content = file.Content
         };
         var result = await commandMediator.ExecuteCommandAsync<
             AttachDocumentCommand,
             AttachDocumentCommandOutput>(command);
-        if (result.Errors?.Any(error =>
-                error.StartsWith("The document exceeds", StringComparison.Ordinal) ||
-                error.StartsWith("The document content type", StringComparison.Ordinal)) == true)
-        {
-            return BadRequest(result);
-        }
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

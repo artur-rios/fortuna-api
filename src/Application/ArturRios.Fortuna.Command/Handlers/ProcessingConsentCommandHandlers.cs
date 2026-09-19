@@ -5,10 +5,12 @@ using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
+using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class GrantProcessingConsentCommandHandler(
+    IValidator<GrantProcessingConsentCommand> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IProcessingConsentStore consents,
@@ -19,24 +21,25 @@ public sealed class GrantProcessingConsentCommandHandler(
     public async Task<DataOutput<GrantProcessingConsentCommandOutput?>> HandleAsync(
         GrantProcessingConsentCommand command)
     {
+        var validation = await validator.ValidateAsync(command);
+        if (!validation.IsValid)
+        {
+            return DataOutput<GrantProcessingConsentCommandOutput?>.New.WithErrors(
+                validation.Errors.Select(error => error.ErrorMessage));
+        }
+
         if (!ProcessingConsentOptions.TryParsePurpose(command.Purpose, out var purpose))
         {
             return Failure(ProcessingConsentMessages.UnknownPurpose);
         }
-        if (string.IsNullOrWhiteSpace(command.Version))
-        {
-            return Failure(ProcessingConsentMessages.VersionRequired);
-        }
-        var currentVersion = options.CurrentVersion(purpose);
-        if (!string.Equals(command.Version.Trim(), currentVersion, StringComparison.Ordinal))
-        {
-            return Failure(ProcessingConsentMessages.VersionNotCurrent);
-        }
+
         var profile = await ResolveProfileAsync(actorAccessor.Actor, profiles);
         if (profile is null)
         {
             return Failure(ProcessingConsentMessages.ProfileNotFound);
         }
+
+        var currentVersion = options.CurrentVersion(purpose);
         var consent = await consents.GrantAsync(
             profile.Id,
             purpose,
@@ -69,6 +72,7 @@ public sealed class GrantProcessingConsentCommandHandler(
 }
 
 public sealed class WithdrawProcessingConsentCommandHandler(
+    IValidator<WithdrawProcessingConsentCommand> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IProcessingConsentStore consents,
@@ -78,10 +82,18 @@ public sealed class WithdrawProcessingConsentCommandHandler(
     public async Task<DataOutput<WithdrawProcessingConsentCommandOutput?>> HandleAsync(
         WithdrawProcessingConsentCommand command)
     {
+        var validation = await validator.ValidateAsync(command);
+        if (!validation.IsValid)
+        {
+            return DataOutput<WithdrawProcessingConsentCommandOutput?>.New.WithErrors(
+                validation.Errors.Select(error => error.ErrorMessage));
+        }
+
         if (!ProcessingConsentOptions.TryParsePurpose(command.Purpose, out var purpose))
         {
             return Failure(ProcessingConsentMessages.UnknownPurpose);
         }
+
         var profile = await GrantProcessingConsentCommandHandler.ResolveProfileAsync(
             actorAccessor.Actor,
             profiles);
@@ -89,6 +101,7 @@ public sealed class WithdrawProcessingConsentCommandHandler(
         {
             return Failure(ProcessingConsentMessages.ProfileNotFound);
         }
+
         var result = await consents.WithdrawAsync(
             profile.Id,
             purpose,

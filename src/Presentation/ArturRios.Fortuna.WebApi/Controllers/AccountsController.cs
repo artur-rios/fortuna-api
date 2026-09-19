@@ -9,6 +9,7 @@ using ArturRios.Mediator.Query;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
+using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
@@ -17,19 +18,6 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 [Route("api/accounts")]
 public sealed class AccountsController(CommandMediator commandMediator, QueryMediator queryMediator) : Controller
 {
-    private static readonly HashSet<string> ListQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber",
-        "PageSize",
-        "Name",
-        "Institution",
-        "AccountType",
-        "CurrencyCode",
-        "IncludeDeleted",
-        "SortBy",
-        "Descending"
-    };
-
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
@@ -153,17 +141,13 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
     }
 
     [HttpGet]
+    [AllowedQuery(
+        "PageNumber", "PageSize", "Name", "Institution", "AccountType", "CurrencyCode", "IncludeDeleted", "SortBy",
+        "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<FinancialAccountOutput>>> List(
         [FromQuery] ListFinancialAccountsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<FinancialAccountOutput>.New
-                .WithError(FinancialAccountMessages.UnsupportedFilter(unsupported)));
-        }
-
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListFinancialAccountsQuery,
             FinancialAccountOutput>(query);

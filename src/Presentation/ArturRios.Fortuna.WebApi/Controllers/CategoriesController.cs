@@ -32,7 +32,7 @@ public sealed class CategoriesController(
             [CategoryMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.ParentNotFound] = StatusCodes.Status404NotFound,
             [CategoryMessages.DuplicateSiblingName] = StatusCodes.Status409Conflict,
-            [CategoryMessages.CycleDetected] = StatusCodes.Status400BadRequest,
+            [CategoryMessages.CycleDetected] = StatusCodes.Status409Conflict,
             [CategoryMessages.NameRequired] = StatusCodes.Status400BadRequest,
             [CategoryMessages.NameTooLong] = StatusCodes.Status400BadRequest,
             [CategoryMessages.ParentIdInvalid] = StatusCodes.Status400BadRequest,

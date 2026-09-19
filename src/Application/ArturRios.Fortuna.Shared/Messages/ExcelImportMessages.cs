@@ -3,12 +3,14 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class ExcelImportMessages
 {
     public const string Accepted = "Excel import queued successfully.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
+    public const string TargetIdRequired = "TargetId is required.";
     public const string TargetNotFound = "The import target was not found.";
     public const string TargetDeleted = "The import target is deleted.";
     public const string TargetUnavailable = "The import target was deleted or removed while the import ran.";
     public const string FileRequired = "A workbook file is required.";
     public const string FileTooLarge = "The workbook exceeds the configured size limit.";
+    public const string FileNameTooLong = "The workbook file name cannot exceed 300 characters.";
     public const string WorkbookInvalid = "The file is not a readable Excel workbook.";
     public const string TargetTypeInvalid = "TargetType must be 'account' or 'creditCard'.";
     public const string DateColumnRequired = "DateColumn is required.";

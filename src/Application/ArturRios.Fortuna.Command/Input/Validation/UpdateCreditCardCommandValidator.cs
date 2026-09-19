@@ -11,21 +11,21 @@ public sealed class UpdateCreditCardCommandValidator : AbstractValidator<UpdateC
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(CreditCardMessages.NameRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(CreditCardMessages.NameTooLong);
 
         RuleFor(command => command.Issuer)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(CreditCardMessages.IssuerRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(CreditCardMessages.IssuerTooLong);
 
         RuleFor(command => command.CreditLimit)
             .Cascade(CascadeMode.Stop)
             .GreaterThan(0)
             .WithMessage(CreditCardMessages.CreditLimitPositive)
-            .PrecisionScale(19, 4, false)
+            .Money()
             .WithMessage(CreditCardMessages.CreditLimitPrecisionInvalid);
 
         RuleFor(command => command.ClosingDay)

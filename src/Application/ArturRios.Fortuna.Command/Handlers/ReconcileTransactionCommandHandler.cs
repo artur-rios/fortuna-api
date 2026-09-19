@@ -57,11 +57,10 @@ public sealed class ReconcileTransactionCommandHandler(
             if (result.Outcome ==
                 TransactionReconciliationOutcome.ImportedRecordAlreadyMatched)
             {
-                return output.WithErrors([
-                    TransactionMessages.ImportedRecordAlreadyMatched,
-                    TransactionMessages.ConflictingTransaction(
-                        result.ConflictingTransactionId!.Value)
-                ]);
+                return output
+                    .WithError(TransactionMessages.ImportedRecordAlreadyMatched)
+                    .WithMessage(TransactionMessages.ConflictingTransaction(
+                        result.ConflictingTransactionId!.Value));
             }
 
             return output.WithError(result.Outcome switch

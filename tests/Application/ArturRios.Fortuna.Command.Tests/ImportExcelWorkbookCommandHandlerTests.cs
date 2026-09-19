@@ -114,7 +114,7 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
         TargetId = Guid.NewGuid(),
         TargetType = ImportTargetType.Account,
         FileName = "transactions.xlsx",
-        Content = [1, 2, 3],
+        Content = [0x50, 0x4B, 0x03, 0x04, 0x14],
         Mapping = new ExcelColumnMapping(
             "Date", "Amount", "Direction", "Description", "Category", "Id"),
         CreateMissingCategories = true,

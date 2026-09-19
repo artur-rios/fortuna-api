@@ -10,7 +10,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DeleteRecurringTransactionCommandHandler(
-    IRequestActorAccessor actors,
+    IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IRecurringTransactionLifecycleStore rules,
     TimeProvider timeProvider)
@@ -20,7 +20,7 @@ public sealed class DeleteRecurringTransactionCommandHandler(
         DeleteRecurringTransactionCommand command)
     {
         var output = DataOutput<RecurringTransactionLifecycleCommandOutput?>.New;
-        var profile = await RecurringTransactionHandler.ResolveProfileAsync(actors.Actor, profiles);
+        var profile = await RecurringTransactionHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
         if (profile is null)
         {
             return output.WithError(RecurringTransactionMessages.ProfileNotFound);

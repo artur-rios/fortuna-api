@@ -189,10 +189,9 @@ internal static class TransactionTagHandler
 
         if (result.Outcome == TransactionTagAssignmentOutcome.MaximumExceeded)
         {
-            return output.WithErrors([
-                TagMessages.MaximumExceeded,
-                TagMessages.MaximumAllowed(options.MaximumPerTransaction)
-            ]);
+            return output
+                .WithError(TagMessages.MaximumExceeded)
+                .WithMessage(TagMessages.MaximumAllowed(options.MaximumPerTransaction));
         }
 
         return output

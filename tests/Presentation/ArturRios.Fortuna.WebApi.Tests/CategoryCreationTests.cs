@@ -174,7 +174,7 @@ public sealed class CategoryCreationTests : IAsyncLifetime
             "/api/categories",
             new { Name = "Rejected", ParentId = root.Id });
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains(
             CategoryMessages.CycleDetected,
             await response.Content.ReadAsStringAsync(),

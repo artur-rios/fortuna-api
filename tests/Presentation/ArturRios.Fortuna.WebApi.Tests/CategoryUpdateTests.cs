@@ -92,8 +92,8 @@ public sealed class CategoryUpdateTests : IAsyncLifetime
             ParentId = child.Id
         });
 
-        Assert.Equal(HttpStatusCode.BadRequest, self.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, descendant.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, self.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, descendant.StatusCode);
         Assert.Contains(CategoryMessages.CycleDetected, await self.Content.ReadAsStringAsync());
         Assert.Contains(CategoryMessages.CycleDetected, await descendant.Content.ReadAsStringAsync());
         await using var context = CreateContext();

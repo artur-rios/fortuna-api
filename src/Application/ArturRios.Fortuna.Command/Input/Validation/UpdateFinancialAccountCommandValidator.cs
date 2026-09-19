@@ -12,11 +12,11 @@ public sealed class UpdateFinancialAccountCommandValidator
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(FinancialAccountMessages.NameRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(FinancialAccountMessages.NameTooLong);
 
         RuleFor(command => command.Institution)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(FinancialAccountMessages.InstitutionTooLong);
 
         RuleFor(command => command.AccountType)

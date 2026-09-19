@@ -29,8 +29,8 @@ public sealed class AttachDocumentCommandHandlerTests
         Assert.Equal(TransactionId, result.Data?.TransactionId);
         Assert.Equal("receipt.pdf", result.Data?.FileName);
         Assert.Equal("application/pdf", result.Data?.ContentType);
-        Assert.Equal(3, result.Data?.SizeInBytes);
-        Assert.Equal([1, 2, 3], storage.WrittenContent);
+        Assert.Equal(8, result.Data?.SizeInBytes);
+        Assert.Equal("%PDF-1.7"u8.ToArray(), storage.WrittenContent);
         Assert.Equal(storage.WrittenKey, metadata.Write?.StorageKey);
         Assert.Null(storage.DeletedKey);
     }
@@ -150,7 +150,7 @@ public sealed class AttachDocumentCommandHandlerTests
         TransactionId = TransactionId,
         FileName = "receipt.pdf",
         ContentType = "application/pdf",
-        Content = [1, 2, 3]
+        Content = "%PDF-1.7"u8.ToArray()
     };
 
     private sealed class StubMetadataStore : IAttachmentMetadataStore
