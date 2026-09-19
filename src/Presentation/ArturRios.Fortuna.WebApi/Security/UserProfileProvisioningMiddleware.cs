@@ -14,9 +14,8 @@ public sealed class UserProfileProvisioningMiddleware(RequestDelegate next)
         var actor = actorAccessor.Actor;
         // Erasure must only operate on an existing Fortuna account. Provisioning here would
         // recreate an erased profile on a repeated request before the handler can return 404.
-        var isErasureRequest = context.Request.Path.Equals(
-            "/api/me/erasure",
-            StringComparison.OrdinalIgnoreCase);
+        // Routing ignores case and a trailing slash, so the check must too.
+        var isErasureRequest = IsErasurePath(context.Request.Path);
         if (actor is not null && !actor.IsLocal && !isErasureRequest)
         {
             if (string.IsNullOrWhiteSpace(actor.DisplayName))
@@ -34,4 +33,10 @@ public sealed class UserProfileProvisioningMiddleware(RequestDelegate next)
 
         await next(context);
     }
+
+    public static bool IsErasurePath(PathString path) =>
+        path.StartsWithSegments(ErasurePath, StringComparison.OrdinalIgnoreCase, out var remaining) &&
+        (!remaining.HasValue || remaining.Value == "/");
+
+    private static readonly PathString ErasurePath = new("/api/me/erasure");
 }
