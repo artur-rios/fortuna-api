@@ -50,6 +50,7 @@ using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Controllers;
 using ArturRios.Fortuna.WebApi.Observability;
+using ArturRios.Fortuna.WebApi.Output;
 using ArturRios.Fortuna.WebApi.OpenApi;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Serialization;
@@ -67,6 +68,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -847,8 +849,12 @@ try
     RegisterAttachmentStore(builder.Services, options);
     builder.Services.AddPrometheusMetrics(options.MetricsPort);
 
-    builder.Services.AddControllers().AddJsonOptions(json =>
-        json.JsonSerializerOptions.Converters.Add(new ExactDecimalJsonConverter()));
+    builder.Services.AddControllers()
+        .AddJsonOptions(json => json.JsonSerializerOptions.Converters.Add(new ExactDecimalJsonConverter()))
+        .ConfigureApiBehaviorOptions(api =>
+            api.InvalidModelStateResponseFactory = ApiErrorResponses.InvalidModelState);
+    builder.Services.Configure<ForwardedHeadersOptions>(forwarded =>
+        ForwardedHeadersSetup.Configure(forwarded, options));
     var jwtConfiguration = BuildJwtConfiguration(options);
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(authentication =>
@@ -923,6 +929,15 @@ try
 
     var app = builder.Build();
 
+    // Development keeps the developer exception page; elsewhere an unhandled exception becomes a
+    // generic DataOutput 500 without internals. Forwarded headers are applied before anything
+    // that reads the client address (request logging, the per-client rate limiter).
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseExceptionHandler(handler => handler.Run(ApiErrorResponses.WriteUnexpectedErrorAsync));
+    }
+
+    app.UseForwardedHeaders();
     app.UsePrometheusMetrics(options.MetricsPort);
     if (!app.Environment.IsProduction())
     {

@@ -59,6 +59,9 @@ services:
       FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS: ${FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS:-1}
       # The entrypoint opens the metrics listener on this port (default 9464; 0 disables it).
       FORTUNA_METRICS_PORT: ${FORTUNA_METRICS_PORT:-}
+      # Reverse proxies trusted to report the client address (CIDR networks / IP addresses).
+      FORTUNA_FORWARDED_KNOWN_NETWORKS: ${FORTUNA_FORWARDED_KNOWN_NETWORKS:-}
+      FORTUNA_FORWARDED_KNOWN_PROXIES: ${FORTUNA_FORWARDED_KNOWN_PROXIES:-}
     volumes:
       - logs:/app/logs
       - attachments:/app/attachments
