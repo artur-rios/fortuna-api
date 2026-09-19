@@ -266,13 +266,14 @@ public sealed class EfRecurringTransactionStore(
             try
             {
                 var possibleDuplicate = await IsPossibleImportedDuplicateAsync(rule, dueDate, cancellationToken);
+                var counterparty = rule.Counterparty is { IsDeleted: false } ? rule.Counterparty : null;
                 var transaction = rule.FinancialAccount is not null
                     ? new FinancialTransaction(
                         rule.User, rule.FinancialAccount, rule.Category, rule.Direction, rule.Amount,
-                        dueDate, run.MaterializedAt, rule.Description, rule.Counterparty)
+                        dueDate, run.MaterializedAt, rule.Description, counterparty)
                     : new FinancialTransaction(
                         rule.User, rule.CreditCard!, rule.Category, rule.Direction, rule.Amount,
-                        dueDate, run.MaterializedAt, rule.Description, rule.Counterparty);
+                        dueDate, run.MaterializedAt, rule.Description, counterparty);
                 transaction.MarkAsRecurringOccurrence(rule, possibleDuplicate, run.MaterializedAt);
                 context.FinancialTransactions.Add(transaction);
                 if (rule.CreditCard is not null)

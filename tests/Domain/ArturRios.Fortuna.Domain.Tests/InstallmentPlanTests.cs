@@ -33,6 +33,21 @@ public sealed class InstallmentPlanTests
     }
 
     [UnitTheory]
+    [InlineData("100.555", 2, 2, "100.56")]
+    [InlineData("100.5", 3, 0, "101")]
+    public void GivenTotalFinerThanMinorUnit_WhenSplit_ThenEveryPartFitsTheCurrencyScale(
+        string total,
+        short count,
+        short digits,
+        string expectedSum)
+    {
+        var amounts = InstallmentPlan.TrySplit(decimal.Parse(total), count, digits).Amounts;
+
+        Assert.All(amounts, amount => Assert.Equal(decimal.Round(amount, digits), amount));
+        Assert.Equal(decimal.Parse(expectedSum), amounts.Sum());
+    }
+
+    [UnitTheory]
     [InlineData("0", 2, InstallmentSplitOutcome.TotalNotPositive)]
     [InlineData("10", 1, InstallmentSplitOutcome.TooFewInstallments)]
     [InlineData("0.01", 2, InstallmentSplitOutcome.AmountTooSmall)]

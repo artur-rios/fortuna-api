@@ -5,6 +5,8 @@ namespace ArturRios.Fortuna.Domain.Transactions;
 
 public sealed class InstallmentPlan : RecordLifecycleEntity
 {
+    private readonly List<FinancialTransaction> _installments = [];
+
     private InstallmentPlan()
     {
     }
@@ -39,7 +41,7 @@ public sealed class InstallmentPlan : RecordLifecycleEntity
     public decimal TotalAmount { get; private set; }
     public short InstallmentCount { get; private set; }
     public DateOnly PurchasedOn { get; private set; }
-    public ICollection<FinancialTransaction> Installments { get; } = [];
+    public IReadOnlyCollection<FinancialTransaction> Installments => _installments;
 
     public void AddInstallment(
         FinancialTransaction transaction,
@@ -72,7 +74,7 @@ public sealed class InstallmentPlan : RecordLifecycleEntity
         }
 
         transaction.AssignToInstallmentPlan(this, installmentNumber, updatedAt);
-        Installments.Add(transaction);
+        _installments.Add(transaction);
     }
 
     public static InstallmentSplit TrySplit(
@@ -95,6 +97,9 @@ public sealed class InstallmentPlan : RecordLifecycleEntity
             return InstallmentSplit.Refused(InstallmentSplitOutcome.MinorUnitDigitsUnsupported);
         }
 
+        // A total finer than the currency's minor unit would leak the excess into the first
+        // installment, so the total is brought to the currency scale before splitting.
+        totalAmount = decimal.Round(totalAmount, minorUnitDigits, MidpointRounding.AwayFromZero);
         var regularAmount = decimal.Round(
             totalAmount / installmentCount,
             minorUnitDigits,

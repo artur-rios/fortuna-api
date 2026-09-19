@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Domain.Currencies;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -21,19 +22,17 @@ public sealed class CreditCard : RecordLifecycleEntity
         string? lastFourDigits,
         DateTimeOffset createdAt) : base(createdAt)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A card name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A card name between 1 and 200 characters is required.");
 
-        if (string.IsNullOrWhiteSpace(issuer) || issuer.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A card issuer between 1 and 200 characters is required.",
-                nameof(issuer));
-        }
+        issuer = BoundedText.Required(
+            issuer,
+            200,
+            nameof(issuer),
+            "A card issuer between 1 and 200 characters is required.");
 
         if (creditLimit <= 0)
         {
@@ -60,9 +59,9 @@ public sealed class CreditCard : RecordLifecycleEntity
 
         User = user ?? throw new ArgumentNullException(nameof(user));
         UserId = user.Id;
-        Name = name.Trim();
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
-        Issuer = issuer.Trim();
+        Issuer = issuer;
         Currency = currency ?? throw new ArgumentNullException(nameof(currency));
         CurrencyId = currency.Id;
         CreditLimit = creditLimit;
@@ -92,19 +91,18 @@ public sealed class CreditCard : RecordLifecycleEntity
         short dueDay,
         DateTimeOffset updatedAt)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A card name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        EnsureNotDeleted();
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A card name between 1 and 200 characters is required.");
 
-        if (string.IsNullOrWhiteSpace(issuer) || issuer.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A card issuer between 1 and 200 characters is required.",
-                nameof(issuer));
-        }
+        issuer = BoundedText.Required(
+            issuer,
+            200,
+            nameof(issuer),
+            "A card issuer between 1 and 200 characters is required.");
 
         if (creditLimit <= 0)
         {
@@ -121,9 +119,9 @@ public sealed class CreditCard : RecordLifecycleEntity
             throw new ArgumentOutOfRangeException(nameof(dueDay));
         }
 
-        Name = name.Trim();
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
-        Issuer = issuer.Trim();
+        Issuer = issuer;
         CreditLimit = creditLimit;
         ClosingDay = closingDay;
         DueDay = dueDay;

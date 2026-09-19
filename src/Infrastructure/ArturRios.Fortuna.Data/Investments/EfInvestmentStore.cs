@@ -25,6 +25,17 @@ public sealed class EfInvestmentStore(
                 LatestValuationDate = liveValuations
                     .Where(valuation => valuation.InvestmentId == investment.Id)
                     .Max(valuation => (DateOnly?)valuation.ValuedOn)
+            })
+            .Select(item => new
+            {
+                item.Investment,
+                item.LatestValuationDate,
+                LatestValuationUpdatedAt = liveValuations
+                    .Where(valuation =>
+                        valuation.InvestmentId == item.Investment.Id &&
+                        valuation.ValuedOn == item.LatestValuationDate)
+                    .Select(valuation => (DateTimeOffset?)valuation.UpdatedAt)
+                    .FirstOrDefault()
             });
 
         return withLatestDate.Select(item => new InvestmentPositionSnapshot
@@ -45,8 +56,11 @@ public sealed class EfInvestmentStore(
                     .Where(movement =>
                         movement.InvestmentId == item.Investment.Id &&
                         !movement.IsDeleted &&
-                        movement.OccurredOn >
-                            (item.LatestValuationDate ?? DateOnly.MinValue))
+                        // Mirrors InvestmentPositionCalculator.FollowsValuation.
+                        (movement.OccurredOn >
+                            (item.LatestValuationDate ?? DateOnly.MinValue) ||
+                         (movement.OccurredOn == item.LatestValuationDate &&
+                          movement.CreatedAt > item.LatestValuationUpdatedAt)))
                     .Select(movement => (decimal?)(
                         movement.MovementType == InvestmentMovementType.Contribution ||
                         movement.MovementType == InvestmentMovementType.Yield

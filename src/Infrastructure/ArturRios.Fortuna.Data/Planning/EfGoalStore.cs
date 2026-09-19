@@ -20,6 +20,11 @@ public sealed class EfGoalStore(AppDbContext context)
         GoalCreation creation,
         CancellationToken cancellationToken)
     {
+        if (!Goal.IsFutureTargetDate(creation.TargetDate, creation.CreatedAt))
+        {
+            return Result(GoalMutationOutcome.TargetDateNotFuture);
+        }
+
         var user = await context.UserProfiles.SingleAsync(
             item => item.PublicId == creation.UserId,
             cancellationToken);
@@ -109,6 +114,11 @@ public sealed class EfGoalStore(AppDbContext context)
         if (goal is null)
         {
             return Result(GoalMutationOutcome.NotFound);
+        }
+
+        if (!goal.AcceptsTargetDate(update.TargetDate, update.UpdatedAt))
+        {
+            return Result(GoalMutationOutcome.TargetDateNotFuture);
         }
 
         var currency = await context.Currencies.SingleOrDefaultAsync(

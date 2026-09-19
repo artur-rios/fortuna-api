@@ -141,4 +141,16 @@ public abstract class RecordLifecycleEntity
         DeletionCascadeId = null;
         UpdatedAt = restoredAt;
     }
+
+    /// <summary>
+    /// Guards edits of a soft-deleted record. Stores only load live records for editing, so
+    /// reaching this with a deleted record is a programming error rather than a user outcome.
+    /// </summary>
+    protected void EnsureNotDeleted()
+    {
+        if (IsDeleted)
+        {
+            throw new InvalidOperationException("A deleted record cannot be changed.");
+        }
+    }
 }

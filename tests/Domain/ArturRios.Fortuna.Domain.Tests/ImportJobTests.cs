@@ -58,6 +58,23 @@ public sealed class ImportJobTests
         Assert.Equal(occurredOn, record.OccurredOn);
     }
 
+    [UnitFact]
+    public void GivenPaddedIdentifierWithinBound_WhenRecordCreated_ThenBoundAppliesAfterTrimming()
+    {
+        var job = new ImportJob(User(), TransactionSourceType.Excel, Now);
+        var identifier = new string('x', 200);
+
+        var record = new ImportedRecord(
+            job,
+            "{}",
+            ImportedRecordOutcome.Imported,
+            10m,
+            new DateOnly(2026, 9, 4),
+            $"  {identifier}  ");
+
+        Assert.Equal(identifier, record.ExternalId);
+    }
+
     [UnitTheory]
     [InlineData("")]
     [InlineData("not json")]
@@ -173,6 +190,56 @@ public sealed class ImportJobTests
 
         Assert.Equal(ConnectionStatus.RequiresReauthentication, connection.Status);
         Assert.Equal(Now.AddMinutes(1), connection.UpdatedAt);
+    }
+
+    [UnitFact]
+    public void GivenOversizedReason_WhenImportJobFails_ThenReasonIsTruncatedToFit()
+    {
+        var job = new ImportJob(User(), TransactionSourceType.Excel, Now);
+        job.Start(Now);
+
+        job.Fail(new string('x', 1500), Now.AddMinutes(1));
+
+        Assert.Equal(ImportJobStatus.Failed, job.Status);
+        Assert.Equal(1000, job.FailureReason!.Length);
+    }
+
+    [UnitFact]
+    public void GivenNullConnection_WhenConnectedJobCreated_ThenConnectionIsReported()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() =>
+            new ImportJob(User(), (Connection)null!, null, null, Now));
+
+        Assert.Equal("connection", exception.ParamName);
+    }
+
+    [UnitFact]
+    public void GivenMalformedPayload_WhenRecordCreated_ThenArgumentExceptionIsThrown()
+    {
+        var job = new ImportJob(User(), TransactionSourceType.Excel, Now);
+
+        var exception = Assert.Throws<ArgumentException>(() => new ImportedRecord(
+            job,
+            "{not json",
+            ImportedRecordOutcome.Imported,
+            10m,
+            new DateOnly(2026, 9, 4)));
+
+        Assert.Equal("rawPayload", exception.ParamName);
+    }
+
+    [UnitFact]
+    public void GivenRejectedRecordWithoutReason_WhenCreated_ThenItIsRejected()
+    {
+        var job = new ImportJob(User(), TransactionSourceType.Excel, Now);
+
+        Assert.Throws<ArgumentException>(() => new ImportedRecord(
+            job,
+            "{}",
+            ImportedRecordOutcome.Rejected,
+            null,
+            null,
+            rejectionReason: "  "));
     }
 
     private static UserProfile User() => new(

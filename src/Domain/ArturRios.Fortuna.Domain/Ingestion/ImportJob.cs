@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
@@ -22,6 +23,8 @@ public enum ImportedRecordOutcome : short
 
 public sealed class ImportJob
 {
+    private readonly List<ImportedRecord> _records = [];
+
     private ImportJob()
     {
     }
@@ -40,8 +43,13 @@ public sealed class ImportJob
         DateOnly? periodStart,
         DateOnly? periodEnd,
         DateTimeOffset createdAt)
-        : this(user, connection, connection?.DataSourceType ?? TransactionSourceType.Manual,
-            periodStart, periodEnd, createdAt)
+        : this(
+            user,
+            connection ?? throw new ArgumentNullException(nameof(connection)),
+            connection.DataSourceType,
+            periodStart,
+            periodEnd,
+            createdAt)
     {
     }
 
@@ -99,15 +107,19 @@ public sealed class ImportJob
     public string? FailureReason { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
-    public ICollection<ImportedRecord> Records { get; } = [];
+    public IReadOnlyCollection<ImportedRecord> Records => _records;
+
+    private JobPhase Phase => Status switch
+    {
+        ImportJobStatus.Pending => JobPhase.Pending,
+        ImportJobStatus.Running => JobPhase.Running,
+        ImportJobStatus.Completed => JobPhase.Finished,
+        _ => JobPhase.Failed
+    };
 
     public void Start(DateTimeOffset updatedAt)
     {
-        if (Status != ImportJobStatus.Pending)
-        {
-            throw new InvalidOperationException("Only a pending import job can start.");
-        }
-
+        JobLifecycle.EnsureCanStart(Phase, "import job");
         Status = ImportJobStatus.Running;
         FailureReason = null;
         UpdatedAt = updatedAt;
@@ -136,11 +148,7 @@ public sealed class ImportJob
         int rejectedCount,
         DateTimeOffset updatedAt)
     {
-        if (Status != ImportJobStatus.Running)
-        {
-            throw new InvalidOperationException("Only a running import job can complete.");
-        }
-
+        JobLifecycle.EnsureCanComplete(Phase, "import job");
         if (importedCount < 0 || duplicateCount < 0 || rejectedCount < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(importedCount));
@@ -154,25 +162,17 @@ public sealed class ImportJob
         UpdatedAt = updatedAt;
     }
 
-    public void Fail(string reason, DateTimeOffset updatedAt)
+    public void Fail(string? reason, DateTimeOffset updatedAt)
     {
-        if (Status is not (ImportJobStatus.Pending or ImportJobStatus.Running))
-        {
-            throw new InvalidOperationException("Only an unfinished import job can fail.");
-        }
-
-        FailureReason = JobFailureReason.Normalize(reason);
+        JobLifecycle.EnsureCanFail(Phase, "import job");
+        FailureReason = JobLifecycle.FailureReason(reason);
         Status = ImportJobStatus.Failed;
         UpdatedAt = updatedAt;
     }
 
     public void Retry(DateTimeOffset updatedAt)
     {
-        if (Status != ImportJobStatus.Failed)
-        {
-            throw new InvalidOperationException("Only a failed import job can be retried.");
-        }
-
+        JobLifecycle.EnsureCanRetry(Phase, "import job");
         Status = ImportJobStatus.Pending;
         ImportedCount = 0;
         DuplicateCount = 0;
@@ -195,27 +195,24 @@ public sealed class ConnectionResource
         Cards.CreditCard? card = null)
     {
         Connection = connection ?? throw new ArgumentNullException(nameof(connection));
-        if (string.IsNullOrWhiteSpace(externalReference) || externalReference.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An external reference between 1 and 200 characters is required.",
-                nameof(externalReference));
-        }
+        externalReference = BoundedText.Required(
+            externalReference,
+            200,
+            nameof(externalReference),
+            "An external reference between 1 and 200 characters is required.");
 
-        if ((account is null) == (card is null))
-        {
-            throw new ArgumentException("Exactly one mapped resource is required.");
-        }
-
-        var owner = account?.User ?? card!.User;
-        if (owner.PublicId != connection.User.PublicId)
+        var target = TransactionTarget.Of(
+            account,
+            card,
+            message: "Exactly one mapped resource is required.");
+        if (target.Owner.PublicId != connection.User.PublicId)
         {
             throw new ArgumentException(
                 "The connection and mapped resource must have the same owner.");
         }
 
         ConnectionId = connection.Id;
-        ExternalReference = externalReference.Trim();
+        ExternalReference = externalReference;
         FinancialAccount = account;
         FinancialAccountId = account?.Id;
         CreditCard = card;
@@ -253,7 +250,7 @@ public sealed class ImportedRecord
             throw new ArgumentException("A raw payload is required.", nameof(rawPayload));
         }
 
-        using var _ = JsonDocument.Parse(rawPayload);
+        EnsureJson(rawPayload);
         if (!Enum.IsDefined(outcome))
         {
             throw new ArgumentOutOfRangeException(nameof(outcome));
@@ -264,27 +261,26 @@ public sealed class ImportedRecord
             throw new ArgumentOutOfRangeException(nameof(amount));
         }
 
-        if (externalId?.Length > 200)
+        ImportJobId = importJob.Id;
+        RawPayload = rawPayload;
+        ExternalId = BoundedText.Optional(
+            externalId,
+            200,
+            nameof(externalId),
+            "An external identifier cannot exceed 200 characters.");
+        Outcome = outcome;
+        RejectionReason = BoundedText.Optional(
+            rejectionReason,
+            1000,
+            nameof(rejectionReason),
+            "A rejection reason cannot exceed 1000 characters.");
+        if (outcome == ImportedRecordOutcome.Rejected && RejectionReason is null)
         {
             throw new ArgumentException(
-                "An external identifier cannot exceed 200 characters.",
-                nameof(externalId));
-        }
-
-        if (rejectionReason?.Length > 1000)
-        {
-            throw new ArgumentException(
-                "A rejection reason cannot exceed 1000 characters.",
+                "A rejected record requires a rejection reason.",
                 nameof(rejectionReason));
         }
 
-        ImportJobId = importJob.Id;
-        RawPayload = rawPayload;
-        ExternalId = string.IsNullOrWhiteSpace(externalId) ? null : externalId.Trim();
-        Outcome = outcome;
-        RejectionReason = string.IsNullOrWhiteSpace(rejectionReason)
-            ? null
-            : rejectionReason.Trim();
         Amount = amount;
         OccurredOn = occurredOn;
     }
@@ -299,4 +295,20 @@ public sealed class ImportedRecord
     public decimal? Amount { get; private set; }
     public DateOnly? OccurredOn { get; private set; }
     public FinancialTransaction? Transaction { get; private set; }
+
+    private static void EnsureJson(string rawPayload)
+    {
+        try
+        {
+            using var _ = JsonDocument.Parse(rawPayload);
+        }
+        catch (JsonException exception)
+        {
+            // Reported as the argument error it is rather than leaking a parser exception.
+            throw new ArgumentException(
+                "The raw payload must be a JSON document.",
+                nameof(rawPayload),
+                exception);
+        }
+    }
 }

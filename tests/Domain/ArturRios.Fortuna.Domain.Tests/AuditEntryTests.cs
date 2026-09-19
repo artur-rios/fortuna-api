@@ -40,4 +40,21 @@ public sealed class AuditEntryTests
             new string('x', 1001),
             DateTimeOffset.UtcNow));
     }
+
+    [UnitFact]
+    public void GivenPaddedText_WhenEntryIsCreated_ThenEveryFieldIsTrimmed()
+    {
+        var entry = new AuditEntry(
+            null,
+            "  CreateTag  ",
+            "  Tag  ",
+            null,
+            AuditOutcome.Refused,
+            "  Duplicate name  ",
+            DateTimeOffset.Parse("2026-09-04T12:00:00Z"));
+
+        Assert.Equal("CreateTag", entry.Operation);
+        Assert.Equal("Tag", entry.EntityType);
+        Assert.Equal("Duplicate name", entry.Reason);
+    }
 }

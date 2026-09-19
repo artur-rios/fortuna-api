@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -16,12 +17,11 @@ public sealed class Category : RecordLifecycleEntity
         Category? parent = null) : base(createdAt)
     {
         User = user ?? throw new ArgumentNullException(nameof(user));
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A category name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A category name between 1 and 200 characters is required.");
 
         if (parent is not null && parent.User.PublicId != user.PublicId)
         {
@@ -30,8 +30,13 @@ public sealed class Category : RecordLifecycleEntity
                 nameof(parent));
         }
 
+        if (parent?.IsDeleted == true)
+        {
+            throw new ArgumentException("A deleted category cannot be a parent.", nameof(parent));
+        }
+
         UserId = user.Id;
-        Name = name.Trim();
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
         Parent = parent;
         ParentId = parent?.Id;
@@ -50,12 +55,12 @@ public sealed class Category : RecordLifecycleEntity
         Category? parent,
         DateTimeOffset updatedAt)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A category name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        EnsureNotDeleted();
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A category name between 1 and 200 characters is required.");
 
         if (parent is not null && parent.User.PublicId != User.PublicId)
         {
@@ -64,15 +69,23 @@ public sealed class Category : RecordLifecycleEntity
                 nameof(parent));
         }
 
-        if (parent is not null &&
-            (ReferenceEquals(parent, this) || parent.PublicId == PublicId))
+        if (parent?.IsDeleted == true)
         {
-            throw new ArgumentException(
-                "A category cannot be its own parent.",
-                nameof(parent));
+            throw new ArgumentException("A deleted category cannot be a parent.", nameof(parent));
         }
 
-        Name = name.Trim();
+        for (var ancestor = parent; ancestor is not null; ancestor = ancestor.Parent)
+        {
+            // Walks the ancestors that are loaded; the store checks the persisted hierarchy.
+            if (ReferenceEquals(ancestor, this) || ancestor.PublicId == PublicId)
+            {
+                throw new ArgumentException(
+                    "A category cannot be its own parent or ancestor.",
+                    nameof(parent));
+            }
+        }
+
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
         Parent = parent;
         ParentId = parent?.Id;

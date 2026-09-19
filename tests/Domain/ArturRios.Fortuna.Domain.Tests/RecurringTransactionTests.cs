@@ -271,6 +271,66 @@ public sealed class RecurringTransactionTests
             Now));
     }
 
+    [UnitFact]
+    public void GivenMaterializedRule_WhenStartMovesEarlier_ThenMarkerIsKeptSoPastIsNotBackfilled()
+    {
+        var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 3, 1));
+        rule.MarkMaterializedThrough(new DateOnly(2026, 4, 1), Now);
+
+        rule.UpdateTemplate(
+            rule.FinancialAccount,
+            null,
+            rule.Category,
+            rule.Direction,
+            rule.Amount,
+            rule.Frequency,
+            new DateOnly(2026, 1, 1),
+            null,
+            rule.Description,
+            rule.Counterparty,
+            Now.AddDays(1));
+
+        Assert.Equal(new DateOnly(2026, 4, 1), rule.LastMaterializedOn);
+        Assert.Equal(new DateOnly(2026, 1, 1), rule.StartsOn);
+    }
+
+    [UnitFact]
+    public void GivenDeletedReferences_WhenRuleDefinedOrUpdated_ThenTheyAreRejected()
+    {
+        var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 1));
+        var deletedCategory = new Category(rule.User, "Old", Now);
+        deletedCategory.SoftDelete(Now);
+        var deletedAccount = new FinancialAccount(
+            rule.User,
+            "Closed",
+            null,
+            FinancialAccountType.Checking,
+            rule.Currency,
+            0m,
+            Now);
+        deletedAccount.SoftDelete(Now);
+
+        Assert.Throws<ArgumentException>(() => new RecurringTransaction(
+            rule.User, deletedAccount, null, rule.Category, TransactionDirection.Expense, 1m,
+            RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 1), null, Now));
+        Assert.Throws<ArgumentException>(() => rule.UpdateTemplate(
+            rule.FinancialAccount, null, deletedCategory, rule.Direction, rule.Amount,
+            rule.Frequency, rule.StartsOn, null, null, null, Now));
+        Assert.NotEqual(deletedCategory, rule.Category);
+    }
+
+    [UnitFact]
+    public void GivenDeletedRule_WhenTemplateUpdated_ThenItIsRefused()
+    {
+        var rule = Rule(RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 1));
+        rule.SoftDelete(Now);
+
+        Assert.Throws<InvalidOperationException>(() => rule.UpdateTemplate(
+            rule.FinancialAccount, null, rule.Category, rule.Direction, 99m,
+            rule.Frequency, rule.StartsOn, null, null, null, Now));
+        Assert.Equal(10m, rule.Amount);
+    }
+
     private static RecurringTransaction Rule(
         RecurrenceFrequency frequency,
         DateOnly startsOn,

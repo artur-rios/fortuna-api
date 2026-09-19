@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -29,12 +30,11 @@ public sealed class Connection
             throw new ArgumentOutOfRangeException(nameof(dataSourceType));
         }
 
-        if (string.IsNullOrWhiteSpace(externalReference) || externalReference.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An external reference between 1 and 200 characters is required.",
-                nameof(externalReference));
-        }
+        externalReference = BoundedText.Required(
+            externalReference,
+            200,
+            nameof(externalReference),
+            "An external reference between 1 and 200 characters is required.");
 
         ArgumentNullException.ThrowIfNull(accessTokenCipher);
         if (accessTokenCipher.Length == 0)
@@ -45,7 +45,7 @@ public sealed class Connection
         PublicId = Guid.NewGuid();
         UserId = user.Id;
         DataSourceType = dataSourceType;
-        ExternalReference = externalReference.Trim();
+        ExternalReference = externalReference;
         AccessTokenCipher = accessTokenCipher.ToArray();
         Status = ConnectionStatus.Active;
         CreatedAt = createdAt;
@@ -79,12 +79,11 @@ public sealed class Connection
         byte[] accessTokenCipher,
         DateTimeOffset updatedAt)
     {
-        if (string.IsNullOrWhiteSpace(externalReference) || externalReference.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "An external reference between 1 and 200 characters is required.",
-                nameof(externalReference));
-        }
+        externalReference = BoundedText.Required(
+            externalReference,
+            200,
+            nameof(externalReference),
+            "An external reference between 1 and 200 characters is required.");
 
         if (Status != ConnectionStatus.RequiresReauthentication)
         {
@@ -98,7 +97,7 @@ public sealed class Connection
             throw new ArgumentException("An encrypted access token is required.", nameof(accessTokenCipher));
         }
 
-        ExternalReference = externalReference.Trim();
+        ExternalReference = externalReference;
         AccessTokenCipher = accessTokenCipher.ToArray();
         Status = ConnectionStatus.Active;
         UpdatedAt = updatedAt;

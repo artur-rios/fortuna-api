@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.Domain.Guards;
+
 namespace ArturRios.Fortuna.Domain.Jobs;
 
 public enum BackgroundJobState : short
@@ -17,7 +19,7 @@ public sealed class BackgroundJob
     private BackgroundJob(string type, string payload, string idempotencyKey, string? correlationId, DateTimeOffset createdAt)
     {
         Id = Guid.NewGuid();
-        Type = string.IsNullOrWhiteSpace(type) ? throw new ArgumentException("A job type is required.", nameof(type)) : type;
+        Type = BoundedText.Required(type, 100, nameof(type), "A job type is required.");
         Payload = payload ?? throw new ArgumentNullException(nameof(payload));
         IdempotencyKey = string.IsNullOrWhiteSpace(idempotencyKey)
             ? throw new ArgumentException("An idempotency key is required.", nameof(idempotencyKey))
@@ -45,9 +47,17 @@ public sealed class BackgroundJob
         string? correlationId,
         DateTimeOffset createdAt) => new(type, payload, idempotencyKey, correlationId, createdAt);
 
+    private JobPhase Phase => State switch
+    {
+        BackgroundJobState.Pending => JobPhase.Pending,
+        BackgroundJobState.Running => JobPhase.Running,
+        BackgroundJobState.Succeeded => JobPhase.Finished,
+        _ => JobPhase.Failed
+    };
+
     public void Start(DateTimeOffset now)
     {
-        EnsureState(BackgroundJobState.Pending);
+        JobLifecycle.EnsureCanStart(Phase, "job");
         State = BackgroundJobState.Running;
         StartedAt = now;
         CompletedAt = null;
@@ -56,16 +66,16 @@ public sealed class BackgroundJob
 
     public void Succeed(DateTimeOffset now)
     {
-        EnsureState(BackgroundJobState.Running);
+        JobLifecycle.EnsureCanComplete(Phase, "job");
         State = BackgroundJobState.Succeeded;
         CompletedAt = now;
     }
 
-    public void Fail(string reason, DateTimeOffset now)
+    public void Fail(string? reason, DateTimeOffset now)
     {
-        EnsureState(BackgroundJobState.Running);
+        JobLifecycle.EnsureCanFail(Phase, "job");
         State = BackgroundJobState.Failed;
-        FailureReason = JobFailureReason.Normalize(reason);
+        FailureReason = JobLifecycle.FailureReason(reason);
         CompletedAt = now;
     }
 
@@ -84,22 +94,10 @@ public sealed class BackgroundJob
 
     public void Retry()
     {
-        if (State != BackgroundJobState.Failed)
-        {
-            throw new InvalidOperationException($"A {State} job cannot be retried.");
-        }
-
+        JobLifecycle.EnsureCanRetry(Phase, "job");
         State = BackgroundJobState.Pending;
         StartedAt = null;
         CompletedAt = null;
         FailureReason = null;
-    }
-
-    private void EnsureState(BackgroundJobState expected)
-    {
-        if (State != expected)
-        {
-            throw new InvalidOperationException($"Expected job state {expected}, but found {State}.");
-        }
     }
 }

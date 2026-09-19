@@ -206,7 +206,8 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
         foreach (var item in batch.Transactions)
         {
             if (!IsValid(item) ||
-                !mappings.TryGetValue(item.AccountExternalReference, out var target))
+                !mappings.TryGetValue(item.AccountExternalReference, out var target) ||
+                IsDeletedTarget(target))
             {
                 context.ImportedRecords.Add(new ImportedRecord(
                     job,
@@ -215,7 +216,8 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
                     item.Amount is > 0 ? item.Amount : null,
                     item.OccurredOn,
                     ValidExternalId(item.ExternalReference),
-                    !mappings.ContainsKey(item.AccountExternalReference)
+                    !mappings.TryGetValue(item.AccountExternalReference, out var mapped) ||
+                    IsDeletedTarget(mapped)
                         ? PluggySynchronizationMessages.AccountNotMapped
                         : PluggySynchronizationMessages.TransactionInvalid));
                 rejected++;
@@ -350,6 +352,9 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
         .Where(job => job.PublicId == importJobId)
         .Select(job => job.ConnectionId)
         .SingleOrDefaultAsync(cancellationToken);
+
+    private static bool IsDeletedTarget(ConnectionResource mapping) =>
+        mapping.FinancialAccount?.IsDeleted == true || mapping.CreditCard?.IsDeleted == true;
 
     private async Task<ConnectionResource?> CreateMappingAsync(
         Connection connection,

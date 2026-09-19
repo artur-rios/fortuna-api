@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.Domain.Guards;
+
 namespace ArturRios.Fortuna.Domain.Auditing;
 
 public enum AuditOutcome : short
@@ -22,27 +24,24 @@ public sealed class AuditEntry
         string? reason,
         DateTimeOffset occurredAt)
     {
-        if (string.IsNullOrWhiteSpace(operation) || operation.Length > 150)
-        {
-            throw new ArgumentException("An operation between 1 and 150 characters is required.", nameof(operation));
-        }
-
-        if (entityType?.Length > 100)
-        {
-            throw new ArgumentException("An entity type cannot exceed 100 characters.", nameof(entityType));
-        }
-
-        if (reason?.Length > 1000)
-        {
-            throw new ArgumentException("An audit reason cannot exceed 1000 characters.", nameof(reason));
-        }
-
         SubjectReference = subjectReference;
-        Operation = operation;
-        EntityType = entityType;
+        Operation = BoundedText.Required(
+            operation,
+            150,
+            nameof(operation),
+            "An operation between 1 and 150 characters is required.");
+        EntityType = BoundedText.Optional(
+            entityType,
+            100,
+            nameof(entityType),
+            "An entity type cannot exceed 100 characters.");
         EntityPublicId = entityPublicId;
         Outcome = outcome;
-        Reason = reason;
+        Reason = BoundedText.Optional(
+            reason,
+            1000,
+            nameof(reason),
+            "An audit reason cannot exceed 1000 characters.");
         OccurredAt = occurredAt;
     }
 
