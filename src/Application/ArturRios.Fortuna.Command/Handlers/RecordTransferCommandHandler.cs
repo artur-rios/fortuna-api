@@ -108,31 +108,18 @@ public sealed class RecordTransferCommandHandler(
         DateTimeOffset createdAt,
         DataOutput<RecordTransferCommandOutput?> output)
     {
-        var result = await settlements.SettleAsync(
+        var result = await CreditCardStatementPayment.PayAsync(
+            settlements,
             new CreditCardStatementSettlement(
                 userId,
                 command.DestinationStatementId!.Value,
                 command.OriginFinancialAccountId,
                 command.Amount,
                 command.OccurredOn,
-                createdAt),
-            CancellationToken.None);
-        if (result.Outcome != CreditCardStatementSettlementOutcome.Succeeded ||
-            result.Settlement is null)
+                createdAt));
+        if (result.Settlement is null)
         {
-            return output.WithError(result.Outcome switch
-            {
-                CreditCardStatementSettlementOutcome.StatementNotFound =>
-                    TransferMessages.DestinationStatementNotFound,
-                CreditCardStatementSettlementOutcome.FinancialAccountNotFound =>
-                    TransferMessages.OriginFinancialAccountNotFound,
-                CreditCardStatementSettlementOutcome.StatementOpen => TransferMessages.StatementOpen,
-                CreditCardStatementSettlementOutcome.StatementAlreadySettled =>
-                    TransferMessages.StatementAlreadySettled,
-                CreditCardStatementSettlementOutcome.ExchangeRateUnavailable =>
-                    TransferMessages.ExchangeRateUnavailable,
-                _ => throw new InvalidOperationException("Unknown statement settlement outcome.")
-            });
+            return output.WithError(result.Error!);
         }
 
         var settlement = result.Settlement;

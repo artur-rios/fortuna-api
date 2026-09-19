@@ -8,7 +8,7 @@ public sealed class SettleCreditCardStatementCommandValidator
 {
     public SettleCreditCardStatementCommandValidator(TimeProvider timeProvider)
     {
-        var maximumDate = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime).AddDays(1);
+        var maximumDate = PaymentDates.Latest(timeProvider);
 
         RuleFor(command => command.Id)
             .NotEmpty()

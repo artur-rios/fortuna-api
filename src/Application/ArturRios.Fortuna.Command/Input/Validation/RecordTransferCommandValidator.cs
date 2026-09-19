@@ -7,7 +7,7 @@ public sealed class RecordTransferCommandValidator : AbstractValidator<RecordTra
 {
     public RecordTransferCommandValidator(TimeProvider timeProvider)
     {
-        var maximumDate = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime).AddDays(1);
+        var maximumDate = PaymentDates.Latest(timeProvider);
 
         RuleFor(command => command.OriginFinancialAccountId)
             .NotEmpty()
