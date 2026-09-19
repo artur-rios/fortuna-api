@@ -9,5 +9,6 @@ public static class AuditEntryMessages
     public const string EntityTypeTooLong = "Entity type must not exceed 100 characters.";
     public const string OperationTooLong = "Operation must not exceed 150 characters.";
     public const string OutcomeInvalid = "Outcome must be Succeeded or Refused.";
+    public const string UnexpectedFailure = "The operation failed unexpectedly.";
     public const string PeriodInvalid = "The period start must not be later than its end.";
 }
