@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Random;
 
@@ -26,9 +24,7 @@ public sealed class LocalRecoveryCodeGenerator : ILocalRecoveryCodeGenerator
         }
 
         return values
-            .Select(value => new GeneratedRecoveryCode(
-                value,
-                SHA256.HashData(Encoding.UTF8.GetBytes(value))))
+            .Select(value => new GeneratedRecoveryCode(value, LocalRecoveryCodeHash.Compute(value)))
             .ToArray();
     }
 }

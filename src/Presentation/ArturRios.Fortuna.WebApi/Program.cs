@@ -417,6 +417,8 @@ try
         EraseUserCommandOutput>, EraseUserCommandHandler>();
     builder.Services.AddAuditedCommandHandler<CreateLocalAccountCommand,
         CreateLocalAccountCommandOutput, CreateLocalAccountCommandHandler>();
+    builder.Services.AddScoped<IValidator<AuthenticateLocalAccountCommand>,
+        AuthenticateLocalAccountCommandValidator>();
     builder.Services.AddAuditedCommandHandler<AuthenticateLocalAccountCommand,
         AuthenticateLocalAccountCommandOutput, AuthenticateLocalAccountCommandHandler>();
     builder.Services.AddScoped<IValidator<RecoverLocalAccountCommand>, RecoverLocalAccountCommandValidator>();

@@ -1,13 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
-using System.Text;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Hashing;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Hosting;
@@ -55,7 +54,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         Assert.True(Hash.TextMatches(NewSecret, account.SecretHash, account.Salt));
         Assert.False(Hash.TextMatches(OriginalSecret, account.SecretHash, account.Salt));
         Assert.NotNull(account.RecoveryCodes.Single(code =>
-            code.CodeHash.SequenceEqual(HashRecoveryCode(recoveryCode))).UsedAt);
+            LocalRecoveryCodeHash.Matches(recoveryCode, code.CodeHash)).UsedAt);
         Assert.Equal(9, account.RecoveryCodes.Count(code => code.UsedAt is null));
     }
 
@@ -255,9 +254,6 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
             DatabaseDiagnosticsOptions.Disabled);
     }
-
-    private static byte[] HashRecoveryCode(string recoveryCode) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(recoveryCode));
 
     private static Dictionary<string, string?> ValidSettings(bool enabled) => new()
     {

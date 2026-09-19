@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
@@ -32,10 +30,10 @@ public sealed class CreateLocalAccountCommandHandlerTests
         Assert.Equal(LocalAccountMessages.RecoveryWarning, result.Data.RecoveryWarning);
         Assert.NotNull(store.Creation);
         Assert.True(Hash.TextMatches(Secret, store.Creation.SecretHash, store.Creation.Salt));
-        Assert.Equal(
-            result.Data.RecoveryCodes.Select(HashRecoveryCode),
-            store.Creation.RecoveryCodeHashes,
-            ByteArrayComparer.Instance);
+        Assert.Equal(4, store.Creation.RecoveryCodeHashes.Count);
+        Assert.All(
+            result.Data.RecoveryCodes.Zip(store.Creation.RecoveryCodeHashes),
+            pair => Assert.True(LocalRecoveryCodeHash.Matches(pair.First, pair.Second)));
         Assert.Equal(Now, store.Creation.CreatedAt);
     }
 
@@ -77,6 +75,7 @@ public sealed class CreateLocalAccountCommandHandlerTests
     [UnitTheory]
     [InlineData("", Secret, LocalAccountMessages.NameRequired)]
     [InlineData("Local User", "short", LocalAccountMessages.SecretTooShort)]
+    [InlineData("Local User", "", LocalAccountMessages.SecretRequired)]
     public async Task GivenInvalidInput_WhenCreatingAccount_ThenFieldErrorIsReturned(
         string displayName,
         string secret,
@@ -142,9 +141,6 @@ public sealed class CreateLocalAccountCommandHandlerTests
         StorageMode = LocalAccountStorageMode.InMemory
     };
 
-    private static byte[] HashRecoveryCode(string recoveryCode) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(recoveryCode));
-
     private sealed class FakeLocalAccountStore : ILocalAccountStore
     {
         public bool Exists { get; init; }
@@ -199,15 +195,5 @@ public sealed class CreateLocalAccountCommandHandlerTests
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
-    }
-
-    private sealed class ByteArrayComparer : IEqualityComparer<byte[]>
-    {
-        public static readonly ByteArrayComparer Instance = new();
-
-        public bool Equals(byte[]? x, byte[]? y) =>
-            ReferenceEquals(x, y) || x is not null && y is not null && x.SequenceEqual(y);
-
-        public int GetHashCode(byte[] value) => value.Aggregate(17, (hash, item) => hash * 31 + item);
     }
 }

@@ -140,7 +140,7 @@ public sealed class EfLocalAccountStore(
         }
 
         var matchingCode = unusedCodes.FirstOrDefault(code =>
-            CryptographicOperations.FixedTimeEquals(code.CodeHash, recovery.RecoveryCodeHash));
+            LocalRecoveryCodeHash.Matches(recovery.RecoveryCode, code.CodeHash));
         if (matchingCode is null)
         {
             return new LocalAccountRecoveryResult(LocalAccountRecoveryStatus.InvalidCode, null);

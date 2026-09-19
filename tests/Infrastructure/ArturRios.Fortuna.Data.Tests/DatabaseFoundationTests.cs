@@ -428,6 +428,47 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         Assert.Equal(1, await assertionContext.UserProfiles.CountAsync());
     }
 
+    [FunctionalTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GivenStoredRecoveryDigest_WhenRecoveringWithTheCode_ThenLegacyAndCurrentDigestsBothRedeem(
+        bool legacy)
+    {
+        const string code = "ABCD-1234";
+        await using var seedContext = CreateContext();
+        await new DatabaseSeeder(seedContext).SeedAsync(CancellationToken.None);
+        var options = new LocalAccountOptions(true, 2, "BRL", "pt-BR");
+        byte[] digest = legacy
+            ? System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(code))
+            : LocalRecoveryCodeHash.Compute(code);
+        await new EfLocalAccountStore(seedContext, options).CreateAsync(
+            new LocalAccountCreation(
+                "Recovering User",
+                [1, 10],
+                [1, 20],
+                LocalAccountStorageMode.InMemory,
+                [digest, LocalRecoveryCodeHash.Compute("WXYZ-9876")],
+                DateTimeOffset.UtcNow),
+            CancellationToken.None);
+        await using var context = CreateContext();
+        var store = new EfLocalAccountStore(context, options);
+
+        var wrong = await store.RecoverAsync(
+            new LocalAccountRecovery("Recovering User", "ABCD-9999", [2, 10], [2, 20], DateTimeOffset.UtcNow),
+            CancellationToken.None);
+        var recovered = await store.RecoverAsync(
+            new LocalAccountRecovery("Recovering User", code, [3, 10], [3, 20], DateTimeOffset.UtcNow),
+            CancellationToken.None);
+        var reused = await store.RecoverAsync(
+            new LocalAccountRecovery("Recovering User", code, [4, 10], [4, 20], DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
+        Assert.Equal(LocalAccountRecoveryStatus.InvalidCode, wrong.Status);
+        Assert.Equal(LocalAccountRecoveryStatus.Recovered, recovered.Status);
+        Assert.Equal(1, recovered.Account!.RemainingRecoveryCodes);
+        Assert.Equal(LocalAccountRecoveryStatus.InvalidCode, reused.Status);
+    }
+
     [FunctionalFact]
     public async Task GivenPublishedAndManualRates_WhenPublishedRatesAreSynchronized_ThenOnlyPublishedRowsChange()
     {

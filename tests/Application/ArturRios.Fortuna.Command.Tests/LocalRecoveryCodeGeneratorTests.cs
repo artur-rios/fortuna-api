@@ -1,6 +1,5 @@
-using System.Security.Cryptography;
-using System.Text;
 using ArturRios.Fortuna.Command.Services;
+using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -17,7 +16,8 @@ public sealed class LocalRecoveryCodeGeneratorTests
         Assert.All(codes, code =>
         {
             Assert.Matches("^[A-Z0-9]{4}-[A-Z0-9]{4}$", code.Value);
-            Assert.Equal(SHA256.HashData(Encoding.UTF8.GetBytes(code.Value)), code.Hash);
+            Assert.True(LocalRecoveryCodeHash.Matches(code.Value, code.Hash));
+            Assert.NotEqual(32, code.Hash.Length);
         });
     }
 }

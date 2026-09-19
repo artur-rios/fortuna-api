@@ -11,6 +11,7 @@ public static class LocalAccountMessages
     public const string NameTooLong = "DisplayName must not exceed 200 characters.";
     public const string SecretRequired = "Secret is required.";
     public const string SecretTooShort = "Secret must contain at least 8 characters.";
+    public const string SecretTooLong = "Secret must not exceed 1024 characters.";
     public const string StorageModeInvalid = "StorageMode must be InMemory or OperatingSystem.";
     public const string CredentialStoreUnavailable =
         "The operating-system credential store is unavailable. Use the InMemory storage mode instead.";

@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
-using System.Text;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
@@ -38,7 +36,6 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
         await using var factory = CreateFactory(enabled: true);
         using var client = factory.CreateClient();
         var created = await CreateAccountAsync(client);
-        var oldHashes = created.RecoveryCodes.Select(HashRecoveryCode).Select(Convert.ToHexString).ToHashSet();
         await AuthorizeAsLocalAsync(client);
 
         var response = await RegenerateAsync(client, Secret);
@@ -57,10 +54,10 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
             Assert.Equal(10, account.RecoveryCodes.Count);
             Assert.All(account.RecoveryCodes, code => Assert.Null(code.UsedAt));
             Assert.DoesNotContain(account.RecoveryCodes, code =>
-                oldHashes.Contains(Convert.ToHexString(code.CodeHash)));
-            Assert.Equal(
-                regenerated.Data.RecoveryCodes.Select(HashRecoveryCode).Select(Convert.ToHexString).Order(),
-                account.RecoveryCodes.Select(code => Convert.ToHexString(code.CodeHash)).Order());
+                created.RecoveryCodes.Any(oldCode => LocalRecoveryCodeHash.Matches(oldCode, code.CodeHash)));
+            Assert.True(StoredDigestsMatch(
+                regenerated.Data.RecoveryCodes,
+                account.RecoveryCodes.Select(code => code.CodeHash).ToArray()));
         }
 
         client.DefaultRequestHeaders.Authorization = null;
@@ -237,15 +234,13 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
 
     private async Task AssertStoredHashesEqualAsync(IEnumerable<string> recoveryCodes)
     {
-        var expected = recoveryCodes.Select(HashRecoveryCode).Select(Convert.ToHexString).Order();
         await using var context = CreateContext();
         var stored = await context.RecoveryCodes
             .OrderBy(code => code.Id)
             .Select(code => code.CodeHash)
             .ToArrayAsync();
-        var actual = stored.Select(Convert.ToHexString).Order();
 
-        Assert.Equal(expected, actual);
+        Assert.True(StoredDigestsMatch(recoveryCodes, stored));
     }
 
     private WebApplicationFactory<Program> CreateFactory(
@@ -284,8 +279,13 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
             DatabaseDiagnosticsOptions.Disabled);
     }
 
-    private static byte[] HashRecoveryCode(string recoveryCode) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(recoveryCode));
+    private static bool StoredDigestsMatch(IEnumerable<string> recoveryCodes, IReadOnlyCollection<byte[]> stored)
+    {
+        var codes = recoveryCodes.ToArray();
+
+        return codes.Length == stored.Count &&
+            codes.All(code => stored.Count(digest => LocalRecoveryCodeHash.Matches(code, digest)) == 1);
+    }
 
     private static Dictionary<string, string?> ValidSettings(bool enabled) => new()
     {
