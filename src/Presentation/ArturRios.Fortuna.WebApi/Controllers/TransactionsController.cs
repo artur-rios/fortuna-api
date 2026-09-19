@@ -10,6 +10,7 @@ using ArturRios.Mediator.Query;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
+using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
@@ -20,36 +21,6 @@ public sealed class TransactionsController(
     CommandMediator commandMediator,
     QueryMediator queryMediator) : Controller
 {
-    private static readonly HashSet<string> SearchQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber",
-        "PageSize",
-        "From",
-        "To",
-        "FinancialAccountId",
-        "CreditCardId",
-        "CategoryId",
-        "TagId",
-        "CounterpartyId",
-        "Direction",
-        "MinimumAmount",
-        "MaximumAmount",
-        "Text",
-        "IncludeDeleted",
-        "DisplayCurrencyCode",
-        "FigureDate",
-        "SortBy",
-        "Descending"
-    };
-
-    private static readonly HashSet<string> AttachmentListQueryFields =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "PageNumber",
-            "PageSize",
-            "IncludeDeleted"
-        };
-
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
@@ -131,18 +102,14 @@ public sealed class TransactionsController(
         };
 
     [HttpGet]
+    [AllowedQuery(
+        "PageNumber", "PageSize", "From", "To", "FinancialAccountId", "CreditCardId", "CategoryId", "TagId",
+        "CounterpartyId", "Direction", "MinimumAmount", "MaximumAmount", "Text", "IncludeDeleted",
+        "DisplayCurrencyCode", "FigureDate", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TransactionSearchOutput?>>> Search(
         [FromQuery] SearchTransactionsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key =>
-            !SearchQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(DataOutput<TransactionSearchOutput?>.New
-                .WithError(TransactionMessages.UnsupportedFilter(unsupported)));
-        }
-
         var result = await queryMediator.ExecuteQueryAsync<
             SearchTransactionsQuery,
             TransactionSearchOutput>(query);
@@ -180,19 +147,12 @@ public sealed class TransactionsController(
     }
 
     [HttpGet("{id:guid}/attachments")]
+    [AllowedQuery("PageNumber", "PageSize", "IncludeDeleted")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<AttachmentOutput>>> ListAttachments(
         Guid id,
         [FromQuery] ListTransactionAttachmentsRequest request)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key =>
-            !AttachmentListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<AttachmentOutput>.New
-                .WithError(AttachmentMessages.UnsupportedFilter(unsupported)));
-        }
-
         var query = new ListTransactionAttachmentsQuery
         {
             TransactionId = id,
@@ -228,12 +188,6 @@ public sealed class TransactionsController(
         var result = await commandMediator.ExecuteCommandAsync<
             AttachDocumentCommand,
             AttachDocumentCommandOutput>(command);
-        if (result.Errors?.Any(error =>
-                error.StartsWith("The document exceeds", StringComparison.Ordinal) ||
-                error.StartsWith("The document content type", StringComparison.Ordinal)) == true)
-        {
-            return BadRequest(result);
-        }
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

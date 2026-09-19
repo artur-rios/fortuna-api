@@ -795,7 +795,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         // Then
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains(
-            AttachmentMessages.UnsupportedFilter("FileName"),
+            QueryParameterMessages.Unsupported("FileName"),
             body,
             StringComparison.Ordinal);
     }

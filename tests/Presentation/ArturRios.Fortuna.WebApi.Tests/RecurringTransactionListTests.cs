@@ -214,7 +214,7 @@ public sealed class RecurringTransactionListTests : IAsyncLifetime
         // Then
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains(
-            RecurringTransactionMessages.UnsupportedFilter("Counterparty"),
+            QueryParameterMessages.Unsupported("Counterparty"),
             body,
             StringComparison.Ordinal);
     }

@@ -9,6 +9,7 @@ using ArturRios.Mediator.Query;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
+using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
@@ -19,31 +20,6 @@ public sealed class InvestmentsController(
     CommandMediator commandMediator,
     QueryMediator queryMediator) : Controller
 {
-    private static readonly HashSet<string> ListQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber",
-        "PageSize",
-        "Instrument",
-        "Institution",
-        "InvestmentType",
-        "CurrencyCode",
-        "DisplayCurrencyCode",
-        "FigureDate",
-        "IncludeDeleted",
-        "SortBy",
-        "Descending"
-    };
-
-    private static readonly HashSet<string> ValuationQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber",
-        "PageSize",
-        "From",
-        "To",
-        "SortBy",
-        "Descending"
-    };
-
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
@@ -87,17 +63,13 @@ public sealed class InvestmentsController(
         };
 
     [HttpGet]
+    [AllowedQuery(
+        "PageNumber", "PageSize", "Instrument", "Institution", "InvestmentType", "CurrencyCode",
+        "DisplayCurrencyCode", "FigureDate", "IncludeDeleted", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<InvestmentOutput>>> List(
         [FromQuery] ListInvestmentsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<InvestmentOutput>.New
-                .WithError(InvestmentMessages.UnsupportedFilter(unsupported)));
-        }
-
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListInvestmentsQuery,
             InvestmentOutput>(query);
@@ -125,18 +97,12 @@ public sealed class InvestmentsController(
     }
 
     [HttpGet("{id:guid}/valuations")]
+    [AllowedQuery("PageNumber", "PageSize", "From", "To", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<InvestmentValuationOutput>>> ListValuations(
         Guid id,
         [FromQuery] ListInvestmentValuationsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ValuationQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<InvestmentValuationOutput>.New
-                .WithError(InvestmentMessages.UnsupportedFilter(unsupported)));
-        }
-
         query.InvestmentId = id;
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListInvestmentValuationsQuery,

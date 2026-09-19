@@ -35,7 +35,4 @@ public static class RecurringTransactionMessages
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SortByUnsupported =
         "SortBy must be one of StartsOn, EndsOn, Amount, Frequency, CreatedAt, or UpdatedAt.";
-
-    public static string UnsupportedFilter(string field) =>
-        $"The filter '{field}' is not supported by this endpoint.";
 }

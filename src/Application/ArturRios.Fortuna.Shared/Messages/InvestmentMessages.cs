@@ -77,6 +77,4 @@ public static class InvestmentMessages
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
     public static string ReferencingGoal(string name) =>
         $"The investment is referenced by the live goal '{name}'.";
-    public static string UnsupportedFilter(string name) =>
-        $"Unsupported investment filter '{name}'.";
 }

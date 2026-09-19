@@ -67,11 +67,6 @@ public sealed class ImportsController(CommandMediator commandMediator) : Control
         var result = await commandMediator.ExecuteCommandAsync<
             ImportExcelWorkbookCommand,
             ImportExcelWorkbookCommandOutput>(command);
-        if (result.Errors?.Any(error => error.StartsWith("The mapped column '",
-                StringComparison.Ordinal)) == true)
-        {
-            return BadRequest(result);
-        }
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

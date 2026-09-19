@@ -35,6 +35,4 @@ public static class ConnectionMessages
     public const string SortByUnsupported = "SortBy is not supported.";
     public const string DataSourceTypeInvalid = "DataSourceType is invalid.";
     public const string StatusInvalid = "Status is invalid.";
-    public static string UnsupportedFilter(string field) =>
-        $"Query parameter '{field}' is not supported.";
 }

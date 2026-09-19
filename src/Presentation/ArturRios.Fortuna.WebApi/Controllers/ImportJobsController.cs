@@ -9,6 +9,7 @@ using ArturRios.Mediator.Query;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
+using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
@@ -19,16 +20,6 @@ public sealed class ImportJobsController(
     CommandMediator commandMediator,
     QueryMediator queryMediator) : Controller
 {
-    private static readonly HashSet<string> ListQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber", "PageSize", "SourceType", "Status", "SortBy", "Descending"
-    };
-
-    private static readonly HashSet<string> RecordQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber", "PageSize"
-    };
-
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
@@ -67,17 +58,11 @@ public sealed class ImportJobsController(
     }
 
     [HttpGet]
+    [AllowedQuery("PageNumber", "PageSize", "SourceType", "Status", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<ImportJobOutput>>> List(
         [FromQuery] ListImportJobsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<ImportJobOutput>.New.WithError(
-                ImportJobMessages.UnsupportedFilter(unsupported)));
-        }
-
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListImportJobsQuery,
             ImportJobOutput>(query);
@@ -86,18 +71,12 @@ public sealed class ImportJobsController(
     }
 
     [HttpGet("{id:guid}/records")]
+    [AllowedQuery("PageNumber", "PageSize")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<ImportedRecordOutput>>> Records(
         Guid id,
         [FromQuery] ListImportedRecordsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key => !RecordQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<ImportedRecordOutput>.New.WithError(
-                ImportJobMessages.UnsupportedFilter(unsupported)));
-        }
-
         query.ImportJobId = id;
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListImportedRecordsQuery,

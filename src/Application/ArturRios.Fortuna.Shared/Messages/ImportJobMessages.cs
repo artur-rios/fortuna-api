@@ -18,6 +18,4 @@ public static class ImportJobMessages
     public const string SourceTypeInvalid = "SourceType is invalid.";
     public const string StatusInvalid = "Status is invalid.";
     public const string SortByUnsupported = "SortBy is not supported.";
-    public static string UnsupportedFilter(string field) =>
-        $"Query parameter '{field}' is not supported.";
 }

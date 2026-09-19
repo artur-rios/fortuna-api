@@ -530,7 +530,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         Assert.Contains(ConnectionMessages.InvalidPageNumber,
             await invalidPage.Content.ReadAsStringAsync(), StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, unsupported.StatusCode);
-        Assert.Contains(ConnectionMessages.UnsupportedFilter("Institution"),
+        Assert.Contains(QueryParameterMessages.Unsupported("Institution"),
             await unsupported.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 

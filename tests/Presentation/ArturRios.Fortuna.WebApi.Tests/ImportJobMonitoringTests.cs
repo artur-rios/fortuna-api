@@ -162,7 +162,7 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
         Assert.Contains(ImportJobMessages.SortByUnsupported,
             await invalid.Content.ReadAsStringAsync(), StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, unsupported.StatusCode);
-        Assert.Contains(ImportJobMessages.UnsupportedFilter("FailureReason"),
+        Assert.Contains(QueryParameterMessages.Unsupported("FailureReason"),
             await unsupported.Content.ReadAsStringAsync(), StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, unsupportedRows.StatusCode);
     }

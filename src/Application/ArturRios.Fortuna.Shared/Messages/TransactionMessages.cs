@@ -82,8 +82,6 @@ public static class TransactionMessages
         "DisplayCurrencyCode must contain three characters.";
     public const string SortByUnsupported = "SortBy is not supported.";
 
-    public static string UnsupportedFilter(string filter) => $"Filter '{filter}' is not supported.";
-
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
 
     public static string ConflictingTransaction(Guid transactionId) =>

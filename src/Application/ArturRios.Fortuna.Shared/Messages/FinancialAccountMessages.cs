@@ -40,8 +40,5 @@ public static class FinancialAccountMessages
     public const string SortByUnsupported =
         "SortBy must be Name, Institution, AccountType, CurrencyCode, OpeningBalance, CreatedAt or UpdatedAt.";
 
-    public static string UnsupportedFilter(string field) =>
-        $"Unsupported filter field '{field}'.";
-
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
 }

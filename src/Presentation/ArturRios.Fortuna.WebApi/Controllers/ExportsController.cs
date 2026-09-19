@@ -48,12 +48,6 @@ public sealed class ExportsController(
                 result.Data.FileName);
         }
 
-        if (result.Errors?.Count > 0 &&
-            !result.Errors.Contains(DataExportMessages.ProfileNotFound))
-        {
-            return BadRequest(result);
-        }
-
         var response = ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
         {
             [DataExportMessages.Accepted] = StatusCodes.Status202Accepted,

@@ -32,7 +32,4 @@ public static class CreditCardStatementMessages
     public const string StatusInvalid = "Status must be Open, Closed or Settled.";
     public const string PeriodInvalid = "From must be on or before To.";
     public const string SortByUnsupported = "SortBy is not supported.";
-
-    public static string UnsupportedFilter(string field) =>
-        $"The filter '{field}' is not supported.";
 }

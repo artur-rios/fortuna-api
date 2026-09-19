@@ -40,11 +40,6 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
         var result = await queryMediator.ExecuteQueryAsync<
             QueryRecordsAsTableQuery,
             TableReportOutput>(query);
-        if (result.Errors?.Count > 0 &&
-            !result.Errors.Contains(TableReportMessages.ProfileNotFound))
-        {
-            return BadRequest(result);
-        }
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
@@ -57,11 +52,6 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
         var result = await queryMediator.ExecuteQueryAsync<
             AggregateTransactionsQuery,
             TransactionAggregationOutput>(query);
-        if (result.Errors?.Count > 0 &&
-            !result.Errors.Contains(TransactionAggregationMessages.ProfileNotFound))
-        {
-            return BadRequest(result);
-        }
 
         return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
         {
@@ -78,12 +68,6 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
         var result = await queryMediator.ExecuteQueryAsync<
             DrillIntoAggregationQuery,
             TransactionDrillDownOutput>(query);
-        if (result.Errors?.Count > 0 &&
-            !result.Errors.Contains(TransactionDrillDownMessages.ProfileNotFound) &&
-            !result.Errors.Contains(TransactionDrillDownMessages.BucketNotFound))
-        {
-            return BadRequest(result);
-        }
 
         return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
         {
@@ -102,11 +86,6 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
     {
         var result = await queryMediator.ExecuteQueryAsync<GetNetPositionQuery, NetPositionOutput>(
             query);
-        if (result.Errors?.Count > 0 &&
-            !result.Errors.Contains(NetPositionMessages.ProfileNotFound))
-        {
-            return BadRequest(result);
-        }
 
         return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
         {

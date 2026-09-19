@@ -22,11 +22,6 @@ public sealed class ProjectionsController(QueryMediator queryMediator) : Control
         var result = await queryMediator.ExecuteQueryAsync<
             ProjectCashFlowQuery,
             CashFlowProjectionOutput>(query);
-        if (result.Errors?.Count > 0 &&
-            !result.Errors.Contains(CashFlowProjectionMessages.ProfileNotFound))
-        {
-            return BadRequest(result);
-        }
 
         return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
         {
@@ -43,11 +38,6 @@ public sealed class ProjectionsController(QueryMediator queryMediator) : Control
         var result = await queryMediator.ExecuteQueryAsync<
             ListCommittedObligationsQuery,
             CommittedObligationListOutput>(query);
-        if (result.Errors?.Count > 0 &&
-            !result.Errors.Contains(CommittedObligationMessages.ProfileNotFound))
-        {
-            return BadRequest(result);
-        }
 
         return ResponseResolver.Resolve(result, statusMap: new Dictionary<string, int>
         {

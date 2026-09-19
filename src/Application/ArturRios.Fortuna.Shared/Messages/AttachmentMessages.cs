@@ -24,9 +24,6 @@ public static class AttachmentMessages
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
 
-    public static string UnsupportedFilter(string field) =>
-        $"The filter '{field}' is not supported by this endpoint.";
-
     public static string FileTooLarge(int maximumBytes) =>
         $"The document exceeds the configured maximum of {maximumBytes} bytes.";
 

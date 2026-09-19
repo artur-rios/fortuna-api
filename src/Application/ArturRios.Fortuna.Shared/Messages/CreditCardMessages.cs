@@ -40,8 +40,5 @@ public static class CreditCardMessages
     public const string SortByUnsupported =
         "SortBy must be Name, Issuer, CurrencyCode, CreditLimit, UsedAmount, CreatedAt or UpdatedAt.";
 
-    public static string UnsupportedFilter(string field) =>
-        $"Unsupported filter field '{field}'.";
-
     public static string UnknownCurrency(string code) => $"Unknown currency code '{code}'.";
 }

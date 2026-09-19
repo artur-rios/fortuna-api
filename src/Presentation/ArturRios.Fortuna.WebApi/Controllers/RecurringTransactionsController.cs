@@ -9,6 +9,7 @@ using ArturRios.Mediator.Query;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
+using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;
@@ -19,16 +20,6 @@ public sealed class RecurringTransactionsController(
     CommandMediator commandMediator,
     QueryMediator queryMediator) : Controller
 {
-    private static readonly HashSet<string> ListQueryFields = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "PageNumber",
-        "PageSize",
-        "Active",
-        "IncludeDeleted",
-        "SortBy",
-        "Descending"
-    };
-
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
         {
@@ -61,17 +52,11 @@ public sealed class RecurringTransactionsController(
         };
 
     [HttpGet]
+    [AllowedQuery("PageNumber", "PageSize", "Active", "IncludeDeleted", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<RecurringTransactionOutput>>> List(
         [FromQuery] ListRecurringTransactionsQuery query)
     {
-        var unsupported = Request.Query.Keys.FirstOrDefault(key => !ListQueryFields.Contains(key));
-        if (unsupported is not null)
-        {
-            return BadRequest(PaginatedOutput<RecurringTransactionOutput>.New
-                .WithError(RecurringTransactionMessages.UnsupportedFilter(unsupported)));
-        }
-
         var result = await queryMediator.ExecutePaginatedQueryAsync<
             ListRecurringTransactionsQuery,
             RecurringTransactionOutput>(query);
