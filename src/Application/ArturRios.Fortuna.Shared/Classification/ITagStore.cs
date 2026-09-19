@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.Shared.Pagination;
+
 namespace ArturRios.Fortuna.Shared.Classification;
 
 public interface ITagStore
@@ -9,9 +11,10 @@ public interface ITagStore
 
 public interface ITagReader
 {
-    Task<IReadOnlyCollection<TagSnapshot>> ListAsync(
+    Task<ReadPage<TagSnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
+        PageRequest page,
         CancellationToken cancellationToken);
 }
 

@@ -268,7 +268,7 @@ public sealed class FinancialAccountQueryHandlerTests
     {
         var reader = new StubFinancialAccountReader();
 
-        var detail = await GetHandler(null, reader).HandleAsync(new GetFinancialAccountByIdQuery());
+        var detail = await GetHandler(null, reader).HandleAsync(new GetFinancialAccountByIdQuery { Id = Guid.NewGuid() });
         var list = await ListHandler(null, reader).HandleAsync(new ListFinancialAccountsQuery());
 
         Assert.Contains(FinancialAccountMessages.ProfileNotFound, detail.Errors);
@@ -278,6 +278,7 @@ public sealed class FinancialAccountQueryHandlerTests
     private static GetFinancialAccountByIdQueryHandler GetHandler(
         UserProfileSnapshot? profile,
         IFinancialAccountReader accounts) => new(
+        new GetFinancialAccountByIdQueryValidator(),
         new StubUserProfileReader(profile),
         accounts,
         Actor(profile));

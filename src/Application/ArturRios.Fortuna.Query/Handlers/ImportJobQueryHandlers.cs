@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetImportJobByIdQueryHandler(
+    IValidator<GetImportJobByIdQuery> validator,
     IUserProfileReader profiles,
     IImportJobReader jobs,
     IRequestActorAccessor actorAccessor)
@@ -21,6 +22,13 @@ public sealed class GetImportJobByIdQueryHandler(
 {
     public async Task<DataOutput<ImportJobOutput?>> HandleAsync(GetImportJobByIdQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<ImportJobOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var output = DataOutput<ImportJobOutput?>.New;
         var profile = await ImportJobActor.ResolveAsync(profiles, actorAccessor.Actor);
         if (profile is null)
@@ -86,24 +94,12 @@ public sealed class ListImportJobsQueryHandler(
     private static IOrderedQueryable<ImportJob> Order(
         IQueryable<ImportJob> jobs,
         string sortBy,
-        bool descending) => (sortBy.ToLowerInvariant(), descending) switch
+        bool descending) => sortBy.ToLowerInvariant() switch
         {
-            ("sourcetype", false) => jobs.OrderBy(item => item.SourceType)
-                .ThenBy(item => item.PublicId),
-            ("sourcetype", true) => jobs.OrderByDescending(item => item.SourceType)
-                .ThenByDescending(item => item.PublicId),
-            ("status", false) => jobs.OrderBy(item => item.Status)
-                .ThenBy(item => item.PublicId),
-            ("status", true) => jobs.OrderByDescending(item => item.Status)
-                .ThenByDescending(item => item.PublicId),
-            ("updatedat", false) => jobs.OrderBy(item => item.UpdatedAt)
-                .ThenBy(item => item.PublicId),
-            ("updatedat", true) => jobs.OrderByDescending(item => item.UpdatedAt)
-                .ThenByDescending(item => item.PublicId),
-            (_, false) => jobs.OrderBy(item => item.CreatedAt)
-                .ThenBy(item => item.PublicId),
-            _ => jobs.OrderByDescending(item => item.CreatedAt)
-                .ThenByDescending(item => item.PublicId)
+            "sourcetype" => jobs.SortBy(item => item.SourceType, item => item.PublicId, descending),
+            "status" => jobs.SortBy(item => item.Status, item => item.PublicId, descending),
+            "updatedat" => jobs.SortBy(item => item.UpdatedAt, item => item.PublicId, descending),
+            _ => jobs.SortBy(item => item.CreatedAt, item => item.PublicId, descending)
         };
 }
 

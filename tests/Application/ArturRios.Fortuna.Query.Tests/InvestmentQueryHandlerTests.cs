@@ -183,6 +183,29 @@ public sealed class InvestmentQueryHandlerTests
         Assert.Contains(InvestmentMessages.ListedSuccessfully, result.Messages);
     }
 
+    [UnitFact]
+    public async Task GivenSeveralPositionsInOneCurrency_WhenListedWithConversion_ThenTheRateIsReadOnce()
+    {
+        var profile = Profile();
+        var rates = new StubRateReader(new ExchangeRateSnapshot(
+            "USD", "BRL", 5m, FigureDate, ExchangeRateSource.Published));
+
+        var result = await ListHandler(
+            profile,
+            new StubInvestmentReader(
+                Position(profile.Id, "First", "USD", 1m),
+                Position(profile.Id, "Second", "USD", 2m),
+                Position(profile.Id, "Third", "USD", 3m)),
+            rates: rates).HandleAsync(new ListInvestmentsQuery
+            {
+                DisplayCurrencyCode = "BRL",
+                FigureDate = FigureDate
+            });
+
+        Assert.Equal([5m, 10m, 15m], result.Data!.Select(item => item.DisplayPosition!.Value));
+        Assert.Equal(1, rates.CallCount);
+    }
+
     [UnitTheory]
     [InlineData("ValuedOn", false, 10)]
     [InlineData("ValuedOn", true, 20)]
@@ -228,7 +251,8 @@ public sealed class InvestmentQueryHandlerTests
     {
         var profile = Profile();
         var investment = Position(profile.Id, "Fund", "BRL", 0m);
-        var handler = HistoryHandler(profile, new StubInvestmentReader(investment));
+        var reader = new StubInvestmentReader(investment);
+        var handler = HistoryHandler(profile, reader);
 
         var result = await handler.HandleAsync(new ListInvestmentValuationsQuery
         {
@@ -240,6 +264,7 @@ public sealed class InvestmentQueryHandlerTests
         Assert.True(result.Success);
         Assert.Empty(result.Data!);
         Assert.Contains(InvestmentMessages.ValuationHistoryRetrievedSuccessfully, result.Messages);
+        Assert.Equal(0, reader.PositionLookups);
     }
 
     [UnitFact]
@@ -331,12 +356,13 @@ public sealed class InvestmentQueryHandlerTests
     private static ListInvestmentsQueryHandler ListHandler(
         UserProfileSnapshot? profile,
         IInvestmentReader investments,
-        int maximumPageSize = 100) => new(
+        int maximumPageSize = 100,
+        StubRateReader? rates = null) => new(
         new ListInvestmentsQueryValidator(),
         new StubProfileReader(profile),
         investments,
         new StubCurrencyReader(),
-        new StubRateReader(null),
+        rates ?? new StubRateReader(null),
         Actor(profile),
         new PaginationOptions(maximumPageSize),
         TimeProvider.System);
@@ -437,7 +463,20 @@ public sealed class InvestmentQueryHandlerTests
         public Task<InvestmentPositionSnapshot?> FindByIdWithPositionAsync(
             Guid userId,
             Guid id,
-            CancellationToken cancellationToken) => Task.FromResult(Positions.SingleOrDefault(item =>
+            CancellationToken cancellationToken)
+        {
+            PositionLookups++;
+
+            return Task.FromResult(Positions.SingleOrDefault(item =>
+                item.UserId == userId && item.Id == id && !item.IsDeleted));
+        }
+
+        public int PositionLookups { get; private set; }
+
+        public Task<bool> ExistsAsync(
+            Guid userId,
+            Guid id,
+            CancellationToken cancellationToken) => Task.FromResult(Positions.Any(item =>
                 item.UserId == userId && item.Id == id && !item.IsDeleted));
 
         public IQueryable<InvestmentValuationReadSnapshot> QueryValuations(
@@ -479,11 +518,18 @@ public sealed class InvestmentQueryHandlerTests
 
     private sealed class StubRateReader(ExchangeRateSnapshot? rate) : IExchangeRateReader
     {
+        public int CallCount { get; private set; }
+
         public Task<ExchangeRateSnapshot?> FindApplicableAsync(
             string baseCurrencyCode,
             string quoteCurrencyCode,
             DateOnly figureDate,
-            CancellationToken cancellationToken) => Task.FromResult(rate);
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+
+            return Task.FromResult(rate);
+        }
     }
 
     private sealed class StubActor(RequestActor? actor) : IRequestActorAccessor

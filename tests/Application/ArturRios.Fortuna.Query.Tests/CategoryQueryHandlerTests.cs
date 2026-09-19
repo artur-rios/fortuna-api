@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
@@ -108,6 +109,21 @@ public sealed class CategoryQueryHandlerTests
         Assert.Equal(3, result.Data.UsageCount);
         Assert.Equal(childId, Assert.Single(result.Data.Children).Id);
         Assert.Contains(CategoryMessages.RetrievedSuccessfully, result.Messages);
+        Assert.Equal(rootId, reader.SubtreeRootId);
+        Assert.False(reader.Called);
+    }
+
+    [UnitFact]
+    public async Task GivenEmptyId_WhenRequestedById_ThenNotFoundIsReturnedWithoutReading()
+    {
+        var reader = new StubCategoryReader([]);
+
+        var result = await ByIdHandler(Guid.NewGuid(), reader)
+            .HandleAsync(new GetCategoryByIdQuery { Id = Guid.Empty });
+
+        Assert.False(result.Success);
+        Assert.Contains(CategoryMessages.NotFound, result.Errors);
+        Assert.Null(reader.SubtreeRootId);
     }
 
     [UnitFact]
@@ -126,6 +142,7 @@ public sealed class CategoryQueryHandlerTests
     {
         var reader = new StubCategoryReader([]);
         var handler = new GetCategoryByIdQueryHandler(
+            new GetCategoryByIdQueryValidator(),
             new StubUserProfileReader(null),
             reader,
             new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])));
@@ -163,6 +180,7 @@ public sealed class CategoryQueryHandlerTests
     private static GetCategoryByIdQueryHandler ByIdHandler(
         Guid userId,
         ICategoryReader reader) => new(
+            new GetCategoryByIdQueryValidator(),
             new StubUserProfileReader(Profile(userId)),
             reader,
             new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])));
@@ -207,6 +225,28 @@ public sealed class CategoryQueryHandlerTests
             IncludeUsageCounts = includeUsageCounts;
 
             return Task.FromResult(categories);
+        }
+
+        public Guid? SubtreeRootId { get; private set; }
+
+        public Task<IReadOnlyCollection<CategoryReadSnapshot>> ListSubtreeAsync(
+            Guid userId,
+            Guid rootId,
+            bool includeDeleted,
+            bool includeUsageCounts,
+            CancellationToken cancellationToken)
+        {
+            SubtreeRootId = rootId;
+            IncludeDeleted = includeDeleted;
+            IncludeUsageCounts = includeUsageCounts;
+            var subtree = categories.Where(category => category.Id == rootId).ToList();
+            for (var index = 0; index < subtree.Count; index++)
+            {
+                subtree.AddRange(categories.Where(category =>
+                    category.ParentId == subtree[index].Id && !subtree.Contains(category)));
+            }
+
+            return Task.FromResult<IReadOnlyCollection<CategoryReadSnapshot>>(subtree);
         }
     }
 

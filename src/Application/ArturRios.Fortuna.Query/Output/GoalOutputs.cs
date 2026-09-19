@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using ArturRios.Mediator.Query;
 
 namespace ArturRios.Fortuna.Query.Output;
@@ -26,7 +27,11 @@ public sealed class GoalResourceOutput
 public sealed class GoalProgressOutput
 {
     public decimal? CurrentAmount { get; set; }
-    public decimal? Remaining { get; set; }
+
+    // Same figure as GoalProgressDetailOutput.Shortfall; the wire name stays "remaining".
+    [JsonPropertyName("remaining")]
+    public decimal? Shortfall { get; set; }
+
     public decimal? ProportionReached { get; set; }
     public bool? IsReached { get; set; }
     public bool IsFullyConverted { get; set; }
@@ -35,6 +40,12 @@ public sealed class GoalProgressOutput
 public sealed class GoalListOutput : QueryOutput
 {
     public IReadOnlyCollection<GoalOutput> Goals { get; set; } = [];
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalItems { get; set; }
+    public int TotalPages => PageSize == 0
+        ? 0
+        : (int)Math.Ceiling((decimal)TotalItems / PageSize);
 }
 
 public sealed class GoalProgressDetailOutput : QueryOutput

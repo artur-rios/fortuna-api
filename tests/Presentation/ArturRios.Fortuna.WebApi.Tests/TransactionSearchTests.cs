@@ -240,7 +240,8 @@ public sealed class TransactionSearchTests : IAsyncLifetime
             $"/api/transactions?DisplayCurrencyCode=BRL&FigureDate={Today:yyyy-MM-dd}");
 
         Assert.Equal(2, raw!.Data!.Totals.ByCurrency.Count);
-        Assert.Null(raw.Data.Totals.DisplayNet);
+        Assert.Equal("BRL", raw.Data.Totals.DisplayCurrencyCode);
+        Assert.Equal(-16m, raw.Data.Totals.DisplayNet);
         Assert.Equal(-6m, raw.Data.Totals.ByCurrency.Single(item =>
             item.CurrencyCode == "BRL").Net);
         Assert.Equal(-2m, raw.Data.Totals.ByCurrency.Single(item =>

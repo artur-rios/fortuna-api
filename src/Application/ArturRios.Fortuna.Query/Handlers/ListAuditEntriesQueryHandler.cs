@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
@@ -14,7 +15,8 @@ public sealed class ListAuditEntriesQueryHandler(
     IValidator<ListAuditEntriesQuery> validator,
     IUserProfileReader profiles,
     IAuditEntryReader entries,
-    IRequestActorAccessor actorAccessor)
+    IRequestActorAccessor actorAccessor,
+    PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>
 {
     public async Task<PaginatedOutput<AuditEntryOutput>> HandleAsync(ListAuditEntriesQuery query)
@@ -77,8 +79,17 @@ public sealed class ListAuditEntriesQueryHandler(
 
         if (query.To.HasValue)
         {
+            // A bare date arrives as midnight; it covers that whole day.
             var to = query.To.Value;
-            filtered = filtered.Where(entry => entry.OccurredAt <= to);
+            if (to.TimeOfDay == TimeSpan.Zero)
+            {
+                var nextDay = to.AddDays(1);
+                filtered = filtered.Where(entry => entry.OccurredAt < nextDay);
+            }
+            else
+            {
+                filtered = filtered.Where(entry => entry.OccurredAt <= to);
+            }
         }
 
         var projected = filtered
@@ -96,7 +107,7 @@ public sealed class ListAuditEntriesQueryHandler(
             });
         var output = await projected.PaginateAsync(
             query.PageNumber,
-            query.PageSize,
+            Math.Min(query.PageSize, paginationOptions.MaximumPageSize),
             orderBy: null,
             cancellationToken: CancellationToken.None);
 

@@ -36,6 +36,7 @@ public static class FinancialAccountMessages
         "Financial account cannot be permanently deleted while goals, recurring transactions, " +
         "connections, live transfers or statement settlements still reference it.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string AsOfOutOfRange = "AsOf must be between 1900-01-01 and 2100-12-31.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SortByUnsupported =
         "SortBy must be Name, Institution, AccountType, CurrencyCode, OpeningBalance, CreatedAt or UpdatedAt.";

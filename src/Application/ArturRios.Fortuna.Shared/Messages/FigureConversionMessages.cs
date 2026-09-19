@@ -7,6 +7,8 @@ public static class FigureConversionMessages
     public const string DisplayCurrencyInvalid = "Display currency must be a three-letter code.";
     public const string FigureDateRequired = "Figure date is required.";
     public const string AmountsRequired = "Amounts are required.";
+    public const string AmountRequired = "Each amount must be an object.";
+    public const string TooManyAmounts = "At most 100 amounts can be converted at once.";
     public const string AmountCurrencyRequired = "Each amount must carry a currency.";
     public const string AmountCurrencyInvalid = "Each amount currency must be a three-letter code.";
     public const string AmountPrecisionInvalid = "Each amount must have at most 15 whole and 4 decimal digits.";

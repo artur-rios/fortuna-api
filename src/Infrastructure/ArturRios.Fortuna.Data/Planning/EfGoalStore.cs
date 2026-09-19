@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
 using Microsoft.EntityFrameworkCore;
 
@@ -66,16 +67,21 @@ public sealed class EfGoalStore(AppDbContext context)
             GoalMutationOutcome.Succeeded);
     }
 
-    public async Task<IReadOnlyCollection<GoalSnapshot>> ListAsync(
+    public async Task<ReadPage<GoalSnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
         DateOnly asOf,
+        PageRequest page,
         CancellationToken cancellationToken)
     {
-        var goals = await GoalQuery().Where(item =>
-                item.User.PublicId == userId && (includeDeleted || !item.IsDeleted))
+        var owned = GoalQuery().Where(item =>
+            item.User.PublicId == userId && (includeDeleted || !item.IsDeleted));
+        var totalItems = await owned.CountAsync(cancellationToken);
+        var goals = await owned
             .OrderBy(item => item.TargetDate)
             .ThenBy(item => item.PublicId)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
             .ToArrayAsync(cancellationToken);
         var snapshots = new List<GoalSnapshot>(goals.Length);
         foreach (var goal in goals)
@@ -83,7 +89,7 @@ public sealed class EfGoalStore(AppDbContext context)
             snapshots.Add(await SnapshotAsync(goal, asOf, cancellationToken));
         }
 
-        return snapshots;
+        return new ReadPage<GoalSnapshot>(snapshots, totalItems);
     }
 
     public async Task<GoalSnapshot?> FindByIdAsync(

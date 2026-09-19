@@ -13,6 +13,10 @@ public static class TableReportMessages
     public const string FilterOperatorRequired = "Every filter operator is required.";
     public const string FilterValueRequired = "Every filter value is required.";
     public const string SortFieldRequired = "Every sort field is required.";
+    public const string FiltersRequired = "Filters must be a list; send an empty list for none.";
+    public const string FilterRequired = "Every filter must be an object.";
+    public const string SortsRequired = "Sorts must be a list; send an empty list for none.";
+    public const string SortRequired = "Every sort must be an object.";
     public const string DisplayCurrencyInvalid =
         "DisplayCurrencyCode must be a three-letter currency code.";
     public const string DisplayCurrencyUnsupported = "The display currency is not supported.";

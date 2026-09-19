@@ -8,11 +8,13 @@ using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetPersonalDataExportQueryHandler(
+    IValidator<GetPersonalDataExportQuery> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IPersonalDataExportStore exports,
@@ -24,11 +26,13 @@ public sealed class GetPersonalDataExportQueryHandler(
     public async Task<DataOutput<PersonalDataExportQueryOutput?>> HandleAsync(
         GetPersonalDataExportQuery query)
     {
-        if (query.JobId == Guid.Empty)
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
         {
-            return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
-                PersonalDataExportMessages.NotFound);
+            return DataOutput<PersonalDataExportQueryOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
         }
+
         var actor = actorAccessor.Actor;
         var profile = actor?.IsLocal == true
             ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
@@ -40,23 +44,30 @@ public sealed class GetPersonalDataExportQueryHandler(
             return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
                 PersonalDataExportMessages.ProfileNotFound);
         }
+
         var export = await exports.FindOwnedPersonalAsync(
             profile.Id,
             query.JobId,
             CancellationToken.None);
-        if (export is null || timeProvider.GetUtcNow() >= export.ExpiresAt)
+        if (export is null)
         {
             return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
-                export is null
-                    ? PersonalDataExportMessages.NotFound
-                    : PersonalDataExportMessages.Expired);
+                PersonalDataExportMessages.NotFound);
         }
+
+        if (ExportExpiry.HasExpired(export, timeProvider))
+        {
+            return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
+                PersonalDataExportMessages.Expired);
+        }
+
         if (export.Status != DataExportStatus.Completed)
         {
             return DataOutput<PersonalDataExportQueryOutput?>.New
                 .WithData(Project(export))
                 .WithMessage(PersonalDataExportMessages.RetrievedSuccessfully);
         }
+
         if (string.IsNullOrWhiteSpace(export.StorageKey) ||
             string.IsNullOrWhiteSpace(export.ContentType))
         {
@@ -71,6 +82,7 @@ public sealed class GetPersonalDataExportQueryHandler(
                 return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
                     PersonalDataExportMessages.StorageUnavailable);
             }
+
             var read = await storage.OpenReadAsync(export.StorageKey, CancellationToken.None);
             if (!read.IsFound)
             {

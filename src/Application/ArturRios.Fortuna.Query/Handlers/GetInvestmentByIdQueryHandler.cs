@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Query.Conversion;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
@@ -45,34 +46,25 @@ public sealed class GetInvestmentByIdQueryHandler(
             return output.WithError(InvestmentMessages.NotFound);
         }
 
-        var displayCurrency = await ResolveDisplayCurrencyAsync(query.DisplayCurrencyCode);
-        if (!string.IsNullOrWhiteSpace(query.DisplayCurrencyCode) && displayCurrency is null)
+        var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
+        var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
+        if (displayCurrency is null)
         {
-            var code = query.DisplayCurrencyCode.Trim().ToUpperInvariant();
-
             return output
                 .WithError(InvestmentMessages.CurrencyNotSupported)
-                .WithMessage(InvestmentMessages.UnknownCurrency(code));
+                .WithMessage(InvestmentMessages.UnknownCurrency(displayCode));
         }
 
         var result = InvestmentPositionProjection.Project(investment);
         await InvestmentPositionProjection.ApplyConversionAsync(
             result,
-            displayCurrency,
-            query.FigureDate ?? Today(),
-            rates);
+            new FigureConverter(rates, displayCurrency),
+            query.FigureDate ?? Today());
 
         return output
             .WithData(result)
             .WithMessage(InvestmentMessages.RetrievedSuccessfully);
     }
-
-    private async Task<CurrencySnapshot?> ResolveDisplayCurrencyAsync(string? code) =>
-        string.IsNullOrWhiteSpace(code)
-            ? null
-            : await currencies.FindByCodeAsync(
-                code.Trim().ToUpperInvariant(),
-                CancellationToken.None);
 
     private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
         actor?.IsLocal == true

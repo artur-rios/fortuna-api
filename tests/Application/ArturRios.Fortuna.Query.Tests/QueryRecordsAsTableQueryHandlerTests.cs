@@ -15,6 +15,7 @@ namespace ArturRios.Fortuna.Query.Tests;
 public sealed class QueryRecordsAsTableQueryHandlerTests
 {
     private static readonly DateOnly FigureDate = new(2026, 9, 7);
+    private static readonly DateOnly Today = new(2026, 9, 18);
 
     [UnitFact]
     public async Task GivenValidCriteria_WhenHandled_ThenClampedRequestAndTypedRowsAreReturned()
@@ -48,7 +49,7 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
     }
 
     [UnitFact]
-    public async Task GivenNoDisplayCurrency_WhenHandled_ThenTotalsRemainSplitByCurrency()
+    public async Task GivenNoDisplayCurrency_WhenHandled_ThenTotalsUseTheProfileCurrency()
     {
         var handler = Handler(reader: new StubTableReader(new TableReportReadResult(
             TableReportReadOutcome.Succeeded,
@@ -60,11 +61,14 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
 
         var result = await handler.HandleAsync(Query());
 
-        Assert.Equal(2, result.Data!.Totals.Count);
-        Assert.Equal(3m, result.Data.Totals.Single(total =>
-            total.CurrencyCode == "BRL").Value);
-        Assert.Equal(4m, result.Data.Totals.Single(total =>
-            total.CurrencyCode == "USD").Value);
+        var total = Assert.Single(result.Data!.Totals);
+        Assert.Equal("BRL", total.CurrencyCode);
+        Assert.False(total.IsFullyConverted);
+        Assert.Null(total.Value);
+        Assert.Equal(3m, total.Conversions
+            .Where(conversion => conversion.SourceCurrencyCode == "BRL")
+            .Sum(conversion => conversion.ConvertedValue));
+        Assert.Equal("USD", Assert.Single(result.Data.MissingRates).BaseCurrencyCode);
     }
 
     [UnitFact]
@@ -83,6 +87,52 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
         Assert.Null(total.Value);
         Assert.Equal(FigureConversionMessages.RateUnavailable,
             Assert.Single(total.Conversions).UnconvertedReason);
+    }
+
+    [UnitFact]
+    public async Task GivenNonMonetaryColumn_WhenConverted_ThenItsTotalIsNeitherConvertedNorRounded()
+    {
+        var query = Query();
+        query.DisplayCurrencyCode = "BRL";
+        var handler = Handler(reader: new StubTableReader(new TableReportReadResult(
+            TableReportReadOutcome.Succeeded,
+            Report([
+                new TableTotalGroupSnapshot("appliedRate", null, FigureDate, 1.23456m),
+                new TableTotalGroupSnapshot("appliedRate", null, FigureDate.AddDays(1), 2.00001m)
+            ]))));
+
+        var result = await handler.HandleAsync(query);
+
+        var total = Assert.Single(result.Data!.Totals);
+        Assert.Null(total.CurrencyCode);
+        Assert.Equal(3.23457m, total.Value);
+        Assert.True(total.IsFullyConverted);
+    }
+
+    [UnitFact]
+    public async Task GivenMonetaryGroupsOnSeveralDates_WhenConverted_ThenTotalIsRoundedOnce()
+    {
+        var query = Query();
+        query.DisplayCurrencyCode = "BRL";
+        var rates = new StubRateReader(new ExchangeRateSnapshot(
+            "USD", "BRL", 1.5m, FigureDate, ExchangeRateSource.Manual));
+        var handler = Handler(
+            reader: new StubTableReader(new TableReportReadResult(
+                TableReportReadOutcome.Succeeded,
+                Report([
+                    new TableTotalGroupSnapshot("amount", "USD", FigureDate, 0.335m),
+                    new TableTotalGroupSnapshot("amount", "USD", FigureDate.AddDays(1), 0.335m),
+                    new TableTotalGroupSnapshot("amount", "USD", null, 0m)
+                ]))),
+            rates: rates);
+
+        var result = await handler.HandleAsync(query);
+
+        var total = Assert.Single(result.Data!.Totals);
+        Assert.Equal(1.01m, total.Value);
+        Assert.All(total.Conversions.Where(item => item.SourceValue != 0m),
+            conversion => Assert.Equal(0.50m, conversion.ConvertedValue));
+        Assert.Equal([FigureDate, FigureDate.AddDays(1), Today], rates.RequestedDates.Order());
     }
 
     [UnitTheory]
@@ -182,7 +232,8 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
         StubProfileReader? profiles = null,
         RequestActor? actor = null,
         ExchangeRateSnapshot? rate = null,
-        int maximumPageSize = 100)
+        int maximumPageSize = 100,
+        StubRateReader? rates = null)
     {
         var resolvedProfile = missingProfile ? null : Profile();
 
@@ -193,10 +244,12 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
                 TableReportReadOutcome.Succeeded,
                 Report([]))),
             new StubCurrencyReader(),
-            new StubRateReader(rate),
+            rates ?? new StubRateReader(rate),
             new StubActor(actor ?? new RequestActor(
                 resolvedProfile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-            new PaginationOptions(maximumPageSize));
+            new PaginationOptions(maximumPageSize),
+            new FixedTimeProvider(new DateTimeOffset(
+                Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))));
     }
 
     private static QueryRecordsAsTableQuery Query() => new()
@@ -256,11 +309,23 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
 
     private sealed class StubRateReader(ExchangeRateSnapshot? rate) : IExchangeRateReader
     {
+        public List<DateOnly> RequestedDates { get; } = [];
+
         public Task<ExchangeRateSnapshot?> FindApplicableAsync(
             string baseCurrencyCode,
             string quoteCurrencyCode,
             DateOnly figureDate,
-            CancellationToken cancellationToken) => Task.FromResult(rate);
+            CancellationToken cancellationToken)
+        {
+            RequestedDates.Add(figureDate);
+
+            return Task.FromResult(rate);
+        }
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 
     private sealed class StubProfileReader(UserProfileSnapshot? profile) : IUserProfileReader

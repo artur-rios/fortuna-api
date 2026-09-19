@@ -27,6 +27,8 @@ public sealed class BudgetsController(
             [BudgetMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [BudgetMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
             [BudgetMessages.ListedSuccessfully] = StatusCodes.Status200OK,
+            [BudgetMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [BudgetMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [BudgetMessages.ConsumptionRetrievedSuccessfully] = StatusCodes.Status200OK,
             [BudgetMessages.PeriodPrecedesBudget] = StatusCodes.Status200OK,
             [BudgetMessages.NotFound] = StatusCodes.Status404NotFound,
@@ -57,11 +59,18 @@ public sealed class BudgetsController(
     [HttpGet]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<BudgetListOutput?>>> List(
-        [FromQuery] bool includeDeleted = false)
+        [FromQuery] bool includeDeleted = false,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 100)
     {
         var result = await queryMediator.ExecuteQueryAsync<
             ListBudgetsQuery,
-            BudgetListOutput>(new ListBudgetsQuery { IncludeDeleted = includeDeleted });
+            BudgetListOutput>(new ListBudgetsQuery
+            {
+                IncludeDeleted = includeDeleted,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

@@ -8,6 +8,8 @@ public static class CounterpartyMessages
     public const string DeletedSuccessfully = "Counterparty deleted successfully.";
     public const string MergedSuccessfully = "Counterparties merged successfully.";
     public const string ListedSuccessfully = "Counterparties retrieved successfully.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SuggestedSuccessfully = "Category suggestion retrieved successfully.";
     public const string NoSuggestion = "No prior category was found for this counterparty.";
     public const string NotFound = "Counterparty not found.";

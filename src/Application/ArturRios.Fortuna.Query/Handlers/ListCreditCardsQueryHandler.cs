@@ -59,27 +59,7 @@ public sealed class ListCreditCardsQueryHandler(
         }
 
         var ordered = Order(filtered, query.SortBy.Trim(), query.Descending);
-        var projected = ordered.Select(card => new CreditCardOutput
-        {
-            Id = card.Id,
-            Name = card.Name,
-            Issuer = card.Issuer,
-            CurrencyCode = card.CurrencyCode,
-            CreditLimit = card.CreditLimit,
-            UsedAmount = Math.Max(card.OutstandingAmount, 0m),
-            AvailableAmount = Math.Max(
-                card.CreditLimit - Math.Max(card.OutstandingAmount, 0m),
-                0m),
-            OverageAmount = Math.Max(
-                Math.Max(card.OutstandingAmount, 0m) - card.CreditLimit,
-                0m),
-            ClosingDay = card.ClosingDay,
-            DueDay = card.DueDay,
-            LastFourDigits = card.LastFourDigits,
-            IsDeleted = card.IsDeleted,
-            CreatedAt = card.CreatedAt,
-            UpdatedAt = card.UpdatedAt
-        });
+        var projected = ordered.Select(CreditCardProjection.Expression);
         var pageSize = Math.Min(query.PageSize, paginationOptions.MaximumPageSize);
         var page = await projected.PaginateAsync(
             query.PageNumber,
@@ -100,30 +80,15 @@ public sealed class ListCreditCardsQueryHandler(
     private static IOrderedQueryable<CreditCardLimitSnapshot> Order(
         IQueryable<CreditCardLimitSnapshot> cards,
         string sortBy,
-        bool descending) => (sortBy.ToLowerInvariant(), descending) switch
+        bool descending) => sortBy.ToLowerInvariant() switch
         {
-            ("issuer", false) => cards.OrderBy(card => card.Issuer).ThenBy(card => card.Id),
-            ("issuer", true) => cards.OrderByDescending(card => card.Issuer)
-                .ThenByDescending(card => card.Id),
-            ("currencycode", false) => cards.OrderBy(card => card.CurrencyCode)
-                .ThenBy(card => card.Id),
-            ("currencycode", true) => cards.OrderByDescending(card => card.CurrencyCode)
-                .ThenByDescending(card => card.Id),
-            ("creditlimit", false) => cards.OrderBy(card => card.CreditLimit)
-                .ThenBy(card => card.Id),
-            ("creditlimit", true) => cards.OrderByDescending(card => card.CreditLimit)
-                .ThenByDescending(card => card.Id),
-            ("usedamount", false) => cards.OrderBy(card => card.OutstandingAmount)
-                .ThenBy(card => card.Id),
-            ("usedamount", true) => cards.OrderByDescending(card => card.OutstandingAmount)
-                .ThenByDescending(card => card.Id),
-            ("createdat", false) => cards.OrderBy(card => card.CreatedAt).ThenBy(card => card.Id),
-            ("createdat", true) => cards.OrderByDescending(card => card.CreatedAt)
-                .ThenByDescending(card => card.Id),
-            ("updatedat", false) => cards.OrderBy(card => card.UpdatedAt).ThenBy(card => card.Id),
-            ("updatedat", true) => cards.OrderByDescending(card => card.UpdatedAt)
-                .ThenByDescending(card => card.Id),
-            (_, false) => cards.OrderBy(card => card.Name).ThenBy(card => card.Id),
-            _ => cards.OrderByDescending(card => card.Name).ThenByDescending(card => card.Id)
+            "issuer" => cards.SortBy(card => card.Issuer, card => card.Id, descending),
+            "currencycode" => cards.SortBy(card => card.CurrencyCode, card => card.Id, descending),
+            "creditlimit" => cards.SortBy(card => card.CreditLimit, card => card.Id, descending),
+            "usedamount" => cards
+                .SortBy(card => card.OutstandingAmount, card => card.Id, descending),
+            "createdat" => cards.SortBy(card => card.CreatedAt, card => card.Id, descending),
+            "updatedat" => cards.SortBy(card => card.UpdatedAt, card => card.Id, descending),
+            _ => cards.SortBy(card => card.Name, card => card.Id, descending)
         };
 }

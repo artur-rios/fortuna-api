@@ -177,13 +177,13 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
         Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
 
         var response = await client.GetAsync(
-            "/api/audit-entries?pageNumber=0&pageSize=101" +
+            "/api/audit-entries?pageNumber=0&pageSize=0" +
             "&from=2026-09-05T00%3A00%3A00Z&to=2026-09-04T00%3A00%3A00Z");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("Page number must be at least 1.", body, StringComparison.Ordinal);
-        Assert.Contains("Page size must be between 1 and 100.", body, StringComparison.Ordinal);
+        Assert.Contains("Page size must be at least 1.", body, StringComparison.Ordinal);
         Assert.Contains("The period start must not be later than its end.", body, StringComparison.Ordinal);
     }
 

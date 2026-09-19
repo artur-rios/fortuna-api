@@ -13,14 +13,14 @@ using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
-public sealed class RetrieveDataExportQueryHandler(
+public sealed class GetDataExportQueryHandler(
     IValidator<GetDataExportQuery> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IDataExportReader exports,
     IAttachmentStore storage,
     TimeProvider timeProvider,
-    ILogger<RetrieveDataExportQueryHandler> logger)
+    ILogger<GetDataExportQueryHandler> logger)
     : IQueryHandlerAsync<GetDataExportQuery, RetrieveDataExportQueryOutput>
 {
     public async Task<DataOutput<RetrieveDataExportQueryOutput?>> HandleAsync(
@@ -55,16 +55,15 @@ public sealed class RetrieveDataExportQueryHandler(
             return output.WithError(DataExportMessages.NotFound);
         }
 
-        var state = Project(export);
-        if (export.Status != DataExportStatus.Completed)
-        {
-            return output.WithData(state).WithMessage(
-                DataExportMessages.RetrievedSuccessfully);
-        }
-
-        if (timeProvider.GetUtcNow() >= export.ExpiresAt)
+        if (ExportExpiry.HasExpired(export, timeProvider))
         {
             return output.WithError(DataExportMessages.Expired);
+        }
+
+        if (export.Status != DataExportStatus.Completed)
+        {
+            return output.WithData(Project(export)).WithMessage(
+                DataExportMessages.RetrievedSuccessfully);
         }
 
         if (string.IsNullOrWhiteSpace(export.StorageKey) ||

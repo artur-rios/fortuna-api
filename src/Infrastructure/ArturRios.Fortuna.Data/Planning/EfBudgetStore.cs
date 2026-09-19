@@ -5,6 +5,7 @@ using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
 using Microsoft.EntityFrameworkCore;
 
@@ -61,18 +62,22 @@ public sealed class EfBudgetStore(AppDbContext context)
             BudgetMutationOutcome.Succeeded);
     }
 
-    public async Task<IReadOnlyCollection<BudgetSnapshot>> ListAsync(
+    public async Task<ReadPage<BudgetSnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
         DateOnly asOf,
+        PageRequest page,
         CancellationToken cancellationToken)
     {
-        var budgets = await BudgetQuery()
-            .Where(item =>
-                item.User.PublicId == userId &&
-                (includeDeleted || !item.IsDeleted))
+        var owned = BudgetQuery().Where(item =>
+            item.User.PublicId == userId &&
+            (includeDeleted || !item.IsDeleted));
+        var totalItems = await owned.CountAsync(cancellationToken);
+        var budgets = await owned
             .OrderBy(item => item.PeriodStart)
             .ThenBy(item => item.PublicId)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
             .ToArrayAsync(cancellationToken);
         var snapshots = new List<BudgetSnapshot>(budgets.Length);
         foreach (var budget in budgets)
@@ -80,7 +85,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             snapshots.Add(await SnapshotAsync(budget, asOf, cancellationToken));
         }
 
-        return snapshots;
+        return new ReadPage<BudgetSnapshot>(snapshots, totalItems);
     }
 
     public async Task<BudgetSnapshot?> FindByIdAsync(

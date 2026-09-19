@@ -14,8 +14,7 @@ public sealed class ProjectCashFlowQueryValidator : AbstractValidator<ProjectCas
             .LessThanOrEqualTo(options.MaximumHorizonDays)
             .WithMessage(CashFlowProjectionMessages.HorizonMaximum(options.MaximumHorizonDays));
         RuleFor(query => query.DisplayCurrencyCode)
-            .Must(code => code is null ||
-                code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .OptionalCurrencyCode()
             .WithMessage(CashFlowProjectionMessages.DisplayCurrencyInvalid);
         RuleFor(query => query.Periodicity)
             .IsInEnum()

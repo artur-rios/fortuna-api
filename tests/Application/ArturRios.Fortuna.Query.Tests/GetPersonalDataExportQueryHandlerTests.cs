@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Messages;
@@ -73,6 +74,28 @@ public sealed class GetPersonalDataExportQueryHandlerTests
         Assert.Contains(PersonalDataExportMessages.Expired, expired.Errors);
     }
 
+    [UnitTheory]
+    [InlineData(DataExportStatus.Pending)]
+    [InlineData(DataExportStatus.Failed)]
+    public async Task GivenExpiredArchiveInAnyState_WhenRead_ThenItIsReportedAsExpired(
+        DataExportStatus status)
+    {
+        var result = await Handler(Snapshot(status, expiresAt: Now), new StubStorage())
+            .HandleAsync(Query());
+
+        Assert.Contains(PersonalDataExportMessages.Expired, result.Errors);
+    }
+
+    [UnitFact]
+    public async Task GivenEmptyJobId_WhenRead_ThenValidationReportsNotFound()
+    {
+        var result = await Handler(Snapshot(DataExportStatus.Completed), new StubStorage())
+            .HandleAsync(new GetPersonalDataExportQuery { JobId = Guid.Empty });
+
+        Assert.False(result.Success);
+        Assert.Equal([PersonalDataExportMessages.NotFound], result.Errors);
+    }
+
     [UnitFact]
     public async Task GivenMissingOrUnavailableStoredArchive_WhenRead_ThenSafeErrorIsReturned()
     {
@@ -92,6 +115,7 @@ public sealed class GetPersonalDataExportQueryHandlerTests
     private static GetPersonalDataExportQueryHandler Handler(
         DataExportReadSnapshot? snapshot,
         StubStorage storage) => new(
+        new GetPersonalDataExportQueryValidator(),
         new StubActor(),
         new StubProfiles(),
         new StubExports(snapshot),

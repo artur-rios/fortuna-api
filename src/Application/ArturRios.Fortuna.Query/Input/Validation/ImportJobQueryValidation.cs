@@ -35,6 +35,16 @@ public sealed class ListImportJobsQueryValidator : AbstractValidator<ListImportJ
     }
 }
 
+public sealed class GetImportJobByIdQueryValidator : AbstractValidator<GetImportJobByIdQuery>
+{
+    public GetImportJobByIdQueryValidator()
+    {
+        RuleFor(query => query.Id)
+            .NotEmpty()
+            .WithMessage(ImportJobMessages.NotFound);
+    }
+}
+
 public sealed class ListImportedRecordsQueryValidator : AbstractValidator<ListImportedRecordsQuery>
 {
     public ListImportedRecordsQueryValidator()

@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Query.Conversion;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
@@ -39,14 +40,13 @@ public sealed class SearchTransactionsQueryHandler(
             return output.WithError(TransactionMessages.ProfileNotFound);
         }
 
-        var displayCurrency = await ResolveDisplayCurrencyAsync(query.DisplayCurrencyCode);
-        if (!string.IsNullOrWhiteSpace(query.DisplayCurrencyCode) && displayCurrency is null)
+        var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
+        var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
+        if (displayCurrency is null)
         {
-            var code = query.DisplayCurrencyCode.Trim().ToUpperInvariant();
-
             return output
                 .WithError(TransactionMessages.CurrencyNotSupported)
-                .WithMessage(TransactionMessages.UnknownCurrency(code));
+                .WithMessage(TransactionMessages.UnknownCurrency(displayCode));
         }
 
         var criteria = Criteria(profile.Id, query);
@@ -73,7 +73,7 @@ public sealed class SearchTransactionsQueryHandler(
             Totals = totals
         };
         output.WithData(result).WithMessage(TransactionMessages.ListedSuccessfully);
-        if (totals.ByCurrency.Any(total => total.UnconvertedReason is not null))
+        if (!totals.IsFullyConverted)
         {
             output.WithMessage(FigureConversionMessages.PartiallyConverted);
         }
@@ -83,71 +83,55 @@ public sealed class SearchTransactionsQueryHandler(
 
     private async Task<TransactionTotalsOutput> BuildTotalsAsync(
         IReadOnlyCollection<TransactionCurrencyTotalSnapshot> snapshots,
-        CurrencySnapshot? displayCurrency,
+        CurrencySnapshot displayCurrency,
         DateOnly figureDate)
     {
-        var groups = new List<TransactionCurrencyTotalOutput>(snapshots.Count);
-        foreach (var snapshot in snapshots)
+        var groups = snapshots.Select(snapshot => new TransactionCurrencyTotalOutput
         {
-            var group = new TransactionCurrencyTotalOutput
-            {
-                CurrencyCode = snapshot.CurrencyCode,
-                Expense = snapshot.Expense,
-                Earning = snapshot.Earning
-            };
-            groups.Add(group);
-            if (displayCurrency is null)
-            {
-                continue;
-            }
-
-            group.DisplayCurrencyCode = displayCurrency.Code;
-            if (snapshot.CurrencyCode == displayCurrency.Code)
-            {
-                ApplyConversion(group, 1m, displayCurrency.MinorUnitDigits);
-                continue;
-            }
-
-            var rate = await rates.FindApplicableAsync(
-                snapshot.CurrencyCode,
-                displayCurrency.Code,
-                figureDate,
-                CancellationToken.None);
-            if (rate is null)
-            {
-                group.UnconvertedReason = FigureConversionMessages.RateUnavailable;
-                continue;
-            }
-
-            ApplyConversion(group, rate.Rate, displayCurrency.MinorUnitDigits);
-            group.AppliedRate = rate.Rate;
-            group.RateDate = rate.RateDate;
-            group.RateSource = rate.Source;
-        }
-
+            CurrencyCode = snapshot.CurrencyCode,
+            Expense = snapshot.Expense,
+            Earning = snapshot.Earning
+        }).ToArray();
         var totals = new TransactionTotalsOutput
         {
             ByCurrency = groups,
-            DisplayCurrencyCode = displayCurrency?.Code
+            DisplayCurrencyCode = displayCurrency.Code
         };
-        if (displayCurrency is not null && groups.All(group => group.UnconvertedReason is null))
+
+        // The result set is valued at one figure date, which the caller can choose;
+        // every currency group therefore converts at that date.
+        var converter = new FigureConverter(rates, displayCurrency);
+        var expenses = new List<FigureConversion>(groups.Length);
+        var earnings = new List<FigureConversion>(groups.Length);
+        foreach (var group in groups)
         {
-            totals.DisplayExpense = groups.Sum(group => group.DisplayExpense ?? 0m);
-            totals.DisplayEarning = groups.Sum(group => group.DisplayEarning ?? 0m);
-            totals.DisplayNet = totals.DisplayEarning - totals.DisplayExpense;
+            var expense = await converter.ConvertAsync(group.CurrencyCode, group.Expense, figureDate);
+            var earning = await converter.ConvertAsync(group.CurrencyCode, group.Earning, figureDate);
+            expenses.Add(expense);
+            earnings.Add(earning);
+            group.DisplayCurrencyCode = displayCurrency.Code;
+            group.DisplayExpense = converter.Round(expense.Value);
+            group.DisplayEarning = converter.Round(earning.Value);
+            group.DisplayNet = converter.Round(earning.Value - expense.Value);
+            group.AppliedRate = expense.Rate?.Rate;
+            group.RateDate = expense.Rate?.RateDate;
+            group.RateSource = expense.Rate?.Source;
+            group.UnconvertedReason = expense.UnconvertedReason;
+        }
+
+        var expenseTotal = converter.Total(expenses);
+        var earningTotal = converter.Total(earnings);
+        totals.IsFullyConverted = converter.IsFullyConverted;
+        totals.MissingRates = MissingExchangeRateOutput.From(converter);
+        if (converter.IsFullyConverted)
+        {
+            totals.DisplayExpense = expenseTotal;
+            totals.DisplayEarning = earningTotal;
+            totals.DisplayNet = converter.Total(earnings
+                .Zip(expenses, (earning, expense) => earning.Value - expense.Value));
         }
 
         return totals;
-    }
-
-    private static void ApplyConversion(
-        TransactionCurrencyTotalOutput group,
-        decimal rate,
-        short minorUnitDigits)
-    {
-        group.DisplayExpense = Round(group.Expense * rate, minorUnitDigits);
-        group.DisplayEarning = Round(group.Earning * rate, minorUnitDigits);
-        group.DisplayNet = group.DisplayEarning - group.DisplayExpense;
     }
 
     private static TransactionSearchCriteria Criteria(
@@ -169,13 +153,6 @@ public sealed class SearchTransactionsQueryHandler(
             IncludeDeleted = query.IncludeDeleted
         };
 
-    private async Task<CurrencySnapshot?> ResolveDisplayCurrencyAsync(string? code) =>
-        string.IsNullOrWhiteSpace(code)
-            ? null
-            : await currencies.FindByCodeAsync(
-                code.Trim().ToUpperInvariant(),
-                CancellationToken.None);
-
     private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
         actor?.IsLocal == true
             ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
@@ -185,50 +162,25 @@ public sealed class SearchTransactionsQueryHandler(
 
     private DateOnly Today() => DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 
-    private static decimal Round(decimal amount, short digits) =>
-        decimal.Round(amount, digits, MidpointRounding.AwayFromZero);
-
     private static IOrderedQueryable<TransactionReadSnapshot> Order(
         IQueryable<TransactionReadSnapshot> transactions,
         string sortBy,
-        bool descending) => (sortBy.ToLowerInvariant(), descending) switch
+        bool descending) => sortBy.ToLowerInvariant() switch
         {
-            ("amount", false) => transactions.OrderBy(item => item.Amount).ThenBy(item => item.Id),
-            ("amount", true) => transactions.OrderByDescending(item => item.Amount)
-                .ThenByDescending(item => item.Id),
-            ("direction", false) => transactions.OrderBy(item => item.Direction)
-                .ThenBy(item => item.Id),
-            ("direction", true) => transactions.OrderByDescending(item => item.Direction)
-                .ThenByDescending(item => item.Id),
-            ("category", false) => transactions.OrderBy(item => item.CategoryName)
-                .ThenBy(item => item.Id),
-            ("category", true) => transactions.OrderByDescending(item => item.CategoryName)
-                .ThenByDescending(item => item.Id),
-            ("counterparty", false) => transactions.OrderBy(item => item.CounterpartyName)
-                .ThenBy(item => item.Id),
-            ("counterparty", true) => transactions.OrderByDescending(item => item.CounterpartyName)
-                .ThenByDescending(item => item.Id),
-            ("currencycode", false) => transactions.OrderBy(item => item.CurrencyCode)
-                .ThenBy(item => item.Id),
-            ("currencycode", true) => transactions.OrderByDescending(item => item.CurrencyCode)
-                .ThenByDescending(item => item.Id),
-            ("description", false) => transactions.OrderBy(item => item.Description)
-                .ThenBy(item => item.Id),
-            ("description", true) => transactions.OrderByDescending(item => item.Description)
-                .ThenByDescending(item => item.Id),
-            ("createdat", false) => transactions.OrderBy(item => item.CreatedAt)
-                .ThenBy(item => item.Id),
-            ("createdat", true) => transactions.OrderByDescending(item => item.CreatedAt)
-                .ThenByDescending(item => item.Id),
-            ("updatedat", false) => transactions.OrderBy(item => item.UpdatedAt)
-                .ThenBy(item => item.Id),
-            ("updatedat", true) => transactions.OrderByDescending(item => item.UpdatedAt)
-                .ThenByDescending(item => item.Id),
-            (_, false) => transactions.OrderBy(item => item.OccurredOn)
-                .ThenBy(item => item.CreatedAt)
-                .ThenBy(item => item.Id),
-            _ => transactions.OrderByDescending(item => item.OccurredOn)
-                .ThenByDescending(item => item.CreatedAt)
-                .ThenByDescending(item => item.Id)
+            "amount" => transactions.SortBy(item => item.Amount, item => item.Id, descending),
+            "direction" => transactions.SortBy(item => item.Direction, item => item.Id, descending),
+            "category" => transactions
+                .SortBy(item => item.CategoryName, item => item.Id, descending),
+            "counterparty" => transactions
+                .SortBy(item => item.CounterpartyName, item => item.Id, descending),
+            "currencycode" => transactions
+                .SortBy(item => item.CurrencyCode, item => item.Id, descending),
+            "description" => transactions
+                .SortBy(item => item.Description, item => item.Id, descending),
+            "createdat" => transactions.SortBy(item => item.CreatedAt, item => item.Id, descending),
+            "updatedat" => transactions.SortBy(item => item.UpdatedAt, item => item.Id, descending),
+            _ => transactions
+                .SortBy(item => item.OccurredOn, item => item.CreatedAt, descending)
+                .ThenSortBy(item => item.Id, descending)
         };
 }

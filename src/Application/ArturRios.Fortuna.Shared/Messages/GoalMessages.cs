@@ -9,6 +9,8 @@ public static class GoalMessages
     public const string ProgressRetrievedSuccessfully =
         "Goal progress retrieved successfully.";
     public const string ListedSuccessfully = "Goals retrieved successfully.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string NotFound = "Goal not found.";
     public const string ResourceNotFound =
         "One or more linked accounts or investments were not found.";

@@ -93,11 +93,59 @@ public sealed class EfCategoryStore(
         Guid userId,
         bool includeDeleted,
         bool includeUsageCounts,
-        CancellationToken cancellationToken) => await context.Categories
-        .AsNoTracking()
-        .Where(category =>
-            category.User.PublicId == userId &&
-            (includeDeleted || !category.IsDeleted))
+        CancellationToken cancellationToken) => await ReadSnapshots(
+            VisibleCategories(userId, includeDeleted),
+            includeUsageCounts)
+        .ToArrayAsync(cancellationToken);
+
+    public async Task<IReadOnlyCollection<CategoryReadSnapshot>> ListSubtreeAsync(
+        Guid userId,
+        Guid rootId,
+        bool includeDeleted,
+        bool includeUsageCounts,
+        CancellationToken cancellationToken)
+    {
+        var visible = VisibleCategories(userId, includeDeleted);
+        var structure = await visible
+            .Select(category => new { category.Id, category.PublicId, category.ParentId })
+            .ToArrayAsync(cancellationToken);
+        var root = structure.FirstOrDefault(category => category.PublicId == rootId);
+        if (root is null)
+        {
+            return [];
+        }
+
+        var children = structure
+            .Where(category => category.ParentId.HasValue)
+            .ToLookup(category => category.ParentId!.Value, category => category.Id);
+        var subtree = new HashSet<long> { root.Id };
+        var pending = new Queue<long>([root.Id]);
+        while (pending.TryDequeue(out var current))
+        {
+            foreach (var child in children[current].Where(subtree.Add))
+            {
+                pending.Enqueue(child);
+            }
+        }
+
+        var ids = subtree.ToArray();
+
+        return await ReadSnapshots(
+                visible.Where(category => ids.Contains(category.Id)),
+                includeUsageCounts)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    private IQueryable<Category> VisibleCategories(Guid userId, bool includeDeleted) =>
+        context.Categories
+            .AsNoTracking()
+            .Where(category =>
+                category.User.PublicId == userId &&
+                (includeDeleted || !category.IsDeleted));
+
+    private IQueryable<CategoryReadSnapshot> ReadSnapshots(
+        IQueryable<Category> categories,
+        bool includeUsageCounts) => categories
         .Select(category => new CategoryReadSnapshot(
             category.PublicId,
             category.Name,
@@ -108,8 +156,7 @@ public sealed class EfCategoryStore(
                     transaction.CategoryId == category.Id && !transaction.IsDeleted)
                 : 0,
             category.CreatedAt,
-            category.UpdatedAt))
-        .ToArrayAsync(cancellationToken);
+            category.UpdatedAt));
 
     public async Task<CategoryUpdateResult> UpdateAsync(
         CategoryUpdate update,

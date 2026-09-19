@@ -39,6 +39,12 @@ public sealed class BudgetConsumptionOutput
 public sealed class BudgetListOutput : QueryOutput
 {
     public IReadOnlyCollection<BudgetOutput> Budgets { get; set; } = [];
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+    public int TotalItems { get; set; }
+    public int TotalPages => PageSize == 0
+        ? 0
+        : (int)Math.Ceiling((decimal)TotalItems / PageSize);
 }
 
 public sealed class BudgetConsumptionDetailOutput : QueryOutput

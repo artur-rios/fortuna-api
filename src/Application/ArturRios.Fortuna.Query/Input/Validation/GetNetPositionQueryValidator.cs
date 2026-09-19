@@ -8,8 +8,10 @@ public sealed class GetNetPositionQueryValidator : AbstractValidator<GetNetPosit
     public GetNetPositionQueryValidator()
     {
         RuleFor(query => query.DisplayCurrencyCode)
-            .Must(code => code is null ||
-                code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .OptionalCurrencyCode()
             .WithMessage(NetPositionMessages.DisplayCurrencyInvalid);
+        RuleFor(query => query.AsOf)
+            .OptionalAsOfDate()
+            .WithMessage(NetPositionMessages.AsOfOutOfRange);
     }
 }

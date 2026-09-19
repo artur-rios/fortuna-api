@@ -100,35 +100,20 @@ public sealed class ListFinancialAccountsQueryHandler(
     private static IOrderedQueryable<FinancialAccount> Order(
         IQueryable<FinancialAccount> accounts,
         string sortBy,
-        bool descending) => (sortBy.ToLowerInvariant(), descending) switch
+        bool descending) => sortBy.ToLowerInvariant() switch
         {
-            ("institution", false) => accounts.OrderBy(account => account.Institution)
-                .ThenBy(account => account.PublicId),
-            ("institution", true) => accounts.OrderByDescending(account => account.Institution)
-                .ThenByDescending(account => account.PublicId),
-            ("accounttype", false) => accounts.OrderBy(account => account.AccountType)
-                .ThenBy(account => account.PublicId),
-            ("accounttype", true) => accounts.OrderByDescending(account => account.AccountType)
-                .ThenByDescending(account => account.PublicId),
-            ("currencycode", false) => accounts.OrderBy(account => account.Currency.Code)
-                .ThenBy(account => account.PublicId),
-            ("currencycode", true) => accounts.OrderByDescending(account => account.Currency.Code)
-                .ThenByDescending(account => account.PublicId),
-            ("openingbalance", false) => accounts.OrderBy(account => account.OpeningBalance)
-                .ThenBy(account => account.PublicId),
-            ("openingbalance", true) => accounts.OrderByDescending(account => account.OpeningBalance)
-                .ThenByDescending(account => account.PublicId),
-            ("createdat", false) => accounts.OrderBy(account => account.CreatedAt)
-                .ThenBy(account => account.PublicId),
-            ("createdat", true) => accounts.OrderByDescending(account => account.CreatedAt)
-                .ThenByDescending(account => account.PublicId),
-            ("updatedat", false) => accounts.OrderBy(account => account.UpdatedAt)
-                .ThenBy(account => account.PublicId),
-            ("updatedat", true) => accounts.OrderByDescending(account => account.UpdatedAt)
-                .ThenByDescending(account => account.PublicId),
-            (_, false) => accounts.OrderBy(account => account.Name)
-                .ThenBy(account => account.PublicId),
-            _ => accounts.OrderByDescending(account => account.Name)
-                .ThenByDescending(account => account.PublicId)
+            "institution" => accounts
+                .SortBy(account => account.Institution, account => account.PublicId, descending),
+            "accounttype" => accounts
+                .SortBy(account => account.AccountType, account => account.PublicId, descending),
+            "currencycode" => accounts
+                .SortBy(account => account.Currency.Code, account => account.PublicId, descending),
+            "openingbalance" => accounts
+                .SortBy(account => account.OpeningBalance, account => account.PublicId, descending),
+            "createdat" => accounts
+                .SortBy(account => account.CreatedAt, account => account.PublicId, descending),
+            "updatedat" => accounts
+                .SortBy(account => account.UpdatedAt, account => account.PublicId, descending),
+            _ => accounts.SortBy(account => account.Name, account => account.PublicId, descending)
         };
 }

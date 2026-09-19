@@ -6,10 +6,12 @@ using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
+using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetCreditCardStatementByIdQueryHandler(
+    IValidator<GetCreditCardStatementByIdQuery> validator,
     IUserProfileReader profiles,
     ICreditCardStatementReader statements,
     IRequestActorAccessor actorAccessor)
@@ -18,6 +20,13 @@ public sealed class GetCreditCardStatementByIdQueryHandler(
     public async Task<DataOutput<CreditCardStatementOutput?>> HandleAsync(
         GetCreditCardStatementByIdQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<CreditCardStatementOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var output = DataOutput<CreditCardStatementOutput?>.New;
         var profile = await ResolveProfileAsync(actorAccessor.Actor);
         if (profile is null)

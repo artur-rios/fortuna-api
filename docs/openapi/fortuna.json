@@ -690,6 +690,23 @@
             },
             "nullable": true,
             "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalItems": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "readOnly": true,
+            "type": "integer"
           }
         },
         "type": "object"
@@ -913,6 +930,16 @@
           "flatReason": {
             "nullable": true,
             "type": "string"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "missingRates": {
+            "items": {
+              "$ref": "#/components/schemas/MissingExchangeRateOutput"
+            },
+            "nullable": true,
+            "type": "array"
           },
           "periodicity": {
             "$ref": "#/components/schemas/CashFlowPeriodicity"
@@ -1269,6 +1296,13 @@
           "items": {
             "items": {
               "$ref": "#/components/schemas/CommittedObligationOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "missingRates": {
+            "items": {
+              "$ref": "#/components/schemas/MissingExchangeRateOutput"
             },
             "nullable": true,
             "type": "array"
@@ -1683,6 +1717,13 @@
           "isFullyConverted": {
             "type": "boolean"
           },
+          "missingRates": {
+            "items": {
+              "$ref": "#/components/schemas/MissingExchangeRateOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
           "total": {
             "format": "decimal",
             "nullable": true,
@@ -1883,6 +1924,23 @@
             },
             "nullable": true,
             "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalItems": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "readOnly": true,
+            "type": "integer"
           }
         },
         "type": "object"
@@ -4024,6 +4082,23 @@
             },
             "nullable": true,
             "type": "array"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalItems": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "readOnly": true,
+            "type": "integer"
           }
         },
         "type": "object"
@@ -5742,6 +5817,20 @@
         },
         "type": "object"
       },
+      "MissingExchangeRateOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "baseCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "quoteCurrencyCode": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "NetPositionCurrencyOutput": {
         "additionalProperties": false,
         "properties": {
@@ -5816,6 +5905,13 @@
           },
           "isFullyConverted": {
             "type": "boolean"
+          },
+          "missingRates": {
+            "items": {
+              "$ref": "#/components/schemas/MissingExchangeRateOutput"
+            },
+            "nullable": true,
+            "type": "array"
           },
           "total": {
             "format": "decimal",
@@ -8509,6 +8605,13 @@
             "nullable": true,
             "type": "array"
           },
+          "missingRates": {
+            "items": {
+              "$ref": "#/components/schemas/MissingExchangeRateOutput"
+            },
+            "nullable": true,
+            "type": "array"
+          },
           "pageNumber": {
             "format": "int32",
             "type": "integer"
@@ -8724,12 +8827,29 @@
       "TagListOutput": {
         "additionalProperties": false,
         "properties": {
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/TagOutput"
             },
             "nullable": true,
             "type": "array"
+          },
+          "totalItems": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "readOnly": true,
+            "type": "integer"
           }
         },
         "type": "object"
@@ -8907,6 +9027,13 @@
           },
           "isFullyConverted": {
             "type": "boolean"
+          },
+          "missingRates": {
+            "items": {
+              "$ref": "#/components/schemas/MissingExchangeRateOutput"
+            },
+            "nullable": true,
+            "type": "array"
           },
           "to": {
             "format": "date",
@@ -9571,6 +9698,16 @@
             "nullable": true,
             "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$",
             "type": "string"
+          },
+          "isFullyConverted": {
+            "type": "boolean"
+          },
+          "missingRates": {
+            "items": {
+              "$ref": "#/components/schemas/MissingExchangeRateOutput"
+            },
+            "nullable": true,
+            "type": "array"
           }
         },
         "type": "object"
@@ -12068,6 +12205,24 @@
               "default": false,
               "type": "boolean"
             }
+          },
+          {
+            "in": "query",
+            "name": "pageNumber",
+            "schema": {
+              "default": 1,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "default": 100,
+              "format": "int32",
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -13045,6 +13200,24 @@
             "schema": {
               "default": false,
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageNumber",
+            "schema": {
+              "default": 1,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "default": 100,
+              "format": "int32",
+              "type": "integer"
             }
           }
         ],
@@ -14121,6 +14294,24 @@
             "schema": {
               "default": false,
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageNumber",
+            "schema": {
+              "default": 1,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "default": 100,
+              "format": "int32",
+              "type": "integer"
             }
           }
         ],
@@ -16935,6 +17126,24 @@
             "schema": {
               "default": false,
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageNumber",
+            "schema": {
+              "default": 1,
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "default": 100,
+              "format": "int32",
+              "type": "integer"
             }
           }
         ],

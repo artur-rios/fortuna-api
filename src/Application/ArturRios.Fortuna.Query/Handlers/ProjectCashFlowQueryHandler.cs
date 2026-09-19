@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ArturRios.Fortuna.Query.Conversion;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
@@ -43,9 +44,7 @@ public sealed class ProjectCashFlowQueryHandler(
             return output.WithError(CashFlowProjectionMessages.ProfileNotFound);
         }
 
-        var displayCode = string.IsNullOrWhiteSpace(query.DisplayCurrencyCode)
-            ? profile.DisplayCurrency.ToUpperInvariant()
-            : query.DisplayCurrencyCode.Trim().ToUpperInvariant();
+        var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
         var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
         if (displayCurrency is null)
         {
@@ -57,48 +56,27 @@ public sealed class ProjectCashFlowQueryHandler(
         var historyFrom = asOf.AddDays(-(options.HistoricalLookbackDays - 1));
         var snapshot = await projections.ReadAsync(
             profile.Id, asOf, through, historyFrom, CancellationToken.None);
-        var rateCache = new Dictionary<(string Currency, DateOnly Date), ExchangeRateSnapshot?>();
+        var converter = new FigureConverter(rates, displayCurrency);
 
-        async Task<decimal?> ConvertAsync(string currencyCode, decimal amount, DateOnly date)
-        {
-            if (currencyCode == displayCurrency.Code)
-            {
-                return amount;
-            }
-
-            var key = (currencyCode, date);
-            if (!rateCache.TryGetValue(key, out var rate))
-            {
-                rate = await rates.FindApplicableAsync(
-                    currencyCode, displayCurrency.Code, date, CancellationToken.None);
-                rateCache[key] = rate;
-            }
-
-            return rate is null ? null : amount * rate.Rate;
-        }
-
+        // Balances are a point-in-time position (as-of date); flows convert at their own
+        // date. A figure without a rate is left out of the balances and reported instead.
         var startingBalance = 0m;
         foreach (var balance in snapshot.StartingBalances)
         {
-            var converted = await ConvertAsync(balance.CurrencyCode, balance.Amount, asOf);
-            if (!converted.HasValue)
-            {
-                return output.WithError(CashFlowProjectionMessages.ExchangeRateUnavailable);
-            }
-
-            startingBalance += converted.Value;
+            var converted = await converter.ConvertAsync(
+                balance.CurrencyCode, balance.Amount, asOf);
+            startingBalance += converted.Value ?? 0m;
         }
 
         var future = new List<ConvertedFigure>(snapshot.FutureFigures.Count);
         foreach (var figure in snapshot.FutureFigures)
         {
-            var converted = await ConvertAsync(figure.CurrencyCode, figure.SignedAmount, figure.Date);
-            if (!converted.HasValue)
+            var converted = await converter.ConvertAsync(
+                figure.CurrencyCode, figure.SignedAmount, figure.Date);
+            if (converted.Value.HasValue)
             {
-                return output.WithError(CashFlowProjectionMessages.ExchangeRateUnavailable);
+                future.Add(new ConvertedFigure(figure.Date, figure.Source, converted.Value.Value));
             }
-
-            future.Add(new ConvertedFigure(figure.Date, figure.Source, converted.Value));
         }
 
         decimal? estimatedDailyAmount = null;
@@ -122,14 +100,9 @@ public sealed class ProjectCashFlowQueryHandler(
                 var historyTotal = 0m;
                 foreach (var figure in snapshot.HistoricalFigures)
                 {
-                    var converted = await ConvertAsync(
+                    var converted = await converter.ConvertAsync(
                         figure.CurrencyCode, figure.SignedAmount, figure.Date);
-                    if (!converted.HasValue)
-                    {
-                        return output.WithError(CashFlowProjectionMessages.ExchangeRateUnavailable);
-                    }
-
-                    historyTotal += converted.Value;
+                    historyTotal += converted.Value ?? 0m;
                 }
 
                 estimatedDailyAmount = historyTotal / observedDays;
@@ -137,7 +110,7 @@ public sealed class ProjectCashFlowQueryHandler(
         }
 
         var periods = new List<CashFlowPeriodOutput>();
-        var opening = Round(startingBalance, displayCurrency.MinorUnitDigits);
+        var opening = startingBalance;
         var ranges = PeriodRanges(asOf.AddDays(1), through, query.Periodicity);
         for (var index = 0; index < ranges.Count; index++)
         {
@@ -154,38 +127,34 @@ public sealed class ProjectCashFlowQueryHandler(
             var estimated = estimatedDailyAmount.HasValue
                 ? estimatedDailyAmount.Value * (range.End.DayNumber - range.Start.DayNumber + 1)
                 : 0m;
-            projected = Round(projected, displayCurrency.MinorUnitDigits);
-            committed = Round(committed, displayCurrency.MinorUnitDigits);
-            estimated = Round(estimated, displayCurrency.MinorUnitDigits);
             var figures = new List<CashFlowFigureOutput>();
             if (index == 0)
             {
                 figures.Add(new CashFlowFigureOutput
                 {
                     Kind = CashFlowFigureKind.Recorded,
-                    Amount = opening
+                    Amount = converter.Round(opening)
                 });
             }
 
-            AddFigure(figures, CashFlowFigureKind.Projected, projected);
-            AddFigure(figures, CashFlowFigureKind.Committed, committed);
+            AddFigure(figures, CashFlowFigureKind.Projected, converter.Round(projected));
+            AddFigure(figures, CashFlowFigureKind.Committed, converter.Round(committed));
             if (estimatedDailyAmount.HasValue)
             {
                 figures.Add(new CashFlowFigureOutput
                 {
                     Kind = CashFlowFigureKind.Estimated,
-                    Amount = estimated
+                    Amount = converter.Round(estimated)
                 });
             }
 
-            var closing = Round(opening + projected + committed + estimated,
-                displayCurrency.MinorUnitDigits);
+            var closing = opening + projected + committed + estimated;
             periods.Add(new CashFlowPeriodOutput
             {
                 PeriodStart = range.Start,
                 PeriodEnd = range.End,
-                OpeningBalance = opening,
-                ClosingBalance = closing,
+                OpeningBalance = converter.Round(opening),
+                ClosingBalance = converter.Round(closing),
                 Figures = figures
             });
             opening = closing;
@@ -198,23 +167,13 @@ public sealed class ProjectCashFlowQueryHandler(
                 Through = through,
                 DisplayCurrencyCode = displayCurrency.Code,
                 Periodicity = query.Periodicity,
-                StartingBalance = Round(startingBalance, displayCurrency.MinorUnitDigits),
+                StartingBalance = converter.Round(startingBalance),
                 FlatReason = future.Count == 0 && !estimatedDailyAmount.HasValue
                     ? CashFlowProjectionMessages.NoProjectionInputs
                     : null,
                 EstimateOmittedReason = estimateOmittedReason,
                 Periods = periods,
-                Rates = rateCache.Values
-                    .Where(item => item is not null)
-                    .Select(item => item!)
-                    .DistinctBy(item => new
-                    {
-                        item.BaseCurrencyCode,
-                        item.QuoteCurrencyCode,
-                        item.Rate,
-                        item.RateDate,
-                        item.Source
-                    })
+                Rates = converter.AppliedRates
                     .Select(item => new CashFlowRateOutput
                     {
                         BaseCurrencyCode = item.BaseCurrencyCode,
@@ -223,9 +182,13 @@ public sealed class ProjectCashFlowQueryHandler(
                         RateDate = item.RateDate,
                         Source = item.Source
                     })
-                    .ToArray()
+                    .ToArray(),
+                IsFullyConverted = converter.IsFullyConverted,
+                MissingRates = MissingExchangeRateOutput.From(converter)
             })
-            .WithMessage(CashFlowProjectionMessages.RetrievedSuccessfully);
+            .WithMessage(converter.IsFullyConverted
+                ? CashFlowProjectionMessages.RetrievedSuccessfully
+                : CashFlowProjectionMessages.PartiallyConverted);
     }
 
     private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
@@ -267,9 +230,6 @@ public sealed class ProjectCashFlowQueryHandler(
             figures.Add(new CashFlowFigureOutput { Kind = kind, Amount = amount });
         }
     }
-
-    private static decimal Round(decimal value, short digits) =>
-        decimal.Round(value, digits, MidpointRounding.AwayFromZero);
 
     private sealed record ConvertedFigure(
         DateOnly Date,

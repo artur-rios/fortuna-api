@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
@@ -87,7 +88,7 @@ public sealed class FinancialAccountBalanceQueryHandlerTests
     {
         var reader = new StubFinancialAccountReader(Guid.NewGuid(), null);
 
-        var result = await Handler(null, reader).HandleAsync(new GetFinancialAccountBalanceQuery());
+        var result = await Handler(null, reader).HandleAsync(new GetFinancialAccountBalanceQuery { Id = Guid.NewGuid() });
 
         Assert.False(result.Success);
         Assert.Contains(FinancialAccountMessages.ProfileNotFound, result.Errors);
@@ -108,6 +109,7 @@ public sealed class FinancialAccountBalanceQueryHandlerTests
                 10m,
                 DateOnly.FromDateTime(Now.UtcDateTime)));
         var handler = new GetFinancialAccountBalanceQueryHandler(
+            new GetFinancialAccountBalanceQueryValidator(),
             profiles,
             reader,
             new StubRequestActorAccessor(new RequestActor(profile.Id, 3, null, [])
@@ -125,6 +127,7 @@ public sealed class FinancialAccountBalanceQueryHandlerTests
     private static GetFinancialAccountBalanceQueryHandler Handler(
         UserProfileSnapshot? profile,
         IFinancialAccountReader accounts) => new(
+        new GetFinancialAccountBalanceQueryValidator(),
         new StubUserProfileReader(profile),
         accounts,
         new StubRequestActorAccessor(new RequestActor(

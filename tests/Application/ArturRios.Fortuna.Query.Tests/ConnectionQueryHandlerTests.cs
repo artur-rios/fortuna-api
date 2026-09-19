@@ -109,6 +109,7 @@ public sealed class ConnectionQueryHandlerTests
     private static GetConnectionByIdQueryHandler GetHandler(
         UserProfileSnapshot? profile,
         IConnectionReader reader) => new(
+        new GetConnectionByIdQueryValidator(),
         new StubProfileReader(profile), reader, Actor(profile));
 
     private static ListConnectionsQueryHandler ListHandler(

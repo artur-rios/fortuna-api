@@ -40,8 +40,7 @@ public sealed class ListFinancialAccountsQueryValidator : AbstractValidator<List
             .WithMessage(FinancialAccountMessages.AccountTypeInvalid);
 
         RuleFor(query => query.CurrencyCode)
-            .Must(code => code is null ||
-                code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .OptionalCurrencyCode()
             .WithMessage(FinancialAccountMessages.CurrencyInvalid);
 
         RuleFor(query => query.SortBy)

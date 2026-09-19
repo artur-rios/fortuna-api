@@ -6,6 +6,8 @@ public static class TagMessages
     public const string UpdatedSuccessfully = "Tag updated successfully.";
     public const string DeletedSuccessfully = "Tag deleted successfully.";
     public const string ListedSuccessfully = "Tags retrieved successfully.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string AttachedSuccessfully = "Tag attached successfully.";
     public const string AlreadyAttached = "The tag was already attached.";
     public const string DetachedSuccessfully = "Tag detached successfully.";

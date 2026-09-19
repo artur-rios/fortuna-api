@@ -1,7 +1,9 @@
 using ArturRios.Fortuna.Query.Handlers;
+using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Test.Attributes;
@@ -21,9 +23,11 @@ public sealed class CounterpartyQueryHandlerTests
             new CounterpartySnapshot(Guid.NewGuid(), "Shop", false, Now, Now)
         ]);
         var handler = new ListCounterpartiesQueryHandler(
+            new ListCounterpartiesQueryValidator(),
             Actor(profile),
             new StubProfileReader(profile),
-            store);
+            store,
+            new PaginationOptions(100));
 
         var result = await handler.HandleAsync(new ListCounterpartiesQuery
         {
@@ -49,6 +53,7 @@ public sealed class CounterpartyQueryHandlerTests
             "Dining",
             CounterpartyCategorySuggestionOutcome.Succeeded));
         var handler = new SuggestCounterpartyCategoryQueryHandler(
+            new SuggestCounterpartyCategoryQueryValidator(),
             Actor(profile),
             new StubProfileReader(profile),
             store);
@@ -76,6 +81,7 @@ public sealed class CounterpartyQueryHandlerTests
             null,
             CounterpartyCategorySuggestionOutcome.Succeeded));
         var handler = new SuggestCounterpartyCategoryQueryHandler(
+            new SuggestCounterpartyCategoryQueryValidator(),
             Actor(profile),
             new StubProfileReader(profile),
             store);
@@ -101,6 +107,7 @@ public sealed class CounterpartyQueryHandlerTests
             null,
             CounterpartyCategorySuggestionOutcome.NotFound));
         var handler = new SuggestCounterpartyCategoryQueryHandler(
+            new SuggestCounterpartyCategoryQueryValidator(),
             Actor(profile),
             new StubProfileReader(profile),
             store);
@@ -119,9 +126,11 @@ public sealed class CounterpartyQueryHandlerTests
     {
         var store = new StubCounterpartyReader([]);
         var handler = new ListCounterpartiesQueryHandler(
+            new ListCounterpartiesQueryValidator(),
             Actor(null),
             new StubProfileReader(null),
-            store);
+            store,
+            new PaginationOptions(100));
 
         var result = await handler.HandleAsync(new ListCounterpartiesQuery());
 
@@ -142,15 +151,21 @@ public sealed class CounterpartyQueryHandlerTests
         public Guid? UserId { get; private set; }
         public bool IncludeDeleted { get; private set; }
 
-        public Task<IReadOnlyCollection<CounterpartySnapshot>> ListAsync(
+        public PageRequest? Page { get; private set; }
+
+        public Task<ReadPage<CounterpartySnapshot>> ListAsync(
             Guid userId,
             bool includeDeleted,
+            PageRequest page,
             CancellationToken cancellationToken)
         {
             UserId = userId;
             IncludeDeleted = includeDeleted;
+            Page = page;
 
-            return Task.FromResult(counterparties);
+            return Task.FromResult(new ReadPage<CounterpartySnapshot>(
+                counterparties.Skip(page.Skip).Take(page.PageSize).ToArray(),
+                counterparties.Count));
         }
     }
 
