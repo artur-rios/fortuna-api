@@ -66,6 +66,14 @@ public sealed class PersonalDataArchiveTests
                 Assert.Contains("123456789012345.6789", accounts, StringComparison.Ordinal);
                 var transactions = await ReadAsync(archive, "data/transactions.json");
                 Assert.Contains("0.0001", transactions, StringComparison.Ordinal);
+                var importedRecordId = JsonDocument.Parse(await ReadAsync(archive, "data/imported-records.json"))
+                    .RootElement.GetProperty("records")[0].GetProperty("id").GetInt64();
+                Assert.Equal(importedRecordId, JsonDocument.Parse(transactions)
+                    .RootElement.GetProperty("records")[0].GetProperty("importedRecordId").GetInt64());
+                var localAccount = JsonDocument.Parse(await ReadAsync(archive, "data/local-account.json"))
+                    .RootElement.GetProperty("records")[0];
+                Assert.Equal("Portable Local", localAccount.GetProperty("name").GetString());
+                Assert.False(localAccount.TryGetProperty("salt", out _));
                 var consents = await ReadAsync(archive, "data/processing-consents.json");
                 Assert.Contains("externalDataProcessing", consents, StringComparison.OrdinalIgnoreCase);
                 Assert.Contains("2026-09", consents, StringComparison.Ordinal);
@@ -89,7 +97,7 @@ public sealed class PersonalDataArchiveTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 
@@ -113,7 +121,7 @@ public sealed class PersonalDataArchiveTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
         }
     }
 
@@ -151,7 +159,44 @@ public sealed class PersonalDataArchiveTests
         }
         finally
         {
-            File.Delete(path);
+            SqliteTestDatabase.Delete(path);
+        }
+    }
+
+    [FunctionalFact]
+    public async Task GivenMissingAttachmentObject_WhenArchiveBuilt_ThenItIsReportedInsteadOfFailing()
+    {
+        var path = TemporaryDatabasePath();
+        try
+        {
+            var objects = new MemoryObjectStore();
+            await using var context = CreateContext(path);
+            await context.Database.MigrateAsync();
+            var userId = await SeedAsync(context, objects);
+            objects.Remove("attachments/portable.txt");
+            var attachmentId = await context.Attachments.Select(item => item.PublicId).SingleAsync();
+
+            var result = (await new EfPersonalDataArchiveBuilder(context, objects).BuildAsync(
+                userId,
+                Now,
+                Now.AddHours(24),
+                CancellationToken.None)).Archive!;
+
+            using var archive = new ZipArchive(
+                new MemoryStream(result.Content, writable: false),
+                ZipArchiveMode.Read);
+            Assert.DoesNotContain(archive.Entries, entry =>
+                entry.FullName.StartsWith("attachments/", StringComparison.Ordinal));
+            var manifest = JsonDocument.Parse(await ReadAsync(archive, "manifest.json")).RootElement;
+            Assert.Equal(attachmentId, manifest.GetProperty("missingAttachments")[0].GetGuid());
+            Assert.Equal(0, manifest.GetProperty("attachments").GetArrayLength());
+            var attachment = JsonDocument.Parse(await ReadAsync(archive, "data/attachments.json"))
+                .RootElement.GetProperty("records")[0];
+            Assert.Equal(JsonValueKind.Null, attachment.GetProperty("archivePath").ValueKind);
+        }
+        finally
+        {
+            SqliteTestDatabase.Delete(path);
         }
     }
 
@@ -244,6 +289,7 @@ public sealed class PersonalDataArchiveTests
             new DateOnly(2026, 9, 10),
             Now,
             "Portable transaction");
+        transaction.Reconcile(importedRecord, Now);
         context.FinancialTransactions.Add(transaction);
         await context.SaveChangesAsync();
         const string storageKey = "attachments/portable.txt";
@@ -315,6 +361,8 @@ public sealed class PersonalDataArchiveTests
             Task.FromResult(objects.TryGetValue(key, out var content)
                 ? AttachmentReadResult.Found(new MemoryStream(content, writable: false))
                 : AttachmentReadResult.NotFound);
+
+        public void Remove(string key) => objects.Remove(key);
 
         public Task DeleteAsync(string key, CancellationToken cancellationToken)
         {

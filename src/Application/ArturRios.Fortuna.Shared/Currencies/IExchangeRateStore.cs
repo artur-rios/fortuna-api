@@ -19,7 +19,11 @@ public sealed record PublishedRateCandidate(
 
 public sealed record PublishedRateUpsertResult(
     int StoredCount,
-    int UnchangedCount);
+    int UnchangedCount,
+    IReadOnlyCollection<string>? MissingCurrencyCodes = null)
+{
+    public int SkippedCount { get; init; }
+}
 
 public sealed record ManualRateCandidate(
     string BaseCurrencyCode,
@@ -29,4 +33,11 @@ public sealed record ManualRateCandidate(
 
 public sealed record ManualRateUpsertResult(
     decimal Rate,
-    bool ReplacedExisting);
+    bool ReplacedExisting,
+    ManualRateUpsertOutcome Outcome = ManualRateUpsertOutcome.Succeeded);
+
+public enum ManualRateUpsertOutcome
+{
+    Succeeded = 1,
+    CurrencyNotSupported = 2
+}

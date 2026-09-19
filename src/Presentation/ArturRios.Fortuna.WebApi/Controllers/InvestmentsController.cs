@@ -53,6 +53,8 @@ public sealed class InvestmentsController(
             [InvestmentMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [InvestmentMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [InvestmentMessages.HardDeleteHasLiveGoal] = StatusCodes.Status409Conflict,
+            [InvestmentMessages.HardDeleteHasDependents] = StatusCodes.Status409Conflict,
+            [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable,
             [InvestmentMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [InvestmentMessages.InstrumentRequired] = StatusCodes.Status400BadRequest,
             [InvestmentMessages.InstrumentTooLong] = StatusCodes.Status400BadRequest,

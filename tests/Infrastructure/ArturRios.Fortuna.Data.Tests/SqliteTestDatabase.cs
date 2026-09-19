@@ -16,19 +16,20 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
 
     public static async Task<SqliteTestDatabase> CreateAsync()
     {
-        var database = new SqliteTestDatabase(System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(),
-            $"fortuna-{Guid.NewGuid():N}.db"));
+        var database = new SqliteTestDatabase(TemporaryPath());
         await using var context = database.CreateContext();
         await context.Database.MigrateAsync();
 
         return database;
     }
 
-    public AppDbContext CreateContext()
+    public static string TemporaryPath(string prefix = "fortuna") =>
+        System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"{prefix}-{Guid.NewGuid():N}.db");
+
+    public static AppDbContext CreateContext(string path)
     {
         var builder = new DbContextOptionsBuilder<AppDbContext>();
-        DatabaseProvider.Configure(builder, DatabaseProvider.SQLite, Path);
+        DatabaseProvider.Configure(builder, DatabaseProvider.SQLite, path);
 
         return new AppDbContext(
             builder.Options,
@@ -36,10 +37,22 @@ internal sealed class SqliteTestDatabase : IAsyncDisposable
             DatabaseDiagnosticsOptions.Disabled);
     }
 
+    public static void Delete(string path)
+    {
+        // Pooled connections keep the file open, which makes deletion fail on Windows.
+        using (var connection = new SqliteConnection($"Data Source={path}"))
+        {
+            SqliteConnection.ClearPool(connection);
+        }
+
+        File.Delete(path);
+    }
+
+    public AppDbContext CreateContext() => CreateContext(Path);
+
     public ValueTask DisposeAsync()
     {
-        SqliteConnection.ClearAllPools();
-        File.Delete(Path);
+        Delete(Path);
 
         return ValueTask.CompletedTask;
     }

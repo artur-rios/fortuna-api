@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Shared.Classification;
 using Microsoft.EntityFrameworkCore;
@@ -8,8 +9,6 @@ namespace ArturRios.Fortuna.Data.Classification;
 public sealed class EfTagStore(AppDbContext context, TagOptions options)
     : ITagStore, ITagReader, ITagUpdater, ITagLifecycleStore, ITransactionTagStore
 {
-    private const string LiveNameIndex = "ix_tag_user_id_normalized_name";
-
     public async Task<TagCreationResult> CreateAsync(
         TagCreation creation,
         CancellationToken cancellationToken)
@@ -230,7 +229,7 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
             cancellationToken);
 
     private static bool IsDuplicateName(DbUpdateException exception) =>
-        DatabaseException.IsUniqueViolation(exception, LiveNameIndex);
+        DatabaseException.IsUniqueViolation(exception, TagMap.LiveNameIndex);
 
     private static TagSnapshot Snapshot(Tag tag) => new(
         tag.PublicId,

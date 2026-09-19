@@ -41,6 +41,7 @@ public sealed class CategoriesController(
             [CategoryMessages.RestoreRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [CategoryMessages.HardDeleteRequiresSoftDeletion] = StatusCodes.Status409Conflict,
             [CategoryMessages.HardDeleteHasLiveTransactions] = StatusCodes.Status409Conflict,
+            [CategoryMessages.HardDeleteHasDependents] = StatusCodes.Status409Conflict,
             [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable
         };
 

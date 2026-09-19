@@ -134,6 +134,8 @@ internal static class FinancialAccountLifecycleHandler
                 .WithError(FinancialAccountMessages.DuplicateName),
             FinancialAccountLifecycleOutcome.AttachmentStorageUnavailable => output
                 .WithError(AttachmentMessages.StorageUnavailable),
+            FinancialAccountLifecycleOutcome.HardDeleteHasDependents => output
+                .WithError(FinancialAccountMessages.HardDeleteHasDependents),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
     }

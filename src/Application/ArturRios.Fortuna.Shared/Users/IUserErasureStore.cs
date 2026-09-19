@@ -11,4 +11,5 @@ public interface IUserErasureStore
 public sealed record UserErasureResult(
     Guid SubjectReference,
     IReadOnlyDictionary<string, int> Erased,
-    int RevokedConnections);
+    int RevokedConnections,
+    IReadOnlyCollection<string>? UndeletedObjectKeys = null);

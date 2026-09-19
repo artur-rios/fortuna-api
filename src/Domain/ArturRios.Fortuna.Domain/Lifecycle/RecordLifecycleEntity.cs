@@ -19,6 +19,19 @@ public sealed class RecordLifecycleConflictException(
 
 public sealed record SoftDeletionResult(Guid CascadeId, bool Changed);
 
+public sealed record HardDeletionCheck(
+    RecordLifecycleConflict? Conflict,
+    IReadOnlyCollection<string> LiveReferences)
+{
+    public static HardDeletionCheck Allowed { get; } = new(null, []);
+
+    public bool IsAllowed => Conflict is null;
+
+    public static HardDeletionCheck Refused(
+        RecordLifecycleConflict conflict,
+        IReadOnlyCollection<string>? liveReferences = null) => new(conflict, liveReferences ?? []);
+}
+
 [NotMapped]
 public abstract class RecordLifecycleEntity
 {
@@ -95,12 +108,11 @@ public abstract class RecordLifecycleEntity
         return true;
     }
 
-    public void EnsureHardDeletionAllowed(IReadOnlyCollection<string>? liveReferences = null)
+    public HardDeletionCheck CheckHardDeletion(IReadOnlyCollection<string>? liveReferences = null)
     {
         if (!IsDeleted)
         {
-            throw new RecordLifecycleConflictException(
-                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion);
+            return HardDeletionCheck.Refused(RecordLifecycleConflict.HardDeleteRequiresSoftDeletion);
         }
 
         var references = liveReferences?
@@ -108,12 +120,10 @@ public abstract class RecordLifecycleEntity
             .Distinct(StringComparer.Ordinal)
             .OrderBy(reference => reference, StringComparer.Ordinal)
             .ToArray() ?? [];
-        if (references.Length > 0)
-        {
-            throw new RecordLifecycleConflictException(
-                RecordLifecycleConflict.HardDeleteHasLiveReferences,
-                references);
-        }
+
+        return references.Length > 0
+            ? HardDeletionCheck.Refused(RecordLifecycleConflict.HardDeleteHasLiveReferences, references)
+            : HardDeletionCheck.Allowed;
     }
 
     protected void MarkUpdated(DateTimeOffset updatedAt) => UpdatedAt = updatedAt;

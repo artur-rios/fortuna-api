@@ -75,24 +75,24 @@ public sealed class InstallmentPlan : RecordLifecycleEntity
         Installments.Add(transaction);
     }
 
-    public static IReadOnlyList<decimal> Split(
+    public static InstallmentSplit TrySplit(
         decimal totalAmount,
         short installmentCount,
         short minorUnitDigits)
     {
         if (totalAmount <= 0m)
         {
-            throw new ArgumentOutOfRangeException(nameof(totalAmount));
+            return InstallmentSplit.Refused(InstallmentSplitOutcome.TotalNotPositive);
         }
 
         if (installmentCount < 2)
         {
-            throw new ArgumentOutOfRangeException(nameof(installmentCount));
+            return InstallmentSplit.Refused(InstallmentSplitOutcome.TooFewInstallments);
         }
 
         if (minorUnitDigits is < 0 or > 4)
         {
-            throw new ArgumentOutOfRangeException(nameof(minorUnitDigits));
+            return InstallmentSplit.Refused(InstallmentSplitOutcome.MinorUnitDigitsUnsupported);
         }
 
         var regularAmount = decimal.Round(
@@ -101,15 +101,31 @@ public sealed class InstallmentPlan : RecordLifecycleEntity
             MidpointRounding.ToZero);
         if (regularAmount <= 0m)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(totalAmount),
-                "The total is too small to create positive installments.");
+            return InstallmentSplit.Refused(InstallmentSplitOutcome.AmountTooSmall);
         }
 
         var firstAmount = totalAmount - regularAmount * (installmentCount - 1);
         var amounts = Enumerable.Repeat(regularAmount, installmentCount).ToArray();
         amounts[0] = firstAmount;
 
-        return amounts;
+        return new InstallmentSplit(InstallmentSplitOutcome.Succeeded, amounts);
     }
+}
+
+public enum InstallmentSplitOutcome
+{
+    Succeeded = 1,
+    TotalNotPositive = 2,
+    TooFewInstallments = 3,
+    MinorUnitDigitsUnsupported = 4,
+    AmountTooSmall = 5
+}
+
+public sealed record InstallmentSplit(
+    InstallmentSplitOutcome Outcome,
+    IReadOnlyList<decimal> Amounts)
+{
+    public bool Succeeded => Outcome == InstallmentSplitOutcome.Succeeded;
+
+    public static InstallmentSplit Refused(InstallmentSplitOutcome outcome) => new(outcome, []);
 }

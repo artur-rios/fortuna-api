@@ -1,13 +1,17 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.EntityMaps;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Lifecycle;
+using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Investments;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Investments;
 
-public sealed class EfInvestmentStore(AppDbContext context)
+public sealed class EfInvestmentStore(
+    AppDbContext context,
+    IAttachmentLifecycleStore attachments)
     : IInvestmentStore, IInvestmentReader, IInvestmentUpdater, IInvestmentLifecycleStore
 {
     public IQueryable<InvestmentPositionSnapshot> QueryPositions()
@@ -290,14 +294,28 @@ public sealed class EfInvestmentStore(AppDbContext context)
             return LifecycleResult(InvestmentLifecycleOutcome.NotFound);
         }
 
-        try
-        {
-            investment.EnsureHardDeletionAllowed();
-        }
-        catch (RecordLifecycleConflictException exception) when (
-            exception.Conflict == RecordLifecycleConflict.HardDeleteRequiresSoftDeletion)
+        if (!investment.CheckHardDeletion().IsAllowed)
         {
             return LifecycleResult(InvestmentLifecycleOutcome.HardDeleteRequiresSoftDeletion);
+        }
+
+        var referencingGoals = await context.Goals
+            .AsNoTracking()
+            .Where(goal => goal.Investments.Any(item => item.Id == investment.Id))
+            .OrderBy(goal => goal.IsDeleted)
+            .ThenBy(goal => goal.Name)
+            .Select(goal => new { goal.Name, goal.IsDeleted })
+            .ToListAsync(cancellationToken);
+        if (referencingGoals.FirstOrDefault(goal => !goal.IsDeleted) is { } liveGoal)
+        {
+            return LifecycleResult(
+                InvestmentLifecycleOutcome.HardDeleteHasLiveGoal,
+                referencingGoal: liveGoal.Name);
+        }
+
+        if (referencingGoals.Count > 0)
+        {
+            return LifecycleResult(InvestmentLifecycleOutcome.HardDeleteHasDependents);
         }
 
         var movements = await context.InvestmentMovements
@@ -306,10 +324,42 @@ public sealed class EfInvestmentStore(AppDbContext context)
         var valuations = await context.InvestmentValuations
             .Where(item => item.InvestmentId == investment.Id)
             .ToListAsync(cancellationToken);
+        var movementIds = movements.Select(item => item.Id).ToArray();
+        var fundingTransactions = await context.Transfers
+            .Where(transfer =>
+                transfer.InboundInvestmentMovementId.HasValue &&
+                movementIds.Contains(transfer.InboundInvestmentMovementId.Value))
+            .Select(transfer => transfer.OutboundTransaction)
+            .ToListAsync(cancellationToken);
+        if (fundingTransactions.Any(transaction => !transaction.IsDeleted))
+        {
+            return LifecycleResult(InvestmentLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var deletion = await TransactionHardDeletion.PlanAsync(
+            context,
+            fundingTransactions,
+            [],
+            cancellationToken);
+        if (deletion.LiveReferences.Count > 0)
+        {
+            return LifecycleResult(InvestmentLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var removal = await attachments.RemoveForTransactionsAsync(
+            deletion.TransactionIds,
+            cancellationToken);
+        if (!removal.StorageAvailable)
+        {
+            return LifecycleResult(InvestmentLifecycleOutcome.AttachmentStorageUnavailable);
+        }
+
+        deletion.Remove(context);
         context.InvestmentMovements.RemoveRange(movements);
         context.InvestmentValuations.RemoveRange(valuations);
         context.Investments.Remove(investment);
         await context.SaveChangesAsync(cancellationToken);
+        await attachments.DeleteObjectsAsync(removal.StorageKeys, CancellationToken.None);
 
         return LifecycleResult(InvestmentLifecycleOutcome.Succeeded, investment.PublicId);
     }

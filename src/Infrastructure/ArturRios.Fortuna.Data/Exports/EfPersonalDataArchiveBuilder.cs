@@ -29,6 +29,18 @@ public sealed class EfPersonalDataArchiveBuilder(
     IAttachmentStore objects) : IPersonalDataArchiveBuilder
 {
     private const int SchemaVersion = 1;
+
+    // Secrets that never leave the system, even in the owner's own archive.
+    private static readonly HashSet<(Type Type, string Property)> OmittedFields =
+    [
+        (typeof(Connection), nameof(Connection.AccessTokenCipher)),
+        (typeof(LocalAccount), nameof(LocalAccount.SecretHash)),
+        (typeof(LocalAccount), nameof(LocalAccount.Salt))
+    ];
+
+    // Records identified by their numeric key in the API rather than by a public identifier.
+    private static readonly HashSet<Type> NumericallyIdentified = [typeof(ImportedRecord)];
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -68,6 +80,29 @@ public sealed class EfPersonalDataArchiveBuilder(
         using var output = new MemoryStream();
         using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
         {
+            var missingAttachments = new List<Guid>();
+            foreach (var attachment in parts
+                         .Single(part => part.Descriptor.EntityType == typeof(Attachment))
+                         .Records
+                         .Cast<Attachment>())
+            {
+                var written = await TryWriteAttachmentAsync(
+                    archive,
+                    attachment,
+                    attachmentPaths[attachment.Id],
+                    cancellationToken);
+                if (written == AttachmentReadStatus.Unavailable)
+                {
+                    return PersonalDataArchiveResult.Failed(PersonalDataArchiveOutcome.StorageUnavailable);
+                }
+
+                if (written == AttachmentReadStatus.NotFound)
+                {
+                    missingAttachments.Add(attachment.PublicId);
+                    attachmentPaths.Remove(attachment.Id);
+                }
+            }
+
             var manifestParts = new List<object>();
             var recordCount = 0;
             foreach (var part in parts)
@@ -102,27 +137,6 @@ public sealed class EfPersonalDataArchiveBuilder(
                 });
             }
 
-            foreach (var attachment in parts
-                         .Single(part => part.Descriptor.EntityType == typeof(Attachment))
-                         .Records
-                         .Cast<Attachment>())
-            {
-                var read = await objects.OpenReadAsync(attachment.StorageKey, cancellationToken);
-                if (!read.IsFound)
-                {
-                    return PersonalDataArchiveResult.Failed(read.Status == AttachmentReadStatus.NotFound
-                        ? PersonalDataArchiveOutcome.AttachmentNotFound
-                        : PersonalDataArchiveOutcome.StorageUnavailable);
-                }
-
-                await using var source = read.Content;
-                var entry = archive.CreateEntry(
-                    attachmentPaths[attachment.Id],
-                    CompressionLevel.Optimal);
-                await using var target = entry.Open();
-                await source.CopyToAsync(target, cancellationToken);
-            }
-
             await WriteJsonAsync(archive, "manifest.json", new
             {
                 schemaVersion = SchemaVersion,
@@ -130,7 +144,8 @@ public sealed class EfPersonalDataArchiveBuilder(
                 generatedAt,
                 expiresAt,
                 parts = manifestParts,
-                attachments = attachmentPaths.Values.Order(StringComparer.Ordinal).ToArray()
+                attachments = attachmentPaths.Values.Order(StringComparer.Ordinal).ToArray(),
+                missingAttachments = missingAttachments.Order().ToArray()
             }, cancellationToken);
         }
 
@@ -138,6 +153,30 @@ public sealed class EfPersonalDataArchiveBuilder(
             output.ToArray(),
             parts.Sum(part => part.Records.Count),
             parts.Select(part => part.Descriptor.Name).ToArray()));
+    }
+
+    // An attachment whose stored object is gone is recorded as missing instead of failing the
+    // whole archive; its metadata is still exported.
+    private async Task<AttachmentReadStatus> TryWriteAttachmentAsync(
+        ZipArchive archive,
+        Attachment attachment,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        var read = await objects.OpenReadAsync(attachment.StorageKey, cancellationToken);
+        if (!read.IsFound)
+        {
+            return read.Status;
+        }
+
+        await using (var source = read.Content)
+        {
+            var entry = archive.CreateEntry(path, CompressionLevel.Optimal);
+            await using var target = entry.Open();
+            await source.CopyToAsync(target, cancellationToken);
+        }
+
+        return AttachmentReadStatus.Found;
     }
 
     private async Task<IReadOnlyList<LoadedPart>> LoadPartsAsync(
@@ -148,6 +187,9 @@ public sealed class EfPersonalDataArchiveBuilder(
         new(PersonalDataArchiveCoverage.Profile,
             await BoxAsync(context.UserProfiles.AsNoTracking()
                 .Where(item => item.Id == userId), cancellationToken)),
+        new(PersonalDataArchiveCoverage.LocalAccounts,
+            await BoxAsync(context.LocalAccounts.AsNoTracking()
+                .Where(item => item.UserId == userId), cancellationToken)),
         new(PersonalDataArchiveCoverage.FinancialAccounts,
             await BoxAsync(context.FinancialAccounts.AsNoTracking()
                 .Where(item => item.UserId == userId), cancellationToken)),
@@ -249,13 +291,13 @@ public sealed class EfPersonalDataArchiveBuilder(
                 output[JsonName(property.Name)] = SanitizeImportedPayload((string)value!);
                 continue;
             }
+            if (OmittedFields.Contains((type, property.Name)))
+            {
+                continue;
+            }
+
             if (property.ClrType == typeof(byte[]))
             {
-                if (type == typeof(Connection) && property.Name == nameof(Connection.AccessTokenCipher))
-                {
-                    continue;
-                }
-
                 throw new InvalidOperationException(
                     $"Binary field {type.Name}.{property.Name} requires an explicit portability policy.");
             }
@@ -292,7 +334,12 @@ public sealed class EfPersonalDataArchiveBuilder(
 
         if (record is Attachment attachment)
         {
-            output["archivePath"] = attachmentPaths[attachment.Id];
+            output["archivePath"] = attachmentPaths.GetValueOrDefault(attachment.Id);
+        }
+
+        if (NumericallyIdentified.Contains(type))
+        {
+            output["id"] = entityType.FindProperty("Id")!.PropertyInfo!.GetValue(record);
         }
 
         return output;
@@ -320,6 +367,13 @@ public sealed class EfPersonalDataArchiveBuilder(
             return;
         }
 
+        if (NumericallyIdentified.Contains(foreignKey.PrincipalEntityType.ClrType))
+        {
+            output[name] = id;
+
+            return;
+        }
+
         output[name] = id.HasValue && publicIds.TryGetValue(
             (foreignKey.PrincipalEntityType.ClrType, id.Value),
             out var publicId)
@@ -335,8 +389,7 @@ public sealed class EfPersonalDataArchiveBuilder(
         foreach (var property in entityType.GetProperties().OrderBy(item => item.Name, StringComparer.Ordinal))
         {
             if (property.PropertyInfo is null || property.Name == "Id" ||
-                (property.ClrType == typeof(byte[]) && type == typeof(Connection) &&
-                 property.Name == nameof(Connection.AccessTokenCipher)))
+                OmittedFields.Contains((type, property.Name)))
             {
                 continue;
             }
@@ -359,9 +412,11 @@ public sealed class EfPersonalDataArchiveBuilder(
                         ? $"{name[..^2]}Code"
                         : $"{name}Code";
                 }
-                properties[name] = StringSchema(
-                    foreignKey.PrincipalEntityType.ClrType == typeof(Currency) ? null : "uuid",
-                    property.IsNullable);
+                properties[name] = NumericallyIdentified.Contains(foreignKey.PrincipalEntityType.ClrType)
+                    ? ValueSchema(property.ClrType, property.IsNullable)
+                    : StringSchema(
+                        foreignKey.PrincipalEntityType.ClrType == typeof(Currency) ? null : "uuid",
+                        property.IsNullable);
                 continue;
             }
 
@@ -384,7 +439,12 @@ public sealed class EfPersonalDataArchiveBuilder(
         }
         if (type == typeof(Attachment))
         {
-            properties["archivePath"] = StringSchema(null, false);
+            properties["archivePath"] = StringSchema(null, true);
+        }
+
+        if (NumericallyIdentified.Contains(type))
+        {
+            properties["id"] = ValueSchema(typeof(long), false);
         }
 
         return new Dictionary<string, object?>
@@ -607,6 +667,7 @@ public sealed record PersonalDataArchivePart(string Name, Type EntityType);
 public static class PersonalDataArchiveCoverage
 {
     public static readonly PersonalDataArchivePart Profile = new("profile", typeof(UserProfile));
+    public static readonly PersonalDataArchivePart LocalAccounts = new("local-account", typeof(LocalAccount));
     public static readonly PersonalDataArchivePart FinancialAccounts = new("financial-accounts", typeof(FinancialAccount));
     public static readonly PersonalDataArchivePart CreditCards = new("credit-cards", typeof(CreditCard));
     public static readonly PersonalDataArchivePart CreditCardStatements = new("credit-card-statements", typeof(CreditCardStatement));
@@ -633,7 +694,7 @@ public static class PersonalDataArchiveCoverage
 
     public static IReadOnlyCollection<PersonalDataArchivePart> Included { get; } =
     [
-        Profile, FinancialAccounts, CreditCards, CreditCardStatements, Investments,
+        Profile, LocalAccounts, FinancialAccounts, CreditCards, CreditCardStatements, Investments,
         InvestmentMovements, InvestmentValuations, Transactions, Transfers, InstallmentPlans,
         RecurringTransactions, Categories, Tags, Counterparties, Budgets, Goals, Connections,
         ProcessingConsents, ConnectionResources, ImportJobs, ImportedRecords, Attachments,
@@ -642,7 +703,6 @@ public static class PersonalDataArchiveCoverage
 
     public static IReadOnlySet<Type> SecretOrOperationalExclusions { get; } = new HashSet<Type>
     {
-        typeof(LocalAccount),
         typeof(RecoveryCode),
         typeof(AuditSubject),
         typeof(Domain.Jobs.BackgroundJob)

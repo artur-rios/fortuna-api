@@ -64,6 +64,16 @@ public sealed class CreateFinancialAccountCommandHandler(
             return output.WithError(FinancialAccountMessages.DuplicateName);
         }
 
+        if (created.Outcome == FinancialAccountCreationOutcome.ProfileNotFound)
+        {
+            return output.WithError(FinancialAccountMessages.ProfileNotFound);
+        }
+
+        if (created.Outcome == FinancialAccountCreationOutcome.CurrencyNotSupported)
+        {
+            return output.WithError(FinancialAccountMessages.CurrencyNotSupported);
+        }
+
         var account = created.Account!;
 
         return output

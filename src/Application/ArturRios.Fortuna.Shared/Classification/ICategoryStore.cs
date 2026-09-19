@@ -114,7 +114,8 @@ public enum CategoryLifecycleOutcome
     HardDeleteRequiresSoftDeletion = 4,
     HardDeleteHasLiveTransactions = 5,
     DuplicateSiblingName = 6,
-    AttachmentStorageUnavailable = 7
+    AttachmentStorageUnavailable = 7,
+    HardDeleteHasDependents = 8
 }
 
 public sealed record CategoryLifecycleResult(

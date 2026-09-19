@@ -15,8 +15,10 @@ public sealed class InstallmentPlanTests
     [UnitFact]
     public void GivenUnevenTotal_WhenSplit_ThenRemainderIsAssignedToFirstInstallment()
     {
-        var amounts = InstallmentPlan.Split(100m, 3, 2);
+        var split = InstallmentPlan.TrySplit(100m, 3, 2);
+        var amounts = split.Amounts;
 
+        Assert.True(split.Succeeded);
         Assert.Equal([33.34m, 33.33m, 33.33m], amounts);
         Assert.Equal(100m, amounts.Sum());
     }
@@ -24,22 +26,34 @@ public sealed class InstallmentPlanTests
     [UnitFact]
     public void GivenWholeUnitCurrency_WhenSplit_ThenPartsUseItsMinorUnit()
     {
-        var amounts = InstallmentPlan.Split(100m, 6, 0);
+        var amounts = InstallmentPlan.TrySplit(100m, 6, 0).Amounts;
 
         Assert.Equal([20m, 16m, 16m, 16m, 16m, 16m], amounts);
         Assert.Equal(100m, amounts.Sum());
     }
 
     [UnitTheory]
-    [InlineData("0", 2)]
-    [InlineData("10", 1)]
-    [InlineData("0.01", 2)]
+    [InlineData("0", 2, InstallmentSplitOutcome.TotalNotPositive)]
+    [InlineData("10", 1, InstallmentSplitOutcome.TooFewInstallments)]
+    [InlineData("0.01", 2, InstallmentSplitOutcome.AmountTooSmall)]
     public void GivenInvalidSplit_WhenCalculated_ThenItIsRejected(
         string total,
-        short count)
+        short count,
+        InstallmentSplitOutcome expected)
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            InstallmentPlan.Split(decimal.Parse(total), count, 2));
+        var split = InstallmentPlan.TrySplit(decimal.Parse(total), count, 2);
+
+        Assert.False(split.Succeeded);
+        Assert.Equal(expected, split.Outcome);
+        Assert.Empty(split.Amounts);
+    }
+
+    [UnitFact]
+    public void GivenUnsupportedMinorUnit_WhenSplit_ThenItIsRejected()
+    {
+        var split = InstallmentPlan.TrySplit(100m, 2, 5);
+
+        Assert.Equal(InstallmentSplitOutcome.MinorUnitDigitsUnsupported, split.Outcome);
     }
 
     [UnitFact]

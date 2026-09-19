@@ -32,6 +32,9 @@ public static class CreditCardMessages
         "Credit card must be soft-deleted before permanent deletion.";
     public const string HardDeleteHasLiveTransactions =
         "Credit card cannot be permanently deleted while live transactions reference it.";
+    public const string HardDeleteHasDependents =
+        "Credit card cannot be permanently deleted while recurring transactions, connections, " +
+        "live transfers or installment plans still reference it.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SortByUnsupported =

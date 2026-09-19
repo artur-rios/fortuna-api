@@ -1,4 +1,7 @@
+using ArturRios.Fortuna.Data.Accounts;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Currencies;
+using ArturRios.Fortuna.Data.Investments;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Investments;
@@ -259,6 +262,18 @@ public sealed class EfGoalStore(AppDbContext context)
         CancellationToken cancellationToken)
     {
         var resources = new List<GoalResourceProgressSnapshot>();
+        var rates = new Dictionary<string, AppliedRate?>(StringComparer.Ordinal);
+        var balances = await AccountBalanceCalculator.CalculateAsync(
+            context,
+            goal.Accounts
+                .Where(account => !account.IsDeleted)
+                .Select(account => new AccountOpening(
+                    account.Id,
+                    account.OpeningBalance,
+                    account.CreatedAt))
+                .ToArray(),
+            asOf,
+            cancellationToken);
         foreach (var account in goal.Accounts.OrderBy(item => item.Name))
         {
             if (account.IsDeleted)
@@ -271,27 +286,26 @@ public sealed class EfGoalStore(AppDbContext context)
                 continue;
             }
 
-            var movements = await context.FinancialTransactions.AsNoTracking()
-                .Where(item =>
-                    item.FinancialAccountId == account.Id &&
-                    !item.IsDeleted &&
-                    item.OccurredOn <= asOf)
-                .Select(item => (decimal?)(item.Direction ==
-                    TransactionDirection.Earning
-                        ? item.Amount
-                        : -item.Amount))
-                .SumAsync(cancellationToken) ?? 0m;
             resources.Add(await ConvertResourceAsync(
                 account.PublicId,
                 account.Name,
                 GoalResourceType.Account,
-                account.OpeningBalance + movements,
+                balances[account.Id],
                 account.Currency.Code,
                 goal,
                 asOf,
+                rates,
                 cancellationToken));
         }
 
+        var positions = await InvestmentPositionReader.CalculateAsync(
+            context,
+            goal.Investments
+                .Where(investment => !investment.IsDeleted)
+                .Select(investment => investment.Id)
+                .ToArray(),
+            asOf,
+            cancellationToken);
         foreach (var investment in goal.Investments.OrderBy(item => item.Instrument))
         {
             if (investment.IsDeleted)
@@ -304,35 +318,15 @@ public sealed class EfGoalStore(AppDbContext context)
                 continue;
             }
 
-            var latest = await context.InvestmentValuations.AsNoTracking()
-                .Where(item =>
-                    item.InvestmentId == investment.Id &&
-                    !item.IsDeleted &&
-                    item.ValuedOn <= asOf)
-                .OrderByDescending(item => item.ValuedOn)
-                .Select(item => new { item.Value, item.ValuedOn })
-                .FirstOrDefaultAsync(cancellationToken);
-            var position = latest?.Value ?? 0m;
-            position += await context.InvestmentMovements.AsNoTracking()
-                .Where(item =>
-                    item.InvestmentId == investment.Id &&
-                    !item.IsDeleted &&
-                    item.OccurredOn <= asOf &&
-                    item.OccurredOn > (latest == null ? DateOnly.MinValue : latest.ValuedOn))
-                .Select(item => (decimal?)(
-                    item.MovementType == InvestmentMovementType.Contribution ||
-                    item.MovementType == InvestmentMovementType.Yield
-                        ? item.Amount
-                        : -item.Amount))
-                .SumAsync(cancellationToken) ?? 0m;
             resources.Add(await ConvertResourceAsync(
                 investment.PublicId,
                 investment.Instrument,
                 GoalResourceType.Investment,
-                position,
+                positions[investment.Id],
                 investment.Currency.Code,
                 goal,
                 asOf,
+                rates,
                 cancellationToken));
         }
 
@@ -369,6 +363,7 @@ public sealed class EfGoalStore(AppDbContext context)
         string sourceCurrencyCode,
         Goal goal,
         DateOnly asOf,
+        IDictionary<string, AppliedRate?> rates,
         CancellationToken cancellationToken)
     {
         if (sourceCurrencyCode == goal.Currency.Code)
@@ -388,15 +383,17 @@ public sealed class EfGoalStore(AppDbContext context)
                 null);
         }
 
-        var rate = await context.ExchangeRates.AsNoTracking()
-            .Where(item =>
-                item.BaseCurrency.Code == sourceCurrencyCode &&
-                item.QuoteCurrency.Code == goal.Currency.Code &&
-                item.RateDate <= asOf)
-            .OrderByDescending(item => item.RateDate)
-            .ThenByDescending(item => item.Source)
-            .Select(item => new AppliedRate(item.Rate, item.RateDate, item.Source))
-            .FirstOrDefaultAsync(cancellationToken);
+        if (!rates.TryGetValue(sourceCurrencyCode, out var rate))
+        {
+            rate = await ExchangeRateLookup.Applicable(
+                    context,
+                    sourceCurrencyCode,
+                    goal.Currency.Code,
+                    asOf)
+                .Select(item => new AppliedRate(item.Rate, item.RateDate, item.Source))
+                .FirstOrDefaultAsync(cancellationToken);
+            rates[sourceCurrencyCode] = rate;
+        }
 
         return new GoalResourceProgressSnapshot(
             id,

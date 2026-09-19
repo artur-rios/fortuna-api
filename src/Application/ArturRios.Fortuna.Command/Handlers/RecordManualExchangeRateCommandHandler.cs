@@ -44,6 +44,10 @@ public sealed class RecordManualExchangeRateCommandHandler(
         var stored = await rates.UpsertManualAsync(
             new ManualRateCandidate(baseCode, quoteCode, command.Rate, command.RateDate),
             CancellationToken.None);
+        if (stored.Outcome == ManualRateUpsertOutcome.CurrencyNotSupported)
+        {
+            return output.WithError(ManualExchangeRateMessages.CurrencyNotSupported);
+        }
 
         return output
             .WithData(new RecordManualExchangeRateCommandOutput

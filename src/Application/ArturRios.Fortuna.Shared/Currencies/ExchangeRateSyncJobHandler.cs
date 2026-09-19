@@ -64,6 +64,13 @@ public sealed class ExchangeRateSyncJobHandler(
                 batch.PublicationDate))
             .ToArray();
         var stored = await rates.UpsertPublishedAsync(candidates, cancellationToken);
+        if (stored.MissingCurrencyCodes is { Count: > 0 } unknown)
+        {
+            logger.LogWarning(
+                "Exchange-rate synchronization skipped {SkippedCount} rates for currencies missing from the reference set: {CurrencyCodes}",
+                stored.SkippedCount,
+                string.Join(", ", unknown));
+        }
 
         var published = validQuotes.Select(quote => quote.CurrencyCode).ToHashSet(StringComparer.Ordinal);
         var missing = sourceCurrencies.Where(code => !published.Contains(code)).ToArray();

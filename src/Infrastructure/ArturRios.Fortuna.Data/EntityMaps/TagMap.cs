@@ -6,6 +6,8 @@ namespace ArturRios.Fortuna.Data.EntityMaps;
 
 public sealed class TagMap : IEntityTypeConfiguration<Tag>
 {
+    public const string LiveNameIndex = "ix_tag_user_id_normalized_name";
+
     public void Configure(EntityTypeBuilder<Tag> builder)
     {
         builder.ToTable("tag", table => table.HasCheckConstraint(
@@ -23,6 +25,7 @@ public sealed class TagMap : IEntityTypeConfiguration<Tag>
         builder.Property(tag => tag.UpdatedAt).IsRequired();
         builder.HasIndex(tag => tag.PublicId).IsUnique();
         builder.HasIndex(tag => new { tag.UserId, tag.NormalizedName })
+            .HasDatabaseName(LiveNameIndex)
             .IsUnique()
             .HasFilter("NOT is_deleted");
         builder.HasIndex(tag => new { tag.UserId, tag.IsDeleted });

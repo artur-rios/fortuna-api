@@ -1,4 +1,6 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Classification;
@@ -16,9 +18,8 @@ public sealed class EfCategoryStore(
         ICategoryTransactionReassigner,
         ICategoryLifecycleStore
 {
-    private const string RootSiblingNameIndex = "ix_category_user_id_normalized_name";
-    private const string NestedSiblingNameIndex =
-        "ix_category_user_id_parent_id_normalized_name";
+    private const string RootSiblingNameIndex = CategoryMap.RootNameIndex;
+    private const string NestedSiblingNameIndex = CategoryMap.NestedNameIndex;
 
     public async Task<CategoryCreationResult> CreateAsync(
         CategoryCreation creation,
@@ -352,46 +353,52 @@ public sealed class EfCategoryStore(
         var liveTransactionCount =
             transactions.Count(item => !item.IsDeleted) +
             recurringTransactions.Count(item => !item.IsDeleted);
-        try
+        var refusal = subtree
+            .Select(item => item.CheckHardDeletion(
+                item.Id == category.Id && liveTransactionCount > 0
+                    ? ["transactions"]
+                    : []))
+            .FirstOrDefault(check => !check.IsAllowed);
+        if (refusal is not null)
         {
-            foreach (var item in subtree)
-            {
-                item.EnsureHardDeletionAllowed(
-                    item.Id == category.Id && liveTransactionCount > 0
-                        ? ["transactions"]
-                        : []);
-            }
-        }
-        catch (RecordLifecycleConflictException exception)
-        {
-            return exception.Conflict switch
-            {
-                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion => LifecycleResult(
-                    CategoryLifecycleOutcome.HardDeleteRequiresSoftDeletion),
-                RecordLifecycleConflict.HardDeleteHasLiveReferences => LifecycleResult(
+            return refusal.Conflict == RecordLifecycleConflict.HardDeleteRequiresSoftDeletion
+                ? LifecycleResult(CategoryLifecycleOutcome.HardDeleteRequiresSoftDeletion)
+                : LifecycleResult(
                     CategoryLifecycleOutcome.HardDeleteHasLiveTransactions,
                     category.PublicId,
-                    liveTransactionCount),
-                _ => throw new InvalidOperationException(
-                    "An unexpected lifecycle conflict prevented hard deletion.",
-                    exception)
-            };
+                    liveTransactionCount);
         }
 
-        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
-            cancellationToken);
-        if (!await attachments.HardDeleteForTransactionsAsync(
-                transactions.Select(transaction => transaction.Id).ToArray(),
+        if (await context.Budgets.AnyAsync(
+                budget => budget.Categories.Any(item => categoryIds.Contains(item.Id)),
                 cancellationToken))
+        {
+            return LifecycleResult(CategoryLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var deletion = await TransactionHardDeletion.PlanAsync(
+            context,
+            transactions,
+            [],
+            cancellationToken);
+        if (deletion.LiveReferences.Count > 0)
+        {
+            return LifecycleResult(CategoryLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var removal = await attachments.RemoveForTransactionsAsync(
+            deletion.TransactionIds,
+            cancellationToken);
+        if (!removal.StorageAvailable)
         {
             return LifecycleResult(CategoryLifecycleOutcome.AttachmentStorageUnavailable);
         }
 
-        context.FinancialTransactions.RemoveRange(transactions);
+        deletion.Remove(context);
         context.RecurringTransactions.RemoveRange(recurringTransactions);
         context.Categories.RemoveRange(subtree);
         await context.SaveChangesAsync(cancellationToken);
-        await databaseTransaction.CommitAsync(cancellationToken);
+        await attachments.DeleteObjectsAsync(removal.StorageKeys, CancellationToken.None);
 
         return LifecycleResult(CategoryLifecycleOutcome.Succeeded, category.PublicId);
     }
