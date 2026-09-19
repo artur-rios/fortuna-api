@@ -5,13 +5,11 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class AttachDocumentCommandHandler(
-    IValidator<AttachDocumentCommand> validator,
     ICurrentProfileResolver profileResolver,
     IAttachmentMetadataStore metadata,
     IAttachmentStore storage,
@@ -23,12 +21,6 @@ public sealed class AttachDocumentCommandHandler(
         AttachDocumentCommand command)
     {
         var output = DataOutput<AttachDocumentCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

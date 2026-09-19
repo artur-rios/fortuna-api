@@ -8,12 +8,10 @@ using ArturRios.Fortuna.Shared.Projections;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ProjectCashFlowQueryHandler(
-    IValidator<ProjectCashFlowQuery> validator,
     ICurrentProfileResolver profileResolver,
     ICashFlowProjectionReader projections,
     ICurrencyReader currencies,
@@ -25,12 +23,6 @@ public sealed class ProjectCashFlowQueryHandler(
     public async Task<DataOutput<CashFlowProjectionOutput?>> HandleAsync(ProjectCashFlowQuery query)
     {
         var output = DataOutput<CashFlowProjectionOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(item => item.ErrorMessage));
-        }
-
         if (!Enum.IsDefined(query.Periodicity))
         {
             return output.WithError(CashFlowProjectionMessages.PeriodicityInvalid);

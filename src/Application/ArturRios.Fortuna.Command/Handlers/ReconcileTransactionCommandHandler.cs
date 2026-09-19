@@ -5,12 +5,10 @@ using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class ReconcileTransactionCommandHandler(
-    IValidator<ReconcileTransactionCommand> validator,
     ICurrentProfileResolver profileResolver,
     ITransactionReconciliationStore transactions,
     ReconciliationOptions options,
@@ -21,12 +19,6 @@ public sealed class ReconcileTransactionCommandHandler(
         ReconcileTransactionCommand command)
     {
         var output = DataOutput<ReconcileTransactionCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

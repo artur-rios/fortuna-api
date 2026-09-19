@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -107,12 +109,11 @@ public sealed class CreateCategoryCommandHandlerTests
                 Guid.NewGuid(), userId, "Dining", null, false, Now, Now),
             CategoryCreationOutcome.Succeeded));
         var handler = new CreateCategoryCommandHandler(
-            new CreateCategoryCommandValidator(),
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
                 profiles),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new CreateCategoryCommandValidator());
 
         var result = await handler.HandleAsync(new CreateCategoryCommand { Name = "Dining" });
 
@@ -120,16 +121,15 @@ public sealed class CreateCategoryCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static CreateCategoryCommandHandler Handler(
+    private static ICommandHandlerAsync<CreateCategoryCommand, CreateCategoryCommandOutput> Handler(
         Guid subject,
         UserProfileSnapshot? profile,
-        ICategoryStore store) => new(
-            new CreateCategoryCommandValidator(),
+        ICategoryStore store) => new CreateCategoryCommandHandler(
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(subject, 3, null, [])),
                 new StubUserProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new CreateCategoryCommandValidator());
 
     private static UserProfileSnapshot Profile(Guid id, Guid? subject) => new(
         id,

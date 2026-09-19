@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListCreditCardStatementsQueryHandler(
-    IValidator<ListCreditCardStatementsQuery> validator,
     ICurrentProfileResolver profileResolver,
     ICreditCardReader cards,
     ICreditCardStatementReader statements,
@@ -22,12 +20,6 @@ public sealed class ListCreditCardStatementsQueryHandler(
         ListCreditCardStatementsQuery query)
     {
         var output = PaginatedOutput<CreditCardStatementOutput>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

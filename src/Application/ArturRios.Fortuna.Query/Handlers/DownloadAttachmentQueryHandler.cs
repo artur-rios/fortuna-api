@@ -6,13 +6,11 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class DownloadAttachmentQueryHandler(
-    IValidator<DownloadAttachmentQuery> validator,
     ICurrentProfileResolver profileResolver,
     IAttachmentMetadataReader metadata,
     IAttachmentStore storage,
@@ -24,12 +22,6 @@ public sealed class DownloadAttachmentQueryHandler(
         DownloadAttachmentQuery query)
     {
         var output = DataOutput<DownloadAttachmentQueryOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

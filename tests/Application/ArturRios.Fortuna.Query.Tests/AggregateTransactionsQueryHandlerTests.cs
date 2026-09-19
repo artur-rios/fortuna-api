@@ -3,11 +3,13 @@ using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -130,7 +132,7 @@ public sealed class AggregateTransactionsQueryHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static AggregateTransactionsQueryHandler Handler(
+    private static IQueryHandlerAsync<AggregateTransactionsQuery, TransactionAggregationOutput> Handler(
         StubAggregationReader? reader = null,
         bool missingProfile = false,
         StubProfileReader? profiles = null,
@@ -141,7 +143,6 @@ public sealed class AggregateTransactionsQueryHandlerTests
         var resolved = missingProfile ? null : Profile();
 
         return new AggregateTransactionsQueryHandler(
-            new AggregateTransactionsQueryValidator(new TransactionAggregationOptions(366)),
             new CurrentProfileResolver(
                 new StubActor(actor ?? new RequestActor(
                     resolved?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
@@ -151,7 +152,8 @@ public sealed class AggregateTransactionsQueryHandlerTests
             new StubRateReader(rate),
             codec ?? new StubKeyCodec(),
             new TransactionDrillDownOptions(TimeSpan.FromMinutes(15)),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now))
+                .Validated(new AggregateTransactionsQueryValidator(new TransactionAggregationOptions(366)));
     }
 
     private static AggregateTransactionsQuery Valid() => new()

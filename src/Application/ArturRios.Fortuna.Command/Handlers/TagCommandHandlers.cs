@@ -5,12 +5,10 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class CreateTagCommandHandler(
-    IValidator<CreateTagCommand> validator,
     ICurrentProfileResolver profileResolver,
     ITagStore tags,
     TimeProvider timeProvider)
@@ -19,12 +17,6 @@ public sealed class CreateTagCommandHandler(
     public async Task<DataOutput<TagCommandOutput?>> HandleAsync(CreateTagCommand command)
     {
         var output = DataOutput<TagCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
@@ -40,7 +32,6 @@ public sealed class CreateTagCommandHandler(
 }
 
 public sealed class UpdateTagCommandHandler(
-    IValidator<UpdateTagCommand> validator,
     ICurrentProfileResolver profileResolver,
     ITagUpdater tags,
     TimeProvider timeProvider)
@@ -49,12 +40,6 @@ public sealed class UpdateTagCommandHandler(
     public async Task<DataOutput<TagCommandOutput?>> HandleAsync(UpdateTagCommand command)
     {
         var output = DataOutput<TagCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
@@ -98,7 +83,6 @@ public sealed class DeleteTagCommandHandler(
 }
 
 public sealed class AttachTransactionTagCommandHandler(
-    IValidator<AttachTransactionTagCommand> validator,
     ICurrentProfileResolver profileResolver,
     ITransactionTagStore tags,
     TagOptions options,
@@ -109,8 +93,6 @@ public sealed class AttachTransactionTagCommandHandler(
         AttachTransactionTagCommand command) => await TransactionTagHandler.HandleAsync(
         command.Id,
         command.TagId,
-        validator,
-        command,
         profileResolver,
         tags.AttachAsync,
         options,
@@ -119,7 +101,6 @@ public sealed class AttachTransactionTagCommandHandler(
 }
 
 public sealed class DetachTransactionTagCommandHandler(
-    IValidator<DetachTransactionTagCommand> validator,
     ICurrentProfileResolver profileResolver,
     ITransactionTagStore tags,
     TagOptions options,
@@ -130,8 +111,6 @@ public sealed class DetachTransactionTagCommandHandler(
         DetachTransactionTagCommand command) => await TransactionTagHandler.HandleAsync(
         command.Id,
         command.TagId,
-        validator,
-        command,
         profileResolver,
         tags.DetachAsync,
         options,
@@ -141,11 +120,9 @@ public sealed class DetachTransactionTagCommandHandler(
 
 internal static class TransactionTagHandler
 {
-    public static async Task<DataOutput<TransactionTagCommandOutput?>> HandleAsync<TCommand>(
+    public static async Task<DataOutput<TransactionTagCommandOutput?>> HandleAsync(
         Guid transactionId,
         Guid tagId,
-        IValidator<TCommand> validator,
-        TCommand command,
         ICurrentProfileResolver profileResolver,
         Func<TransactionTagAssignment, CancellationToken,
             Task<TransactionTagAssignmentResult>> operation,
@@ -154,12 +131,6 @@ internal static class TransactionTagHandler
         bool attaching)
     {
         var output = DataOutput<TransactionTagCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

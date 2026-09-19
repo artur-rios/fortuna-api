@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class SynchronizeConnectionCommandHandler(
-    IValidator<SynchronizeConnectionCommand> validator,
     ICurrentProfileResolver profileResolver,
     IPluggySynchronizationStore synchronizations,
     IBackgroundJobQueue queue,
@@ -21,13 +19,6 @@ public sealed class SynchronizeConnectionCommandHandler(
     public async Task<DataOutput<SynchronizeConnectionCommandOutput?>> HandleAsync(
         SynchronizeConnectionCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<SynchronizeConnectionCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

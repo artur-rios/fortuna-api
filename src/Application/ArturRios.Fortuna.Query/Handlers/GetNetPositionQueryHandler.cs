@@ -7,12 +7,10 @@ using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetNetPositionQueryHandler(
-    IValidator<GetNetPositionQuery> validator,
     ICurrentProfileResolver profileResolver,
     INetPositionReader positions,
     ICurrencyReader currencies,
@@ -23,12 +21,6 @@ public sealed class GetNetPositionQueryHandler(
     public async Task<DataOutput<NetPositionOutput?>> HandleAsync(GetNetPositionQuery query)
     {
         var output = DataOutput<NetPositionOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(item => item.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

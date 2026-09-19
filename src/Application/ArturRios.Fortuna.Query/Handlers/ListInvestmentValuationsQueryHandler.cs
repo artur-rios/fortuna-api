@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListInvestmentValuationsQueryHandler(
-    IValidator<ListInvestmentValuationsQuery> validator,
     ICurrentProfileResolver profileResolver,
     IInvestmentReader investments,
     PaginationOptions paginationOptions)
@@ -21,12 +19,6 @@ public sealed class ListInvestmentValuationsQueryHandler(
         ListInvestmentValuationsQuery query)
     {
         var output = PaginatedOutput<InvestmentValuationOutput>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

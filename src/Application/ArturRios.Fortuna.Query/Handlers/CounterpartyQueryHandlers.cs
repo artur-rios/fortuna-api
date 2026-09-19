@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListCounterpartiesQueryHandler(
-    IValidator<ListCounterpartiesQuery> validator,
     ICurrentProfileResolver profileResolver,
     ICounterpartyReader counterparties,
     PaginationOptions paginationOptions)
@@ -20,13 +18,6 @@ public sealed class ListCounterpartiesQueryHandler(
     public async Task<DataOutput<CounterpartyListOutput?>> HandleAsync(
         ListCounterpartiesQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<CounterpartyListOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
@@ -63,7 +54,6 @@ public sealed class ListCounterpartiesQueryHandler(
 }
 
 public sealed class SuggestCounterpartyCategoryQueryHandler(
-    IValidator<SuggestCounterpartyCategoryQuery> validator,
     ICurrentProfileResolver profileResolver,
     ICounterpartyCategorySuggester counterparties)
     : IQueryHandlerAsync<SuggestCounterpartyCategoryQuery,
@@ -72,13 +62,6 @@ public sealed class SuggestCounterpartyCategoryQueryHandler(
     public async Task<DataOutput<CounterpartyCategorySuggestionOutput?>> HandleAsync(
         SuggestCounterpartyCategoryQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<CounterpartyCategorySuggestionOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<CounterpartyCategorySuggestionOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)

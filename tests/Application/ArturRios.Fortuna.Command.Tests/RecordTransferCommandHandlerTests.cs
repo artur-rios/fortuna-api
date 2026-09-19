@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -126,11 +128,10 @@ public sealed class RecordTransferCommandHandlerTests
         Assert.Null(settlements.Request);
     }
 
-    private static RecordTransferCommandHandler Handler(
+    private static ICommandHandlerAsync<RecordTransferCommand, RecordTransferCommandOutput> Handler(
         UserProfileSnapshot? profile,
         ITransferStore transfers,
-        ICreditCardStatementSettlementStore? settlements = null) => new(
-        new RecordTransferCommandValidator(new FixedTimeProvider(Now)),
+        ICreditCardStatementSettlementStore? settlements = null) => new RecordTransferCommandHandler(
         new CurrentProfileResolver(
             new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
             new StubProfileReader(profile)),
@@ -138,7 +139,7 @@ public sealed class RecordTransferCommandHandlerTests
         settlements ?? new StubSettlementStore(new(
             null,
             CreditCardStatementSettlementOutcome.StatementNotFound)),
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new RecordTransferCommandValidator(new FixedTimeProvider(Now)));
 
     private static RecordTransferCommand AccountCommand() => new()
     {

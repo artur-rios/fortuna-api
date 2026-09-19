@@ -2,10 +2,12 @@ using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -158,15 +160,14 @@ public sealed class ConvertFigureQueryHandlerTests
         Assert.Contains(FigureConversionMessages.ProfileNotFound, result.Errors);
     }
 
-    private static ConvertFigureQueryHandler Handler(
+    private static IQueryHandlerAsync<ConvertFigureQuery, ConvertFigureQueryOutput> Handler(
         StubRateReader? rates = null,
-        StubProfileReader? profiles = null) => new(
-            new ConvertFigureQueryValidator(),
+        StubProfileReader? profiles = null) => new ConvertFigureQueryHandler(
             new StubCurrencyReader(),
             rates ?? new StubRateReader(null),
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(Profile().ExternalSubject!.Value, 3, null, [])),
-                profiles ?? new StubProfileReader(Profile())));
+                profiles ?? new StubProfileReader(Profile()))).Validated(new ConvertFigureQueryValidator());
 
     private static ConvertFigureQuery Query(IReadOnlyCollection<FigureAmountInput> amounts) => new()
     {

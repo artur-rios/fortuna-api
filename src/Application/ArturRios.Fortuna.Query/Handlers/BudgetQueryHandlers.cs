@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListBudgetsQueryHandler(
-    IValidator<ListBudgetsQuery> validator,
     ICurrentProfileResolver profileResolver,
     IBudgetReader budgets,
     TimeProvider timeProvider,
@@ -19,13 +17,6 @@ public sealed class ListBudgetsQueryHandler(
 {
     public async Task<DataOutput<BudgetListOutput?>> HandleAsync(ListBudgetsQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetListOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
@@ -55,20 +46,12 @@ public sealed class ListBudgetsQueryHandler(
 }
 
 public sealed class GetBudgetByIdQueryHandler(
-    IValidator<GetBudgetByIdQuery> validator,
     ICurrentProfileResolver profileResolver,
     IBudgetReader budgets,
     TimeProvider timeProvider) : IQueryHandlerAsync<GetBudgetByIdQuery, BudgetOutput>
 {
     public async Task<DataOutput<BudgetOutput?>> HandleAsync(GetBudgetByIdQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<BudgetOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -92,7 +75,6 @@ public sealed class GetBudgetByIdQueryHandler(
 }
 
 public sealed class GetBudgetConsumptionQueryHandler(
-    IValidator<GetBudgetConsumptionQuery> validator,
     ICurrentProfileResolver profileResolver,
     IBudgetConsumptionReader budgets,
     TimeProvider timeProvider)
@@ -101,13 +83,6 @@ public sealed class GetBudgetConsumptionQueryHandler(
     public async Task<DataOutput<BudgetConsumptionDetailOutput?>> HandleAsync(
         GetBudgetConsumptionQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetConsumptionDetailOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<BudgetConsumptionDetailOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)

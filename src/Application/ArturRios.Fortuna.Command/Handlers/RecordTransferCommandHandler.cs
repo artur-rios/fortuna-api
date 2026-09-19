@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class RecordTransferCommandHandler(
-    IValidator<RecordTransferCommand> validator,
     ICurrentProfileResolver profileResolver,
     ITransferStore transfers,
     ICreditCardStatementSettlementStore settlements,
@@ -22,12 +20,6 @@ public sealed class RecordTransferCommandHandler(
         RecordTransferCommand command)
     {
         var output = DataOutput<RecordTransferCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

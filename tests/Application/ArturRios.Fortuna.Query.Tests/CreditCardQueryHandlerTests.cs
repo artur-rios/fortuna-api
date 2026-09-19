@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -137,12 +139,11 @@ public sealed class CreditCardQueryHandlerTests
         var profile = Profile(externalSubject: null);
         var profiles = new StubUserProfileReader(profile);
         var handler = new ListCreditCardsQueryHandler(
-            new ListCreditCardsQueryValidator(),
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
                 profiles),
             new StubCreditCardReader(Card(profile.Id)),
-            new PaginationOptions(100));
+            new PaginationOptions(100)).Validated(new ListCreditCardsQueryValidator());
 
         var result = await handler.HandleAsync(new ListCreditCardsQuery());
 
@@ -205,21 +206,19 @@ public sealed class CreditCardQueryHandlerTests
         Assert.Empty(result.Data!);
     }
 
-    private static GetCreditCardByIdQueryHandler GetHandler(
+    private static IQueryHandlerAsync<GetCreditCardByIdQuery, CreditCardOutput> GetHandler(
         UserProfileSnapshot? profile,
-        ICreditCardReader cards) => new(
-            new GetCreditCardByIdQueryValidator(),
+        ICreditCardReader cards) => new GetCreditCardByIdQueryHandler(
             new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
-            cards);
+            cards).Validated(new GetCreditCardByIdQueryValidator());
 
-    private static ListCreditCardsQueryHandler ListHandler(
+    private static IPaginatedQueryHandlerAsync<ListCreditCardsQuery, CreditCardOutput> ListHandler(
         UserProfileSnapshot? profile,
         ICreditCardReader cards,
-        int maximumPageSize = 100) => new(
-            new ListCreditCardsQueryValidator(),
+        int maximumPageSize = 100) => new ListCreditCardsQueryHandler(
             new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
             cards,
-            new PaginationOptions(maximumPageSize));
+            new PaginationOptions(maximumPageSize)).Validated(new ListCreditCardsQueryValidator());
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));

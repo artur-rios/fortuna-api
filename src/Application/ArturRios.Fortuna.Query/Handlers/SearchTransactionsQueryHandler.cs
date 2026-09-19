@@ -8,12 +8,10 @@ using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class SearchTransactionsQueryHandler(
-    IValidator<SearchTransactionsQuery> validator,
     ICurrentProfileResolver profileResolver,
     ITransactionReader transactions,
     ICurrencyReader currencies,
@@ -26,12 +24,6 @@ public sealed class SearchTransactionsQueryHandler(
         SearchTransactionsQuery query)
     {
         var output = DataOutput<TransactionSearchOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

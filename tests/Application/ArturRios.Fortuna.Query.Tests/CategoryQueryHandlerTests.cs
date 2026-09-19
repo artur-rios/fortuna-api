@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -143,11 +145,10 @@ public sealed class CategoryQueryHandlerTests
     {
         var reader = new StubCategoryReader([]);
         var handler = new GetCategoryByIdQueryHandler(
-            new GetCategoryByIdQueryValidator(),
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
                 new StubUserProfileReader(null)),
-            reader);
+            reader).Validated(new GetCategoryByIdQueryValidator());
 
         var result = await handler.HandleAsync(new GetCategoryByIdQuery { Id = Guid.NewGuid() });
 
@@ -181,14 +182,13 @@ public sealed class CategoryQueryHandlerTests
                 new StubUserProfileReader(Profile(userId))),
             reader);
 
-    private static GetCategoryByIdQueryHandler ByIdHandler(
+    private static IQueryHandlerAsync<GetCategoryByIdQuery, CategoryOutput> ByIdHandler(
         Guid userId,
-        ICategoryReader reader) => new(
-            new GetCategoryByIdQueryValidator(),
+        ICategoryReader reader) => new GetCategoryByIdQueryHandler(
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
                 new StubUserProfileReader(Profile(userId))),
-            reader);
+            reader).Validated(new GetCategoryByIdQueryValidator());
 
     private static UserProfileSnapshot Profile(Guid id) => new(
         id,

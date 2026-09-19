@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -126,11 +128,10 @@ public sealed class DownloadAttachmentQueryHandlerTests
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    private static DownloadAttachmentQueryHandler Handler(
+    private static IQueryHandlerAsync<DownloadAttachmentQuery, DownloadAttachmentQueryOutput> Handler(
         Mock<IAttachmentMetadataReader> metadata,
         Mock<IAttachmentStore> storage,
-        Mock<IAuditEntryWriter>? audit = null) => new(
-        new DownloadAttachmentQueryValidator(),
+        Mock<IAuditEntryWriter>? audit = null) => new DownloadAttachmentQueryHandler(
         new CurrentProfileResolver(
             new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
             new StubProfileReader(new UserProfileSnapshot(
@@ -138,7 +139,7 @@ public sealed class DownloadAttachmentQueryHandlerTests
         metadata.Object,
         storage.Object,
         (audit ?? new Mock<IAuditEntryWriter>()).Object,
-        NullLogger<DownloadAttachmentQueryHandler>.Instance);
+        NullLogger<DownloadAttachmentQueryHandler>.Instance).Validated(new DownloadAttachmentQueryValidator());
 
     private static Mock<IAttachmentMetadataReader> Metadata(
         AttachmentReadSnapshot? snapshot = null,

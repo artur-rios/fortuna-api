@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -112,12 +114,11 @@ public sealed class ReassignCategoryTransactionsCommandHandlerTests
                 0,
                 CategoryTransactionReassignmentOutcome.Succeeded));
         var handler = new ReassignCategoryTransactionsCommandHandler(
-            new ReassignCategoryTransactionsCommandValidator(),
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
                 profiles),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new ReassignCategoryTransactionsCommandValidator());
 
         var result = await handler.HandleAsync(ValidCommand());
 
@@ -125,16 +126,17 @@ public sealed class ReassignCategoryTransactionsCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static ReassignCategoryTransactionsCommandHandler Handler(
+    private static ICommandHandlerAsync<
+        ReassignCategoryTransactionsCommand,
+        ReassignCategoryTransactionsCommandOutput> Handler(
         Guid subject,
         UserProfileSnapshot? profile,
-        ICategoryTransactionReassigner store) => new(
-            new ReassignCategoryTransactionsCommandValidator(),
+        ICategoryTransactionReassigner store) => new ReassignCategoryTransactionsCommandHandler(
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(subject, 3, null, [])),
                 new StubUserProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new ReassignCategoryTransactionsCommandValidator());
 
     private static ReassignCategoryTransactionsCommand ValidCommand() => new()
     {

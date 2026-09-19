@@ -2,10 +2,12 @@ using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Accounts;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -109,13 +111,12 @@ public sealed class FinancialAccountBalanceQueryHandlerTests
                 10m,
                 DateOnly.FromDateTime(Now.UtcDateTime)));
         var handler = new GetFinancialAccountBalanceQueryHandler(
-            new GetFinancialAccountBalanceQueryValidator(),
             new CurrentProfileResolver(new StubRequestActorAccessor(new RequestActor(profile.Id, 3, null, [])
             {
                 IsLocal = true
             }), profiles),
             reader,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now)).Validated(new GetFinancialAccountBalanceQueryValidator());
 
         var result = await handler.HandleAsync(new GetFinancialAccountBalanceQuery { Id = accountId });
 
@@ -123,17 +124,16 @@ public sealed class FinancialAccountBalanceQueryHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static GetFinancialAccountBalanceQueryHandler Handler(
+    private static IQueryHandlerAsync<GetFinancialAccountBalanceQuery, FinancialAccountBalanceOutput> Handler(
         UserProfileSnapshot? profile,
-        IFinancialAccountReader accounts) => new(
-        new GetFinancialAccountBalanceQueryValidator(),
+        IFinancialAccountReader accounts) => new GetFinancialAccountBalanceQueryHandler(
         new CurrentProfileResolver(new StubRequestActorAccessor(new RequestActor(
             profile?.ExternalSubject ?? Guid.NewGuid(),
             3,
             null,
             [])), new StubUserProfileReader(profile)),
         accounts,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new GetFinancialAccountBalanceQueryValidator());
 
     private static UserProfileSnapshot Profile(Guid? externalSubject = default) => new(
         Guid.NewGuid(),

@@ -5,12 +5,10 @@ using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class CreateBudgetCommandHandler(
-    IValidator<CreateBudgetCommand> validator,
     ICurrentProfileResolver profileResolver,
     IBudgetStore budgets,
     TimeProvider timeProvider)
@@ -18,13 +16,6 @@ public sealed class CreateBudgetCommandHandler(
 {
     public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(CreateBudgetCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
@@ -48,7 +39,6 @@ public sealed class CreateBudgetCommandHandler(
 }
 
 public sealed class UpdateBudgetCommandHandler(
-    IValidator<UpdateBudgetCommand> validator,
     ICurrentProfileResolver profileResolver,
     IBudgetUpdater budgets,
     TimeProvider timeProvider)
@@ -56,13 +46,6 @@ public sealed class UpdateBudgetCommandHandler(
 {
     public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(UpdateBudgetCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<BudgetCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

@@ -5,12 +5,10 @@ using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DefineRecurringTransactionCommandHandler(
-    IValidator<DefineRecurringTransactionCommand> validator,
     ICurrentProfileResolver profileResolver,
     IRecurringTransactionStore rules,
     TimeProvider timeProvider)
@@ -20,12 +18,6 @@ public sealed class DefineRecurringTransactionCommandHandler(
         DefineRecurringTransactionCommand command)
     {
         var output = DataOutput<DefineRecurringTransactionCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(item => item.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class EraseUserCommandHandler(
-    IValidator<EraseUserCommand> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     ICurrentProfileResolver profileResolver,
@@ -21,13 +19,6 @@ public sealed class EraseUserCommandHandler(
 {
     public async Task<DataOutput<EraseUserCommandOutput?>> HandleAsync(EraseUserCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<EraseUserCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var actor = actorAccessor.Actor;
         UserProfileSnapshot? target = null;
         if (command.IsSelfService && actor?.RoleId == (int)HeimdallRoles.User)

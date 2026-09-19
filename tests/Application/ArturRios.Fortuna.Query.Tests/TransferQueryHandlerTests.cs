@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -83,14 +85,13 @@ public sealed class TransferQueryHandlerTests
         Assert.False(reader.Called);
     }
 
-    private static GetTransferByIdQueryHandler Handler(
+    private static IQueryHandlerAsync<GetTransferByIdQuery, TransferOutput> Handler(
         UserProfileSnapshot? profile,
-        ITransferReader reader) => new(
-        new GetTransferByIdQueryValidator(),
+        ITransferReader reader) => new GetTransferByIdQueryHandler(
         new CurrentProfileResolver(
             new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
             new StubProfileReader(profile)),
-        reader);
+        reader).Validated(new GetTransferByIdQueryValidator());
 
     private static TransferReadSnapshot Snapshot() => new()
     {

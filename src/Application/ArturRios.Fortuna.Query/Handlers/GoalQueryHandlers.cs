@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListGoalsQueryHandler(
-    IValidator<ListGoalsQuery> validator,
     ICurrentProfileResolver profileResolver,
     IGoalReader goals,
     TimeProvider timeProvider,
@@ -19,13 +17,6 @@ public sealed class ListGoalsQueryHandler(
 {
     public async Task<DataOutput<GoalListOutput?>> HandleAsync(ListGoalsQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalListOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
@@ -53,20 +44,12 @@ public sealed class ListGoalsQueryHandler(
 }
 
 public sealed class GetGoalByIdQueryHandler(
-    IValidator<GetGoalByIdQuery> validator,
     ICurrentProfileResolver profileResolver,
     IGoalReader goals,
     TimeProvider timeProvider) : IQueryHandlerAsync<GetGoalByIdQuery, GoalOutput>
 {
     public async Task<DataOutput<GoalOutput?>> HandleAsync(GetGoalByIdQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<GoalOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -89,7 +72,6 @@ public sealed class GetGoalByIdQueryHandler(
 }
 
 public sealed class GetGoalProgressQueryHandler(
-    IValidator<GetGoalProgressQuery> validator,
     ICurrentProfileResolver profileResolver,
     IGoalProgressReader goals,
     TimeProvider timeProvider) : IQueryHandlerAsync<GetGoalProgressQuery, GoalProgressDetailOutput>
@@ -97,13 +79,6 @@ public sealed class GetGoalProgressQueryHandler(
     public async Task<DataOutput<GoalProgressDetailOutput?>> HandleAsync(
         GetGoalProgressQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalProgressDetailOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<GoalProgressDetailOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)

@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class ImportExcelWorkbookCommandHandler(
-    IValidator<ImportExcelWorkbookCommand> validator,
     ICurrentProfileResolver profileResolver,
     IExcelWorkbookParser parser,
     IExcelImportStore imports,
@@ -22,13 +20,6 @@ public sealed class ImportExcelWorkbookCommandHandler(
     public async Task<DataOutput<ImportExcelWorkbookCommandOutput?>> HandleAsync(
         ImportExcelWorkbookCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<ImportExcelWorkbookCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var workbook = parser.Validate(command.Content, command.Mapping);
         if (!workbook.IsValid)
         {

@@ -3,12 +3,14 @@ using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -370,21 +372,19 @@ public sealed class TransactionQueryHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static GetTransactionByIdQueryHandler DetailHandler(
+    private static IQueryHandlerAsync<GetTransactionByIdQuery, TransactionOutput> DetailHandler(
         UserProfileSnapshot? profile,
-        ITransactionReader transactions) => new(
-        new GetTransactionByIdQueryValidator(),
+        ITransactionReader transactions) => new GetTransactionByIdQueryHandler(
         new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
-        transactions);
+        transactions).Validated(new GetTransactionByIdQueryValidator());
 
-    private static SearchTransactionsQueryHandler SearchHandler(
+    private static IQueryHandlerAsync<SearchTransactionsQuery, TransactionSearchOutput> SearchHandler(
         UserProfileSnapshot? profile,
         ITransactionReader transactions,
         int maximumPageSize = 100,
         IExchangeRateReader? rates = null,
         StubProfileReader? profiles = null,
-        RequestActor? actor = null) => new(
-        new SearchTransactionsQueryValidator(),
+        RequestActor? actor = null) => new SearchTransactionsQueryHandler(
         new CurrentProfileResolver(
             new StubActor(actor ?? ActorValue(profile)),
             profiles ?? new StubProfileReader(profile)),
@@ -392,7 +392,7 @@ public sealed class TransactionQueryHandlerTests
         new StubCurrencyReader(),
         rates ?? new StubRateReader(),
         new PaginationOptions(maximumPageSize),
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new SearchTransactionsQueryValidator());
 
     private static StubActor Actor(UserProfileSnapshot? profile) => new(ActorValue(profile));
 

@@ -7,26 +7,17 @@ using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetImportJobByIdQueryHandler(
-    IValidator<GetImportJobByIdQuery> validator,
     ICurrentProfileResolver profileResolver,
     IImportJobReader jobs)
     : IQueryHandlerAsync<GetImportJobByIdQuery, ImportJobOutput>
 {
     public async Task<DataOutput<ImportJobOutput?>> HandleAsync(GetImportJobByIdQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<ImportJobOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<ImportJobOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -44,7 +35,6 @@ public sealed class GetImportJobByIdQueryHandler(
 }
 
 public sealed class ListImportJobsQueryHandler(
-    IValidator<ListImportJobsQuery> validator,
     ICurrentProfileResolver profileResolver,
     IImportJobReader jobs,
     PaginationOptions paginationOptions)
@@ -52,13 +42,6 @@ public sealed class ListImportJobsQueryHandler(
 {
     public async Task<PaginatedOutput<ImportJobOutput>> HandleAsync(ListImportJobsQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return PaginatedOutput<ImportJobOutput>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
@@ -101,7 +84,6 @@ public sealed class ListImportJobsQueryHandler(
 }
 
 public sealed class ListImportedRecordsQueryHandler(
-    IValidator<ListImportedRecordsQuery> validator,
     ICurrentProfileResolver profileResolver,
     IImportJobReader jobs,
     PaginationOptions paginationOptions)
@@ -110,13 +92,6 @@ public sealed class ListImportedRecordsQueryHandler(
     public async Task<PaginatedOutput<ImportedRecordOutput>> HandleAsync(
         ListImportedRecordsQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return PaginatedOutput<ImportedRecordOutput>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

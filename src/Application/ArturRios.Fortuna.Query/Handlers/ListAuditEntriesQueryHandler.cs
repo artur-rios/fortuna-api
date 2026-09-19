@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListAuditEntriesQueryHandler(
-    IValidator<ListAuditEntriesQuery> validator,
     ICurrentProfileResolver profileResolver,
     IAuditEntryReader entries,
     PaginationOptions paginationOptions)
@@ -19,13 +17,6 @@ public sealed class ListAuditEntriesQueryHandler(
 {
     public async Task<PaginatedOutput<AuditEntryOutput>> HandleAsync(ListAuditEntriesQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return PaginatedOutput<AuditEntryOutput>.New
-                .WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

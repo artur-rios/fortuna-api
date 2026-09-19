@@ -5,12 +5,10 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class UpdateCategoryCommandHandler(
-    IValidator<UpdateCategoryCommand> validator,
     ICurrentProfileResolver profileResolver,
     ICategoryUpdater categories,
     TimeProvider timeProvider)
@@ -20,12 +18,6 @@ public sealed class UpdateCategoryCommandHandler(
         UpdateCategoryCommand command)
     {
         var output = DataOutput<UpdateCategoryCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

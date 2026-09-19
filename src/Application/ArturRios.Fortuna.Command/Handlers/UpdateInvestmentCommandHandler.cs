@@ -5,12 +5,10 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class UpdateInvestmentCommandHandler(
-    IValidator<UpdateInvestmentCommand> validator,
     ICurrentProfileResolver profileResolver,
     IInvestmentUpdater investments,
     TimeProvider timeProvider)
@@ -20,12 +18,6 @@ public sealed class UpdateInvestmentCommandHandler(
         UpdateInvestmentCommand command)
     {
         var output = DataOutput<UpdateInvestmentCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

@@ -60,6 +60,7 @@ using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Validation;
 using ArturRios.Jwt;
 using ArturRios.Mediator.Command;
 using ArturRios.Mediator.Command.Interfaces;
@@ -378,60 +379,49 @@ try
     builder.Services.AddSingleton<ILocalRecoveryCodeGenerator, LocalRecoveryCodeGenerator>();
     builder.Services.AddScoped<IConnectionAccessTokenProtector, ConnectionAccessTokenProtector>();
     builder.Services.AddScoped<CommandMediator>();
-    builder.Services.AddScoped<IValidator<LoginThroughApiCommand>,
-        LoginThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<LoginThroughApiCommand,
-        LoginThroughApiCommandOutput, LoginThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<GoogleSignInThroughApiCommand>,
-        GoogleSignInThroughApiCommandValidator>();
+        LoginThroughApiCommandOutput, LoginThroughApiCommandHandler,
+        LoginThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<GoogleSignInThroughApiCommand,
-        GoogleSignInThroughApiCommandOutput, GoogleSignInThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<VerifyTwoFactorThroughApiCommand>,
-        VerifyTwoFactorThroughApiCommandValidator>();
+        GoogleSignInThroughApiCommandOutput, GoogleSignInThroughApiCommandHandler,
+        GoogleSignInThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<VerifyTwoFactorThroughApiCommand,
-        VerifyTwoFactorThroughApiCommandOutput, VerifyTwoFactorThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<ResendTwoFactorChallengeCodeThroughApiCommand>,
-        ResendTwoFactorChallengeCodeThroughApiCommandValidator>();
+        VerifyTwoFactorThroughApiCommandOutput, VerifyTwoFactorThroughApiCommandHandler,
+        VerifyTwoFactorThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ResendTwoFactorChallengeCodeThroughApiCommand,
-        ResendTwoFactorChallengeCodeThroughApiCommandOutput, ResendTwoFactorChallengeCodeThroughApiCommandHandler>();
+        ResendTwoFactorChallengeCodeThroughApiCommandOutput, ResendTwoFactorChallengeCodeThroughApiCommandHandler,
+        ResendTwoFactorChallengeCodeThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<GoogleSignOutThroughApiCommand,
         GoogleSignOutThroughApiCommandOutput, GoogleSignOutThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<RequestPasswordRecoveryThroughApiCommand>,
-        RequestPasswordRecoveryThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RequestPasswordRecoveryThroughApiCommand,
-        RequestPasswordRecoveryThroughApiCommandOutput, RequestPasswordRecoveryThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<ResetPasswordThroughApiCommand>,
-        ResetPasswordThroughApiCommandValidator>();
+        RequestPasswordRecoveryThroughApiCommandOutput, RequestPasswordRecoveryThroughApiCommandHandler,
+        RequestPasswordRecoveryThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ResetPasswordThroughApiCommand,
-        ResetPasswordThroughApiCommandOutput, ResetPasswordThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<VerifyEmailThroughApiCommand>,
-        VerifyEmailThroughApiCommandValidator>();
+        ResetPasswordThroughApiCommandOutput, ResetPasswordThroughApiCommandHandler,
+        ResetPasswordThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<VerifyEmailThroughApiCommand,
-        VerifyEmailThroughApiCommandOutput, VerifyEmailThroughApiCommandHandler>();
+        VerifyEmailThroughApiCommandOutput, VerifyEmailThroughApiCommandHandler,
+        VerifyEmailThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ResendVerificationThroughApiCommand,
         ResendVerificationThroughApiCommandOutput, ResendVerificationThroughApiCommandHandler>();
     builder.Services.AddScoped<ICommandHandlerAsync<GetTwoFactorStatusThroughApiCommand,
         GetTwoFactorStatusThroughApiCommandOutput>, GetTwoFactorStatusThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<EnableTwoFactorThroughApiCommand>,
-        EnableTwoFactorThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<EnableTwoFactorThroughApiCommand,
-        EnableTwoFactorThroughApiCommandOutput, EnableTwoFactorThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<ConfirmTwoFactorThroughApiCommand>,
-        ConfirmTwoFactorThroughApiCommandValidator>();
+        EnableTwoFactorThroughApiCommandOutput, EnableTwoFactorThroughApiCommandHandler,
+        EnableTwoFactorThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ConfirmTwoFactorThroughApiCommand,
-        ConfirmTwoFactorThroughApiCommandOutput, ConfirmTwoFactorThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<DisableTwoFactorThroughApiCommand>,
-        DisableTwoFactorThroughApiCommandValidator>();
+        ConfirmTwoFactorThroughApiCommandOutput, ConfirmTwoFactorThroughApiCommandHandler,
+        ConfirmTwoFactorThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DisableTwoFactorThroughApiCommand,
-        DisableTwoFactorThroughApiCommandOutput, DisableTwoFactorThroughApiCommandHandler>();
-    builder.Services.AddScoped<IValidator<RegenerateRecoveryCodesThroughApiCommand>,
-        RegenerateRecoveryCodesThroughApiCommandValidator>();
+        DisableTwoFactorThroughApiCommandOutput, DisableTwoFactorThroughApiCommandHandler,
+        DisableTwoFactorThroughApiCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RegenerateRecoveryCodesThroughApiCommand,
-        RegenerateRecoveryCodesThroughApiCommandOutput, RegenerateRecoveryCodesThroughApiCommandHandler>();
+        RegenerateRecoveryCodesThroughApiCommandOutput, RegenerateRecoveryCodesThroughApiCommandHandler,
+        RegenerateRecoveryCodesThroughApiCommandValidator>();
     builder.Services.AddScoped<IValidator<CreateLocalAccountCommand>, CreateLocalAccountCommandValidator>();
-    builder.Services.AddScoped<IValidator<EraseUserCommand>, EraseUserCommandValidator>();
     builder.Services.AddAuditedCommandHandler<EraseUserCommand,
-        EraseUserCommandOutput, EraseUserCommandHandler>();
+        EraseUserCommandOutput, EraseUserCommandHandler,
+        EraseUserCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateLocalAccountCommand,
         CreateLocalAccountCommandOutput, CreateLocalAccountCommandHandler>();
     builder.Services.AddScoped<IValidator<AuthenticateLocalAccountCommand>,
@@ -449,151 +439,130 @@ try
         RecordManualExchangeRateCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordManualExchangeRateCommand,
         RecordManualExchangeRateCommandOutput, RecordManualExchangeRateCommandHandler>();
-    builder.Services.AddScoped<IValidator<CreateFinancialAccountCommand>,
-        CreateFinancialAccountCommandValidator>();
-    builder.Services.AddScoped<IValidator<ImportExcelWorkbookCommand>,
-        ImportExcelWorkbookCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ImportExcelWorkbookCommand,
-        ImportExcelWorkbookCommandOutput, ImportExcelWorkbookCommandHandler>();
-    builder.Services.AddScoped<IValidator<ImportPdfInvoiceCommand>,
-        ImportPdfInvoiceCommandValidator>();
+        ImportExcelWorkbookCommandOutput, ImportExcelWorkbookCommandHandler,
+        ImportExcelWorkbookCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ImportPdfInvoiceCommand,
-        ImportPdfInvoiceCommandOutput, ImportPdfInvoiceCommandHandler>();
-    builder.Services.AddScoped<IValidator<RequestDataExportCommand>,
-        RequestDataExportCommandValidator>();
+        ImportPdfInvoiceCommandOutput, ImportPdfInvoiceCommandHandler,
+        ImportPdfInvoiceCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RequestDataExportCommand,
-        RequestDataExportCommandOutput, RequestDataExportCommandHandler>();
+        RequestDataExportCommandOutput, RequestDataExportCommandHandler,
+        RequestDataExportCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RequestPersonalDataExportCommand,
         RequestPersonalDataExportCommandOutput, RequestPersonalDataExportCommandHandler>();
-    builder.Services.AddScoped<IValidator<GrantProcessingConsentCommand>,
-        GrantProcessingConsentCommandValidator>();
-    builder.Services.AddScoped<IValidator<WithdrawProcessingConsentCommand>,
-        WithdrawProcessingConsentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<GrantProcessingConsentCommand,
-        GrantProcessingConsentCommandOutput, GrantProcessingConsentCommandHandler>();
+        GrantProcessingConsentCommandOutput, GrantProcessingConsentCommandHandler,
+        GrantProcessingConsentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<WithdrawProcessingConsentCommand,
-        WithdrawProcessingConsentCommandOutput, WithdrawProcessingConsentCommandHandler>();
+        WithdrawProcessingConsentCommandOutput, WithdrawProcessingConsentCommandHandler,
+        WithdrawProcessingConsentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateFinancialAccountCommand,
-        CreateFinancialAccountCommandOutput, CreateFinancialAccountCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateFinancialAccountCommand>,
-        UpdateFinancialAccountCommandValidator>();
+        CreateFinancialAccountCommandOutput, CreateFinancialAccountCommandHandler,
+        CreateFinancialAccountCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateFinancialAccountCommand,
-        UpdateFinancialAccountCommandOutput, UpdateFinancialAccountCommandHandler>();
+        UpdateFinancialAccountCommandOutput, UpdateFinancialAccountCommandHandler,
+        UpdateFinancialAccountCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteFinancialAccountCommand,
         FinancialAccountLifecycleCommandOutput, DeleteFinancialAccountCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreFinancialAccountCommand,
         FinancialAccountLifecycleCommandOutput, RestoreFinancialAccountCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteFinancialAccountCommand,
         FinancialAccountLifecycleCommandOutput, HardDeleteFinancialAccountCommandHandler>();
-    builder.Services.AddScoped<IValidator<CreateCreditCardCommand>, CreateCreditCardCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateCreditCardCommand,
-        CreateCreditCardCommandOutput, CreateCreditCardCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateCreditCardCommand>, UpdateCreditCardCommandValidator>();
+        CreateCreditCardCommandOutput, CreateCreditCardCommandHandler,
+        CreateCreditCardCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateCreditCardCommand,
-        UpdateCreditCardCommandOutput, UpdateCreditCardCommandHandler>();
+        UpdateCreditCardCommandOutput, UpdateCreditCardCommandHandler,
+        UpdateCreditCardCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteCreditCardCommand,
         CreditCardLifecycleCommandOutput, DeleteCreditCardCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreCreditCardCommand,
         CreditCardLifecycleCommandOutput, RestoreCreditCardCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteCreditCardCommand,
         CreditCardLifecycleCommandOutput, HardDeleteCreditCardCommandHandler>();
-    builder.Services.AddScoped<IValidator<RecordTransactionCommand>,
-        RecordTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordTransactionCommand,
-        RecordTransactionCommandOutput, RecordTransactionCommandHandler>();
-    builder.Services.AddScoped<IValidator<AttachDocumentCommand>,
-        AttachDocumentCommandValidator>();
+        RecordTransactionCommandOutput, RecordTransactionCommandHandler,
+        RecordTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<AttachDocumentCommand,
-        AttachDocumentCommandOutput, AttachDocumentCommandHandler>();
+        AttachDocumentCommandOutput, AttachDocumentCommandHandler,
+        AttachDocumentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteAttachmentCommand,
         AttachmentLifecycleCommandOutput, DeleteAttachmentCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteAttachmentCommand,
         AttachmentLifecycleCommandOutput, HardDeleteAttachmentCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateTransactionCommand>,
-        UpdateTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateTransactionCommand,
-        UpdateTransactionCommandOutput, UpdateTransactionCommandHandler>();
-    builder.Services.AddScoped<IValidator<ReconcileTransactionCommand>,
-        ReconcileTransactionCommandValidator>();
+        UpdateTransactionCommandOutput, UpdateTransactionCommandHandler,
+        UpdateTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ReconcileTransactionCommand,
-        ReconcileTransactionCommandOutput, ReconcileTransactionCommandHandler>();
-    builder.Services.AddScoped<IValidator<CreateCategoryCommand>, CreateCategoryCommandValidator>();
+        ReconcileTransactionCommandOutput, ReconcileTransactionCommandHandler,
+        ReconcileTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateCategoryCommand,
-        CreateCategoryCommandOutput, CreateCategoryCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateCategoryCommand>, UpdateCategoryCommandValidator>();
+        CreateCategoryCommandOutput, CreateCategoryCommandHandler,
+        CreateCategoryCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateCategoryCommand,
-        UpdateCategoryCommandOutput, UpdateCategoryCommandHandler>();
-    builder.Services.AddScoped<IValidator<ReassignCategoryTransactionsCommand>,
-        ReassignCategoryTransactionsCommandValidator>();
+        UpdateCategoryCommandOutput, UpdateCategoryCommandHandler,
+        UpdateCategoryCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ReassignCategoryTransactionsCommand,
-        ReassignCategoryTransactionsCommandOutput,
-        ReassignCategoryTransactionsCommandHandler>();
+        ReassignCategoryTransactionsCommandOutput, ReassignCategoryTransactionsCommandHandler,
+        ReassignCategoryTransactionsCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteCategoryCommand,
         CategoryLifecycleCommandOutput, DeleteCategoryCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreCategoryCommand,
         CategoryLifecycleCommandOutput, RestoreCategoryCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteCategoryCommand,
         CategoryLifecycleCommandOutput, HardDeleteCategoryCommandHandler>();
-    builder.Services.AddScoped<IValidator<CreateTagCommand>, CreateTagCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateTagCommand,
-        TagCommandOutput, CreateTagCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateTagCommand>, UpdateTagCommandValidator>();
+        TagCommandOutput, CreateTagCommandHandler,
+        CreateTagCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateTagCommand,
-        TagCommandOutput, UpdateTagCommandHandler>();
+        TagCommandOutput, UpdateTagCommandHandler,
+        UpdateTagCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteTagCommand,
         TagCommandOutput, DeleteTagCommandHandler>();
-    builder.Services.AddScoped<IValidator<AttachTransactionTagCommand>,
-        AttachTransactionTagCommandValidator>();
     builder.Services.AddAuditedCommandHandler<AttachTransactionTagCommand,
-        TransactionTagCommandOutput, AttachTransactionTagCommandHandler>();
-    builder.Services.AddScoped<IValidator<DetachTransactionTagCommand>,
-        DetachTransactionTagCommandValidator>();
+        TransactionTagCommandOutput, AttachTransactionTagCommandHandler,
+        AttachTransactionTagCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DetachTransactionTagCommand,
-        TransactionTagCommandOutput, DetachTransactionTagCommandHandler>();
-    builder.Services.AddScoped<IValidator<CreateCounterpartyCommand>,
-        CreateCounterpartyCommandValidator>();
+        TransactionTagCommandOutput, DetachTransactionTagCommandHandler,
+        DetachTransactionTagCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateCounterpartyCommand,
-        CounterpartyCommandOutput, CreateCounterpartyCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateCounterpartyCommand>,
-        UpdateCounterpartyCommandValidator>();
+        CounterpartyCommandOutput, CreateCounterpartyCommandHandler,
+        CreateCounterpartyCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateCounterpartyCommand,
-        CounterpartyCommandOutput, UpdateCounterpartyCommandHandler>();
+        CounterpartyCommandOutput, UpdateCounterpartyCommandHandler,
+        UpdateCounterpartyCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteCounterpartyCommand,
         CounterpartyCommandOutput, DeleteCounterpartyCommandHandler>();
-    builder.Services.AddScoped<IValidator<MergeCounterpartiesCommand>,
-        MergeCounterpartiesCommandValidator>();
     builder.Services.AddAuditedCommandHandler<MergeCounterpartiesCommand,
-        CounterpartyMergeCommandOutput, MergeCounterpartiesCommandHandler>();
-    builder.Services.AddScoped<IValidator<CreateBudgetCommand>, CreateBudgetCommandValidator>();
+        CounterpartyMergeCommandOutput, MergeCounterpartiesCommandHandler,
+        MergeCounterpartiesCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateBudgetCommand,
-        BudgetCommandOutput, CreateBudgetCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateBudgetCommand>, UpdateBudgetCommandValidator>();
+        BudgetCommandOutput, CreateBudgetCommandHandler,
+        CreateBudgetCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateBudgetCommand,
-        BudgetCommandOutput, UpdateBudgetCommandHandler>();
+        BudgetCommandOutput, UpdateBudgetCommandHandler,
+        UpdateBudgetCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteBudgetCommand,
         BudgetCommandOutput, DeleteBudgetCommandHandler>();
-    builder.Services.AddScoped<IValidator<CreateGoalCommand>, CreateGoalCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateGoalCommand,
-        GoalCommandOutput, CreateGoalCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateGoalCommand>, UpdateGoalCommandValidator>();
+        GoalCommandOutput, CreateGoalCommandHandler,
+        CreateGoalCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateGoalCommand,
-        GoalCommandOutput, UpdateGoalCommandHandler>();
+        GoalCommandOutput, UpdateGoalCommandHandler,
+        UpdateGoalCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteGoalCommand,
         GoalCommandOutput, DeleteGoalCommandHandler>();
-    builder.Services.AddScoped<IValidator<CreateConnectionCommand>,
-        CreateConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateConnectionCommand,
-        CreateConnectionCommandOutput, CreateConnectionCommandHandler>();
-    builder.Services.AddScoped<IValidator<ReauthenticateConnectionCommand>,
-        ReauthenticateConnectionCommandValidator>();
+        CreateConnectionCommandOutput, CreateConnectionCommandHandler,
+        CreateConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<ReauthenticateConnectionCommand,
-        ReauthenticateConnectionCommandOutput, ReauthenticateConnectionCommandHandler>();
+        ReauthenticateConnectionCommandOutput, ReauthenticateConnectionCommandHandler,
+        ReauthenticateConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RevokeConnectionCommand,
         RevokeConnectionCommandOutput, RevokeConnectionCommandHandler>();
-    builder.Services.AddScoped<IValidator<SynchronizeConnectionCommand>,
-        SynchronizeConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<SynchronizeConnectionCommand,
-        SynchronizeConnectionCommandOutput, SynchronizeConnectionCommandHandler>();
+        SynchronizeConnectionCommandOutput, SynchronizeConnectionCommandHandler,
+        SynchronizeConnectionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RetryImportJobCommand,
         RetryImportJobCommandOutput, RetryImportJobCommandHandler>();
     builder.Services.AddAuditedCommandHandler<DeleteTransactionCommand,
@@ -602,64 +571,54 @@ try
         TransactionLifecycleCommandOutput, RestoreTransactionCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteTransactionCommand,
         TransactionLifecycleCommandOutput, HardDeleteTransactionCommandHandler>();
-    builder.Services.AddScoped<IValidator<RecordTransferCommand>,
-        RecordTransferCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordTransferCommand,
-        RecordTransferCommandOutput, RecordTransferCommandHandler>();
+        RecordTransferCommandOutput, RecordTransferCommandHandler,
+        RecordTransferCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteTransferCommand,
         TransferLifecycleCommandOutput, DeleteTransferCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreTransferCommand,
         TransferLifecycleCommandOutput, RestoreTransferCommandHandler>();
-    builder.Services.AddScoped<IValidator<RecordInstallmentPlanCommand>,
-        RecordInstallmentPlanCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordInstallmentPlanCommand,
-        RecordInstallmentPlanCommandOutput, RecordInstallmentPlanCommandHandler>();
+        RecordInstallmentPlanCommandOutput, RecordInstallmentPlanCommandHandler,
+        RecordInstallmentPlanCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteInstallmentPlanCommand,
         InstallmentPlanLifecycleCommandOutput, DeleteInstallmentPlanCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreInstallmentPlanCommand,
         InstallmentPlanLifecycleCommandOutput, RestoreInstallmentPlanCommandHandler>();
-    builder.Services.AddScoped<IValidator<DefineRecurringTransactionCommand>,
-        DefineRecurringTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DefineRecurringTransactionCommand,
-        DefineRecurringTransactionCommandOutput, DefineRecurringTransactionCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateRecurringTransactionCommand>,
-        UpdateRecurringTransactionCommandValidator>();
+        DefineRecurringTransactionCommandOutput, DefineRecurringTransactionCommandHandler,
+        DefineRecurringTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateRecurringTransactionCommand,
-        UpdateRecurringTransactionCommandOutput, UpdateRecurringTransactionCommandHandler>();
+        UpdateRecurringTransactionCommandOutput, UpdateRecurringTransactionCommandHandler,
+        UpdateRecurringTransactionCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteRecurringTransactionCommand,
         RecurringTransactionLifecycleCommandOutput, DeleteRecurringTransactionCommandHandler>();
-    builder.Services.AddScoped<IValidator<MaterializeRecurringTransactionsCommand>,
-        MaterializeRecurringTransactionsCommandValidator>();
     builder.Services.AddAuditedCommandHandler<MaterializeRecurringTransactionsCommand,
-        MaterializeRecurringTransactionsCommandOutput, MaterializeRecurringTransactionsCommandHandler>();
+        MaterializeRecurringTransactionsCommandOutput, MaterializeRecurringTransactionsCommandHandler,
+        MaterializeRecurringTransactionsCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CloseCreditCardStatementCommand,
         CloseCreditCardStatementCommandOutput, CloseCreditCardStatementCommandHandler>();
-    builder.Services.AddScoped<IValidator<SettleCreditCardStatementCommand>,
-        SettleCreditCardStatementCommandValidator>();
     builder.Services.AddAuditedCommandHandler<SettleCreditCardStatementCommand,
-        SettleCreditCardStatementCommandOutput, SettleCreditCardStatementCommandHandler>();
-    builder.Services.AddScoped<IValidator<CreateInvestmentCommand>,
-        CreateInvestmentCommandValidator>();
+        SettleCreditCardStatementCommandOutput, SettleCreditCardStatementCommandHandler,
+        SettleCreditCardStatementCommandValidator>();
     builder.Services.AddAuditedCommandHandler<CreateInvestmentCommand,
-        CreateInvestmentCommandOutput, CreateInvestmentCommandHandler>();
-    builder.Services.AddScoped<IValidator<UpdateInvestmentCommand>,
-        UpdateInvestmentCommandValidator>();
+        CreateInvestmentCommandOutput, CreateInvestmentCommandHandler,
+        CreateInvestmentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<UpdateInvestmentCommand,
-        UpdateInvestmentCommandOutput, UpdateInvestmentCommandHandler>();
+        UpdateInvestmentCommandOutput, UpdateInvestmentCommandHandler,
+        UpdateInvestmentCommandValidator>();
     builder.Services.AddAuditedCommandHandler<DeleteInvestmentCommand,
         InvestmentLifecycleCommandOutput, DeleteInvestmentCommandHandler>();
     builder.Services.AddAuditedCommandHandler<RestoreInvestmentCommand,
         InvestmentLifecycleCommandOutput, RestoreInvestmentCommandHandler>();
     builder.Services.AddAuditedCommandHandler<HardDeleteInvestmentCommand,
         InvestmentLifecycleCommandOutput, HardDeleteInvestmentCommandHandler>();
-    builder.Services.AddScoped<IValidator<RecordInvestmentMovementCommand>,
-        RecordInvestmentMovementCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordInvestmentMovementCommand,
-        RecordInvestmentMovementCommandOutput, RecordInvestmentMovementCommandHandler>();
-    builder.Services.AddScoped<IValidator<RecordInvestmentValuationCommand>,
-        RecordInvestmentValuationCommandValidator>();
+        RecordInvestmentMovementCommandOutput, RecordInvestmentMovementCommandHandler,
+        RecordInvestmentMovementCommandValidator>();
     builder.Services.AddAuditedCommandHandler<RecordInvestmentValuationCommand,
-        RecordInvestmentValuationCommandOutput, RecordInvestmentValuationCommandHandler>();
+        RecordInvestmentValuationCommandOutput, RecordInvestmentValuationCommandHandler,
+        RecordInvestmentValuationCommandValidator>();
     builder.Services.AddScoped<QueryMediator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>,
         GetMyProfileQueryHandler>();
@@ -667,167 +626,142 @@ try
         ProcessingConsentQueryOutput>, GetMyProcessingConsentsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCategoryTreeQuery, CategoryTreeOutput>,
         GetCategoryTreeQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetCategoryByIdQuery>, GetCategoryByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetCategoryByIdQuery, CategoryOutput>,
-        GetCategoryByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListTagsQuery>, ListTagsQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<ListTagsQuery, TagListOutput>,
-        ListTagsQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListCounterpartiesQuery>,
+    builder.Services.AddValidatedQueryHandler<GetCategoryByIdQuery,
+        CategoryOutput, GetCategoryByIdQueryHandler,
+        GetCategoryByIdQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<ListTagsQuery,
+        TagListOutput, ListTagsQueryHandler,
+        ListTagsQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<ListCounterpartiesQuery,
+        CounterpartyListOutput, ListCounterpartiesQueryHandler,
         ListCounterpartiesQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<ListCounterpartiesQuery,
-        CounterpartyListOutput>, ListCounterpartiesQueryHandler>();
-    builder.Services.AddScoped<IValidator<SuggestCounterpartyCategoryQuery>,
+    builder.Services.AddValidatedQueryHandler<SuggestCounterpartyCategoryQuery,
+        CounterpartyCategorySuggestionOutput, SuggestCounterpartyCategoryQueryHandler,
         SuggestCounterpartyCategoryQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<SuggestCounterpartyCategoryQuery,
-        CounterpartyCategorySuggestionOutput>, SuggestCounterpartyCategoryQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListBudgetsQuery>, ListBudgetsQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<ListBudgetsQuery, BudgetListOutput>,
-        ListBudgetsQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetBudgetByIdQuery>, GetBudgetByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetBudgetByIdQuery, BudgetOutput>,
-        GetBudgetByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetBudgetConsumptionQuery>,
+    builder.Services.AddValidatedQueryHandler<ListBudgetsQuery,
+        BudgetListOutput, ListBudgetsQueryHandler,
+        ListBudgetsQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetBudgetByIdQuery,
+        BudgetOutput, GetBudgetByIdQueryHandler,
+        GetBudgetByIdQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetBudgetConsumptionQuery,
+        BudgetConsumptionDetailOutput, GetBudgetConsumptionQueryHandler,
         GetBudgetConsumptionQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetBudgetConsumptionQuery,
-        BudgetConsumptionDetailOutput>, GetBudgetConsumptionQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListGoalsQuery>, ListGoalsQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<ListGoalsQuery, GoalListOutput>,
-        ListGoalsQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetGoalByIdQuery>, GetGoalByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetGoalByIdQuery, GoalOutput>,
-        GetGoalByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetGoalProgressQuery>, GetGoalProgressQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetGoalProgressQuery,
-        GoalProgressDetailOutput>, GetGoalProgressQueryHandler>();
+    builder.Services.AddValidatedQueryHandler<ListGoalsQuery,
+        GoalListOutput, ListGoalsQueryHandler,
+        ListGoalsQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetGoalByIdQuery,
+        GoalOutput, GetGoalByIdQueryHandler,
+        GetGoalByIdQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetGoalProgressQuery,
+        GoalProgressDetailOutput, GetGoalProgressQueryHandler,
+        GetGoalProgressQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetCurrencyByCodeQuery>,
+    builder.Services.AddValidatedQueryHandler<GetCurrencyByCodeQuery,
+        CurrencyOutput, GetCurrencyByCodeQueryHandler,
         GetCurrencyByCodeQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,
-        GetCurrencyByCodeQueryHandler>();
-    builder.Services.AddScoped<IValidator<ConvertFigureQuery>, ConvertFigureQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<ConvertFigureQuery, ConvertFigureQueryOutput>,
-        ConvertFigureQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetNetPositionQuery>, GetNetPositionQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetNetPositionQuery, NetPositionOutput>,
-        GetNetPositionQueryHandler>();
-    builder.Services.AddScoped<IValidator<ProjectCashFlowQuery>, ProjectCashFlowQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<ProjectCashFlowQuery, CashFlowProjectionOutput>,
-        ProjectCashFlowQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListCommittedObligationsQuery>,
+    builder.Services.AddValidatedQueryHandler<ConvertFigureQuery,
+        ConvertFigureQueryOutput, ConvertFigureQueryHandler,
+        ConvertFigureQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetNetPositionQuery,
+        NetPositionOutput, GetNetPositionQueryHandler,
+        GetNetPositionQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<ProjectCashFlowQuery,
+        CashFlowProjectionOutput, ProjectCashFlowQueryHandler,
+        ProjectCashFlowQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<ListCommittedObligationsQuery,
+        CommittedObligationListOutput, ListCommittedObligationsQueryHandler,
         ListCommittedObligationsQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<ListCommittedObligationsQuery,
-        CommittedObligationListOutput>, ListCommittedObligationsQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListAuditEntriesQuery>, ListAuditEntriesQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>,
-        ListAuditEntriesQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetFinancialAccountByIdQuery>,
+    builder.Services.AddValidatedPaginatedQueryHandler<ListAuditEntriesQuery,
+        AuditEntryOutput, ListAuditEntriesQueryHandler,
+        ListAuditEntriesQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetFinancialAccountByIdQuery,
+        FinancialAccountOutput, GetFinancialAccountByIdQueryHandler,
         GetFinancialAccountByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetFinancialAccountByIdQuery, FinancialAccountOutput>,
-        GetFinancialAccountByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetFinancialAccountBalanceQuery>,
+    builder.Services.AddValidatedQueryHandler<GetFinancialAccountBalanceQuery,
+        FinancialAccountBalanceOutput, GetFinancialAccountBalanceQueryHandler,
         GetFinancialAccountBalanceQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetFinancialAccountBalanceQuery,
-        FinancialAccountBalanceOutput>, GetFinancialAccountBalanceQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListFinancialAccountsQuery>, ListFinancialAccountsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListFinancialAccountsQuery, FinancialAccountOutput>,
-        ListFinancialAccountsQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetCreditCardByIdQuery>,
+    builder.Services.AddValidatedPaginatedQueryHandler<ListFinancialAccountsQuery,
+        FinancialAccountOutput, ListFinancialAccountsQueryHandler,
+        ListFinancialAccountsQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetCreditCardByIdQuery,
+        CreditCardOutput, GetCreditCardByIdQueryHandler,
         GetCreditCardByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetCreditCardByIdQuery, CreditCardOutput>,
-        GetCreditCardByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListCreditCardsQuery>, ListCreditCardsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListCreditCardsQuery, CreditCardOutput>,
-        ListCreditCardsQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetCreditCardStatementByIdQuery>,
+    builder.Services.AddValidatedPaginatedQueryHandler<ListCreditCardsQuery,
+        CreditCardOutput, ListCreditCardsQueryHandler,
+        ListCreditCardsQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetCreditCardStatementByIdQuery,
+        CreditCardStatementOutput, GetCreditCardStatementByIdQueryHandler,
         GetCreditCardStatementByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetCreditCardStatementByIdQuery,
-        CreditCardStatementOutput>, GetCreditCardStatementByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListCreditCardStatementsQuery>,
+    builder.Services.AddValidatedPaginatedQueryHandler<ListCreditCardStatementsQuery,
+        CreditCardStatementOutput, ListCreditCardStatementsQueryHandler,
         ListCreditCardStatementsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListCreditCardStatementsQuery,
-        CreditCardStatementOutput>, ListCreditCardStatementsQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetInvestmentByIdQuery>, GetInvestmentByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetInvestmentByIdQuery, InvestmentOutput>,
-        GetInvestmentByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListInvestmentsQuery>, ListInvestmentsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListInvestmentsQuery, InvestmentOutput>,
-        ListInvestmentsQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListInvestmentValuationsQuery>,
+    builder.Services.AddValidatedQueryHandler<GetInvestmentByIdQuery,
+        InvestmentOutput, GetInvestmentByIdQueryHandler,
+        GetInvestmentByIdQueryValidator>();
+    builder.Services.AddValidatedPaginatedQueryHandler<ListInvestmentsQuery,
+        InvestmentOutput, ListInvestmentsQueryHandler,
+        ListInvestmentsQueryValidator>();
+    builder.Services.AddValidatedPaginatedQueryHandler<ListInvestmentValuationsQuery,
+        InvestmentValuationOutput, ListInvestmentValuationsQueryHandler,
         ListInvestmentValuationsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListInvestmentValuationsQuery,
-        InvestmentValuationOutput>, ListInvestmentValuationsQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetTransactionByIdQuery>,
+    builder.Services.AddValidatedQueryHandler<GetTransactionByIdQuery,
+        TransactionOutput, GetTransactionByIdQueryHandler,
         GetTransactionByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetTransactionByIdQuery, TransactionOutput>,
-        GetTransactionByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<DownloadAttachmentQuery>,
+    builder.Services.AddValidatedQueryHandler<DownloadAttachmentQuery,
+        DownloadAttachmentQueryOutput, DownloadAttachmentQueryHandler,
         DownloadAttachmentQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<DownloadAttachmentQuery,
-        DownloadAttachmentQueryOutput>, DownloadAttachmentQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListTransactionAttachmentsQuery>,
+    builder.Services.AddValidatedPaginatedQueryHandler<ListTransactionAttachmentsQuery,
+        AttachmentOutput, ListTransactionAttachmentsQueryHandler,
         ListTransactionAttachmentsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListTransactionAttachmentsQuery,
-        AttachmentOutput>, ListTransactionAttachmentsQueryHandler>();
-    builder.Services.AddScoped<IValidator<SearchTransactionsQuery>,
+    builder.Services.AddValidatedQueryHandler<SearchTransactionsQuery,
+        TransactionSearchOutput, SearchTransactionsQueryHandler,
         SearchTransactionsQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<SearchTransactionsQuery, TransactionSearchOutput>,
-        SearchTransactionsQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetTransferByIdQuery>,
+    builder.Services.AddValidatedQueryHandler<GetTransferByIdQuery,
+        TransferOutput, GetTransferByIdQueryHandler,
         GetTransferByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetTransferByIdQuery, TransferOutput>,
-        GetTransferByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetInstallmentPlanByIdQuery>,
+    builder.Services.AddValidatedQueryHandler<GetInstallmentPlanByIdQuery,
+        InstallmentPlanOutput, GetInstallmentPlanByIdQueryHandler,
         GetInstallmentPlanByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetInstallmentPlanByIdQuery,
-        InstallmentPlanOutput>, GetInstallmentPlanByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetRecurringTransactionByIdQuery>,
+    builder.Services.AddValidatedQueryHandler<GetRecurringTransactionByIdQuery,
+        RecurringTransactionOutput, GetRecurringTransactionByIdQueryHandler,
         GetRecurringTransactionByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetRecurringTransactionByIdQuery,
-        RecurringTransactionOutput>, GetRecurringTransactionByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListRecurringTransactionsQuery>,
+    builder.Services.AddValidatedPaginatedQueryHandler<ListRecurringTransactionsQuery,
+        RecurringTransactionOutput, ListRecurringTransactionsQueryHandler,
         ListRecurringTransactionsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListRecurringTransactionsQuery,
-        RecurringTransactionOutput>, ListRecurringTransactionsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListDataSourcesQuery, DataSourceListOutput>,
         ListDataSourcesQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetConnectionByIdQuery>,
+    builder.Services.AddValidatedQueryHandler<GetConnectionByIdQuery,
+        ConnectionOutput, GetConnectionByIdQueryHandler,
         GetConnectionByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetConnectionByIdQuery, ConnectionOutput>,
-        GetConnectionByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListConnectionsQuery>, ListConnectionsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListConnectionsQuery, ConnectionOutput>,
-        ListConnectionsQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetImportJobByIdQuery>, GetImportJobByIdQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetImportJobByIdQuery, ImportJobOutput>,
-        GetImportJobByIdQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetDataExportQuery>, GetDataExportQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetDataExportQuery,
-        RetrieveDataExportQueryOutput>, GetDataExportQueryHandler>();
-    builder.Services.AddScoped<IValidator<GetPersonalDataExportQuery>,
+    builder.Services.AddValidatedPaginatedQueryHandler<ListConnectionsQuery,
+        ConnectionOutput, ListConnectionsQueryHandler,
+        ListConnectionsQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetImportJobByIdQuery,
+        ImportJobOutput, GetImportJobByIdQueryHandler,
+        GetImportJobByIdQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetDataExportQuery,
+        RetrieveDataExportQueryOutput, GetDataExportQueryHandler,
+        GetDataExportQueryValidator>();
+    builder.Services.AddValidatedQueryHandler<GetPersonalDataExportQuery,
+        PersonalDataExportQueryOutput, GetPersonalDataExportQueryHandler,
         GetPersonalDataExportQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<GetPersonalDataExportQuery,
-        PersonalDataExportQueryOutput>, GetPersonalDataExportQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListImportJobsQuery>, ListImportJobsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListImportJobsQuery, ImportJobOutput>,
-        ListImportJobsQueryHandler>();
-    builder.Services.AddScoped<IValidator<ListImportedRecordsQuery>,
+    builder.Services.AddValidatedPaginatedQueryHandler<ListImportJobsQuery,
+        ImportJobOutput, ListImportJobsQueryHandler,
+        ListImportJobsQueryValidator>();
+    builder.Services.AddValidatedPaginatedQueryHandler<ListImportedRecordsQuery,
+        ImportedRecordOutput, ListImportedRecordsQueryHandler,
         ListImportedRecordsQueryValidator>();
-    builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListImportedRecordsQuery,
-        ImportedRecordOutput>, ListImportedRecordsQueryHandler>();
-    builder.Services.AddScoped<IValidator<QueryRecordsAsTableQuery>,
+    builder.Services.AddValidatedQueryHandler<QueryRecordsAsTableQuery,
+        TableReportOutput, QueryRecordsAsTableQueryHandler,
         QueryRecordsAsTableQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<QueryRecordsAsTableQuery, TableReportOutput>,
-        QueryRecordsAsTableQueryHandler>();
-    builder.Services.AddScoped<IValidator<AggregateTransactionsQuery>,
+    builder.Services.AddValidatedQueryHandler<AggregateTransactionsQuery,
+        TransactionAggregationOutput, AggregateTransactionsQueryHandler,
         AggregateTransactionsQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<AggregateTransactionsQuery,
-        TransactionAggregationOutput>, AggregateTransactionsQueryHandler>();
-    builder.Services.AddScoped<IValidator<DrillIntoAggregationQuery>,
+    builder.Services.AddValidatedQueryHandler<DrillIntoAggregationQuery,
+        TransactionDrillDownOutput, DrillIntoAggregationQueryHandler,
         DrillIntoAggregationQueryValidator>();
-    builder.Services.AddScoped<IQueryHandlerAsync<DrillIntoAggregationQuery,
-        TransactionDrillDownOutput>, DrillIntoAggregationQueryHandler>();
 
     builder.Services.AddSingleton(new PluggySourceOptions(
         options.PluggyClientId,

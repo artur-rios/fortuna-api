@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -160,21 +162,20 @@ public sealed class EraseUserCommandHandlerTests
         Now,
         Now);
 
-    private static EraseUserCommandHandler Handler(
+    private static ICommandHandlerAsync<EraseUserCommand, EraseUserCommandOutput> Handler(
         RequestActor actor,
         UserProfileSnapshot? profile,
         StubErasureStore store) => Handler(actor, new StubProfiles(profile), store);
 
-    private static EraseUserCommandHandler Handler(
+    private static ICommandHandlerAsync<EraseUserCommand, EraseUserCommandOutput> Handler(
         RequestActor actor,
         StubProfiles profiles,
-        StubErasureStore store) => new(
-        new EraseUserCommandValidator(),
+        StubErasureStore store) => new EraseUserCommandHandler(
         new StubActor(actor),
         profiles,
         new CurrentProfileResolver(new StubActor(actor), profiles),
         store,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new EraseUserCommandValidator());
 
     private sealed class StubActor(RequestActor actor) : IRequestActorAccessor
     {

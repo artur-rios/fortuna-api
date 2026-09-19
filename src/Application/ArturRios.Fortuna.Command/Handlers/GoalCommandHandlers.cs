@@ -5,25 +5,16 @@ using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class CreateGoalCommandHandler(
-    IValidator<CreateGoalCommand> validator,
     ICurrentProfileResolver profileResolver,
     IGoalStore goals,
     TimeProvider timeProvider) : ICommandHandlerAsync<CreateGoalCommand, GoalCommandOutput>
 {
     public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(CreateGoalCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(item => item.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
@@ -45,20 +36,12 @@ public sealed class CreateGoalCommandHandler(
 }
 
 public sealed class UpdateGoalCommandHandler(
-    IValidator<UpdateGoalCommand> validator,
     ICurrentProfileResolver profileResolver,
     IGoalUpdater goals,
     TimeProvider timeProvider) : ICommandHandlerAsync<UpdateGoalCommand, GoalCommandOutput>
 {
     public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(UpdateGoalCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GoalCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(item => item.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

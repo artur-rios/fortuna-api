@@ -4,12 +4,10 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class GrantProcessingConsentCommandHandler(
-    IValidator<GrantProcessingConsentCommand> validator,
     ICurrentProfileResolver profileResolver,
     IProcessingConsentStore consents,
     ProcessingConsentOptions options,
@@ -19,13 +17,6 @@ public sealed class GrantProcessingConsentCommandHandler(
     public async Task<DataOutput<GrantProcessingConsentCommandOutput?>> HandleAsync(
         GrantProcessingConsentCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<GrantProcessingConsentCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         if (!ProcessingConsentOptions.TryParsePurpose(command.Purpose, out var purpose))
         {
             return Failure(ProcessingConsentMessages.UnknownPurpose);
@@ -62,7 +53,6 @@ public sealed class GrantProcessingConsentCommandHandler(
 }
 
 public sealed class WithdrawProcessingConsentCommandHandler(
-    IValidator<WithdrawProcessingConsentCommand> validator,
     ICurrentProfileResolver profileResolver,
     IProcessingConsentStore consents,
     TimeProvider timeProvider)
@@ -71,13 +61,6 @@ public sealed class WithdrawProcessingConsentCommandHandler(
     public async Task<DataOutput<WithdrawProcessingConsentCommandOutput?>> HandleAsync(
         WithdrawProcessingConsentCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return DataOutput<WithdrawProcessingConsentCommandOutput?>.New.WithErrors(
-                validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         if (!ProcessingConsentOptions.TryParsePurpose(command.Purpose, out var purpose))
         {
             return Failure(ProcessingConsentMessages.UnknownPurpose);

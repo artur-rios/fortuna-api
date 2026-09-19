@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Projections;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -218,7 +219,7 @@ public sealed class CashFlowProjectionQueryHandlerTests
         Assert.Null(reader.UserId);
     }
 
-    private static ProjectCashFlowQueryHandler Handler(
+    private static IQueryHandlerAsync<ProjectCashFlowQuery, CashFlowProjectionOutput> Handler(
         StubProjectionReader reader,
         StubRateReader? rates = null,
         bool missingProfile = false,
@@ -227,7 +228,6 @@ public sealed class CashFlowProjectionQueryHandlerTests
         var options = new CashFlowProjectionOptions(366, 90, 30);
 
         return new ProjectCashFlowQueryHandler(
-            new ProjectCashFlowQueryValidator(options),
             new CurrentProfileResolver(
                 new StubActor(new RequestActor(Profile.ExternalSubject!.Value, 3, null, [])),
                 new StubProfileReader(missingProfile ? null : Profile)),
@@ -236,7 +236,7 @@ public sealed class CashFlowProjectionQueryHandlerTests
             rates ?? new StubRateReader(null),
             new FixedTimeProvider(new DateTimeOffset(
                 Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))),
-            options);
+            options).Validated(new ProjectCashFlowQueryValidator(options));
     }
 
     private sealed class StubProjectionReader(CashFlowProjectionSnapshot snapshot)

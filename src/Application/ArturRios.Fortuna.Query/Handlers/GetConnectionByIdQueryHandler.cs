@@ -5,25 +5,16 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetConnectionByIdQueryHandler(
-    IValidator<GetConnectionByIdQuery> validator,
     ICurrentProfileResolver profileResolver,
     IConnectionReader connections)
     : IQueryHandlerAsync<GetConnectionByIdQuery, ConnectionOutput>
 {
     public async Task<DataOutput<ConnectionOutput?>> HandleAsync(GetConnectionByIdQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<ConnectionOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var output = DataOutput<ConnectionOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)

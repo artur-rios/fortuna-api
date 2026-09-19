@@ -43,7 +43,7 @@ public sealed class CurrencyQueryHandlerTests
     {
         var reader = new StubCurrencyReader([], Brl);
 
-        var result = await new GetCurrencyByCodeQueryHandler(new GetCurrencyByCodeQueryValidator(), reader)
+        var result = await new GetCurrencyByCodeQueryHandler(reader).Validated(new GetCurrencyByCodeQueryValidator())
             .HandleAsync(new GetCurrencyByCodeQuery { Code = "brl" });
 
         Assert.True(result.Success);
@@ -59,7 +59,7 @@ public sealed class CurrencyQueryHandlerTests
     {
         var reader = new StubCurrencyReader([], null);
 
-        var result = await new GetCurrencyByCodeQueryHandler(new GetCurrencyByCodeQueryValidator(), reader)
+        var result = await new GetCurrencyByCodeQueryHandler(reader).Validated(new GetCurrencyByCodeQueryValidator())
             .HandleAsync(new GetCurrencyByCodeQuery { Code = "ZZZ" });
 
         Assert.False(result.Success);

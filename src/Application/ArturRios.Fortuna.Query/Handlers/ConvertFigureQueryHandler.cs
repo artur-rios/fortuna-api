@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ConvertFigureQueryHandler(
-    IValidator<ConvertFigureQuery> validator,
     ICurrencyReader currencies,
     IExchangeRateReader rates,
     ICurrentProfileResolver profileResolver)
@@ -20,12 +18,6 @@ public sealed class ConvertFigureQueryHandler(
     public async Task<DataOutput<ConvertFigureQueryOutput?>> HandleAsync(ConvertFigureQuery query)
     {
         var output = DataOutput<ConvertFigureQueryOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var displayCode = await ResolveDisplayCurrencyAsync(query);
         if (displayCode is null)
         {

@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -130,12 +132,12 @@ public sealed class RecordInvestmentMovementCommandHandlerTests
         var userId = Guid.NewGuid();
         var profiles = new StubUserProfileReader(Profile(userId, null));
         var handler = new RecordInvestmentMovementCommandHandler(
-            new RecordInvestmentMovementCommandValidator(new FixedTimeProvider(Now)),
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
                 profiles),
             new StubMovementStore(Result(Snapshot(new DateOnly(2026, 9, 4)))),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now))
+                .Validated(new RecordInvestmentMovementCommandValidator(new FixedTimeProvider(Now)));
 
         var result = await handler.HandleAsync(ValidCommand());
 
@@ -143,16 +145,16 @@ public sealed class RecordInvestmentMovementCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static RecordInvestmentMovementCommandHandler Handler(
+    private static ICommandHandlerAsync<RecordInvestmentMovementCommand, RecordInvestmentMovementCommandOutput> Handler(
         Guid subject,
         UserProfileSnapshot? profile,
-        IInvestmentMovementStore store) => new(
-            new RecordInvestmentMovementCommandValidator(new FixedTimeProvider(Now)),
+        IInvestmentMovementStore store) => new RecordInvestmentMovementCommandHandler(
             new CurrentProfileResolver(
                 new StubActorAccessor(new RequestActor(subject, 3, null, [])),
                 new StubUserProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now))
+                .Validated(new RecordInvestmentMovementCommandValidator(new FixedTimeProvider(Now)));
 
     private static RecordInvestmentMovementCommand ValidCommand() => new()
     {

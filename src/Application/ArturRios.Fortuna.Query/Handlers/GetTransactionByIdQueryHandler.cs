@@ -5,12 +5,10 @@ using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetTransactionByIdQueryHandler(
-    IValidator<GetTransactionByIdQuery> validator,
     ICurrentProfileResolver profileResolver,
     ITransactionReader transactions)
     : IQueryHandlerAsync<GetTransactionByIdQuery, TransactionOutput>
@@ -18,12 +16,6 @@ public sealed class GetTransactionByIdQueryHandler(
     public async Task<DataOutput<TransactionOutput?>> HandleAsync(GetTransactionByIdQuery query)
     {
         var output = DataOutput<TransactionOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

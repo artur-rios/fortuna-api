@@ -5,12 +5,10 @@ using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetInstallmentPlanByIdQueryHandler(
-    IValidator<GetInstallmentPlanByIdQuery> validator,
     ICurrentProfileResolver profileResolver,
     IInstallmentPlanReader plans)
     : IQueryHandlerAsync<GetInstallmentPlanByIdQuery, InstallmentPlanOutput>
@@ -19,12 +17,6 @@ public sealed class GetInstallmentPlanByIdQueryHandler(
         GetInstallmentPlanByIdQuery query)
     {
         var output = DataOutput<InstallmentPlanOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

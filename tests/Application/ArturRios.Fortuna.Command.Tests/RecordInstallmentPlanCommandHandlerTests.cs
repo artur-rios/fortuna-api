@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -81,15 +83,14 @@ public sealed class RecordInstallmentPlanCommandHandlerTests
         Assert.Null(store.Record);
     }
 
-    private static RecordInstallmentPlanCommandHandler Handler(
+    private static ICommandHandlerAsync<RecordInstallmentPlanCommand, RecordInstallmentPlanCommandOutput> Handler(
         UserProfileSnapshot? profile,
-        IInstallmentPlanStore store) => new(
-        new RecordInstallmentPlanCommandValidator(new FixedTimeProvider(Now)),
+        IInstallmentPlanStore store) => new RecordInstallmentPlanCommandHandler(
         new CurrentProfileResolver(
             new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
             new StubProfileReader(profile)),
         store,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new RecordInstallmentPlanCommandValidator(new FixedTimeProvider(Now)));
 
     private static RecordInstallmentPlanCommand Command() => new()
     {

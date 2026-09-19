@@ -10,13 +10,11 @@ using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class DrillIntoAggregationQueryHandler(
-    IValidator<DrillIntoAggregationQuery> validator,
     ICurrentProfileResolver profileResolver,
     ITransactionDrillDownKeyCodec keyCodec,
     ITransactionReader transactions,
@@ -30,12 +28,6 @@ public sealed class DrillIntoAggregationQueryHandler(
         DrillIntoAggregationQuery query)
     {
         var output = DataOutput<TransactionDrillDownOutput?>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

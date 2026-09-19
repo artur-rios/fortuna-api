@@ -6,12 +6,10 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class CreateFinancialAccountCommandHandler(
-    IValidator<CreateFinancialAccountCommand> validator,
     ICurrentProfileResolver profileResolver,
     ICurrencyReader currencies,
     IFinancialAccountStore accounts,
@@ -22,12 +20,6 @@ public sealed class CreateFinancialAccountCommandHandler(
         CreateFinancialAccountCommand command)
     {
         var output = DataOutput<CreateFinancialAccountCommandOutput?>.New;
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

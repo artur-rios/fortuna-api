@@ -7,12 +7,10 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class ReauthenticateConnectionCommandHandler(
-    IValidator<ReauthenticateConnectionCommand> validator,
     ICurrentProfileResolver profileResolver,
     IConnectionReader connectionReader,
     IConnectionReauthenticationStore connections,
@@ -25,12 +23,6 @@ public sealed class ReauthenticateConnectionCommandHandler(
     public async Task<DataOutput<ReauthenticateConnectionCommandOutput?>> HandleAsync(
         ReauthenticateConnectionCommand command)
     {
-        var validation = await validator.ValidateAsync(command);
-        if (!validation.IsValid)
-        {
-            return Output().WithErrors(validation.Errors.Select(error => error.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {

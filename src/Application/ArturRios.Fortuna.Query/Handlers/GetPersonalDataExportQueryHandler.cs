@@ -7,13 +7,11 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetPersonalDataExportQueryHandler(
-    IValidator<GetPersonalDataExportQuery> validator,
     ICurrentProfileResolver profileResolver,
     IPersonalDataExportStore exports,
     IAttachmentStore storage,
@@ -24,13 +22,6 @@ public sealed class GetPersonalDataExportQueryHandler(
     public async Task<DataOutput<PersonalDataExportQueryOutput?>> HandleAsync(
         GetPersonalDataExportQuery query)
     {
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return DataOutput<PersonalDataExportQueryOutput?>.New.WithErrors(
-                validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
