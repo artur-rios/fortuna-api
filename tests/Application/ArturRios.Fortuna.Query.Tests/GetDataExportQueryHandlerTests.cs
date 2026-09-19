@@ -160,9 +160,10 @@ public sealed class GetDataExportQueryHandlerTests
         Mock<IDataExportReader> reader,
         Mock<IAttachmentStore> storage) => new(
         new GetDataExportQueryValidator(),
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, Now, Now)),
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, Now, Now))),
         reader.Object,
         storage.Object,
         new FixedTimeProvider(),

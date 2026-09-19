@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
@@ -12,9 +11,8 @@ namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetConnectionByIdQueryHandler(
     IValidator<GetConnectionByIdQuery> validator,
-    IUserProfileReader profiles,
-    IConnectionReader connections,
-    IRequestActorAccessor actorAccessor)
+    ICurrentProfileResolver profileResolver,
+    IConnectionReader connections)
     : IQueryHandlerAsync<GetConnectionByIdQuery, ConnectionOutput>
 {
     public async Task<DataOutput<ConnectionOutput?>> HandleAsync(GetConnectionByIdQuery query)
@@ -27,7 +25,7 @@ public sealed class GetConnectionByIdQueryHandler(
         }
 
         var output = DataOutput<ConnectionOutput?>.New;
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(ConnectionMessages.ProfileNotFound);
@@ -41,13 +39,6 @@ public sealed class GetConnectionByIdQueryHandler(
             : output.WithData(Project(connection)).WithMessage(
                 ConnectionMessages.RetrievedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     internal static ConnectionOutput Project(ConnectionSnapshot connection) => new()
     {

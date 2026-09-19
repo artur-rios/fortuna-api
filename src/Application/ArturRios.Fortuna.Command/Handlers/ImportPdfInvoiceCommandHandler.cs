@@ -3,7 +3,6 @@ using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -13,8 +12,7 @@ namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class ImportPdfInvoiceCommandHandler(
     IValidator<ImportPdfInvoiceCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IPdfInvoiceImportStore imports,
     IBackgroundJobQueue queue,
     TimeProvider timeProvider)
@@ -30,7 +28,7 @@ public sealed class ImportPdfInvoiceCommandHandler(
                 validation.Errors.Select(error => error.ErrorMessage));
         }
 
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<ImportPdfInvoiceCommandOutput?>.New.WithError(
@@ -51,13 +49,6 @@ public sealed class ImportPdfInvoiceCommandHandler(
 
         return Resolve(result);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private static DataOutput<ImportPdfInvoiceCommandOutput?> Resolve(
         QueuePdfInvoiceImportResult result)

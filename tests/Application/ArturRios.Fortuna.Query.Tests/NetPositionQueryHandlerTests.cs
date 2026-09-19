@@ -154,12 +154,11 @@ public sealed class NetPositionQueryHandlerTests
 
         return new GetNetPositionQueryHandler(
             new GetNetPositionQueryValidator(),
-            profiles ?? new StubProfileReader(profile),
+            new CurrentProfileResolver(new StubActor(actor ?? new RequestActor(
+                profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])), profiles ?? new StubProfileReader(profile)),
             positionReader,
             currencyReader ?? new StubCurrencyReader(true),
             rateReader ?? new StubRateReader(null),
-            new StubActor(actor ?? new RequestActor(
-                profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
             new FixedTimeProvider(new DateTimeOffset(
                 Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))));
     }

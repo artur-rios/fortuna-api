@@ -25,7 +25,9 @@ public sealed class GoalCommandHandlerTests
         };
         var handler = new CreateGoalCommandHandler(
             new CreateGoalCommandValidator(new FixedTimeProvider(Now)),
-            Actor(profile), new StubProfileReader(profile), store, new FixedTimeProvider(Now));
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+            store,
+            new FixedTimeProvider(Now));
 
         var result = await handler.HandleAsync(ValidCreate(snapshot.Accounts.Single().Id));
 
@@ -44,7 +46,8 @@ public sealed class GoalCommandHandlerTests
         var store = new StubGoalStore();
         var handler = new CreateGoalCommandHandler(
             new CreateGoalCommandValidator(new FixedTimeProvider(Now)),
-            Actor(Profile()), new StubProfileReader(Profile()), store,
+            new CurrentProfileResolver(Actor(Profile()), new StubProfileReader(Profile())),
+            store,
             new FixedTimeProvider(Now));
 
         var result = await handler.HandleAsync(new CreateGoalCommand());
@@ -70,7 +73,9 @@ public sealed class GoalCommandHandlerTests
         };
         var handler = new UpdateGoalCommandHandler(
             new UpdateGoalCommandValidator(),
-            Actor(profile), new StubProfileReader(profile), store, new FixedTimeProvider(Now));
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+            store,
+            new FixedTimeProvider(Now));
 
         var result = await handler.HandleAsync(new UpdateGoalCommand
         {
@@ -96,7 +101,9 @@ public sealed class GoalCommandHandlerTests
             Result = new GoalMutationResult(Snapshot(true), GoalMutationOutcome.Succeeded)
         };
         var handler = new DeleteGoalCommandHandler(
-            Actor(profile), new StubProfileReader(profile), store, new FixedTimeProvider(Now));
+            new CurrentProfileResolver(
+                Actor(profile),
+                new StubProfileReader(profile)), store, new FixedTimeProvider(Now));
 
         var result = await handler.HandleAsync(new DeleteGoalCommand { Id = Guid.NewGuid() });
 
@@ -112,7 +119,9 @@ public sealed class GoalCommandHandlerTests
         var store = new StubGoalStore();
         var handler = new CreateGoalCommandHandler(
             new CreateGoalCommandValidator(new FixedTimeProvider(Now)),
-            Actor(null), new StubProfileReader(null), store, new FixedTimeProvider(Now));
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
+            store,
+            new FixedTimeProvider(Now));
 
         var result = await handler.HandleAsync(ValidCreate(Guid.NewGuid()));
 

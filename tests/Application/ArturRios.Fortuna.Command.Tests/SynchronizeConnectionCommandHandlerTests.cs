@@ -103,9 +103,10 @@ public sealed class SynchronizeConnectionCommandHandlerTests
         StubStore store,
         StubQueue queue) => new(
         new SynchronizeConnectionCommandValidator(),
-        new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(new UserProfileSnapshot(
-            Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now)),
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(new UserProfileSnapshot(
+                Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now))),
         store,
         queue,
         new FixedTimeProvider(Now));

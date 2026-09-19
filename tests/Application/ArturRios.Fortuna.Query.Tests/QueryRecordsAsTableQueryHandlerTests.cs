@@ -239,14 +239,15 @@ public sealed class QueryRecordsAsTableQueryHandlerTests
 
         return new QueryRecordsAsTableQueryHandler(
             new QueryRecordsAsTableQueryValidator(),
-            profiles ?? new StubProfileReader(resolvedProfile),
+            new CurrentProfileResolver(
+                new StubActor(actor ?? new RequestActor(
+                    resolvedProfile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+                profiles ?? new StubProfileReader(resolvedProfile)),
             reader ?? new StubTableReader(new TableReportReadResult(
                 TableReportReadOutcome.Succeeded,
                 Report([]))),
             new StubCurrencyReader(),
             rates ?? new StubRateReader(rate),
-            new StubActor(actor ?? new RequestActor(
-                resolvedProfile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
             new PaginationOptions(maximumPageSize),
             new FixedTimeProvider(new DateTimeOffset(
                 Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))));

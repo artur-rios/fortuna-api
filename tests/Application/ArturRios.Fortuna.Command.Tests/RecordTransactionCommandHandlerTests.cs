@@ -84,8 +84,9 @@ public sealed class RecordTransactionCommandHandlerTests
             TransactionRecordOutcome.Succeeded));
         var handler = new RecordTransactionCommandHandler(
             new RecordTransactionCommandValidator(new FixedTimeProvider(Now)),
-            new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(Now));
 
@@ -99,8 +100,9 @@ public sealed class RecordTransactionCommandHandlerTests
         UserProfileSnapshot? profile,
         ITransactionStore store) => new(
         new RecordTransactionCommandValidator(new FixedTimeProvider(Now)),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 

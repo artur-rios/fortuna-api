@@ -61,8 +61,9 @@ public sealed class RevokeConnectionCommandHandlerTests
     {
         var store = new StubStore(Result(ConnectionRevocationOutcome.Succeeded, 0));
         var handler = new RevokeConnectionCommandHandler(
-            new StubActorAccessor(new RequestActor(UserId, 3, null, [])),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(UserId, 3, null, [])),
+                new StubProfileReader(null)),
             store,
             new FixedTimeProvider());
 
@@ -77,9 +78,10 @@ public sealed class RevokeConnectionCommandHandlerTests
     private static readonly Guid ConnectionId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
     private static RevokeConnectionCommandHandler Handler(StubStore store) => new(
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, Now, Now)),
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, Now, Now))),
         store,
         new FixedTimeProvider());
 

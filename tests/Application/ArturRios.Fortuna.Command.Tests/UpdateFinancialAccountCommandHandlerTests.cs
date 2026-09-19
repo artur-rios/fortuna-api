@@ -135,8 +135,9 @@ public sealed class UpdateFinancialAccountCommandHandlerTests
             false));
         var handler = new UpdateFinancialAccountCommandHandler(
             new UpdateFinancialAccountCommandValidator(),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(UpdatedAt));
 
@@ -151,8 +152,9 @@ public sealed class UpdateFinancialAccountCommandHandlerTests
         UserProfileSnapshot? profile,
         IFinancialAccountUpdater store) => new(
         new UpdateFinancialAccountCommandValidator(),
-        new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+            new StubUserProfileReader(profile)),
         store,
         new FixedTimeProvider(UpdatedAt));
 

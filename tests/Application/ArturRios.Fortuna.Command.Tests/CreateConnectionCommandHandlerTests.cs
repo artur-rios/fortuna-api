@@ -145,9 +145,8 @@ public sealed class CreateConnectionCommandHandlerTests
         StubProtector protector,
         bool consentCurrent = true) => new(
             new CreateConnectionCommandValidator(),
-            new StubActorAccessor(new RequestActor(
-                profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(new StubActorAccessor(new RequestActor(
+                profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])), new StubProfileReader(profile)),
             store,
             gateway,
             protector,

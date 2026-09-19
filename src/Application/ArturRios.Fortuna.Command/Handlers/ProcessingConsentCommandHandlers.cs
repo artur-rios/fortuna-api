@@ -1,7 +1,6 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -11,8 +10,7 @@ namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class GrantProcessingConsentCommandHandler(
     IValidator<GrantProcessingConsentCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IProcessingConsentStore consents,
     ProcessingConsentOptions options,
     TimeProvider timeProvider)
@@ -33,7 +31,7 @@ public sealed class GrantProcessingConsentCommandHandler(
             return Failure(ProcessingConsentMessages.UnknownPurpose);
         }
 
-        var profile = await ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return Failure(ProcessingConsentMessages.ProfileNotFound);
@@ -61,20 +59,11 @@ public sealed class GrantProcessingConsentCommandHandler(
 
     private static DataOutput<GrantProcessingConsentCommandOutput?> Failure(string message) =>
         DataOutput<GrantProcessingConsentCommandOutput?>.New.WithError(message);
-
-    internal static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 }
 
 public sealed class WithdrawProcessingConsentCommandHandler(
     IValidator<WithdrawProcessingConsentCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IProcessingConsentStore consents,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<WithdrawProcessingConsentCommand, WithdrawProcessingConsentCommandOutput>
@@ -94,9 +83,7 @@ public sealed class WithdrawProcessingConsentCommandHandler(
             return Failure(ProcessingConsentMessages.UnknownPurpose);
         }
 
-        var profile = await GrantProcessingConsentCommandHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return Failure(ProcessingConsentMessages.ProfileNotFound);

@@ -137,9 +137,10 @@ public sealed class AttachDocumentCommandHandlerTests
         new AttachDocumentCommandValidator(new AttachmentOptions(
             maximumBytes,
             ["application/pdf", "image/png"])),
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, Now, Now)),
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, Now, Now))),
         metadata,
         storage,
         new FixedTimeProvider(),

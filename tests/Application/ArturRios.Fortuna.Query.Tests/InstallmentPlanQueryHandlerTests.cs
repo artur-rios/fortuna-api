@@ -75,9 +75,10 @@ public sealed class InstallmentPlanQueryHandlerTests
         UserProfileSnapshot? profile,
         IInstallmentPlanReader reader) => new(
         new GetInstallmentPlanByIdQueryValidator(),
-        new StubProfileReader(profile),
-        reader,
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])));
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
+        reader);
 
     private static InstallmentPlanSnapshot Snapshot() => new()
     {

@@ -3,7 +3,6 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
@@ -13,9 +12,8 @@ namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListAuditEntriesQueryHandler(
     IValidator<ListAuditEntriesQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IAuditEntryReader entries,
-    IRequestActorAccessor actorAccessor,
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>
 {
@@ -28,12 +26,7 @@ public sealed class ListAuditEntriesQueryHandler(
                 .WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return PaginatedOutput<AuditEntryOutput>.New

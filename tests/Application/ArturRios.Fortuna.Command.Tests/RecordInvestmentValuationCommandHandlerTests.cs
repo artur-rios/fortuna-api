@@ -126,8 +126,9 @@ public sealed class RecordInvestmentValuationCommandHandlerTests
         var profiles = new StubUserProfileReader(Profile(userId, null));
         var handler = new RecordInvestmentValuationCommandHandler(
             new RecordInvestmentValuationCommandValidator(new FixedTimeProvider(Now)),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             new StubValuationStore(Result(
                 Snapshot(Guid.NewGuid(), Guid.NewGuid(), 100m, false))),
             new FixedTimeProvider(Now));
@@ -143,8 +144,9 @@ public sealed class RecordInvestmentValuationCommandHandlerTests
         UserProfileSnapshot? profile,
         IInvestmentValuationStore store) => new(
             new RecordInvestmentValuationCommandValidator(new FixedTimeProvider(Now)),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 

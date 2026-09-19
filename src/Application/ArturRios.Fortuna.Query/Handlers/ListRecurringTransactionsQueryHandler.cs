@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
@@ -13,9 +12,8 @@ namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListRecurringTransactionsQueryHandler(
     IValidator<ListRecurringTransactionsQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IRecurringTransactionReader rules,
-    IRequestActorAccessor actorAccessor,
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListRecurringTransactionsQuery, RecurringTransactionOutput>
 {
@@ -29,7 +27,7 @@ public sealed class ListRecurringTransactionsQueryHandler(
             return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(RecurringTransactionMessages.ProfileNotFound);
@@ -52,11 +50,4 @@ public sealed class ListRecurringTransactionsQueryHandler(
             .WithPagination(query.PageNumber, pageSize, page.TotalItems)
             .WithMessage(RecurringTransactionMessages.ListedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 }

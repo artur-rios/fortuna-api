@@ -225,9 +225,8 @@ public sealed class CreditCardStatementQueryHandlerTests
         UserProfileSnapshot? profile,
         ICreditCardStatementReader statements) => new(
         new GetCreditCardStatementByIdQueryValidator(),
-        new StubUserProfileReader(profile),
-        statements,
-        Actor(profile));
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
+        statements);
 
     private static ListCreditCardStatementsQueryHandler ListHandler(
         UserProfileSnapshot? profile,
@@ -235,10 +234,9 @@ public sealed class CreditCardStatementQueryHandlerTests
         ICreditCardStatementReader statements,
         int maximumPageSize = 100) => new(
         new ListCreditCardStatementsQueryValidator(),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         cards,
         statements,
-        Actor(profile),
         new PaginationOptions(maximumPageSize));
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(

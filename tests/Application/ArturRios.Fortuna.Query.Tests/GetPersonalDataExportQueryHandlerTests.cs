@@ -116,8 +116,7 @@ public sealed class GetPersonalDataExportQueryHandlerTests
         DataExportReadSnapshot? snapshot,
         StubStorage storage) => new(
         new GetPersonalDataExportQueryValidator(),
-        new StubActor(),
-        new StubProfiles(),
+        new CurrentProfileResolver(new StubActor(), new StubProfiles()),
         new StubExports(snapshot),
         storage,
         new FixedTimeProvider(Now),

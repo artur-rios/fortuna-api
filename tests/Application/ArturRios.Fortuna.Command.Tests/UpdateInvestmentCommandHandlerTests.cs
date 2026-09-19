@@ -135,8 +135,9 @@ public sealed class UpdateInvestmentCommandHandlerTests
             false));
         var handler = new UpdateInvestmentCommandHandler(
             new UpdateInvestmentCommandValidator(),
-            new StubActor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(UpdatedAt));
 
@@ -151,8 +152,9 @@ public sealed class UpdateInvestmentCommandHandlerTests
         UserProfileSnapshot? profile,
         IInvestmentUpdater store) => new(
         new UpdateInvestmentCommandValidator(),
-        new StubActor(new RequestActor(subject, 3, null, [])),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(subject, 3, null, [])),
+            new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(UpdatedAt));
 

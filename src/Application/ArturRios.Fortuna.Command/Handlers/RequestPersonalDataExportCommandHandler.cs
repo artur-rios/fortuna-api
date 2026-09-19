@@ -4,7 +4,6 @@ using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -12,8 +11,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class RequestPersonalDataExportCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IPersonalDataExportStore exports,
     IBackgroundJobQueue queue,
     DataExportOptions options,
@@ -25,12 +23,7 @@ public sealed class RequestPersonalDataExportCommandHandler(
     {
         // Any authenticated caller may export the data of the profile they own, whatever their
         // role: an administrator's own profile is personal data too.
-        var actor = actorAccessor.Actor;
-        var profile = actor is null
-            ? null
-            : actor.IsLocal
-                ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<RequestPersonalDataExportCommandOutput?>.New.WithError(

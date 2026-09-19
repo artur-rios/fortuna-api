@@ -108,8 +108,9 @@ public sealed class CreateCategoryCommandHandlerTests
             CategoryCreationOutcome.Succeeded));
         var handler = new CreateCategoryCommandHandler(
             new CreateCategoryCommandValidator(),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(Now));
 
@@ -124,8 +125,9 @@ public sealed class CreateCategoryCommandHandlerTests
         UserProfileSnapshot? profile,
         ICategoryStore store) => new(
             new CreateCategoryCommandValidator(),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 

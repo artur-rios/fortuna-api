@@ -75,9 +75,10 @@ public sealed class CategoryQueryHandlerTests
     {
         var reader = new StubCategoryReader([]);
         var handler = new GetCategoryTreeQueryHandler(
-            new StubUserProfileReader(null),
-            reader,
-            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])));
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+                new StubUserProfileReader(null)),
+            reader);
 
         var result = await handler.HandleAsync(new GetCategoryTreeQuery());
 
@@ -143,9 +144,10 @@ public sealed class CategoryQueryHandlerTests
         var reader = new StubCategoryReader([]);
         var handler = new GetCategoryByIdQueryHandler(
             new GetCategoryByIdQueryValidator(),
-            new StubUserProfileReader(null),
-            reader,
-            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])));
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+                new StubUserProfileReader(null)),
+            reader);
 
         var result = await handler.HandleAsync(new GetCategoryByIdQuery { Id = Guid.NewGuid() });
 
@@ -160,9 +162,10 @@ public sealed class CategoryQueryHandlerTests
         var userId = Guid.NewGuid();
         var profiles = new StubUserProfileReader(Profile(userId));
         var handler = new GetCategoryTreeQueryHandler(
-            profiles,
-            new StubCategoryReader([]),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }));
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
+            new StubCategoryReader([]));
 
         var result = await handler.HandleAsync(new GetCategoryTreeQuery());
 
@@ -173,17 +176,19 @@ public sealed class CategoryQueryHandlerTests
     private static GetCategoryTreeQueryHandler TreeHandler(
         Guid userId,
         ICategoryReader reader) => new(
-            new StubUserProfileReader(Profile(userId)),
-            reader,
-            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])));
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+                new StubUserProfileReader(Profile(userId))),
+            reader);
 
     private static GetCategoryByIdQueryHandler ByIdHandler(
         Guid userId,
         ICategoryReader reader) => new(
             new GetCategoryByIdQueryValidator(),
-            new StubUserProfileReader(Profile(userId)),
-            reader,
-            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])));
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+                new StubUserProfileReader(Profile(userId))),
+            reader);
 
     private static UserProfileSnapshot Profile(Guid id) => new(
         id,

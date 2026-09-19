@@ -28,8 +28,9 @@ public sealed class PersonalDataExportCommandHandlerTests
         var exports = new StubExportStore();
         var queue = new StubQueue();
         var handler = new RequestPersonalDataExportCommandHandler(
-            new StubActor(new RequestActor(Subject, (int)HeimdallRoles.User, null, [])),
-            new StubProfiles(Profile()),
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(Subject, (int)HeimdallRoles.User, null, [])),
+                new StubProfiles(Profile())),
             exports,
             queue,
             new DataExportOptions(1000, TimeSpan.FromHours(24), "pt-BR"),
@@ -235,8 +236,7 @@ public sealed class PersonalDataExportCommandHandlerTests
         RequestActor actor,
         UserProfileSnapshot? profile,
         StubExportStore exports) => new(
-        new StubActor(actor),
-        new StubProfiles(profile),
+        new CurrentProfileResolver(new StubActor(actor), new StubProfiles(profile)),
         exports,
         new StubQueue(),
         new DataExportOptions(1000, TimeSpan.FromHours(24), "pt-BR"),

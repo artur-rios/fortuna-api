@@ -96,8 +96,9 @@ public sealed class UpdateTransactionCommandHandlerTests
             TransactionUpdateOutcome.Succeeded));
         var handler = new UpdateTransactionCommandHandler(
             new UpdateTransactionCommandValidator(new FixedTimeProvider(Now)),
-            new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             updater,
             new FixedTimeProvider(Now));
 
@@ -111,8 +112,9 @@ public sealed class UpdateTransactionCommandHandlerTests
         UserProfileSnapshot? profile,
         ITransactionUpdater updater) => new(
         new UpdateTransactionCommandValidator(new FixedTimeProvider(Now)),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         updater,
         new FixedTimeProvider(Now));
 

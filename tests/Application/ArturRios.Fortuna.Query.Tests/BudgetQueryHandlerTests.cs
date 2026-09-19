@@ -24,8 +24,7 @@ public sealed class BudgetQueryHandlerTests
         var store = new StubBudgetReader([Snapshot()]);
         var handler = new ListBudgetsQueryHandler(
             new ListBudgetsQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now),
             new PaginationOptions(100));
@@ -52,8 +51,7 @@ public sealed class BudgetQueryHandlerTests
         var store = new StubBudgetReader([], snapshot);
         var handler = new GetBudgetByIdQueryHandler(
             new GetBudgetByIdQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 
@@ -75,8 +73,7 @@ public sealed class BudgetQueryHandlerTests
         var profile = Profile();
         var handler = new GetBudgetByIdQueryHandler(
             new GetBudgetByIdQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             new StubBudgetReader([]),
             new FixedTimeProvider(Now));
 
@@ -95,8 +92,7 @@ public sealed class BudgetQueryHandlerTests
         var store = new StubBudgetReader([]);
         var handler = new ListBudgetsQueryHandler(
             new ListBudgetsQueryValidator(),
-            Actor(null),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
             store,
             new FixedTimeProvider(Now),
             new PaginationOptions(100));
@@ -121,8 +117,7 @@ public sealed class BudgetQueryHandlerTests
         };
         var handler = new GetBudgetConsumptionQueryHandler(
             new GetBudgetConsumptionQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 
@@ -154,8 +149,7 @@ public sealed class BudgetQueryHandlerTests
         };
         var handler = new GetBudgetConsumptionQueryHandler(
             new GetBudgetConsumptionQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 
@@ -183,8 +177,7 @@ public sealed class BudgetQueryHandlerTests
         };
         var handler = new GetBudgetConsumptionQueryHandler(
             new GetBudgetConsumptionQueryValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 
@@ -203,8 +196,7 @@ public sealed class BudgetQueryHandlerTests
         var store = new StubBudgetReader([]);
         var handler = new GetBudgetConsumptionQueryHandler(
             new GetBudgetConsumptionQueryValidator(),
-            Actor(null),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
             store,
             new FixedTimeProvider(Now));
 

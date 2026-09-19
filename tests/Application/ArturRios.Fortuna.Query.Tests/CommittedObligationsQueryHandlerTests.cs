@@ -129,11 +129,12 @@ public sealed class CommittedObligationsQueryHandlerTests
 
         return new ListCommittedObligationsQueryHandler(
             new ListCommittedObligationsQueryValidator(options),
-            new StubProfileReader(missingProfile ? null : Profile),
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(Profile.ExternalSubject!.Value, 3, null, [])),
+                new StubProfileReader(missingProfile ? null : Profile)),
             reader,
             new StubCurrencyReader(supportsCurrency),
             rates ?? new StubRateReader(null),
-            new StubActor(new RequestActor(Profile.ExternalSubject!.Value, 3, null, [])),
             new FixedTimeProvider(new DateTimeOffset(
                 Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))));
     }

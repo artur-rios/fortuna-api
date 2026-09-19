@@ -374,9 +374,8 @@ public sealed class TransactionQueryHandlerTests
         UserProfileSnapshot? profile,
         ITransactionReader transactions) => new(
         new GetTransactionByIdQueryValidator(),
-        new StubProfileReader(profile),
-        transactions,
-        Actor(profile));
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+        transactions);
 
     private static SearchTransactionsQueryHandler SearchHandler(
         UserProfileSnapshot? profile,
@@ -386,11 +385,12 @@ public sealed class TransactionQueryHandlerTests
         StubProfileReader? profiles = null,
         RequestActor? actor = null) => new(
         new SearchTransactionsQueryValidator(),
-        profiles ?? new StubProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActor(actor ?? ActorValue(profile)),
+            profiles ?? new StubProfileReader(profile)),
         transactions,
         new StubCurrencyReader(),
         rates ?? new StubRateReader(),
-        new StubActor(actor ?? ActorValue(profile)),
         new PaginationOptions(maximumPageSize),
         new FixedTimeProvider(Now));
 

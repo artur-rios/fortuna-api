@@ -101,9 +101,10 @@ public sealed class ImportExcelWorkbookCommandHandlerTests
         StubParser parser,
         int maximumBytes = 1024) => new(
         new ImportExcelWorkbookCommandValidator(new ExcelImportOptions(maximumBytes)),
-        new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(new UserProfileSnapshot(
-            Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now)),
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(new UserProfileSnapshot(
+                Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now))),
         parser,
         store,
         queue,

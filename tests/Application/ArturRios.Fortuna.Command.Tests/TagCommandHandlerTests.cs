@@ -195,8 +195,7 @@ public sealed class TagCommandHandlerTests
         UserProfileSnapshot? profile,
         ITagStore store) => new(
         new CreateTagCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
@@ -204,16 +203,14 @@ public sealed class TagCommandHandlerTests
         UserProfileSnapshot profile,
         ITagUpdater store) => new(
         new UpdateTagCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static DeleteTagCommandHandler DeleteHandler(
         UserProfileSnapshot profile,
         ITagLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
@@ -222,8 +219,7 @@ public sealed class TagCommandHandlerTests
         ITransactionTagStore store,
         int maximum = 50) => new(
         new AttachTransactionTagCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new TagOptions(maximum),
         new FixedTimeProvider(Now));
@@ -232,8 +228,7 @@ public sealed class TagCommandHandlerTests
         UserProfileSnapshot profile,
         ITransactionTagStore store) => new(
         new DetachTransactionTagCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new TagOptions(50),
         new FixedTimeProvider(Now));

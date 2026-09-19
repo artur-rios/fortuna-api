@@ -84,8 +84,9 @@ public sealed class MaterializeRecurringTransactionsCommandHandlerTests
         UserProfileSnapshot? profile,
         IRecurringTransactionMaterializer materializer) => new(
         new MaterializeRecurringTransactionsCommandValidator(),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfiles(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
         materializer,
         new FixedTimeProvider(Now));
 

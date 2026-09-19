@@ -1,7 +1,6 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
@@ -10,8 +9,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DeleteInstallmentPlanCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IInstallmentPlanLifecycleStore plans,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteInstallmentPlanCommand, InstallmentPlanLifecycleCommandOutput>
@@ -19,9 +17,7 @@ public sealed class DeleteInstallmentPlanCommandHandler(
     public async Task<DataOutput<InstallmentPlanLifecycleCommandOutput?>> HandleAsync(
         DeleteInstallmentPlanCommand command)
     {
-        var profile = await InstallmentPlanHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return InstallmentPlanHandler.ProfileNotFound();
@@ -40,8 +36,7 @@ public sealed class DeleteInstallmentPlanCommandHandler(
 }
 
 public sealed class RestoreInstallmentPlanCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IInstallmentPlanLifecycleStore plans,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<RestoreInstallmentPlanCommand, InstallmentPlanLifecycleCommandOutput>
@@ -49,9 +44,7 @@ public sealed class RestoreInstallmentPlanCommandHandler(
     public async Task<DataOutput<InstallmentPlanLifecycleCommandOutput?>> HandleAsync(
         RestoreInstallmentPlanCommand command)
     {
-        var profile = await InstallmentPlanHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return InstallmentPlanHandler.ProfileNotFound();
@@ -71,14 +64,6 @@ public sealed class RestoreInstallmentPlanCommandHandler(
 
 internal static class InstallmentPlanHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static DataOutput<InstallmentPlanLifecycleCommandOutput?> ProfileNotFound() =>
         DataOutput<InstallmentPlanLifecycleCommandOutput?>.New
             .WithError(InstallmentPlanMessages.ProfileNotFound);

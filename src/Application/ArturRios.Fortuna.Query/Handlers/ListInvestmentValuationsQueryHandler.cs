@@ -3,7 +3,6 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
@@ -13,9 +12,8 @@ namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListInvestmentValuationsQueryHandler(
     IValidator<ListInvestmentValuationsQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IInvestmentReader investments,
-    IRequestActorAccessor actorAccessor,
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListInvestmentValuationsQuery, InvestmentValuationOutput>
 {
@@ -29,7 +27,7 @@ public sealed class ListInvestmentValuationsQueryHandler(
             return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(InvestmentMessages.ProfileNotFound);
@@ -76,13 +74,6 @@ public sealed class ListInvestmentValuationsQueryHandler(
 
         return page.WithMessage(InvestmentMessages.ValuationHistoryRetrievedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private static IOrderedQueryable<InvestmentValuationReadSnapshot> Order(
         IQueryable<InvestmentValuationReadSnapshot> valuations,

@@ -142,12 +142,13 @@ public sealed class AggregateTransactionsQueryHandlerTests
 
         return new AggregateTransactionsQueryHandler(
             new AggregateTransactionsQueryValidator(new TransactionAggregationOptions(366)),
-            profiles ?? new StubProfileReader(resolved),
+            new CurrentProfileResolver(
+                new StubActor(actor ?? new RequestActor(
+                    resolved?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+                profiles ?? new StubProfileReader(resolved)),
             reader ?? new StubAggregationReader([]),
             new StubCurrencyReader(),
             new StubRateReader(rate),
-            new StubActor(actor ?? new RequestActor(
-                resolved?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
             codec ?? new StubKeyCodec(),
             new TransactionDrillDownOptions(TimeSpan.FromMinutes(15)),
             new FixedTimeProvider(Now));

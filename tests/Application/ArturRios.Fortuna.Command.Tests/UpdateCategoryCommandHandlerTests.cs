@@ -115,8 +115,9 @@ public sealed class UpdateCategoryCommandHandlerTests
             CategoryUpdateOutcome.Succeeded));
         var handler = new UpdateCategoryCommandHandler(
             new UpdateCategoryCommandValidator(),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(Now));
 
@@ -131,8 +132,9 @@ public sealed class UpdateCategoryCommandHandlerTests
         UserProfileSnapshot? profile,
         ICategoryUpdater store) => new(
             new UpdateCategoryCommandValidator(),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 

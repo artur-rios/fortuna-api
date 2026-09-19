@@ -4,7 +4,6 @@ using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Mediator.Query;
 using ArturRios.Mediator.Command;
 using ArturRios.Output;
@@ -18,8 +17,7 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 [Route("api/me")]
 public sealed class MeController(
     CommandMediator commandMediator,
-    QueryMediator queryMediator,
-    IRequestActorAccessor actorAccessor) : Controller
+    QueryMediator queryMediator) : Controller
 {
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
@@ -43,12 +41,8 @@ public sealed class MeController(
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<UserProfileOutput?>>> Get()
     {
-        var query = new GetMyProfileQuery
-        {
-            ExternalSubject = actorAccessor.Actor!.SubjectId,
-            IsLocal = actorAccessor.Actor.IsLocal
-        };
-        var result = await queryMediator.ExecuteQueryAsync<GetMyProfileQuery, UserProfileOutput>(query);
+        var result = await queryMediator.ExecuteQueryAsync<GetMyProfileQuery, UserProfileOutput>(
+            new GetMyProfileQuery());
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

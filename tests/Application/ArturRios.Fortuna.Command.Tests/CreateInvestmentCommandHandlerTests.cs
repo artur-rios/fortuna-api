@@ -136,8 +136,9 @@ public sealed class CreateInvestmentCommandHandlerTests
             false));
         var handler = new CreateInvestmentCommandHandler(
             new CreateInvestmentCommandValidator(),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             new StubCurrencyReader(["BRL"]),
             store,
             new FixedTimeProvider(Now));
@@ -154,8 +155,9 @@ public sealed class CreateInvestmentCommandHandlerTests
         IInvestmentStore store,
         IReadOnlyCollection<string> currencies) => new(
             new CreateInvestmentCommandValidator(),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             new StubCurrencyReader(currencies),
             store,
             new FixedTimeProvider(Now));

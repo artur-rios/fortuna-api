@@ -144,12 +144,11 @@ public sealed class ListAuditEntriesQueryHandlerTests
         var profiles = new StubUserProfileReader(Profile(actorUserId, null));
         var handler = new ListAuditEntriesQueryHandler(
             new ListAuditEntriesQueryValidator(),
-            profiles,
-            new StubAuditEntryReader(Entry(actorUserId, "LocalWrite")),
-            new StubRequestActorAccessor(new RequestActor(actorUserId, 3, null, [])
+            new CurrentProfileResolver(new StubRequestActorAccessor(new RequestActor(actorUserId, 3, null, [])
             {
                 IsLocal = true
-            }),
+            }), profiles),
+            new StubAuditEntryReader(Entry(actorUserId, "LocalWrite")),
             new PaginationOptions(100));
 
         var result = await handler.HandleAsync(new ListAuditEntriesQuery());
@@ -202,9 +201,10 @@ public sealed class ListAuditEntriesQueryHandlerTests
 
         return new ListAuditEntriesQueryHandler(
             new ListAuditEntriesQueryValidator(),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubRequestActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             entries,
-            new StubRequestActorAccessor(new RequestActor(subject, 3, null, [])),
             new PaginationOptions(maximumPageSize));
     }
 

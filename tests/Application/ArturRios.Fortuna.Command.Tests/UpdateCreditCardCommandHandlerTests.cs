@@ -124,8 +124,9 @@ public sealed class UpdateCreditCardCommandHandlerTests
         UserProfileSnapshot? profile,
         ICreditCardUpdater store) => new(
             new UpdateCreditCardCommandValidator(),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             store,
             new FixedTimeProvider(UpdatedAt));
 

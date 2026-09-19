@@ -153,8 +153,9 @@ public sealed class ReconcileTransactionCommandHandlerTests
             TransactionReconciliationOutcome.Succeeded));
         var handler = new ReconcileTransactionCommandHandler(
             new ReconcileTransactionCommandValidator(),
-            new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new ReconciliationOptions(0.01m, 1),
             new FixedTimeProvider(Now));
@@ -169,8 +170,9 @@ public sealed class ReconcileTransactionCommandHandlerTests
         UserProfileSnapshot? profile,
         ITransactionReconciliationStore store) => new(
         new ReconcileTransactionCommandValidator(),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         store,
         new ReconciliationOptions(0.01m, 1),
         new FixedTimeProvider(Now));

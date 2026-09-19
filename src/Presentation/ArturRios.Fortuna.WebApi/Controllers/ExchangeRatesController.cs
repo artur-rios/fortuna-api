@@ -3,7 +3,6 @@ using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Mediator.Command;
@@ -19,8 +18,7 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 [Route("api/exchange-rates")]
 public sealed class ExchangeRatesController(
     CommandMediator commandMediator,
-    QueryMediator queryMediator,
-    IRequestActorAccessor actorAccessor) : Controller
+    QueryMediator queryMediator) : Controller
 {
     private static readonly IReadOnlyDictionary<string, int> StatusMap =
         new Dictionary<string, int>
@@ -58,8 +56,6 @@ public sealed class ExchangeRatesController(
     public async Task<ActionResult<DataOutput<ConvertFigureQueryOutput?>>> Convert(
         [FromBody] ConvertFigureQuery query)
     {
-        query.ExternalSubject = actorAccessor.Actor!.SubjectId;
-        query.IsLocal = actorAccessor.Actor.IsLocal;
         var result = await queryMediator.ExecuteQueryAsync<ConvertFigureQuery, ConvertFigureQueryOutput>(query);
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);

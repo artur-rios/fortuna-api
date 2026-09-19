@@ -138,9 +138,10 @@ public sealed class CreditCardQueryHandlerTests
         var profiles = new StubUserProfileReader(profile);
         var handler = new ListCreditCardsQueryHandler(
             new ListCreditCardsQueryValidator(),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             new StubCreditCardReader(Card(profile.Id)),
-            new StubActorAccessor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
             new PaginationOptions(100));
 
         var result = await handler.HandleAsync(new ListCreditCardsQuery());
@@ -208,18 +209,16 @@ public sealed class CreditCardQueryHandlerTests
         UserProfileSnapshot? profile,
         ICreditCardReader cards) => new(
             new GetCreditCardByIdQueryValidator(),
-            new StubUserProfileReader(profile),
-            cards,
-            Actor(profile));
+            new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
+            cards);
 
     private static ListCreditCardsQueryHandler ListHandler(
         UserProfileSnapshot? profile,
         ICreditCardReader cards,
         int maximumPageSize = 100) => new(
             new ListCreditCardsQueryValidator(),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
             cards,
-            Actor(profile),
             new PaginationOptions(maximumPageSize));
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(

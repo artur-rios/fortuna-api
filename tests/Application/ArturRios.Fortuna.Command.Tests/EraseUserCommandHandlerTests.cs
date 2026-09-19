@@ -172,6 +172,7 @@ public sealed class EraseUserCommandHandlerTests
         new EraseUserCommandValidator(),
         new StubActor(actor),
         profiles,
+        new CurrentProfileResolver(new StubActor(actor), profiles),
         store,
         new FixedTimeProvider(Now));
 

@@ -62,8 +62,9 @@ public sealed class DefineRecurringTransactionCommandHandlerTests
         UserProfileSnapshot? profile,
         IRecurringTransactionStore store) => new(
         new DefineRecurringTransactionCommandValidator(),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfiles(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
         store,
         new FixedTimeProvider(Now));
 

@@ -110,15 +110,15 @@ public sealed class ConnectionQueryHandlerTests
         UserProfileSnapshot? profile,
         IConnectionReader reader) => new(
         new GetConnectionByIdQueryValidator(),
-        new StubProfileReader(profile), reader, Actor(profile));
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+        reader);
 
     private static ListConnectionsQueryHandler ListHandler(
         UserProfileSnapshot? profile,
         IConnectionReader reader) => new(
         new ListConnectionsQueryValidator(),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         reader,
-        Actor(profile),
         new PaginationOptions(100));
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(

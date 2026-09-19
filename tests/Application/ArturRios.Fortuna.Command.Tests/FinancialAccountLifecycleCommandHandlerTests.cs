@@ -140,8 +140,9 @@ public sealed class FinancialAccountLifecycleCommandHandlerTests
         var profiles = new StubUserProfileReader(profile);
         var store = new StubLifecycleStore { SoftDeleteResult = Success(Guid.NewGuid()) };
         var handler = new DeleteFinancialAccountCommandHandler(
-            new StubActorAccessor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(Now));
 
@@ -154,24 +155,21 @@ public sealed class FinancialAccountLifecycleCommandHandlerTests
     private static DeleteFinancialAccountCommandHandler DeleteHandler(
         UserProfileSnapshot? profile,
         IFinancialAccountLifecycleStore store) => new(
-        Actor(profile),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static RestoreFinancialAccountCommandHandler RestoreHandler(
         UserProfileSnapshot profile,
         IFinancialAccountLifecycleStore store) => new(
-        Actor(profile),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static HardDeleteFinancialAccountCommandHandler HardDeleteHandler(
         UserProfileSnapshot profile,
         IFinancialAccountLifecycleStore store) => new(
-        Actor(profile),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         store);
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(

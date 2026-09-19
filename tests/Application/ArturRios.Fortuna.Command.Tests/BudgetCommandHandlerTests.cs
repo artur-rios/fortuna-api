@@ -26,8 +26,7 @@ public sealed class BudgetCommandHandlerTests
         };
         var handler = new CreateBudgetCommandHandler(
             new CreateBudgetCommandValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 
@@ -56,8 +55,7 @@ public sealed class BudgetCommandHandlerTests
         var store = new StubBudgetStore();
         var handler = new CreateBudgetCommandHandler(
             new CreateBudgetCommandValidator(),
-            Actor(Profile()),
-            new StubProfileReader(Profile()),
+            new CurrentProfileResolver(Actor(Profile()), new StubProfileReader(Profile())),
             store,
             new FixedTimeProvider(Now));
 
@@ -83,8 +81,7 @@ public sealed class BudgetCommandHandlerTests
         };
         var handler = new UpdateBudgetCommandHandler(
             new UpdateBudgetCommandValidator(),
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 
@@ -114,8 +111,7 @@ public sealed class BudgetCommandHandlerTests
             Result = new BudgetMutationResult(snapshot, BudgetMutationOutcome.Succeeded)
         };
         var handler = new DeleteBudgetCommandHandler(
-            Actor(profile),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 
@@ -134,8 +130,7 @@ public sealed class BudgetCommandHandlerTests
         var store = new StubBudgetStore();
         var handler = new CreateBudgetCommandHandler(
             new CreateBudgetCommandValidator(),
-            Actor(null),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(Actor(null), new StubProfileReader(null)),
             store,
             new FixedTimeProvider(Now));
 

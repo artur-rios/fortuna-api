@@ -14,7 +14,7 @@ public sealed class ConvertFigureQueryHandler(
     IValidator<ConvertFigureQuery> validator,
     ICurrencyReader currencies,
     IExchangeRateReader rates,
-    IUserProfileReader profiles)
+    ICurrentProfileResolver profileResolver)
     : IQueryHandlerAsync<ConvertFigureQuery, ConvertFigureQueryOutput>
 {
     public async Task<DataOutput<ConvertFigureQueryOutput?>> HandleAsync(ConvertFigureQuery query)
@@ -100,9 +100,7 @@ public sealed class ConvertFigureQueryHandler(
             return query.DisplayCurrencyCode.Trim().ToUpperInvariant();
         }
 
-        var profile = query.IsLocal
-            ? await profiles.FindByPublicIdAsync(query.ExternalSubject, CancellationToken.None)
-            : await profiles.FindByExternalSubjectAsync(query.ExternalSubject, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
 
         return profile?.DisplayCurrency.ToUpperInvariant();
     }

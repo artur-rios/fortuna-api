@@ -94,8 +94,9 @@ public sealed class SettleCreditCardStatementCommandHandlerTests
         UserProfileSnapshot? profile,
         ICreditCardStatementSettlementStore store) => new(
         new SettleCreditCardStatementCommandValidator(new FixedTimeProvider(Now)),
-        new ActorAccessor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new Profiles(profile),
+        new CurrentProfileResolver(
+            new ActorAccessor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new Profiles(profile)),
         store,
         new FixedTimeProvider(Now));
 

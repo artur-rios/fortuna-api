@@ -173,26 +173,23 @@ public sealed class ImportJobQueryHandlerTests
         UserProfileSnapshot? profile,
         IImportJobReader reader) => new(
         new GetImportJobByIdQueryValidator(),
-        new StubProfileReader(profile),
-        reader,
-        Actor(profile));
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+        reader);
 
     private static ListImportJobsQueryHandler ListHandler(
         UserProfileSnapshot? profile,
         IImportJobReader reader) => new(
         new ListImportJobsQueryValidator(),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         reader,
-        Actor(profile),
         new PaginationOptions(100));
 
     private static ListImportedRecordsQueryHandler RecordsHandler(
         UserProfileSnapshot? profile,
         IImportJobReader reader) => new(
         new ListImportedRecordsQueryValidator(),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         reader,
-        Actor(profile),
         new PaginationOptions(100));
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(

@@ -63,8 +63,9 @@ public sealed class UpdateRecurringTransactionCommandHandlerTests
         UserProfileSnapshot? profile,
         IRecurringTransactionUpdater updater) => new(
         new UpdateRecurringTransactionCommandValidator(),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfiles(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
         updater,
         new FixedTimeProvider(Now));
 

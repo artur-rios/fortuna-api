@@ -1,7 +1,6 @@
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
@@ -12,9 +11,8 @@ namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetTransactionByIdQueryHandler(
     IValidator<GetTransactionByIdQuery> validator,
-    IUserProfileReader profiles,
-    ITransactionReader transactions,
-    IRequestActorAccessor actorAccessor)
+    ICurrentProfileResolver profileResolver,
+    ITransactionReader transactions)
     : IQueryHandlerAsync<GetTransactionByIdQuery, TransactionOutput>
 {
     public async Task<DataOutput<TransactionOutput?>> HandleAsync(GetTransactionByIdQuery query)
@@ -26,7 +24,7 @@ public sealed class GetTransactionByIdQueryHandler(
             return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(TransactionMessages.ProfileNotFound);
@@ -46,11 +44,4 @@ public sealed class GetTransactionByIdQueryHandler(
             .WithData(TransactionProjection.Project(transaction))
             .WithMessage(TransactionMessages.RetrievedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 }

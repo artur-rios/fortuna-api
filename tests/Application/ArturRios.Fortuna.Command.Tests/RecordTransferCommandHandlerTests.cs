@@ -131,8 +131,9 @@ public sealed class RecordTransferCommandHandlerTests
         ITransferStore transfers,
         ICreditCardStatementSettlementStore? settlements = null) => new(
         new RecordTransferCommandValidator(new FixedTimeProvider(Now)),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         transfers,
         settlements ?? new StubSettlementStore(new(
             null,

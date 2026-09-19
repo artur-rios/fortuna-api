@@ -248,12 +248,11 @@ public sealed class FinancialAccountQueryHandlerTests
         var profiles = new StubUserProfileReader(profile);
         var handler = new ListFinancialAccountsQueryHandler(
             new ListFinancialAccountsQueryValidator(),
-            profiles,
-            new StubFinancialAccountReader(Account(user, "Local")),
-            new StubRequestActorAccessor(new RequestActor(profile.Id, 3, null, [])
+            new CurrentProfileResolver(new StubRequestActorAccessor(new RequestActor(profile.Id, 3, null, [])
             {
                 IsLocal = true
-            }),
+            }), profiles),
+            new StubFinancialAccountReader(Account(user, "Local")),
             new PaginationOptions(100));
 
         var result = await handler.HandleAsync(new ListFinancialAccountsQuery());
@@ -279,18 +278,16 @@ public sealed class FinancialAccountQueryHandlerTests
         UserProfileSnapshot? profile,
         IFinancialAccountReader accounts) => new(
         new GetFinancialAccountByIdQueryValidator(),
-        new StubUserProfileReader(profile),
-        accounts,
-        Actor(profile));
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
+        accounts);
 
     private static ListFinancialAccountsQueryHandler ListHandler(
         UserProfileSnapshot? profile,
         IFinancialAccountReader accounts,
         int maximumPageSize = 100) => new(
         new ListFinancialAccountsQueryValidator(),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         accounts,
-        Actor(profile),
         new PaginationOptions(maximumPageSize));
 
     private static StubRequestActorAccessor Actor(UserProfileSnapshot? profile) => new(

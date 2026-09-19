@@ -118,8 +118,9 @@ public sealed class ReauthenticateConnectionCommandHandlerTests
 
         return new ReauthenticateConnectionCommandHandler(
             new ReauthenticateConnectionCommandValidator(),
-            new StubActorAccessor(new RequestActor(profile.ExternalSubject!.Value, 3, null, [])),
-            new StubProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(profile.ExternalSubject!.Value, 3, null, [])),
+                new StubProfileReader(profile)),
             new StubReader(profile.Id, connection),
             store,
             gateway,

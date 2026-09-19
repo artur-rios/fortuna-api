@@ -110,12 +110,11 @@ public sealed class FinancialAccountBalanceQueryHandlerTests
                 DateOnly.FromDateTime(Now.UtcDateTime)));
         var handler = new GetFinancialAccountBalanceQueryHandler(
             new GetFinancialAccountBalanceQueryValidator(),
-            profiles,
-            reader,
-            new StubRequestActorAccessor(new RequestActor(profile.Id, 3, null, [])
+            new CurrentProfileResolver(new StubRequestActorAccessor(new RequestActor(profile.Id, 3, null, [])
             {
                 IsLocal = true
-            }),
+            }), profiles),
+            reader,
             new FixedTimeProvider(Now));
 
         var result = await handler.HandleAsync(new GetFinancialAccountBalanceQuery { Id = accountId });
@@ -128,13 +127,12 @@ public sealed class FinancialAccountBalanceQueryHandlerTests
         UserProfileSnapshot? profile,
         IFinancialAccountReader accounts) => new(
         new GetFinancialAccountBalanceQueryValidator(),
-        new StubUserProfileReader(profile),
-        accounts,
-        new StubRequestActorAccessor(new RequestActor(
+        new CurrentProfileResolver(new StubRequestActorAccessor(new RequestActor(
             profile?.ExternalSubject ?? Guid.NewGuid(),
             3,
             null,
-            [])),
+            [])), new StubUserProfileReader(profile)),
+        accounts,
         new FixedTimeProvider(Now));
 
     private static UserProfileSnapshot Profile(Guid? externalSubject = default) => new(

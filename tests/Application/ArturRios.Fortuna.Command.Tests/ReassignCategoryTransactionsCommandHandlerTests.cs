@@ -113,8 +113,9 @@ public sealed class ReassignCategoryTransactionsCommandHandlerTests
                 CategoryTransactionReassignmentOutcome.Succeeded));
         var handler = new ReassignCategoryTransactionsCommandHandler(
             new ReassignCategoryTransactionsCommandValidator(),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(Now));
 
@@ -129,8 +130,9 @@ public sealed class ReassignCategoryTransactionsCommandHandlerTests
         UserProfileSnapshot? profile,
         ICategoryTransactionReassigner store) => new(
             new ReassignCategoryTransactionsCommandValidator(),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 

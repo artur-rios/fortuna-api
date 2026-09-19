@@ -5,7 +5,6 @@ using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Output;
@@ -15,8 +14,7 @@ namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class RequestDataExportCommandHandler(
     IValidator<RequestDataExportCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     DataExportBuilder builder,
     IDataExportRenderer renderer,
     IDataExportStore exports,
@@ -35,7 +33,7 @@ public sealed class RequestDataExportCommandHandler(
             return output.WithErrors(validation.Errors.Select(error => error.ErrorMessage));
         }
 
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(DataExportMessages.ProfileNotFound);
@@ -117,13 +115,6 @@ public sealed class RequestDataExportCommandHandler(
             })
             .WithMessage(DataExportMessages.CreatedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 
     private static string FileName(
         string recordSet,

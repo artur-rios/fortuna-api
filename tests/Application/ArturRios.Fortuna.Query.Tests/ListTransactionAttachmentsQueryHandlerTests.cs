@@ -154,10 +154,9 @@ public sealed class ListTransactionAttachmentsQueryHandlerTests
         IAttachmentMetadataReader metadata,
         int maximumPageSize = 100) => new(
         new ListTransactionAttachmentsQueryValidator(),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(new StubActorAccessor(
+            new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])), new StubProfileReader(profile)),
         metadata,
-        new StubActorAccessor(
-            new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
         new PaginationOptions(maximumPageSize));
 
     private static ListTransactionAttachmentsQuery Query(bool includeDeleted = false) => new()

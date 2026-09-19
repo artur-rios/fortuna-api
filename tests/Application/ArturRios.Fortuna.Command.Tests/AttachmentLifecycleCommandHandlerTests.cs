@@ -79,8 +79,9 @@ public sealed class AttachmentLifecycleCommandHandlerTests
     {
         var store = new Mock<IAttachmentLifecycleStore>();
         var handler = new DeleteAttachmentCommandHandler(
-            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+                new StubProfileReader(null)),
             store.Object,
             new FixedTimeProvider());
 
@@ -94,15 +95,13 @@ public sealed class AttachmentLifecycleCommandHandlerTests
 
     private static DeleteAttachmentCommandHandler DeleteHandler(
         IAttachmentLifecycleStore store) => new(
-        Actor(),
-        Profiles(),
+        new CurrentProfileResolver(Actor(), Profiles()),
         store,
         new FixedTimeProvider());
 
     private static HardDeleteAttachmentCommandHandler HardDeleteHandler(
         IAttachmentLifecycleStore store) => new(
-        Actor(),
-        Profiles(),
+        new CurrentProfileResolver(Actor(), Profiles()),
         store);
 
     private static StubActorAccessor Actor() =>

@@ -131,9 +131,10 @@ public sealed class DownloadAttachmentQueryHandlerTests
         Mock<IAttachmentStore> storage,
         Mock<IAuditEntryWriter>? audit = null) => new(
         new DownloadAttachmentQueryValidator(),
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)),
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow))),
         metadata.Object,
         storage.Object,
         (audit ?? new Mock<IAuditEntryWriter>()).Object,

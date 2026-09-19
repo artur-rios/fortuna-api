@@ -346,11 +346,10 @@ public sealed class InvestmentQueryHandlerTests
         IInvestmentReader investments,
         ExchangeRateSnapshot? rate = null) => new(
         new GetInvestmentByIdQueryValidator(),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         investments,
         new StubCurrencyReader(),
         new StubRateReader(rate),
-        Actor(profile),
         TimeProvider.System);
 
     private static ListInvestmentsQueryHandler ListHandler(
@@ -359,11 +358,10 @@ public sealed class InvestmentQueryHandlerTests
         int maximumPageSize = 100,
         StubRateReader? rates = null) => new(
         new ListInvestmentsQueryValidator(),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         investments,
         new StubCurrencyReader(),
         rates ?? new StubRateReader(null),
-        Actor(profile),
         new PaginationOptions(maximumPageSize),
         TimeProvider.System);
 
@@ -371,9 +369,8 @@ public sealed class InvestmentQueryHandlerTests
         UserProfileSnapshot? profile,
         IInvestmentReader investments) => new(
         new ListInvestmentValuationsQueryValidator(),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         investments,
-        Actor(profile),
         new PaginationOptions(100));
 
     private static StubActor Actor(UserProfileSnapshot? profile) => new(

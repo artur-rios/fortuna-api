@@ -87,16 +87,18 @@ public sealed class TransferLifecycleCommandHandlerTests
     private static DeleteTransferCommandHandler DeleteHandler(
         UserProfileSnapshot? profile,
         ITransferLifecycleStore store) => new(
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static RestoreTransferCommandHandler RestoreHandler(
         UserProfileSnapshot? profile,
         ITransferLifecycleStore store) => new(
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 

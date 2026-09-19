@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Test.Attributes;
 
@@ -23,7 +24,6 @@ public sealed class ConvertFigureQueryHandlerTests
 
         var result = await handler.HandleAsync(new ConvertFigureQuery
         {
-            ExternalSubject = Profile().ExternalSubject!.Value,
             FigureDate = FigureDate,
             Amounts =
             [
@@ -164,11 +164,12 @@ public sealed class ConvertFigureQueryHandlerTests
             new ConvertFigureQueryValidator(),
             new StubCurrencyReader(),
             rates ?? new StubRateReader(null),
-            profiles ?? new StubProfileReader(Profile()));
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(Profile().ExternalSubject!.Value, 3, null, [])),
+                profiles ?? new StubProfileReader(Profile())));
 
     private static ConvertFigureQuery Query(IReadOnlyCollection<FigureAmountInput> amounts) => new()
     {
-        ExternalSubject = Profile().ExternalSubject!.Value,
         FigureDate = FigureDate,
         Amounts = amounts
     };
@@ -213,6 +214,11 @@ public sealed class ConvertFigureQueryHandlerTests
 
             return Task.FromResult(rate);
         }
+    }
+
+    private sealed class StubActorAccessor(RequestActor actor) : IRequestActorAccessor
+    {
+        public RequestActor? Actor => actor;
     }
 
     private sealed class StubProfileReader(UserProfileSnapshot? profile) : IUserProfileReader

@@ -334,6 +334,7 @@ try
     builder.Services.AddHostedService<ExchangeRateSyncHostedService>();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<IRequestActorAccessor, HttpContextRequestActorAccessor>();
+    builder.Services.AddScoped<ICurrentProfileResolver, CurrentProfileResolver>();
     builder.Services.AddSingleton(new UserProfileProvisioningOptions(
         options.DefaultDisplayCurrency,
         options.Locale));

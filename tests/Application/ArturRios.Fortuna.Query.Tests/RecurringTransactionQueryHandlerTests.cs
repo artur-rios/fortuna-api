@@ -176,18 +176,20 @@ public sealed class RecurringTransactionQueryHandlerTests
         UserProfileSnapshot? profile,
         IRecurringTransactionReader reader) => new(
         new GetRecurringTransactionByIdQueryValidator(),
-        new StubProfiles(profile),
-        reader,
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])));
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
+        reader);
 
     private static ListRecurringTransactionsQueryHandler ListHandler(
         UserProfileSnapshot? profile,
         IRecurringTransactionReader reader,
         int maximumPageSize = 100) => new(
         new ListRecurringTransactionsQueryValidator(),
-        new StubProfiles(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
         reader,
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
         new PaginationOptions(maximumPageSize));
 
     private static RecurringTransactionSnapshot Snapshot() => new()

@@ -101,12 +101,11 @@ public sealed class ListTagsQueryHandlerTests
         ITagReader store,
         int maximumPageSize = 100) => new(
         new ListTagsQueryValidator(),
-        new StubActorAccessor(new RequestActor(
+        new CurrentProfileResolver(new StubActorAccessor(new RequestActor(
             profile?.ExternalSubject ?? Guid.NewGuid(),
             3,
             null,
-            [])),
-        new StubProfileReader(profile),
+            [])), new StubProfileReader(profile)),
         store,
         new PaginationOptions(maximumPageSize));
 

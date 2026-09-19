@@ -1,7 +1,6 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
@@ -12,8 +11,7 @@ namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DefineRecurringTransactionCommandHandler(
     IValidator<DefineRecurringTransactionCommand> validator,
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IRecurringTransactionStore rules,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DefineRecurringTransactionCommand, DefineRecurringTransactionCommandOutput>
@@ -28,12 +26,7 @@ public sealed class DefineRecurringTransactionCommandHandler(
             return output.WithErrors(validation.Errors.Select(item => item.ErrorMessage));
         }
 
-        var actor = actorAccessor.Actor;
-        var profile = actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(RecurringTransactionMessages.ProfileNotFound);

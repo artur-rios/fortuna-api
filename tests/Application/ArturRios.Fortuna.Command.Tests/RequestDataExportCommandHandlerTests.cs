@@ -97,8 +97,7 @@ public sealed class RequestDataExportCommandHandlerTests
             new FixedTimeProvider());
         var handler = new RequestDataExportCommandHandler(
             new RequestDataExportCommandValidator(),
-            new StubActor(),
-            new StubProfileReader(missingProfile ? null : Profile),
+            new CurrentProfileResolver(new StubActor(), new StubProfileReader(missingProfile ? null : Profile)),
             builder,
             new StubRenderer(),
             store,

@@ -87,9 +87,10 @@ public sealed class TransferQueryHandlerTests
         UserProfileSnapshot? profile,
         ITransferReader reader) => new(
         new GetTransferByIdQueryValidator(),
-        new StubProfileReader(profile),
-        reader,
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])));
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
+        reader);
 
     private static TransferReadSnapshot Snapshot() => new()
     {

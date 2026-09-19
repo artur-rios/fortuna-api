@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Test.Attributes;
 
@@ -19,6 +20,15 @@ public sealed class GetMyProfileQueryHandlerTests
             CancellationToken cancellationToken) => Task.FromResult(profile);
     }
 
+    private sealed class StubActorAccessor(RequestActor actor) : IRequestActorAccessor
+    {
+        public RequestActor? Actor => actor;
+    }
+
+    private static CurrentProfileResolver Resolver(Guid subject, UserProfileSnapshot? profile) => new(
+        new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+        new StubReader(profile));
+
     [UnitFact]
     public async Task GivenProvisionedProfile_WhenProfileIsQueried_ThenPublicProfileIsReturned()
     {
@@ -26,9 +36,9 @@ public sealed class GetMyProfileQueryHandlerTests
         var profile = new UserProfileSnapshot(
             Guid.NewGuid(), subject, "Ada Lovelace", "BRL", false,
             DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
-        var handler = new GetMyProfileQueryHandler(new StubReader(profile));
+        var handler = new GetMyProfileQueryHandler(Resolver(subject, profile));
 
-        var result = await handler.HandleAsync(new GetMyProfileQuery { ExternalSubject = subject });
+        var result = await handler.HandleAsync(new GetMyProfileQuery());
 
         Assert.True(result.Success);
         Assert.Equal(profile.Id, result.Data!.Id);
@@ -40,10 +50,9 @@ public sealed class GetMyProfileQueryHandlerTests
     [UnitFact]
     public async Task GivenProfileMissing_WhenProfileIsQueried_ThenNotFoundErrorIsReturned()
     {
-        var handler = new GetMyProfileQueryHandler(new StubReader(null));
+        var handler = new GetMyProfileQueryHandler(Resolver(Guid.NewGuid(), null));
 
-        var result = await handler.HandleAsync(
-            new GetMyProfileQuery { ExternalSubject = Guid.NewGuid() });
+        var result = await handler.HandleAsync(new GetMyProfileQuery());
 
         Assert.False(result.Success);
         Assert.Contains(UserProfileMessages.ProfileNotFound, result.Errors);

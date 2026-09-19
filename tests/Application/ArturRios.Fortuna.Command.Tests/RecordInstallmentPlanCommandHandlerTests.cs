@@ -85,8 +85,9 @@ public sealed class RecordInstallmentPlanCommandHandlerTests
         UserProfileSnapshot? profile,
         IInstallmentPlanStore store) => new(
         new RecordInstallmentPlanCommandValidator(new FixedTimeProvider(Now)),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 

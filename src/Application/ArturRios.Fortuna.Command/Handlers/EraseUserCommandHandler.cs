@@ -14,6 +14,7 @@ public sealed class EraseUserCommandHandler(
     IValidator<EraseUserCommand> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IUserErasureStore erasure,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<EraseUserCommand, EraseUserCommandOutput>
@@ -31,9 +32,7 @@ public sealed class EraseUserCommandHandler(
         UserProfileSnapshot? target = null;
         if (command.IsSelfService && actor?.RoleId == (int)HeimdallRoles.User)
         {
-            target = actor.IsLocal
-                ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
+            target = await profileResolver.ResolveAsync();
         }
         else if (!command.IsSelfService &&
                  actor?.RoleId == (int)HeimdallRoles.SystemAdmin &&

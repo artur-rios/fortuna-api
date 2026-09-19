@@ -142,8 +142,9 @@ public sealed class CreditCardLifecycleCommandHandlerTests
         var profiles = new StubUserProfileReader(profile);
         var store = new StubLifecycleStore { SoftDeleteResult = Success(Guid.NewGuid()) };
         var handler = new DeleteCreditCardCommandHandler(
-            new StubActorAccessor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(Now));
 
@@ -156,24 +157,21 @@ public sealed class CreditCardLifecycleCommandHandlerTests
     private static DeleteCreditCardCommandHandler DeleteHandler(
         UserProfileSnapshot? profile,
         ICreditCardLifecycleStore store) => new(
-        Actor(profile),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static RestoreCreditCardCommandHandler RestoreHandler(
         UserProfileSnapshot profile,
         ICreditCardLifecycleStore store) => new(
-        Actor(profile),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static HardDeleteCreditCardCommandHandler HardDeleteHandler(
         UserProfileSnapshot profile,
         ICreditCardLifecycleStore store) => new(
-        Actor(profile),
-        new StubUserProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         store);
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(

@@ -203,8 +203,7 @@ public sealed class CounterpartyCommandHandlerTests
         UserProfileSnapshot? profile,
         ICounterpartyStore store) => new(
         new CreateCounterpartyCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
@@ -212,16 +211,14 @@ public sealed class CounterpartyCommandHandlerTests
         UserProfileSnapshot profile,
         ICounterpartyUpdater store) => new(
         new UpdateCounterpartyCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static DeleteCounterpartyCommandHandler DeleteHandler(
         UserProfileSnapshot profile,
         ICounterpartyLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
@@ -229,8 +226,7 @@ public sealed class CounterpartyCommandHandlerTests
         UserProfileSnapshot profile,
         ICounterpartyMerger store) => new(
         new MergeCounterpartiesCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 

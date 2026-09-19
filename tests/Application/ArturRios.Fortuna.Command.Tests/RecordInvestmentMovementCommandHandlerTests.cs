@@ -131,8 +131,9 @@ public sealed class RecordInvestmentMovementCommandHandlerTests
         var profiles = new StubUserProfileReader(Profile(userId, null));
         var handler = new RecordInvestmentMovementCommandHandler(
             new RecordInvestmentMovementCommandValidator(new FixedTimeProvider(Now)),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             new StubMovementStore(Result(Snapshot(new DateOnly(2026, 9, 4)))),
             new FixedTimeProvider(Now));
 
@@ -147,8 +148,9 @@ public sealed class RecordInvestmentMovementCommandHandlerTests
         UserProfileSnapshot? profile,
         IInvestmentMovementStore store) => new(
             new RecordInvestmentMovementCommandValidator(new FixedTimeProvider(Now)),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             store,
             new FixedTimeProvider(Now));
 
