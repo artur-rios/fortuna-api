@@ -1,42 +1,61 @@
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
+using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListGoalsQueryHandler(
+    IValidator<ListGoalsQuery> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IGoalReader goals,
-    TimeProvider timeProvider) : IQueryHandlerAsync<ListGoalsQuery, GoalListOutput>
+    TimeProvider timeProvider,
+    PaginationOptions paginationOptions) : IQueryHandlerAsync<ListGoalsQuery, GoalListOutput>
 {
     public async Task<DataOutput<GoalListOutput?>> HandleAsync(ListGoalsQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<GoalListOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var profile = await GoalQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
         if (profile is null)
         {
             return DataOutput<GoalListOutput?>.New.WithError(GoalMessages.ProfileNotFound);
         }
 
+        var page = new PageRequest(
+            query.PageNumber,
+            Math.Min(query.PageSize, paginationOptions.MaximumPageSize));
         var snapshots = await goals.ListAsync(
             profile.Id,
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
+            page,
             CancellationToken.None);
 
         return DataOutput<GoalListOutput?>.New.WithData(new GoalListOutput
         {
-            Goals = snapshots.Select(GoalQueryHandler.ToOutput).ToArray()
+            Goals = snapshots.Items.Select(GoalQueryHandler.ToOutput).ToArray(),
+            PageNumber = page.PageNumber,
+            PageSize = page.PageSize,
+            TotalItems = snapshots.TotalItems
         }).WithMessage(GoalMessages.ListedSuccessfully);
     }
 }
 
 public sealed class GetGoalByIdQueryHandler(
+    IValidator<GetGoalByIdQuery> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IGoalReader goals,
@@ -44,6 +63,13 @@ public sealed class GetGoalByIdQueryHandler(
 {
     public async Task<DataOutput<GoalOutput?>> HandleAsync(GetGoalByIdQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<GoalOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var output = DataOutput<GoalOutput?>.New;
         var profile = await GoalQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
         if (profile is null)
@@ -66,6 +92,7 @@ public sealed class GetGoalByIdQueryHandler(
 }
 
 public sealed class GetGoalProgressQueryHandler(
+    IValidator<GetGoalProgressQuery> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IGoalProgressReader goals,
@@ -74,6 +101,13 @@ public sealed class GetGoalProgressQueryHandler(
     public async Task<DataOutput<GoalProgressDetailOutput?>> HandleAsync(
         GetGoalProgressQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<GoalProgressDetailOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var output = DataOutput<GoalProgressDetailOutput?>.New;
         var profile = await GoalQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
         if (profile is null)
@@ -159,7 +193,7 @@ internal static class GoalQueryHandler
         CurrentProgress = new GoalProgressOutput
         {
             CurrentAmount = goal.CurrentProgress.CurrentAmount,
-            Remaining = goal.CurrentProgress.Remaining,
+            Shortfall = goal.CurrentProgress.Remaining,
             ProportionReached = goal.CurrentProgress.ProportionReached,
             IsReached = goal.CurrentProgress.IsReached,
             IsFullyConverted = goal.CurrentProgress.IsFullyConverted

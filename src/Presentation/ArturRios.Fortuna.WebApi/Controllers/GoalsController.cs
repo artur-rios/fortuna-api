@@ -28,6 +28,8 @@ public sealed class GoalsController(
             [GoalMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
             [GoalMessages.ProgressRetrievedSuccessfully] = StatusCodes.Status200OK,
             [GoalMessages.ListedSuccessfully] = StatusCodes.Status200OK,
+            [GoalMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [GoalMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [GoalMessages.NotFound] = StatusCodes.Status404NotFound,
             [GoalMessages.ResourceNotFound] = StatusCodes.Status404NotFound,
             [GoalMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
@@ -58,10 +60,17 @@ public sealed class GoalsController(
     [HttpGet]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<GoalListOutput?>>> List(
-        [FromQuery] bool includeDeleted = false)
+        [FromQuery] bool includeDeleted = false,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 100)
     {
         var result = await queryMediator.ExecuteQueryAsync<ListGoalsQuery, GoalListOutput>(
-            new ListGoalsQuery { IncludeDeleted = includeDeleted });
+            new ListGoalsQuery
+            {
+                IncludeDeleted = includeDeleted,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

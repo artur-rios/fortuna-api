@@ -6,10 +6,12 @@ using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
+using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetCategoryByIdQueryHandler(
+    IValidator<GetCategoryByIdQuery> validator,
     IUserProfileReader profiles,
     ICategoryReader categories,
     IRequestActorAccessor actorAccessor)
@@ -17,6 +19,13 @@ public sealed class GetCategoryByIdQueryHandler(
 {
     public async Task<DataOutput<CategoryOutput?>> HandleAsync(GetCategoryByIdQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<CategoryOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var output = DataOutput<CategoryOutput?>.New;
         var profile = await ResolveProfileAsync(actorAccessor.Actor);
         if (profile is null)
@@ -24,8 +33,9 @@ public sealed class GetCategoryByIdQueryHandler(
             return output.WithError(CategoryMessages.ProfileNotFound);
         }
 
-        var records = await categories.ListAsync(
+        var records = await categories.ListSubtreeAsync(
             profile.Id,
+            query.Id,
             query.IncludeDeleted,
             query.IncludeUsageCounts,
             CancellationToken.None);

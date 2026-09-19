@@ -91,6 +91,18 @@ public sealed class EfInvestmentStore(
             !investment.IsDeleted,
         cancellationToken);
 
+    public Task<bool> ExistsAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken) => context.Investments
+        .AsNoTracking()
+        .AnyAsync(
+            investment =>
+                investment.User.PublicId == userId &&
+                investment.PublicId == id &&
+                !investment.IsDeleted,
+            cancellationToken);
+
     public IQueryable<InvestmentValuationReadSnapshot> QueryValuations(
         Guid userId,
         Guid investmentId) => context.InvestmentValuations

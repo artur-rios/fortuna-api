@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Shared.Classification;
+using ArturRios.Fortuna.Shared.Pagination;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Classification;
@@ -42,23 +43,33 @@ public sealed class EfTagStore(AppDbContext context, TagOptions options)
         return new TagCreationResult(Snapshot(tag), TagMutationOutcome.Succeeded);
     }
 
-    public async Task<IReadOnlyCollection<TagSnapshot>> ListAsync(
+    public async Task<ReadPage<TagSnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
-        CancellationToken cancellationToken) => await context.Tags
-        .AsNoTracking()
-        .Where(item =>
-            item.User.PublicId == userId &&
-            (includeDeleted || !item.IsDeleted))
-        .OrderBy(item => item.Name)
-        .ThenBy(item => item.PublicId)
-        .Select(item => new TagSnapshot(
-            item.PublicId,
-            item.Name,
-            item.IsDeleted,
-            item.CreatedAt,
-            item.UpdatedAt))
-        .ToArrayAsync(cancellationToken);
+        PageRequest page,
+        CancellationToken cancellationToken)
+    {
+        var owned = context.Tags
+            .AsNoTracking()
+            .Where(item =>
+                item.User.PublicId == userId &&
+                (includeDeleted || !item.IsDeleted));
+        var totalItems = await owned.CountAsync(cancellationToken);
+        var tags = await owned
+            .OrderBy(item => item.Name)
+            .ThenBy(item => item.PublicId)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
+            .Select(item => new TagSnapshot(
+                item.PublicId,
+                item.Name,
+                item.IsDeleted,
+                item.CreatedAt,
+                item.UpdatedAt))
+            .ToArrayAsync(cancellationToken);
+
+        return new ReadPage<TagSnapshot>(tags, totalItems);
+    }
 
     public async Task<TagUpdateResult> UpdateAsync(
         TagUpdate update,

@@ -2,6 +2,7 @@ using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Shared.Classification;
+using ArturRios.Fortuna.Shared.Pagination;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Classification;
@@ -58,23 +59,33 @@ public sealed class EfCounterpartyStore(AppDbContext context)
             CounterpartyMutationOutcome.Succeeded);
     }
 
-    public async Task<IReadOnlyCollection<CounterpartySnapshot>> ListAsync(
+    public async Task<ReadPage<CounterpartySnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
-        CancellationToken cancellationToken) => await context.Counterparties
-        .AsNoTracking()
-        .Where(item =>
-            item.User.PublicId == userId &&
-            (includeDeleted || !item.IsDeleted))
-        .OrderBy(item => item.Name)
-        .ThenBy(item => item.PublicId)
-        .Select(item => new CounterpartySnapshot(
-            item.PublicId,
-            item.Name,
-            item.IsDeleted,
-            item.CreatedAt,
-            item.UpdatedAt))
-        .ToArrayAsync(cancellationToken);
+        PageRequest page,
+        CancellationToken cancellationToken)
+    {
+        var owned = context.Counterparties
+            .AsNoTracking()
+            .Where(item =>
+                item.User.PublicId == userId &&
+                (includeDeleted || !item.IsDeleted));
+        var totalItems = await owned.CountAsync(cancellationToken);
+        var counterparties = await owned
+            .OrderBy(item => item.Name)
+            .ThenBy(item => item.PublicId)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
+            .Select(item => new CounterpartySnapshot(
+                item.PublicId,
+                item.Name,
+                item.IsDeleted,
+                item.CreatedAt,
+                item.UpdatedAt))
+            .ToArrayAsync(cancellationToken);
+
+        return new ReadPage<CounterpartySnapshot>(counterparties, totalItems);
+    }
 
     public async Task<CounterpartyMutationResult> UpdateAsync(
         CounterpartyUpdate update,

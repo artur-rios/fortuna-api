@@ -35,10 +35,10 @@ public sealed class ListInvestmentValuationsQueryHandler(
             return output.WithError(InvestmentMessages.ProfileNotFound);
         }
 
-        if (await investments.FindByIdWithPositionAsync(
+        if (!await investments.ExistsAsync(
             profile.Id,
             query.InvestmentId,
-            CancellationToken.None) is null)
+            CancellationToken.None))
         {
             return output.WithError(InvestmentMessages.NotFound);
         }
@@ -87,21 +87,11 @@ public sealed class ListInvestmentValuationsQueryHandler(
     private static IOrderedQueryable<InvestmentValuationReadSnapshot> Order(
         IQueryable<InvestmentValuationReadSnapshot> valuations,
         string sortBy,
-        bool descending) => (sortBy.ToLowerInvariant(), descending) switch
+        bool descending) => sortBy.ToLowerInvariant() switch
         {
-            ("value", false) => valuations.OrderBy(item => item.Value).ThenBy(item => item.Id),
-            ("value", true) => valuations.OrderByDescending(item => item.Value)
-                .ThenByDescending(item => item.Id),
-            ("createdat", false) => valuations.OrderBy(item => item.CreatedAt)
-                .ThenBy(item => item.Id),
-            ("createdat", true) => valuations.OrderByDescending(item => item.CreatedAt)
-                .ThenByDescending(item => item.Id),
-            ("updatedat", false) => valuations.OrderBy(item => item.UpdatedAt)
-                .ThenBy(item => item.Id),
-            ("updatedat", true) => valuations.OrderByDescending(item => item.UpdatedAt)
-                .ThenByDescending(item => item.Id),
-            (_, false) => valuations.OrderBy(item => item.ValuedOn).ThenBy(item => item.Id),
-            _ => valuations.OrderByDescending(item => item.ValuedOn)
-                .ThenByDescending(item => item.Id)
+            "value" => valuations.SortBy(item => item.Value, item => item.Id, descending),
+            "createdat" => valuations.SortBy(item => item.CreatedAt, item => item.Id, descending),
+            "updatedat" => valuations.SortBy(item => item.UpdatedAt, item => item.Id, descending),
+            _ => valuations.SortBy(item => item.ValuedOn, item => item.Id, descending)
         };
 }

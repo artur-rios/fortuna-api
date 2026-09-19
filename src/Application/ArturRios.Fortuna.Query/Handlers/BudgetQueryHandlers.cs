@@ -1,44 +1,63 @@
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
+using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListBudgetsQueryHandler(
+    IValidator<ListBudgetsQuery> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IBudgetReader budgets,
-    TimeProvider timeProvider) : IQueryHandlerAsync<ListBudgetsQuery, BudgetListOutput>
+    TimeProvider timeProvider,
+    PaginationOptions paginationOptions) : IQueryHandlerAsync<ListBudgetsQuery, BudgetListOutput>
 {
     public async Task<DataOutput<BudgetListOutput?>> HandleAsync(ListBudgetsQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<BudgetListOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var profile = await BudgetQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
         if (profile is null)
         {
             return DataOutput<BudgetListOutput?>.New.WithError(BudgetMessages.ProfileNotFound);
         }
 
+        var page = new PageRequest(
+            query.PageNumber,
+            Math.Min(query.PageSize, paginationOptions.MaximumPageSize));
         var snapshots = await budgets.ListAsync(
             profile.Id,
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
+            page,
             CancellationToken.None);
 
         return DataOutput<BudgetListOutput?>.New
             .WithData(new BudgetListOutput
             {
-                Budgets = snapshots.Select(BudgetQueryHandler.ToOutput).ToArray()
+                Budgets = snapshots.Items.Select(BudgetQueryHandler.ToOutput).ToArray(),
+                PageNumber = page.PageNumber,
+                PageSize = page.PageSize,
+                TotalItems = snapshots.TotalItems
             })
             .WithMessage(BudgetMessages.ListedSuccessfully);
     }
 }
 
 public sealed class GetBudgetByIdQueryHandler(
+    IValidator<GetBudgetByIdQuery> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IBudgetReader budgets,
@@ -46,6 +65,13 @@ public sealed class GetBudgetByIdQueryHandler(
 {
     public async Task<DataOutput<BudgetOutput?>> HandleAsync(GetBudgetByIdQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<BudgetOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var output = DataOutput<BudgetOutput?>.New;
         var profile = await BudgetQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
         if (profile is null)
@@ -69,6 +95,7 @@ public sealed class GetBudgetByIdQueryHandler(
 }
 
 public sealed class GetBudgetConsumptionQueryHandler(
+    IValidator<GetBudgetConsumptionQuery> validator,
     IRequestActorAccessor actorAccessor,
     IUserProfileReader profiles,
     IBudgetConsumptionReader budgets,
@@ -78,6 +105,13 @@ public sealed class GetBudgetConsumptionQueryHandler(
     public async Task<DataOutput<BudgetConsumptionDetailOutput?>> HandleAsync(
         GetBudgetConsumptionQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<BudgetConsumptionDetailOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var output = DataOutput<BudgetConsumptionDetailOutput?>.New;
         var profile = await BudgetQueryHandler.ResolveProfileAsync(
             actorAccessor.Actor,

@@ -7,6 +7,8 @@ public static class BudgetMessages
     public const string DeletedSuccessfully = "Budget deleted successfully.";
     public const string RetrievedSuccessfully = "Budget retrieved successfully.";
     public const string ListedSuccessfully = "Budgets retrieved successfully.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string ConsumptionRetrievedSuccessfully =
         "Budget consumption retrieved successfully.";
     public const string PeriodPrecedesBudget =

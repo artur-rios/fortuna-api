@@ -26,6 +26,8 @@ public sealed class TagsController(
             [TagMessages.UpdatedSuccessfully] = StatusCodes.Status200OK,
             [TagMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [TagMessages.ListedSuccessfully] = StatusCodes.Status200OK,
+            [TagMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [TagMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [TagMessages.NotFound] = StatusCodes.Status404NotFound,
             [TagMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [TagMessages.DuplicateName] = StatusCodes.Status409Conflict,
@@ -48,11 +50,18 @@ public sealed class TagsController(
     [HttpGet]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TagListOutput?>>> List(
-        [FromQuery] bool includeDeleted = false)
+        [FromQuery] bool includeDeleted = false,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 100)
     {
         var result = await queryMediator.ExecuteQueryAsync<
             ListTagsQuery,
-            TagListOutput>(new ListTagsQuery { IncludeDeleted = includeDeleted });
+            TagListOutput>(new ListTagsQuery
+            {
+                IncludeDeleted = includeDeleted,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }

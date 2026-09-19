@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Planning;
+using ArturRios.Fortuna.Shared.Pagination;
 
 namespace ArturRios.Fortuna.Shared.Planning;
 
@@ -12,10 +13,11 @@ public interface IBudgetStore
 
 public interface IBudgetReader
 {
-    Task<IReadOnlyCollection<BudgetSnapshot>> ListAsync(
+    Task<ReadPage<BudgetSnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
         DateOnly asOf,
+        PageRequest page,
         CancellationToken cancellationToken);
 
     Task<BudgetSnapshot?> FindByIdAsync(

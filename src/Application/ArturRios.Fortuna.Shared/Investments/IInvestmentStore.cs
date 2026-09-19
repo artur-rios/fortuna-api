@@ -21,6 +21,11 @@ public interface IInvestmentReader
     IQueryable<InvestmentValuationReadSnapshot> QueryValuations(
         Guid userId,
         Guid investmentId);
+
+    Task<bool> ExistsAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken);
 }
 
 public interface IInvestmentUpdater

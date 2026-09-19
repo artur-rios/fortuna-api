@@ -28,6 +28,8 @@ public sealed class CounterpartiesController(
             [CounterpartyMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [CounterpartyMessages.MergedSuccessfully] = StatusCodes.Status200OK,
             [CounterpartyMessages.ListedSuccessfully] = StatusCodes.Status200OK,
+            [CounterpartyMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [CounterpartyMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [CounterpartyMessages.SuggestedSuccessfully] = StatusCodes.Status200OK,
             [CounterpartyMessages.NoSuggestion] = StatusCodes.Status200OK,
             [CounterpartyMessages.NotFound] = StatusCodes.Status404NotFound,
@@ -54,13 +56,17 @@ public sealed class CounterpartiesController(
     [HttpGet]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CounterpartyListOutput?>>> List(
-        [FromQuery] bool includeDeleted = false)
+        [FromQuery] bool includeDeleted = false,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 100)
     {
         var result = await queryMediator.ExecuteQueryAsync<
             ListCounterpartiesQuery,
             CounterpartyListOutput>(new ListCounterpartiesQuery
             {
-                IncludeDeleted = includeDeleted
+                IncludeDeleted = includeDeleted,
+                PageNumber = pageNumber,
+                PageSize = pageSize
             });
 
         return ResponseResolver.Resolve(result, statusMap: StatusMap);

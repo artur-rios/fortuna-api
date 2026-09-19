@@ -14,6 +14,17 @@ public interface ICategoryReader
         bool includeDeleted,
         bool includeUsageCounts,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reads one category and its visible descendants; empty when the category is not
+    /// visible to the user.
+    /// </summary>
+    Task<IReadOnlyCollection<CategoryReadSnapshot>> ListSubtreeAsync(
+        Guid userId,
+        Guid rootId,
+        bool includeDeleted,
+        bool includeUsageCounts,
+        CancellationToken cancellationToken);
 }
 
 public interface ICategoryUpdater
