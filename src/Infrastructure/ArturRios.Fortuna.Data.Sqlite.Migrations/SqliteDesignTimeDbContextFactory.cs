@@ -18,6 +18,7 @@ public sealed class SqliteDesignTimeDbContextFactory : IDesignTimeDbContextFacto
 
         var options = new DbContextOptionsBuilder<AppDbContext>();
         DatabaseProvider.Configure(options, DatabaseProvider.SQLite, connection);
+
         return new AppDbContext(
             options.Options,
             NullLoggerFactory.Instance,

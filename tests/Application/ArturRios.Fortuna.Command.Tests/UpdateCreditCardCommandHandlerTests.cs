@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -119,15 +121,15 @@ public sealed class UpdateCreditCardCommandHandlerTests
         Assert.Null(store.Update);
     }
 
-    private static UpdateCreditCardCommandHandler Handler(
+    private static ICommandHandlerAsync<UpdateCreditCardCommand, UpdateCreditCardCommandOutput> Handler(
         Guid subject,
         UserProfileSnapshot? profile,
-        ICreditCardUpdater store) => new(
-            new UpdateCreditCardCommandValidator(),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+        ICreditCardUpdater store) => new UpdateCreditCardCommandHandler(
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             store,
-            new FixedTimeProvider(UpdatedAt));
+            new FixedTimeProvider(UpdatedAt)).Validated(new UpdateCreditCardCommandValidator());
 
     private static UpdateCreditCardCommand ValidCommand() => new()
     {
@@ -166,6 +168,7 @@ public sealed class UpdateCreditCardCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = value;
+
             return Task.FromResult(update(value));
         }
     }

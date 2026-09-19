@@ -3,11 +3,13 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class AttachmentMessages
 {
     public const string AttachedSuccessfully = "Document attached successfully.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string TransactionNotFound = "The transaction was not found.";
     public const string FileRequired = "A document file is required.";
     public const string FileNameRequired = "A document file name is required.";
     public const string FileNameTooLong = "A document file name cannot exceed 300 characters.";
+    public const string ContentDoesNotMatchType =
+        "The document content does not match its declared content type.";
     public const string StorageUnavailable = "Attachment storage is unavailable.";
     public const string PersistenceFailed = "The attachment metadata could not be saved.";
     public const string DownloadedSuccessfully = "Document downloaded successfully.";
@@ -23,9 +25,6 @@ public static class AttachmentMessages
 
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
-
-    public static string UnsupportedFilter(string field) =>
-        $"The filter '{field}' is not supported by this endpoint.";
 
     public static string FileTooLarge(int maximumBytes) =>
         $"The document exceeds the configured maximum of {maximumBytes} bytes.";

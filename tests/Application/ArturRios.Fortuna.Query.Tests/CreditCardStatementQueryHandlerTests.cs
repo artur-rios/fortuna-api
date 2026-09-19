@@ -3,11 +3,13 @@ using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -107,6 +109,49 @@ public sealed class CreditCardStatementQueryHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenRangeInsideAStatementPeriod_WhenListed_ThenTheOverlappingStatementIsIncluded()
+    {
+        var profile = Profile();
+        var card = Card(profile.Id);
+        var straddling = Statement(card.Id, periodStart: new DateOnly(2026, 7, 21));
+        var later = Statement(card.Id, periodStart: new DateOnly(2026, 8, 21));
+        var handler = ListHandler(
+            profile,
+            new StubCreditCardReader(card),
+            new StubStatementReader(profile.Id, straddling, later));
+
+        var result = await handler.HandleAsync(new ListCreditCardStatementsQuery
+        {
+            CreditCardId = card.Id,
+            From = new DateOnly(2026, 8, 1),
+            To = new DateOnly(2026, 8, 10),
+            PageNumber = 1,
+            PageSize = 10
+        });
+
+        Assert.Equal(straddling.Id, Assert.Single(result.Data!).Id);
+    }
+
+    [UnitFact]
+    public async Task GivenEmptyCardId_WhenListed_ThenCardNotFoundIsReturned()
+    {
+        var profile = Profile();
+        var handler = ListHandler(
+            profile,
+            new StubCreditCardReader(),
+            new StubStatementReader(profile.Id));
+
+        var result = await handler.HandleAsync(new ListCreditCardStatementsQuery
+        {
+            CreditCardId = Guid.Empty,
+            PageNumber = 1,
+            PageSize = 10
+        });
+
+        Assert.Contains(CreditCardStatementMessages.CreditCardNotFound, result.Errors);
+    }
+
+    [UnitFact]
     public async Task GivenInvalidListCriteria_WhenListed_ThenEveryInvalidFieldIsReported()
     {
         var result = await ListHandler(
@@ -137,7 +182,10 @@ public sealed class CreditCardStatementQueryHandlerTests
         var unknownProfile = await ListHandler(
             null,
             new StubCreditCardReader(),
-            new StubStatementReader(Guid.NewGuid())).HandleAsync(new ListCreditCardStatementsQuery());
+            new StubStatementReader(Guid.NewGuid())).HandleAsync(new ListCreditCardStatementsQuery
+            {
+                CreditCardId = Guid.NewGuid()
+            });
         var unknownCard = await ListHandler(
             profile,
             new StubCreditCardReader(),
@@ -175,24 +223,21 @@ public sealed class CreditCardStatementQueryHandlerTests
         Assert.Single(result.Data!);
     }
 
-    private static GetCreditCardStatementByIdQueryHandler GetHandler(
+    private static IQueryHandlerAsync<GetCreditCardStatementByIdQuery, CreditCardStatementOutput> GetHandler(
         UserProfileSnapshot? profile,
-        ICreditCardStatementReader statements) => new(
-        new StubUserProfileReader(profile),
-        statements,
-        Actor(profile));
+        ICreditCardStatementReader statements) => new GetCreditCardStatementByIdQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
+        statements).Validated(new GetCreditCardStatementByIdQueryValidator());
 
-    private static ListCreditCardStatementsQueryHandler ListHandler(
+    private static IPaginatedQueryHandlerAsync<ListCreditCardStatementsQuery, CreditCardStatementOutput> ListHandler(
         UserProfileSnapshot? profile,
         ICreditCardReader cards,
         ICreditCardStatementReader statements,
-        int maximumPageSize = 100) => new(
-        new ListCreditCardStatementsQueryValidator(),
-        new StubUserProfileReader(profile),
+        int maximumPageSize = 100) => new ListCreditCardStatementsQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubUserProfileReader(profile)),
         cards,
         statements,
-        Actor(profile),
-        new PaginationOptions(maximumPageSize));
+        new PaginationOptions(maximumPageSize)).Validated(new ListCreditCardStatementsQueryValidator());
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));
@@ -227,6 +272,7 @@ public sealed class CreditCardStatementQueryHandlerTests
         DateOnly? periodStart = null)
     {
         var start = periodStart ?? new DateOnly(2026, 8, 21);
+
         return new CreditCardStatementReadSnapshot
         {
             Id = Guid.NewGuid(),

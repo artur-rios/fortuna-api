@@ -2,10 +2,13 @@ using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -78,18 +81,76 @@ public sealed class ListAuditEntriesQueryHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenOversizedPage_WhenListed_ThenPageSizeIsCappedLikeOtherLists()
+    {
+        var actorUserId = Guid.NewGuid();
+        var handler = Handler(
+            Profile(actorUserId, Guid.NewGuid()),
+            new StubAuditEntryReader(
+                Entry(actorUserId, "First"),
+                Entry(actorUserId, "Second"),
+                Entry(actorUserId, "Third")),
+            maximumPageSize: 2);
+
+        var result = await handler.HandleAsync(new ListAuditEntriesQuery
+        {
+            PageNumber = 1,
+            PageSize = 500
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(2, result.Data!.Count);
+    }
+
+    [UnitFact]
+    public async Task GivenDateOnlyUpperBound_WhenListed_ThenTheWholeDayIsIncluded()
+    {
+        var actorUserId = Guid.NewGuid();
+        var day = new DateTimeOffset(2026, 9, 4, 0, 0, 0, TimeSpan.Zero);
+        var handler = Handler(
+            Profile(actorUserId, Guid.NewGuid()),
+            new StubAuditEntryReader(
+                Entry(actorUserId, "Evening", occurredAt: day.AddHours(23)),
+                Entry(actorUserId, "NextDay", occurredAt: day.AddDays(1))));
+
+        var result = await handler.HandleAsync(new ListAuditEntriesQuery
+        {
+            From = day,
+            To = day
+        });
+
+        Assert.Equal("Evening", Assert.Single(result.Data!).Operation);
+    }
+
+    [UnitFact]
+    public async Task GivenInstantUpperBound_WhenListed_ThenItIsInclusiveOfThatInstantOnly()
+    {
+        var actorUserId = Guid.NewGuid();
+        var cutoff = new DateTimeOffset(2026, 9, 4, 12, 0, 0, TimeSpan.Zero);
+        var handler = Handler(
+            Profile(actorUserId, Guid.NewGuid()),
+            new StubAuditEntryReader(
+                Entry(actorUserId, "AtCutoff", occurredAt: cutoff),
+                Entry(actorUserId, "After", occurredAt: cutoff.AddMinutes(1))));
+
+        var result = await handler.HandleAsync(new ListAuditEntriesQuery { To = cutoff });
+
+        Assert.Equal("AtCutoff", Assert.Single(result.Data!).Operation);
+    }
+
+    [UnitFact]
     public async Task GivenLocalActor_WhenListed_ThenProfileIsResolvedByPublicId()
     {
         var actorUserId = Guid.NewGuid();
         var profiles = new StubUserProfileReader(Profile(actorUserId, null));
         var handler = new ListAuditEntriesQueryHandler(
-            new ListAuditEntriesQueryValidator(),
-            profiles,
-            new StubAuditEntryReader(Entry(actorUserId, "LocalWrite")),
-            new StubRequestActorAccessor(new RequestActor(actorUserId, 3, null, [])
+            new CurrentProfileResolver(new StubRequestActorAccessor(new RequestActor(actorUserId, 3, null, [])
             {
                 IsLocal = true
-            }));
+            }), profiles),
+            new StubAuditEntryReader(Entry(actorUserId, "LocalWrite")),
+            new PaginationOptions(100)).Validated(new ListAuditEntriesQueryValidator());
 
         var result = await handler.HandleAsync(new ListAuditEntriesQuery());
 
@@ -115,7 +176,7 @@ public sealed class ListAuditEntriesQueryHandlerTests
             new ListAuditEntriesQuery
             {
                 PageNumber = 0,
-                PageSize = 101,
+                PageSize = 0,
                 EntityType = new string('e', 101),
                 Operation = new string('o', 151),
                 Outcome = (AuditOutcome)999,
@@ -132,16 +193,19 @@ public sealed class ListAuditEntriesQueryHandlerTests
         Assert.Contains(AuditEntryMessages.PeriodInvalid, result.Errors);
     }
 
-    private static ListAuditEntriesQueryHandler Handler(
+    private static IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput> Handler(
         UserProfileSnapshot? profile,
-        IAuditEntryReader entries)
+        IAuditEntryReader entries,
+        int maximumPageSize = 100)
     {
         var subject = profile?.ExternalSubject ?? Guid.NewGuid();
+
         return new ListAuditEntriesQueryHandler(
-            new ListAuditEntriesQueryValidator(),
-            new StubUserProfileReader(profile),
+            new CurrentProfileResolver(
+                new StubRequestActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             entries,
-            new StubRequestActorAccessor(new RequestActor(subject, 3, null, [])));
+            new PaginationOptions(maximumPageSize)).Validated(new ListAuditEntriesQueryValidator());
     }
 
     private static UserProfileSnapshot Profile(Guid id, Guid? externalSubject) => new(
@@ -191,6 +255,7 @@ public sealed class ListAuditEntriesQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

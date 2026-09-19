@@ -16,8 +16,7 @@ public sealed class ListCommittedObligationsQueryValidator
             .WithMessage(CommittedObligationMessages.HorizonMaximum(
                 options.MaximumHorizonDays));
         RuleFor(query => query.DisplayCurrencyCode)
-            .Must(code => code is null ||
-                code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .OptionalCurrencyCode()
             .WithMessage(CommittedObligationMessages.DisplayCurrencyInvalid);
     }
 }

@@ -88,6 +88,61 @@ public sealed class ConvertFigureQueryValidatorTests
             failure.ErrorMessage == FigureConversionMessages.AmountPrecisionInvalid);
     }
 
+    [UnitFact]
+    public async Task GivenNullAmountElement_WhenValidated_ThenItIsRejected()
+    {
+        var query = Query();
+        query.Amounts = [null!];
+
+        var result = await validator.ValidateAsync(query);
+
+        Assert.Contains(result.Errors, failure =>
+            failure.ErrorMessage == FigureConversionMessages.AmountRequired);
+    }
+
+    [UnitFact]
+    public async Task GivenTooManyAmounts_WhenValidated_ThenItIsRejected()
+    {
+        var query = Query();
+        query.Amounts = Enumerable.Range(0, ConvertFigureQueryValidator.MaximumAmounts + 1)
+            .Select(_ => new FigureAmountInput { Amount = 1m, CurrencyCode = "USD" })
+            .ToArray();
+
+        var result = await validator.ValidateAsync(query);
+
+        Assert.Contains(result.Errors, failure =>
+            failure.ErrorMessage == FigureConversionMessages.TooManyAmounts);
+    }
+
+    [UnitTheory]
+    [InlineData(" usd ", true)]
+    [InlineData("US ", false)]
+    [InlineData("U5D", false)]
+    public async Task GivenPaddedAmountCurrency_WhenValidated_ThenTheTrimmedCodeIsChecked(
+        string code,
+        bool isValid)
+    {
+        var query = Query();
+        query.Amounts = [new FigureAmountInput { Amount = 1m, CurrencyCode = code }];
+
+        var result = await validator.ValidateAsync(query);
+
+        Assert.Equal(isValid, result.IsValid);
+    }
+
+    [UnitTheory]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task GivenBlankDisplayCurrency_WhenValidated_ThenProfileFallbackIsAccepted(string code)
+    {
+        var query = Query();
+        query.DisplayCurrencyCode = code;
+
+        var result = await validator.ValidateAsync(query);
+
+        Assert.True(result.IsValid);
+    }
+
     private static ConvertFigureQuery Query() => new()
     {
         DisplayCurrencyCode = "BRL",

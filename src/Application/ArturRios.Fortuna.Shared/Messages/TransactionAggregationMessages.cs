@@ -3,7 +3,7 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class TransactionAggregationMessages
 {
     public const string RetrievedSuccessfully = "The transaction aggregation was retrieved successfully.";
-    public const string ProfileNotFound = "The user profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string DimensionRequired = "Dimension is required.";
     public const string GranularityRequired =
         "Granularity is required when aggregating by period.";

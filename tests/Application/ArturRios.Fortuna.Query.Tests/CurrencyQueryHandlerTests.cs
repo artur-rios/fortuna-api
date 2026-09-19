@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Util.Test.Attributes;
@@ -42,7 +43,7 @@ public sealed class CurrencyQueryHandlerTests
     {
         var reader = new StubCurrencyReader([], Brl);
 
-        var result = await new GetCurrencyByCodeQueryHandler(reader)
+        var result = await new GetCurrencyByCodeQueryHandler(reader).Validated(new GetCurrencyByCodeQueryValidator())
             .HandleAsync(new GetCurrencyByCodeQuery { Code = "brl" });
 
         Assert.True(result.Success);
@@ -58,7 +59,7 @@ public sealed class CurrencyQueryHandlerTests
     {
         var reader = new StubCurrencyReader([], null);
 
-        var result = await new GetCurrencyByCodeQueryHandler(reader)
+        var result = await new GetCurrencyByCodeQueryHandler(reader).Validated(new GetCurrencyByCodeQueryValidator())
             .HandleAsync(new GetCurrencyByCodeQuery { Code = "ZZZ" });
 
         Assert.False(result.Success);
@@ -79,6 +80,7 @@ public sealed class CurrencyQueryHandlerTests
             CancellationToken cancellationToken)
         {
             RequestedCode = code;
+
             return Task.FromResult(currency);
         }
     }

@@ -23,13 +23,25 @@ fn main() {
         .with_config(config)
         .generate()
         .expect("generate Fortuna C header");
-    bindings.write_to_file(&header);
-    append_operation_declarations(&header, &operations);
+    let mut generated_header = Vec::new();
+    bindings.write(&mut generated_header);
+    let contents = append_operation_declarations(
+        String::from_utf8(generated_header).expect("UTF-8 generated header"),
+        &operations,
+    );
+    // Only touch the header when its content changes. The header is also watched below, so an
+    // unconditional write would leave it newer than this run and rerun the script on every build.
+    if fs::read_to_string(&header).ok().as_deref() != Some(contents.as_str()) {
+        fs::write(&header, contents).expect("write generated Fortuna C header");
+    }
 
-    println!("cargo:rerun-if-changed=src/lib.rs");
-    println!("cargo:rerun-if-changed=src/operation.rs");
+    // cbindgen parses the whole crate, so any source file can change the header.
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=src");
     println!("cargo:rerun-if-changed=cbindgen.toml");
     println!("cargo:rerun-if-changed={}", contract.display());
+    // Regenerate when the checked-in header is edited by hand or deleted.
+    println!("cargo:rerun-if-changed={}", header.display());
 }
 
 #[derive(Debug)]
@@ -192,8 +204,7 @@ fn generate_rust(operations: &[Operation]) -> String {
     output
 }
 
-fn append_operation_declarations(header: &PathBuf, operations: &[Operation]) {
-    let mut contents = fs::read_to_string(header).expect("read generated header");
+fn append_operation_declarations(contents: String, operations: &[Operation]) -> String {
     let marker = "#endif  /* FORTUNA_CORE_H */";
     let mut declarations = String::from(
         "\n#ifdef __cplusplus\nextern \"C\" {\n#endif  // __cplusplus\n\n/**\n * Offline route exports generated from docs/openapi/fortuna.json.\n * Request metadata uses {token, route, query, body}; body is the unchanged HTTP JSON body.\n * Deliberately unavailable: /api/auth/** (Heimdall), /api/connections/** and\n * GET /api/data-sources (Pluggy), POST /api/exchange-rates/sync (remote rate source),\n * DELETE /api/users/{id} (no offline administrator), /api/me/consents/** (hosted\n * external processing only), POST /api/local-accounts/password-reset (use recovery\n * codes), and the HTTP-host health routes.\n * Call fortuna_capabilities to discover the machine-readable availability contract.\n */\n",
@@ -205,6 +216,5 @@ fn append_operation_declarations(header: &PathBuf, operations: &[Operation]) {
         ));
     }
     declarations.push_str("\n#ifdef __cplusplus\n}  // extern \"C\"\n#endif  // __cplusplus\n\n");
-    contents = contents.replacen(marker, &(declarations + marker), 1);
-    fs::write(header, contents).expect("append native operation declarations");
+    contents.replacen(marker, &(declarations + marker), 1)
 }

@@ -61,7 +61,8 @@ public enum FinancialAccountLifecycleOutcome
     HardDeleteRequiresSoftDeletion = 4,
     HardDeleteHasLiveTransactions = 5,
     DuplicateName = 6,
-    AttachmentStorageUnavailable = 7
+    AttachmentStorageUnavailable = 7,
+    HardDeleteHasDependents = 8
 }
 
 public sealed record FinancialAccountLifecycleResult(
@@ -79,7 +80,16 @@ public sealed record FinancialAccountCreation(
 
 public sealed record FinancialAccountCreationResult(
     FinancialAccountSnapshot? Account,
-    bool DuplicateName);
+    bool DuplicateName,
+    FinancialAccountCreationOutcome Outcome = FinancialAccountCreationOutcome.Succeeded);
+
+public enum FinancialAccountCreationOutcome
+{
+    Succeeded = 1,
+    DuplicateName = 2,
+    ProfileNotFound = 3,
+    CurrencyNotSupported = 4
+}
 
 public sealed record FinancialAccountUpdate(
     Guid UserId,

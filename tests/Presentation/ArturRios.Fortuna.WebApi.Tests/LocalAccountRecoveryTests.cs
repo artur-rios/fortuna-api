@@ -1,13 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
-using System.Text;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Util.Hashing;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Hosting;
@@ -55,7 +54,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         Assert.True(Hash.TextMatches(NewSecret, account.SecretHash, account.Salt));
         Assert.False(Hash.TextMatches(OriginalSecret, account.SecretHash, account.Salt));
         Assert.NotNull(account.RecoveryCodes.Single(code =>
-            code.CodeHash.SequenceEqual(HashRecoveryCode(recoveryCode))).UsedAt);
+            LocalRecoveryCodeHash.Matches(recoveryCode, code.CodeHash)).UsedAt);
         Assert.Equal(9, account.RecoveryCodes.Count(code => code.UsedAt is null));
     }
 
@@ -75,6 +74,40 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         var account = await context.LocalAccounts.Include(x => x.RecoveryCodes).SingleAsync();
         Assert.True(Hash.TextMatches(OriginalSecret, account.SecretHash, account.Salt));
         Assert.All(account.RecoveryCodes, code => Assert.Null(code.UsedAt));
+    }
+
+    [FunctionalFact]
+    public async Task GivenCodeTypedInLowercaseWithSpaces_WhenRecovering_ThenItIsRedeemed()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+        var created = await CreateAccountAsync(client);
+
+        var response = await RecoverAsync(
+            client,
+            $"  {created.RecoveryCodes.First().ToLowerInvariant()} ",
+            NewSecret);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenTooManyAnonymousAttempts_WhenRecovering_ThenRateLimitIsReturned()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+
+        HttpResponseMessage? response = null;
+        for (var attempt = 0; attempt < 11; attempt++)
+        {
+            response?.Dispose();
+            response = await RecoverAsync(client, "WRNG-CODE", NewSecret);
+        }
+
+        using (response)
+        {
+            Assert.Equal(HttpStatusCode.TooManyRequests, response!.StatusCode);
+        }
     }
 
     [FunctionalFact]
@@ -202,6 +235,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         var envelope = await response.Content.ReadFromJsonAsync<CreationEnvelope>();
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return envelope!.Data!;
     }
 
@@ -248,14 +282,12 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
             DatabaseDiagnosticsOptions.Disabled);
     }
-
-    private static byte[] HashRecoveryCode(string recoveryCode) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(recoveryCode));
 
     private static Dictionary<string, string?> ValidSettings(bool enabled) => new()
     {

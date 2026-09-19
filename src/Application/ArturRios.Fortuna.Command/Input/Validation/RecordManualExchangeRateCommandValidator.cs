@@ -12,14 +12,14 @@ public sealed class RecordManualExchangeRateCommandValidator
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(ManualExchangeRateMessages.BaseCurrencyRequired)
-            .Length(3)
+            .CurrencyCode()
             .WithMessage(ManualExchangeRateMessages.BaseCurrencyInvalid);
 
         RuleFor(command => command.QuoteCurrencyCode)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(ManualExchangeRateMessages.QuoteCurrencyRequired)
-            .Length(3)
+            .CurrencyCode()
             .WithMessage(ManualExchangeRateMessages.QuoteCurrencyInvalid);
 
         RuleFor(command => command.Rate)

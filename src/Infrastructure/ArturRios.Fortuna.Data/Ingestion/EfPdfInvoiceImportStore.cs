@@ -8,7 +8,10 @@ using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Ingestion;
+using ArturRios.Fortuna.Shared.Jobs;
+using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ArturRios.Fortuna.Data.Ingestion;
 
@@ -49,6 +52,7 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
         context.ImportJobs.Add(importJob);
         context.BackgroundJobs.Add(backgroundJob);
         await context.SaveChangesAsync(cancellationToken);
+
         return new QueuePdfInvoiceImportResult(
             Snapshot(importJob),
             backgroundJob.Id,
@@ -77,7 +81,7 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
         return true;
     }
 
-    public async Task CompleteAsync(
+    public async Task<ImportCompletionResult> CompleteAsync(
         Guid importJobId,
         Guid userId,
         Guid creditCardId,
@@ -89,185 +93,256 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
             cancellationToken);
         try
         {
-            var job = await context.ImportJobs.Include(item => item.User).SingleAsync(item =>
-                item.PublicId == importJobId && item.User.PublicId == userId &&
-                item.SourceType == TransactionSourceType.Pdf,
+            var result = await ApplyAsync(
+                importJobId,
+                userId,
+                creditCardId,
+                invoice,
+                completedAt,
                 cancellationToken);
-            if (job.Status != ImportJobStatus.Running)
+            if (result.Outcome != ImportCompletionOutcome.Completed)
             {
-                return;
+                await DiscardAsync(databaseTransaction);
+
+                return result;
             }
 
-            var card = await context.CreditCards
-                .Include(item => item.Currency)
-                .SingleOrDefaultAsync(item =>
-                    item.UserId == job.UserId && item.PublicId == creditCardId && !item.IsDeleted,
-                    cancellationToken) ?? throw new InvalidOperationException(
-                        "The PDF invoice target is unavailable.");
-            var category = await UncategorizedAsync(job, completedAt, cancellationToken);
-            var statements = await context.CreditCardStatements
-                .Where(item => item.CreditCardId == card.Id && !item.IsDeleted)
-                .OrderBy(item => item.PeriodStart)
-                .ToListAsync(cancellationToken);
-            var intendedStatement = statements.SingleOrDefault(item =>
-                item.PeriodStart == invoice.PeriodStart && item.PeriodEnd == invoice.PeriodEnd);
-            if (intendedStatement is null)
-            {
-                intendedStatement = new CreditCardStatement(card, new BillingCycle(
-                    invoice.PeriodStart,
-                    invoice.PeriodEnd,
-                    invoice.PeriodEnd,
-                    invoice.DueDate), completedAt);
-                context.CreditCardStatements.Add(intendedStatement);
-                statements.Add(intendedStatement);
-            }
-
-            var isLateArriving = intendedStatement.Status == CreditCardStatementStatus.Settled;
-            var targetStatement = isLateArriving
-                ? NextOpenStatement(card, intendedStatement, statements, completedAt)
-                : intendedStatement;
-            if (context.Entry(targetStatement).State == EntityState.Detached)
-            {
-                context.CreditCardStatements.Add(targetStatement);
-            }
-            if (!isLateArriving)
-            {
-                intendedStatement.ApplyImportedSummary(
-                    invoice.PreviousBalance,
-                    invoice.PaymentsReceived,
-                    invoice.PurchaseTotal,
-                    invoice.ForeignTaxTotal,
-                    invoice.OtherEntries,
-                    invoice.AmountDue,
-                    completedAt);
-            }
-
-            var imported = 0;
-            var duplicates = 0;
-            var signatures = new HashSet<string>(StringComparer.Ordinal);
-            var paymentTransactions = new List<FinancialTransaction>();
-            foreach (var line in invoice.Lines.OrderBy(item => item.Sequence))
-            {
-                var amount = Math.Abs(line.SignedAmount);
-                if (amount == 0m)
-                {
-                    throw new InvalidOperationException("A PDF invoice line cannot have a zero amount.");
-                }
-
-                var externalId = ExternalId(invoice, line);
-                var duplicate = !signatures.Add(externalId) || await IsDuplicateAsync(
-                    card.Id,
-                    externalId,
-                    cancellationToken);
-                if (duplicate)
-                {
-                    context.ImportedRecords.Add(new ImportedRecord(
-                        job,
-                        line.RawPayload,
-                        ImportedRecordOutcome.Duplicate,
-                        amount,
-                        line.OccurredOn,
-                        externalId));
-                    duplicates++;
-                    continue;
-                }
-
-                var record = new ImportedRecord(
-                    job,
-                    line.RawPayload,
-                    ImportedRecordOutcome.Imported,
-                    amount,
-                    line.OccurredOn,
-                    externalId);
-                var transaction = new FinancialTransaction(
-                    job.User,
-                    card,
-                    category,
-                    line.SignedAmount < 0m
-                        ? TransactionDirection.Earning
-                        : TransactionDirection.Expense,
-                    amount,
-                    line.OccurredOn,
-                    completedAt,
-                    Description(line.Description));
-                transaction.MarkAsImported(record, TransactionSourceType.Pdf, completedAt);
-                if (line.OriginalAmount.HasValue && line.AppliedRate.HasValue &&
-                    !string.IsNullOrWhiteSpace(line.OriginalCurrencyCode))
-                {
-                    var originalCurrency = await context.Currencies.SingleOrDefaultAsync(item =>
-                        item.Code == line.OriginalCurrencyCode,
-                        cancellationToken) ?? throw new InvalidOperationException(
-                            $"Currency '{line.OriginalCurrencyCode}' is not supported.");
-                    transaction.RecordForeignCurrencyDetails(
-                        line.OriginalAmount.Value,
-                        originalCurrency,
-                        line.AppliedRate.Value,
-                        line.OccurredOn,
-                        completedAt);
-                }
-
-                if (line.Kind == PdfInvoiceLineKind.Payment)
-                {
-                    paymentTransactions.Add(transaction);
-                }
-                else
-                {
-                    transaction.AssignToStatement(targetStatement, isLateArriving, completedAt);
-                    if (line.InstallmentNumber.HasValue && line.InstallmentCount.HasValue &&
-                        transaction.Direction == TransactionDirection.Expense)
-                    {
-                        await AssignInstallmentAsync(
-                            transaction,
-                            line,
-                            card,
-                            completedAt,
-                            cancellationToken);
-                    }
-                }
-
-                context.ImportedRecords.Add(record);
-                context.FinancialTransactions.Add(transaction);
-                imported++;
-            }
-
-            if (!isLateArriving)
-            {
-                intendedStatement.Close(completedAt);
-            }
-
-            SettlePreviousStatement(
-                statements,
-                intendedStatement,
-                invoice.PaymentsReceived,
-                paymentTransactions,
-                completedAt);
-            job.SetPeriod(invoice.PeriodStart, invoice.PeriodEnd, completedAt);
-            job.Complete(imported, duplicates, 0, completedAt);
             await context.SaveChangesAsync(cancellationToken);
             await databaseTransaction.CommitAsync(cancellationToken);
+
+            return result;
         }
         catch
         {
-            await databaseTransaction.RollbackAsync(cancellationToken);
-            context.ChangeTracker.Clear();
+            await DiscardAsync(databaseTransaction);
             throw;
         }
     }
 
-    public async Task FailAsync(
+    private async Task DiscardAsync(IDbContextTransaction databaseTransaction)
+    {
+        await databaseTransaction.RollbackAsync(CancellationToken.None);
+        context.ChangeTracker.Clear();
+    }
+
+    private async Task<ImportCompletionResult> ApplyAsync(
+        Guid importJobId,
+        Guid userId,
+        Guid creditCardId,
+        ParsedPdfInvoice invoice,
+        DateTimeOffset completedAt,
+        CancellationToken cancellationToken)
+    {
+        var job = await context.ImportJobs.Include(item => item.User).SingleOrDefaultAsync(item =>
+            item.PublicId == importJobId && item.User.PublicId == userId &&
+            item.SourceType == TransactionSourceType.Pdf,
+            cancellationToken);
+        if (job is null)
+        {
+            return ImportCompletionResult.Of(ImportCompletionOutcome.JobNotFound);
+        }
+
+        if (job.Status != ImportJobStatus.Running)
+        {
+            return ImportCompletionResult.Of(ImportCompletionOutcome.JobNotRunning);
+        }
+
+        var card = await context.CreditCards
+            .Include(item => item.Currency)
+            .SingleOrDefaultAsync(item =>
+                item.UserId == job.UserId && item.PublicId == creditCardId && !item.IsDeleted,
+                cancellationToken);
+        if (card is null)
+        {
+            return ImportCompletionResult.Of(ImportCompletionOutcome.TargetUnavailable);
+        }
+
+        var invoiceCycle = new BillingCycle(
+            invoice.PeriodStart,
+            invoice.PeriodEnd,
+            invoice.PeriodEnd,
+            invoice.DueDate);
+        if (!CreditCardStatement.IsValidCycle(invoiceCycle))
+        {
+            return ImportCompletionResult.Rejected(PdfInvoiceImportMessages.BillingCycleInvalid);
+        }
+
+        if (invoice.Lines.Any(line => line.SignedAmount == 0m))
+        {
+            return ImportCompletionResult.Rejected(PdfInvoiceImportMessages.LineAmountZero);
+        }
+
+        var category = await UncategorizedAsync(job, completedAt, cancellationToken);
+        var statements = await context.CreditCardStatements
+            .Where(item => item.CreditCardId == card.Id && !item.IsDeleted)
+            .OrderBy(item => item.PeriodStart)
+            .ToListAsync(cancellationToken);
+        var intendedStatement = statements.SingleOrDefault(item =>
+            item.PeriodStart == invoice.PeriodStart && item.PeriodEnd == invoice.PeriodEnd);
+        if (intendedStatement is null)
+        {
+            intendedStatement = new CreditCardStatement(card, invoiceCycle, completedAt);
+            context.CreditCardStatements.Add(intendedStatement);
+            statements.Add(intendedStatement);
+        }
+
+        var isLateArriving = intendedStatement.Status == CreditCardStatementStatus.Settled;
+        var targetStatement = isLateArriving
+            ? NextOpenStatement(card, intendedStatement, statements, completedAt)
+            : intendedStatement;
+        if (context.Entry(targetStatement).State == EntityState.Detached)
+        {
+            context.CreditCardStatements.Add(targetStatement);
+        }
+        if (!isLateArriving)
+        {
+            var summary = intendedStatement.TryApplyImportedSummary(
+                invoice.PreviousBalance,
+                invoice.PaymentsReceived,
+                invoice.PurchaseTotal,
+                invoice.ForeignTaxTotal,
+                invoice.OtherEntries,
+                invoice.AmountDue,
+                completedAt);
+            if (summary != ImportedSummaryOutcome.Applied)
+            {
+                return ImportCompletionResult.Rejected(summary switch
+                {
+                    ImportedSummaryOutcome.StatementSettled => PdfInvoiceImportMessages.StatementSettled,
+                    ImportedSummaryOutcome.PaymentsNegative => PdfInvoiceImportMessages.PaymentsNegative,
+                    _ => PdfInvoiceImportMessages.SummaryDoesNotReconcile
+                });
+            }
+        }
+
+        var imported = 0;
+        var duplicates = 0;
+        var signatures = new HashSet<string>(StringComparer.Ordinal);
+        var paymentTransactions = new List<FinancialTransaction>();
+        foreach (var line in invoice.Lines.OrderBy(item => item.Sequence))
+        {
+            var amount = Math.Abs(line.SignedAmount);
+            var externalId = ExternalId(invoice, line);
+            var duplicate = !signatures.Add(externalId) || await IsDuplicateAsync(
+                card.Id,
+                externalId,
+                cancellationToken);
+            if (duplicate)
+            {
+                context.ImportedRecords.Add(new ImportedRecord(
+                    job,
+                    line.RawPayload,
+                    ImportedRecordOutcome.Duplicate,
+                    amount,
+                    line.OccurredOn,
+                    externalId));
+                duplicates++;
+                continue;
+            }
+
+            var record = new ImportedRecord(
+                job,
+                line.RawPayload,
+                ImportedRecordOutcome.Imported,
+                amount,
+                line.OccurredOn,
+                externalId);
+            var transaction = new FinancialTransaction(
+                job.User,
+                card,
+                category,
+                line.SignedAmount < 0m
+                    ? TransactionDirection.Earning
+                    : TransactionDirection.Expense,
+                amount,
+                line.OccurredOn,
+                completedAt,
+                Description(line.Description));
+            transaction.MarkAsImported(record, TransactionSourceType.Pdf, completedAt);
+            if (line.OriginalAmount.HasValue && line.AppliedRate.HasValue &&
+                !string.IsNullOrWhiteSpace(line.OriginalCurrencyCode))
+            {
+                var originalCurrency = await context.Currencies.SingleOrDefaultAsync(item =>
+                    item.Code == line.OriginalCurrencyCode,
+                    cancellationToken);
+                if (originalCurrency is null)
+                {
+                    return ImportCompletionResult.Rejected(
+                        PdfInvoiceImportMessages.CurrencyUnsupported(line.OriginalCurrencyCode));
+                }
+
+                transaction.RecordForeignCurrencyDetails(
+                    line.OriginalAmount.Value,
+                    originalCurrency,
+                    line.AppliedRate.Value,
+                    line.OccurredOn,
+                    completedAt);
+            }
+
+            if (line.Kind == PdfInvoiceLineKind.Payment)
+            {
+                paymentTransactions.Add(transaction);
+            }
+            else
+            {
+                transaction.AssignToStatement(targetStatement, isLateArriving, completedAt);
+                if (line.InstallmentNumber.HasValue && line.InstallmentCount.HasValue &&
+                    transaction.Direction == TransactionDirection.Expense)
+                {
+                    await AssignInstallmentAsync(
+                        transaction,
+                        line,
+                        card,
+                        completedAt,
+                        cancellationToken);
+                }
+            }
+
+            context.ImportedRecords.Add(record);
+            context.FinancialTransactions.Add(transaction);
+            imported++;
+        }
+
+        if (!isLateArriving)
+        {
+            intendedStatement.Close(completedAt);
+        }
+
+        SettlePreviousStatement(
+            statements,
+            intendedStatement,
+            invoice.PaymentsReceived,
+            paymentTransactions,
+            completedAt);
+        job.SetPeriod(invoice.PeriodStart, invoice.PeriodEnd, completedAt);
+        job.Complete(imported, duplicates, 0, completedAt);
+
+        return ImportCompletionResult.Completed;
+    }
+
+    public async Task<JobTransitionOutcome> FailAsync(
         Guid importJobId,
         string reason,
         DateTimeOffset failedAt,
         CancellationToken cancellationToken)
     {
-        var job = await context.ImportJobs.SingleAsync(item =>
+        var job = await context.ImportJobs.SingleOrDefaultAsync(item =>
             item.PublicId == importJobId && item.SourceType == TransactionSourceType.Pdf,
             cancellationToken);
-        if (job.Status is ImportJobStatus.Pending or ImportJobStatus.Running)
+        if (job is null)
         {
-            job.Fail(reason, failedAt);
-            await context.SaveChangesAsync(cancellationToken);
+            return JobTransitionOutcome.NotFound;
         }
+
+        if (job.Status is not (ImportJobStatus.Pending or ImportJobStatus.Running))
+        {
+            return JobTransitionOutcome.NotRunning;
+        }
+
+        job.Fail(reason, failedAt);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return JobTransitionOutcome.Applied;
     }
 
     private async Task<Category> UncategorizedAsync(
@@ -287,6 +362,7 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
 
         category = new Category(job.User, "Uncategorized", createdAt);
         context.Categories.Add(category);
+
         return category;
     }
 
@@ -318,6 +394,7 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
 
         open = new CreditCardStatement(card, cycle, changedAt);
         statements.Add(open);
+
         return open;
     }
 
@@ -401,6 +478,7 @@ public sealed class EfPdfInvoiceImportStore(AppDbContext context) : IPdfInvoiceI
             line.SignedAmount.ToString(System.Globalization.CultureInfo.InvariantCulture),
             line.Kind);
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source)));
+
         return $"nubank:{invoice.PeriodEnd:yyyyMMdd}:{line.Sequence:D4}:{hash[..32]}";
     }
 

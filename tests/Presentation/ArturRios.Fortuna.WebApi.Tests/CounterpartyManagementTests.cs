@@ -245,6 +245,7 @@ public sealed class CounterpartyManagementTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -257,6 +258,7 @@ public sealed class CounterpartyManagementTests : IAsyncLifetime
     {
         var response = await client.PostAsJsonAsync("/api/counterparties", new { Name = name });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<CounterpartyEnvelope>())!.Data!;
     }
 
@@ -279,6 +281,7 @@ public sealed class CounterpartyManagementTests : IAsyncLifetime
             Description = description
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -288,6 +291,7 @@ public sealed class CounterpartyManagementTests : IAsyncLifetime
             "/api/categories",
             new { Name = $"{name} {Guid.NewGuid():N}" });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -301,6 +305,7 @@ public sealed class CounterpartyManagementTests : IAsyncLifetime
             OpeningBalance = 0m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 

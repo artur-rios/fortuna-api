@@ -259,6 +259,7 @@ public sealed class TransactionReconciliationTests : IAsyncLifetime
             importedDate);
         context.AddRange(account, category, transaction, job, record);
         await context.SaveChangesAsync();
+
         return new ReconciliationSeed(
             transaction.PublicId,
             job.PublicId,
@@ -290,6 +291,7 @@ public sealed class TransactionReconciliationTests : IAsyncLifetime
             DateTimeOffset.UtcNow);
         context.AddRange(account, category, transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
@@ -336,6 +338,7 @@ public sealed class TransactionReconciliationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

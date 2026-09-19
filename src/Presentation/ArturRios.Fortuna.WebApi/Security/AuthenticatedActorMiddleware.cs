@@ -22,6 +22,7 @@ public sealed class AuthenticatedActorMiddleware(
             if (identity is null)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+
                 return;
             }
 

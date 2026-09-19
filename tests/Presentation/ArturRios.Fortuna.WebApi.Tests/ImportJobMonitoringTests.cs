@@ -162,7 +162,7 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
         Assert.Contains(ImportJobMessages.SortByUnsupported,
             await invalid.Content.ReadAsStringAsync(), StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, unsupported.StatusCode);
-        Assert.Contains(ImportJobMessages.UnsupportedFilter("FailureReason"),
+        Assert.Contains(QueryParameterMessages.Unsupported("FailureReason"),
             await unsupported.Content.ReadAsStringAsync(), StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, unsupportedRows.StatusCode);
     }
@@ -287,6 +287,7 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
             liveTransaction,
             deletedTransaction);
         await context.SaveChangesAsync();
+
         return new SeededJobs(
             pending.PublicId,
             running.PublicId,
@@ -313,6 +314,7 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

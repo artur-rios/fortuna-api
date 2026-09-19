@@ -20,12 +20,25 @@ public sealed class Transfer : RecordLifecycleEntity
             throw new ArgumentNullException(nameof(outboundTransaction));
         InboundTransaction = inboundTransaction ??
             throw new ArgumentNullException(nameof(inboundTransaction));
-        if (ReferenceEquals(outboundTransaction, inboundTransaction))
+        if (ReferenceEquals(outboundTransaction, inboundTransaction) ||
+            outboundTransaction.PublicId == inboundTransaction.PublicId)
         {
             throw new ArgumentException(
                 "A transfer requires different outbound and inbound transactions.",
                 nameof(inboundTransaction));
         }
+
+        if (outboundTransaction.FinancialAccount is not null &&
+            outboundTransaction.FinancialAccount.PublicId ==
+            inboundTransaction.FinancialAccount?.PublicId)
+        {
+            throw new ArgumentException(
+                "A transfer requires different source and destination accounts.",
+                nameof(inboundTransaction));
+        }
+
+        EnsureLive(outboundTransaction, nameof(outboundTransaction));
+        EnsureLive(inboundTransaction, nameof(inboundTransaction));
 
         if (outboundTransaction.User.PublicId != inboundTransaction.User.PublicId)
         {
@@ -59,6 +72,15 @@ public sealed class Transfer : RecordLifecycleEntity
             throw new ArgumentNullException(nameof(outboundTransaction));
         InboundInvestmentMovement = inboundInvestmentMovement ??
             throw new ArgumentNullException(nameof(inboundInvestmentMovement));
+        EnsureLive(outboundTransaction, nameof(outboundTransaction));
+        EnsureLive(inboundInvestmentMovement, nameof(inboundInvestmentMovement));
+        if (inboundInvestmentMovement.Investment.IsDeleted)
+        {
+            throw new ArgumentException(
+                "A transfer cannot contribute to a deleted investment.",
+                nameof(inboundInvestmentMovement));
+        }
+
         if (outboundTransaction.User.PublicId !=
             inboundInvestmentMovement.Investment.User.PublicId)
         {
@@ -90,6 +112,14 @@ public sealed class Transfer : RecordLifecycleEntity
     public InvestmentMovement? InboundInvestmentMovement { get; private set; }
     public decimal? AppliedRate { get; private set; }
     public DateOnly? RateDate { get; private set; }
+
+    private static void EnsureLive(RecordLifecycleEntity movement, string parameterName)
+    {
+        if (movement.IsDeleted)
+        {
+            throw new ArgumentException("A transfer cannot link a deleted movement.", parameterName);
+        }
+    }
 
     private static void ValidateConversion(decimal? appliedRate, DateOnly? rateDate)
     {

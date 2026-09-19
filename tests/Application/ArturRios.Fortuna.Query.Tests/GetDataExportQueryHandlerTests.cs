@@ -2,18 +2,20 @@ using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace ArturRios.Fortuna.Query.Tests;
 
-public sealed class RetrieveDataExportQueryHandlerTests
+public sealed class GetDataExportQueryHandlerTests
 {
     private static readonly Guid UserId = Guid.Parse(
         "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -28,7 +30,7 @@ public sealed class RetrieveDataExportQueryHandlerTests
         var content = new MemoryStream([1, 2, 3]);
         var storage = Storage(healthy: true);
         storage.Setup(item => item.OpenReadAsync("exports/file.csv", CancellationToken.None))
-            .ReturnsAsync(content);
+            .ReturnsAsync(AttachmentReadResult.Found(content));
 
         var result = await Handler(Reader(Snapshot(DataExportStatus.Completed)), storage)
             .HandleAsync(Query());
@@ -98,6 +100,21 @@ public sealed class RetrieveDataExportQueryHandlerTests
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [UnitTheory]
+    [InlineData(DataExportStatus.Pending)]
+    [InlineData(DataExportStatus.Running)]
+    [InlineData(DataExportStatus.Failed)]
+    public async Task GivenExpiredExportInAnyState_WhenRetrieved_ThenItIsReportedAsExpired(
+        DataExportStatus status)
+    {
+        var result = await Handler(
+            Reader(Snapshot(status, expiresAt: Now)),
+            Storage(healthy: true)).HandleAsync(Query());
+
+        Assert.False(result.Success);
+        Assert.Contains(DataExportMessages.Expired, result.Errors);
+    }
+
     [UnitFact]
     public async Task GivenExpiredCompletedExport_WhenRetrieved_ThenNewExportIsRequested()
     {
@@ -114,11 +131,25 @@ public sealed class RetrieveDataExportQueryHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenUnavailableStoredFile_WhenRetrieved_ThenStorageIsUnavailable()
+    {
+        var storage = Storage(healthy: true);
+        storage.Setup(item => item.OpenReadAsync("exports/file.csv", CancellationToken.None))
+            .ReturnsAsync(AttachmentReadResult.Unavailable);
+
+        var result = await Handler(Reader(Snapshot(DataExportStatus.Completed)), storage)
+            .HandleAsync(Query());
+
+        Assert.False(result.Success);
+        Assert.Contains(DataExportMessages.StorageUnavailable, result.Errors);
+    }
+
+    [UnitFact]
     public async Task GivenMissingStoredFile_WhenRetrieved_ThenNewExportIsRequested()
     {
         var storage = Storage(healthy: true);
         storage.Setup(item => item.OpenReadAsync("exports/file.csv", CancellationToken.None))
-            .ThrowsAsync(new AttachmentObjectNotFoundException("exports/file.csv"));
+            .ReturnsAsync(AttachmentReadResult.NotFound);
 
         var result = await Handler(Reader(Snapshot(DataExportStatus.Completed)), storage)
             .HandleAsync(Query());
@@ -127,17 +158,17 @@ public sealed class RetrieveDataExportQueryHandlerTests
         Assert.Contains(DataExportMessages.FileNotFound, result.Errors);
     }
 
-    private static RetrieveDataExportQueryHandler Handler(
+    private static IQueryHandlerAsync<GetDataExportQuery, RetrieveDataExportQueryOutput> Handler(
         Mock<IDataExportReader> reader,
-        Mock<IAttachmentStore> storage) => new(
-        new GetDataExportQueryValidator(),
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, Now, Now)),
+        Mock<IAttachmentStore> storage) => new GetDataExportQueryHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, Now, Now))),
         reader.Object,
         storage.Object,
         new FixedTimeProvider(),
-        NullLogger<RetrieveDataExportQueryHandler>.Instance);
+        NullLogger<GetDataExportQueryHandler>.Instance).Validated(new GetDataExportQueryValidator());
 
     private static Mock<IDataExportReader> Reader(DataExportReadSnapshot? snapshot)
     {
@@ -147,6 +178,7 @@ public sealed class RetrieveDataExportQueryHandlerTests
                 ExportId,
                 CancellationToken.None))
             .ReturnsAsync(snapshot);
+
         return reader;
     }
 
@@ -155,6 +187,7 @@ public sealed class RetrieveDataExportQueryHandlerTests
         var storage = new Mock<IAttachmentStore>();
         storage.Setup(item => item.IsHealthyAsync(CancellationToken.None))
             .ReturnsAsync(healthy);
+
         return storage;
     }
 

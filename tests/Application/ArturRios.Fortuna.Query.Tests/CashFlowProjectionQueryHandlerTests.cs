@@ -8,6 +8,7 @@ using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Projections;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -128,7 +129,7 @@ public sealed class CashFlowProjectionQueryHandlerTests
     }
 
     [UnitFact]
-    public async Task GivenMissingProfileUnsupportedCurrencyOrRate_WhenProjecting_ThenNoFalseProjectionReturns()
+    public async Task GivenMissingProfileOrUnsupportedCurrency_WhenProjecting_ThenNoFalseProjectionReturns()
     {
         // Given
         var snapshot = new CashFlowProjectionSnapshot([new("USD", 10m)], [], [], null);
@@ -138,32 +139,104 @@ public sealed class CashFlowProjectionQueryHandlerTests
             .HandleAsync(new ProjectCashFlowQuery { HorizonDays = 30 });
         var unsupported = await Handler(new StubProjectionReader(snapshot), supportsCurrency: false)
             .HandleAsync(new ProjectCashFlowQuery { HorizonDays = 30 });
-        var missingRate = await Handler(new StubProjectionReader(snapshot))
-            .HandleAsync(new ProjectCashFlowQuery { HorizonDays = 30 });
 
         // Then
         Assert.Contains(CashFlowProjectionMessages.ProfileNotFound, missingProfile.Errors);
         Assert.Contains(CashFlowProjectionMessages.DisplayCurrencyUnsupported, unsupported.Errors);
-        Assert.Contains(CashFlowProjectionMessages.ExchangeRateUnavailable, missingRate.Errors);
     }
 
-    private static ProjectCashFlowQueryHandler Handler(
+    [UnitFact]
+    public async Task GivenMissingRate_WhenProjecting_ThenPartialProjectionReportsTheMissingPair()
+    {
+        // Given
+        var snapshot = new CashFlowProjectionSnapshot(
+            [new("BRL", 100m), new("USD", 10m)],
+            [
+                new(new DateOnly(2026, 9, 15), "BRL", -10m, CashFlowSourceKind.Recurring),
+                new(new DateOnly(2026, 9, 16), "USD", -3m, CashFlowSourceKind.Recurring)
+            ],
+            [],
+            null);
+
+        // When
+        var result = await Handler(new StubProjectionReader(snapshot))
+            .HandleAsync(new ProjectCashFlowQuery { HorizonDays = 20 });
+
+        // Then
+        Assert.True(result.Success);
+        Assert.False(result.Data!.IsFullyConverted);
+        Assert.Equal(100m, result.Data.StartingBalance);
+        Assert.Equal(90m, result.Data.Periods.Last().ClosingBalance);
+        var missing = Assert.Single(result.Data.MissingRates);
+        Assert.Equal("USD", missing.BaseCurrencyCode);
+        Assert.Equal("BRL", missing.QuoteCurrencyCode);
+        Assert.Empty(result.Data.Rates);
+        Assert.Contains(CashFlowProjectionMessages.PartiallyConverted, result.Messages);
+    }
+
+    [UnitFact]
+    public async Task GivenFractionalFlows_WhenProjecting_ThenBalancesAccumulateBeforeRounding()
+    {
+        // Given
+        var snapshot = new CashFlowProjectionSnapshot(
+            [new("BRL", 0m)],
+            [
+                new(new DateOnly(2026, 9, 9), "BRL", 0.004m, CashFlowSourceKind.Recurring),
+                new(new DateOnly(2026, 9, 10), "BRL", 0.004m, CashFlowSourceKind.Recurring)
+            ],
+            [],
+            null);
+
+        // When
+        var result = await Handler(new StubProjectionReader(snapshot))
+            .HandleAsync(new ProjectCashFlowQuery
+            {
+                HorizonDays = 2,
+                Periodicity = CashFlowPeriodicity.Daily
+            });
+
+        // Then
+        var periods = result.Data!.Periods.ToArray();
+        Assert.Equal(0m, periods[0].ClosingBalance);
+        Assert.Equal(0.01m, periods[1].ClosingBalance);
+        Assert.True(result.Data.IsFullyConverted);
+        Assert.Contains(CashFlowProjectionMessages.RetrievedSuccessfully, result.Messages);
+    }
+
+    [UnitFact]
+    public async Task GivenUndefinedPeriodicity_WhenProjecting_ThenErrorReturnsWithoutReading()
+    {
+        var reader = new StubProjectionReader(new CashFlowProjectionSnapshot([], [], [], null));
+
+        var result = await Handler(reader).HandleAsync(new ProjectCashFlowQuery
+        {
+            HorizonDays = 30,
+            Periodicity = (CashFlowPeriodicity)99
+        });
+
+        Assert.False(result.Success);
+        Assert.Contains(CashFlowProjectionMessages.PeriodicityInvalid, result.Errors);
+        Assert.Null(reader.UserId);
+    }
+
+    private static IQueryHandlerAsync<ProjectCashFlowQuery, CashFlowProjectionOutput> Handler(
         StubProjectionReader reader,
         StubRateReader? rates = null,
         bool missingProfile = false,
         bool supportsCurrency = true)
     {
         var options = new CashFlowProjectionOptions(366, 90, 30);
+
         return new ProjectCashFlowQueryHandler(
-            new ProjectCashFlowQueryValidator(options),
-            new StubProfileReader(missingProfile ? null : Profile),
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(Profile.ExternalSubject!.Value, 3, null, [])),
+                new StubProfileReader(missingProfile ? null : Profile)),
             reader,
             new StubCurrencyReader(supportsCurrency),
             rates ?? new StubRateReader(null),
-            new StubActor(new RequestActor(Profile.ExternalSubject!.Value, 3, null, [])),
             new FixedTimeProvider(new DateTimeOffset(
                 Today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc))),
-            options);
+            options).Validated(new ProjectCashFlowQueryValidator(options));
     }
 
     private sealed class StubProjectionReader(CashFlowProjectionSnapshot snapshot)
@@ -178,6 +251,7 @@ public sealed class CashFlowProjectionQueryHandlerTests
         {
             UserId = userId;
             Through = through;
+
             return Task.FromResult(snapshot);
         }
     }

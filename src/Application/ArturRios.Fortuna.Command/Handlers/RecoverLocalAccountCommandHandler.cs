@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
@@ -35,12 +33,11 @@ public sealed class RecoverLocalAccountCommandHandler(
             return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
-        var recoveryCodeHash = SHA256.HashData(Encoding.UTF8.GetBytes(command.RecoveryCode ?? string.Empty));
         var newSecretHash = Hash.EncodeWithRandomSalt(command.NewSecret, out var newSalt);
         var recovery = await accounts.RecoverAsync(
             new LocalAccountRecovery(
-                command.Name ?? string.Empty,
-                recoveryCodeHash,
+                command.Name.Trim(),
+                LocalRecoveryCodeHash.Normalize(command.RecoveryCode),
                 newSecretHash,
                 newSalt,
                 timeProvider.GetUtcNow()),

@@ -35,8 +35,7 @@ public sealed class ListCreditCardsQueryValidator : AbstractValidator<ListCredit
             .WithMessage(CreditCardMessages.IssuerTooLong);
 
         RuleFor(query => query.CurrencyCode)
-            .Must(code => code is null ||
-                code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .OptionalCurrencyCode()
             .WithMessage(CreditCardMessages.CurrencyInvalid);
 
         RuleFor(query => query.SortBy)

@@ -160,6 +160,23 @@ public sealed class ExcelImportTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenBodyBeyondConfiguredLimit_WhenImported_ThenDataOutputErrorIsReturned()
+    {
+        var subject = Guid.NewGuid();
+        var accountId = await SeedAccountAsync(subject);
+        await using var factory = CreateFactory(maximumBytes: 10);
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+
+        var response = await ImportAsync(client, accountId, new byte[256 * 1024]);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains(ExcelImportMessages.FileTooLarge, body, StringComparison.Ordinal);
+        Assert.Contains("\"errors\"", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [FunctionalFact]
     public async Task GivenForeignOrMissingTarget_WhenImported_ThenResponsesAreIndistinguishable()
     {
         var ownerSubject = Guid.NewGuid();
@@ -239,6 +256,7 @@ public sealed class ExcelImportTests : IAsyncLifetime
             currency, 0, Now);
         context.AddRange(user, account);
         await context.SaveChangesAsync();
+
         return account.PublicId;
     }
 
@@ -247,6 +265,7 @@ public sealed class ExcelImportTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -279,6 +298,7 @@ public sealed class ExcelImportTests : IAsyncLifetime
         form.Add(new StringContent("Id"), "ExternalIdColumn");
         form.Add(new StringContent(createCategories.ToString()), "CreateMissingCategories");
         form.Add(new ByteArrayContent(workbook), "File", "transactions.xlsx");
+
         return await client.PostAsync("/api/imports/excel", form);
     }
 
@@ -295,6 +315,7 @@ public sealed class ExcelImportTests : IAsyncLifetime
         populate(sheet);
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
+
         return stream.ToArray();
     }
 

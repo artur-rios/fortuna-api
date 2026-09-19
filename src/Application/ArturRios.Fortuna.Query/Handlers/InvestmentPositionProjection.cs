@@ -1,8 +1,7 @@
 using System.Linq.Expressions;
+using ArturRios.Fortuna.Query.Conversion;
 using ArturRios.Fortuna.Query.Output;
-using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Investments;
-using ArturRios.Fortuna.Shared.Messages;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
@@ -25,61 +24,29 @@ internal static class InvestmentPositionProjection
             UpdatedAt = investment.UpdatedAt
         };
 
-    public static InvestmentOutput Project(InvestmentPositionSnapshot investment) => new()
-    {
-        Id = investment.Id,
-        Instrument = investment.Instrument,
-        Institution = investment.Institution,
-        InvestmentType = investment.InvestmentType,
-        CurrencyCode = investment.CurrencyCode,
-        Position = investment.Position,
-        IsIndependentlyValued = investment.IsIndependentlyValued,
-        LatestValuationValue = investment.LatestValuationValue,
-        LatestValuationDate = investment.LatestValuationDate,
-        IsDeleted = investment.IsDeleted,
-        CreatedAt = investment.CreatedAt,
-        UpdatedAt = investment.UpdatedAt
-    };
+    private static readonly Func<InvestmentPositionSnapshot, InvestmentOutput> Compiled =
+        Expression.Compile();
 
+    public static InvestmentOutput Project(InvestmentPositionSnapshot investment) =>
+        Compiled(investment);
+
+    /// <summary>
+    /// Converts a point-in-time position, so the rate is looked up for the figure date.
+    /// </summary>
     public static async Task ApplyConversionAsync(
         InvestmentOutput investment,
-        CurrencySnapshot? displayCurrency,
-        DateOnly figureDate,
-        IExchangeRateReader rates)
+        FigureConverter converter,
+        DateOnly figureDate)
     {
-        if (displayCurrency is null)
-        {
-            return;
-        }
-
-        investment.DisplayCurrencyCode = displayCurrency.Code;
-        if (investment.CurrencyCode == displayCurrency.Code)
-        {
-            investment.DisplayPosition = Round(
-                investment.Position,
-                displayCurrency.MinorUnitDigits);
-            return;
-        }
-
-        var rate = await rates.FindApplicableAsync(
+        var conversion = await converter.ConvertAsync(
             investment.CurrencyCode,
-            displayCurrency.Code,
-            figureDate,
-            CancellationToken.None);
-        if (rate is null)
-        {
-            investment.UnconvertedReason = FigureConversionMessages.RateUnavailable;
-            return;
-        }
-
-        investment.DisplayPosition = Round(
-            investment.Position * rate.Rate,
-            displayCurrency.MinorUnitDigits);
-        investment.AppliedRate = rate.Rate;
-        investment.RateDate = rate.RateDate;
-        investment.RateSource = rate.Source;
+            investment.Position,
+            figureDate);
+        investment.DisplayCurrencyCode = converter.DisplayCurrency.Code;
+        investment.DisplayPosition = converter.Round(conversion.Value);
+        investment.AppliedRate = conversion.Rate?.Rate;
+        investment.RateDate = conversion.Rate?.RateDate;
+        investment.RateSource = conversion.Rate?.Source;
+        investment.UnconvertedReason = conversion.UnconvertedReason;
     }
-
-    private static decimal Round(decimal amount, short digits) =>
-        decimal.Round(amount, digits, MidpointRounding.AwayFromZero);
 }

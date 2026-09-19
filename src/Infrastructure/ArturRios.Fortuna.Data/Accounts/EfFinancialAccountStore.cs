@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.EntityMaps;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Accounts;
@@ -43,12 +44,28 @@ public sealed class EfFinancialAccountStore(
         FinancialAccountCreation creation,
         CancellationToken cancellationToken)
     {
-        var user = await context.UserProfiles.SingleAsync(
+        var user = await context.UserProfiles.SingleOrDefaultAsync(
             profile => profile.PublicId == creation.UserId,
             cancellationToken);
-        var currency = await context.Currencies.SingleAsync(
+        if (user is null)
+        {
+            return new FinancialAccountCreationResult(
+                null,
+                DuplicateName: false,
+                FinancialAccountCreationOutcome.ProfileNotFound);
+        }
+
+        var currency = await context.Currencies.SingleOrDefaultAsync(
             item => item.Code == creation.CurrencyCode,
             cancellationToken);
+        if (currency is null)
+        {
+            return new FinancialAccountCreationResult(
+                null,
+                DuplicateName: false,
+                FinancialAccountCreationOutcome.CurrencyNotSupported);
+        }
+
         var account = new FinancialAccount(
             user,
             creation.Name,
@@ -67,7 +84,11 @@ public sealed class EfFinancialAccountStore(
             DatabaseException.IsUniqueViolation(exception, FinancialAccountMap.LiveNameIndex))
         {
             context.Entry(account).State = EntityState.Detached;
-            return new FinancialAccountCreationResult(null, DuplicateName: true);
+
+            return new FinancialAccountCreationResult(
+                null,
+                DuplicateName: true,
+                FinancialAccountCreationOutcome.DuplicateName);
         }
 
         return new FinancialAccountCreationResult(Snapshot(account), DuplicateName: false);
@@ -100,26 +121,16 @@ public sealed class EfFinancialAccountStore(
             return null;
         }
 
-        var openedOn = DateOnly.FromDateTime(account.CreatedAt.UtcDateTime);
-        var movement = asOf < openedOn
-            ? 0m
-            : await context.FinancialTransactions
-                .AsNoTracking()
-                .Where(transaction =>
-                    transaction.FinancialAccountId == account.Id &&
-                    transaction.UserId == account.UserId &&
-                    !transaction.IsDeleted &&
-                    transaction.OccurredOn <= asOf)
-                .Select(transaction => (decimal?)(transaction.Direction ==
-                    Domain.Transactions.TransactionDirection.Earning
-                        ? transaction.Amount
-                        : -transaction.Amount))
-                .SumAsync(cancellationToken) ?? 0m;
+        var balances = await AccountBalanceCalculator.CalculateAsync(
+            context,
+            [new AccountOpening(account.Id, account.OpeningBalance, account.CreatedAt)],
+            asOf,
+            cancellationToken);
 
         return new FinancialAccountBalanceSnapshot(
             account.PublicId,
             account.CurrencyCode,
-            account.OpeningBalance + movement,
+            balances[account.Id],
             asOf);
     }
 
@@ -154,6 +165,7 @@ public sealed class EfFinancialAccountStore(
             DatabaseException.IsUniqueViolation(exception, FinancialAccountMap.LiveNameIndex))
         {
             context.Entry(account).State = EntityState.Detached;
+
             return new FinancialAccountUpdateResult(null, DuplicateName: true);
         }
 
@@ -172,6 +184,8 @@ public sealed class EfFinancialAccountStore(
             return LifecycleResult(FinancialAccountLifecycleOutcome.NotFound);
         }
 
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
         var deletion = account.SoftDelete(changedAt);
         var transactions = await context.FinancialTransactions
             .Where(item => item.FinancialAccountId == account.Id)
@@ -181,7 +195,19 @@ public sealed class EfFinancialAccountStore(
             transaction.SoftDeleteFromCascade(deletion.CascadeId, changedAt);
         }
 
+        var linkedLegs = await TransferCascade.SoftDeleteAsync(
+            context,
+            transactions,
+            deletion.CascadeId,
+            changedAt,
+            cancellationToken);
+        await attachments.SoftDeleteForTransactionsAsync(
+            CascadedTransactions(transactions.Concat(linkedLegs), deletion.CascadeId),
+            changedAt,
+            cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+
         return LifecycleResult(FinancialAccountLifecycleOutcome.Succeeded, account.PublicId);
     }
 
@@ -211,6 +237,19 @@ public sealed class EfFinancialAccountStore(
             transaction.RestoreFromCascade(cascadeId, changedAt);
         }
 
+        var linkedLegs = await TransferCascade.RestoreAsync(
+            context,
+            transactions,
+            cascadeId,
+            changedAt,
+            cancellationToken);
+        await attachments.RestoreForTransactionsAsync(
+            transactions.Concat(linkedLegs)
+                .Where(transaction => !transaction.IsDeleted)
+                .ToDictionary(transaction => transaction.Id, _ => cascadeId),
+            changedAt,
+            cancellationToken);
+
         try
         {
             await context.SaveChangesAsync(cancellationToken);
@@ -218,11 +257,7 @@ public sealed class EfFinancialAccountStore(
         catch (DbUpdateException exception) when (
             DatabaseException.IsUniqueViolation(exception, FinancialAccountMap.LiveNameIndex))
         {
-            context.Entry(account).State = EntityState.Detached;
-            foreach (var transaction in transactions)
-            {
-                context.Entry(transaction).State = EntityState.Detached;
-            }
+            context.ChangeTracker.Clear();
 
             return LifecycleResult(FinancialAccountLifecycleOutcome.DuplicateName);
         }
@@ -247,40 +282,58 @@ public sealed class EfFinancialAccountStore(
         var liveReferences = transactions.Any(item => !item.IsDeleted)
             ? new[] { "transactions" }
             : [];
-        try
+        var check = account.CheckHardDeletion(liveReferences);
+        if (!check.IsAllowed)
         {
-            account.EnsureHardDeletionAllowed(liveReferences);
-        }
-        catch (RecordLifecycleConflictException exception)
-        {
-            return exception.Conflict switch
-            {
-                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion =>
-                    LifecycleResult(FinancialAccountLifecycleOutcome.HardDeleteRequiresSoftDeletion),
-                RecordLifecycleConflict.HardDeleteHasLiveReferences =>
-                    LifecycleResult(FinancialAccountLifecycleOutcome.HardDeleteHasLiveTransactions),
-                _ => throw new InvalidOperationException(
-                    "An unexpected lifecycle conflict prevented hard deletion.",
-                    exception)
-            };
+            return LifecycleResult(
+                check.Conflict == RecordLifecycleConflict.HardDeleteRequiresSoftDeletion
+                    ? FinancialAccountLifecycleOutcome.HardDeleteRequiresSoftDeletion
+                    : FinancialAccountLifecycleOutcome.HardDeleteHasLiveTransactions);
         }
 
-        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+        if (await HasDependentsAsync(account.Id, cancellationToken))
+        {
+            return LifecycleResult(FinancialAccountLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var deletion = await TransactionHardDeletion.PlanAsync(
+            context,
+            transactions,
+            [],
             cancellationToken);
-        if (!await attachments.HardDeleteForTransactionsAsync(
-                transactions.Select(transaction => transaction.Id).ToArray(),
-                cancellationToken))
+        if (deletion.LiveReferences.Count > 0)
+        {
+            return LifecycleResult(FinancialAccountLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var removal = await attachments.RemoveForTransactionsAsync(
+            deletion.TransactionIds,
+            cancellationToken);
+        if (!removal.StorageAvailable)
         {
             return LifecycleResult(FinancialAccountLifecycleOutcome.AttachmentStorageUnavailable);
         }
 
-        context.FinancialTransactions.RemoveRange(transactions);
+        deletion.Remove(context);
         context.FinancialAccounts.Remove(account);
         await context.SaveChangesAsync(cancellationToken);
-        await databaseTransaction.CommitAsync(cancellationToken);
+        await attachments.DeleteObjectsAsync(removal.StorageKeys, CancellationToken.None);
 
         return LifecycleResult(FinancialAccountLifecycleOutcome.Succeeded, account.PublicId);
     }
+
+    private async Task<bool> HasDependentsAsync(
+        long accountId,
+        CancellationToken cancellationToken) =>
+        await context.Goals.AnyAsync(
+            goal => goal.Accounts.Any(account => account.Id == accountId),
+            cancellationToken) ||
+        await context.RecurringTransactions.AnyAsync(
+            rule => rule.FinancialAccountId == accountId,
+            cancellationToken) ||
+        await context.ConnectionResources.AnyAsync(
+            resource => resource.FinancialAccountId == accountId,
+            cancellationToken);
 
     private Task<FinancialAccount?> FindTrackedAsync(
         Guid userId,
@@ -290,6 +343,12 @@ public sealed class EfFinancialAccountStore(
             item.User.PublicId == userId &&
             item.PublicId == id,
             cancellationToken);
+
+    private static IReadOnlyDictionary<long, Guid> CascadedTransactions(
+        IEnumerable<Domain.Transactions.FinancialTransaction> transactions,
+        Guid cascadeId) => transactions
+        .Where(transaction => transaction.DeletionCascadeId == cascadeId)
+        .ToDictionary(transaction => transaction.Id, _ => cascadeId);
 
     private static FinancialAccountLifecycleResult LifecycleResult(
         FinancialAccountLifecycleOutcome outcome,

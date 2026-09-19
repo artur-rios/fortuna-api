@@ -73,7 +73,8 @@ int fortuna_capabilities(const char *request_json, char **response_json);
  * Initialize the native core from a UTF-8 JSON object.
  *
  * Request: `{"databasePath":"/absolute/path/fortuna.db","localAuthEnabled":true,
- * "tokenLifetimeSeconds":3600}`. The database is created and migrated on demand.
+ * "tokenLifetimeSeconds":3600}`. `tokenLifetimeSeconds` must be between 1 and 2592000
+ * (30 days). The database is created and migrated on demand.
  * Concurrent calls are supported; a second initialization returns 409.
  * The response is always library-owned and must be released with `fortuna_string_free`.
  */

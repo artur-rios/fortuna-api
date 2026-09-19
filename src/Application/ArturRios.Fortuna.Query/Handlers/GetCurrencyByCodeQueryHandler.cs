@@ -7,13 +7,14 @@ using ArturRios.Output;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
-public sealed class GetCurrencyByCodeQueryHandler(ICurrencyReader currencies)
+public sealed class GetCurrencyByCodeQueryHandler(
+    ICurrencyReader currencies)
     : IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>
 {
     public async Task<DataOutput<CurrencyOutput?>> HandleAsync(GetCurrencyByCodeQuery query)
     {
         var currency = await currencies.FindByCodeAsync(
-            query.Code.ToUpperInvariant(),
+            query.Code.Trim().ToUpperInvariant(),
             CancellationToken.None);
         if (currency is null)
         {

@@ -276,6 +276,7 @@ public sealed class PdfInvoiceImportTests : IAsyncLifetime
         }
 
         await context.SaveChangesAsync();
+
         return card.PublicId;
     }
 
@@ -300,6 +301,7 @@ public sealed class PdfInvoiceImportTests : IAsyncLifetime
         statement.Settle(settlement, Now);
         context.AddRange(user, card, category, statement, settlement);
         await context.SaveChangesAsync();
+
         return card.PublicId;
     }
 
@@ -308,6 +310,7 @@ public sealed class PdfInvoiceImportTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -331,6 +334,7 @@ public sealed class PdfInvoiceImportTests : IAsyncLifetime
         using var form = new MultipartFormDataContent();
         form.Add(new StringContent(cardId.ToString("D")), "CreditCardId");
         form.Add(new ByteArrayContent(pdf), "File", "invoice.pdf");
+
         return await client.PostAsync("/api/imports/pdf", form);
     }
 
@@ -378,6 +382,7 @@ public sealed class PdfInvoiceImportTests : IAsyncLifetime
     {
         using var builder = new PdfDocumentBuilder();
         _ = builder.AddPage(PageSize.A4);
+
         return builder.Build();
     }
 

@@ -409,6 +409,7 @@ public sealed class TransactionLifecycleTests : IAsyncLifetime
 
         context.AddRange(account, category, transaction);
         await context.SaveChangesAsync();
+
         return new AccountSeed(transaction.PublicId, account.PublicId);
     }
 
@@ -440,6 +441,7 @@ public sealed class TransactionLifecycleTests : IAsyncLifetime
         var transfer = new Transfer(outbound, inbound, null, null, DateTimeOffset.UtcNow);
         context.AddRange(origin, destination, category, outbound, inbound, transfer);
         await context.SaveChangesAsync();
+
         return new TransferSeed(
             transfer.PublicId,
             outbound.PublicId,
@@ -479,6 +481,7 @@ public sealed class TransactionLifecycleTests : IAsyncLifetime
         var transfer = new Transfer(transaction, movement, null, null, DateTimeOffset.UtcNow);
         context.AddRange(account, category, investment, transaction, movement, transfer);
         await context.SaveChangesAsync();
+
         return new InvestmentTransferSeed(
             transfer.PublicId,
             transaction.PublicId,
@@ -546,6 +549,7 @@ public sealed class TransactionLifecycleTests : IAsyncLifetime
             inbound,
             transfer);
         await context.SaveChangesAsync();
+
         return new SettledSeed(charge.PublicId, outbound.PublicId);
     }
 
@@ -582,6 +586,7 @@ public sealed class TransactionLifecycleTests : IAsyncLifetime
         statement.RecalculatePurchaseTotal(50m, DateTimeOffset.UtcNow);
         context.AddRange(card, category, transaction, statement);
         await context.SaveChangesAsync();
+
         return new CardSeed(transaction.PublicId, statement.PublicId);
     }
 
@@ -646,6 +651,7 @@ public sealed class TransactionLifecycleTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

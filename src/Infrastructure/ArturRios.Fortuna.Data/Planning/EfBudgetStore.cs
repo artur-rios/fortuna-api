@@ -1,9 +1,11 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,6 +53,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             creation.CreatedAt);
         context.Budgets.Add(budget);
         await context.SaveChangesAsync(cancellationToken);
+
         return new BudgetMutationResult(
             await SnapshotAsync(
                 budget,
@@ -59,18 +62,22 @@ public sealed class EfBudgetStore(AppDbContext context)
             BudgetMutationOutcome.Succeeded);
     }
 
-    public async Task<IReadOnlyCollection<BudgetSnapshot>> ListAsync(
+    public async Task<ReadPage<BudgetSnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
         DateOnly asOf,
+        PageRequest page,
         CancellationToken cancellationToken)
     {
-        var budgets = await BudgetQuery()
-            .Where(item =>
-                item.User.PublicId == userId &&
-                (includeDeleted || !item.IsDeleted))
+        var owned = BudgetQuery().Where(item =>
+            item.User.PublicId == userId &&
+            (includeDeleted || !item.IsDeleted));
+        var totalItems = await owned.CountAsync(cancellationToken);
+        var budgets = await owned
             .OrderBy(item => item.PeriodStart)
             .ThenBy(item => item.PublicId)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
             .ToArrayAsync(cancellationToken);
         var snapshots = new List<BudgetSnapshot>(budgets.Length);
         foreach (var budget in budgets)
@@ -78,7 +85,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             snapshots.Add(await SnapshotAsync(budget, asOf, cancellationToken));
         }
 
-        return snapshots;
+        return new ReadPage<BudgetSnapshot>(snapshots, totalItems);
     }
 
     public async Task<BudgetSnapshot?> FindByIdAsync(
@@ -93,6 +100,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             item.PublicId == id &&
             (includeDeleted || !item.IsDeleted),
             cancellationToken);
+
         return budget is null ? null : await SnapshotAsync(budget, asOf, cancellationToken);
     }
 
@@ -136,6 +144,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             budget,
             periodDate,
             cancellationToken);
+
         return new BudgetConsumptionResult(
             new BudgetConsumptionDetailSnapshot(
                 budget.PublicId,
@@ -194,6 +203,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             update.IncludeDescendants,
             update.UpdatedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new BudgetMutationResult(
             await SnapshotAsync(
                 budget,
@@ -219,6 +229,7 @@ public sealed class EfBudgetStore(AppDbContext context)
 
         budget.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new BudgetMutationResult(
             await SnapshotAsync(budget, asOf, cancellationToken),
             BudgetMutationOutcome.Succeeded);
@@ -242,6 +253,7 @@ public sealed class EfBudgetStore(AppDbContext context)
                 requested.Contains(item.PublicId) &&
                 !item.IsDeleted)
             .ToListAsync(cancellationToken);
+
         return categories.Count == requested.Length ? categories : null;
     }
 
@@ -259,6 +271,7 @@ public sealed class EfBudgetStore(AppDbContext context)
             calculation.IsExceeded,
             calculation.Overage,
             calculation.IsFullyConverted);
+
         return new BudgetSnapshot(
             budget.PublicId,
             budget.Amount,
@@ -323,14 +336,11 @@ public sealed class EfBudgetStore(AppDbContext context)
                 continue;
             }
 
-            var rate = await context.ExchangeRates
-                .AsNoTracking()
-                .Where(item =>
-                    item.BaseCurrency.Code == figure.CurrencyCode &&
-                    item.QuoteCurrency.Code == budget.Currency.Code &&
-                    item.RateDate <= figure.OccurredOn)
-                .OrderByDescending(item => item.RateDate)
-                .ThenByDescending(item => item.Source)
+            var rate = await ExchangeRateLookup.Applicable(
+                    context,
+                    figure.CurrencyCode,
+                    budget.Currency.Code,
+                    figure.OccurredOn)
                 .Select(item => new AppliedRate(
                     item.Rate,
                     item.RateDate,
@@ -385,6 +395,7 @@ public sealed class EfBudgetStore(AppDbContext context)
         decimal? roundedSpent = fullyConverted
             ? Round(figures.Sum(item => item.ConvertedAmount!.Value), budget)
             : null;
+
         return new ConsumptionCalculation(
             period.Start,
             period.End,

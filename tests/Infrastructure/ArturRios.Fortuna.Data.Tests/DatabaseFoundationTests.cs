@@ -336,7 +336,7 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         Assert.Equal(auditSubject.SubjectReference, retainedBeforeDelete.SubjectReference);
         Assert.NotEqual(actor.PublicId, retainedBeforeDelete.SubjectReference);
         Assert.NotEqual(actorId, persistedTarget.Id);
-        persistedTarget.EnsureHardDeletionAllowed();
+        Assert.True(persistedTarget.CheckHardDeletion().IsAllowed);
         context.UserProfiles.Remove(persistedTarget);
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
@@ -383,6 +383,30 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenJobsWithSharedKeyPrefix_WhenFindingActive_ThenOnlyPendingOrRunningMatchIsReturned()
+    {
+        await using var context = CreateContext();
+        var prefix = $"manual:active-test:{Guid.NewGuid():N}:";
+        var finished = BackgroundJob.Create("active-test", "{}", prefix + "finished", null, DateTimeOffset.UtcNow);
+        finished.Start(DateTimeOffset.UtcNow);
+        finished.Fail("done", DateTimeOffset.UtcNow);
+        var otherType = BackgroundJob.Create("other-type", "{}", prefix + "other", null, DateTimeOffset.UtcNow);
+        context.BackgroundJobs.AddRange(finished, otherType);
+        await context.SaveChangesAsync(CancellationToken.None);
+        var store = new EfBackgroundJobStore(context);
+
+        var none = await store.FindActiveAsync("active-test", prefix, CancellationToken.None);
+        var running = BackgroundJob.Create("active-test", "{}", prefix + "running", null, DateTimeOffset.UtcNow);
+        running.Start(DateTimeOffset.UtcNow);
+        context.BackgroundJobs.Add(running);
+        await context.SaveChangesAsync(CancellationToken.None);
+        var found = await store.FindActiveAsync("active-test", prefix, CancellationToken.None);
+
+        Assert.Null(none);
+        Assert.Equal(running.Id, found?.Id);
+    }
+
+    [FunctionalFact]
     public async Task GivenConcurrentLocalAccountCreations_WhenPersisted_ThenExactlyOneWins()
     {
         await using var seedContext = CreateContext();
@@ -402,6 +426,47 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         await using var assertionContext = CreateContext();
         Assert.Equal(1, await assertionContext.LocalAccounts.CountAsync());
         Assert.Equal(1, await assertionContext.UserProfiles.CountAsync());
+    }
+
+    [FunctionalTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GivenStoredRecoveryDigest_WhenRecoveringWithTheCode_ThenLegacyAndCurrentDigestsBothRedeem(
+        bool legacy)
+    {
+        const string code = "ABCD-1234";
+        await using var seedContext = CreateContext();
+        await new DatabaseSeeder(seedContext).SeedAsync(CancellationToken.None);
+        var options = new LocalAccountOptions(true, 2, "BRL", "pt-BR");
+        byte[] digest = legacy
+            ? System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(code))
+            : LocalRecoveryCodeHash.Compute(code);
+        await new EfLocalAccountStore(seedContext, options).CreateAsync(
+            new LocalAccountCreation(
+                "Recovering User",
+                [1, 10],
+                [1, 20],
+                LocalAccountStorageMode.InMemory,
+                [digest, LocalRecoveryCodeHash.Compute("WXYZ-9876")],
+                DateTimeOffset.UtcNow),
+            CancellationToken.None);
+        await using var context = CreateContext();
+        var store = new EfLocalAccountStore(context, options);
+
+        var wrong = await store.RecoverAsync(
+            new LocalAccountRecovery("Recovering User", "ABCD-9999", [2, 10], [2, 20], DateTimeOffset.UtcNow),
+            CancellationToken.None);
+        var recovered = await store.RecoverAsync(
+            new LocalAccountRecovery("Recovering User", code, [3, 10], [3, 20], DateTimeOffset.UtcNow),
+            CancellationToken.None);
+        var reused = await store.RecoverAsync(
+            new LocalAccountRecovery("Recovering User", code, [4, 10], [4, 20], DateTimeOffset.UtcNow),
+            CancellationToken.None);
+
+        Assert.Equal(LocalAccountRecoveryStatus.InvalidCode, wrong.Status);
+        Assert.Equal(LocalAccountRecoveryStatus.Recovered, recovered.Status);
+        Assert.Equal(1, recovered.Account!.RemainingRecoveryCodes);
+        Assert.Equal(LocalAccountRecoveryStatus.InvalidCode, reused.Status);
     }
 
     [FunctionalFact]
@@ -720,6 +785,7 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(connectionString)
             .Options;
+
         return new AppDbContext(options, NullLoggerFactory.Instance, DatabaseDiagnosticsOptions.Disabled);
     }
 

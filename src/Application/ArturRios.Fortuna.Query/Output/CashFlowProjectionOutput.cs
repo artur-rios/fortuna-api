@@ -23,6 +23,8 @@ public sealed class CashFlowProjectionOutput : QueryOutput
     public string? EstimateOmittedReason { get; set; }
     public IReadOnlyCollection<CashFlowPeriodOutput> Periods { get; set; } = [];
     public IReadOnlyCollection<CashFlowRateOutput> Rates { get; set; } = [];
+    public bool IsFullyConverted { get; set; } = true;
+    public IReadOnlyCollection<MissingExchangeRateOutput> MissingRates { get; set; } = [];
 }
 
 public sealed class CashFlowPeriodOutput

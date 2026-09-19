@@ -1,12 +1,14 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -77,23 +79,24 @@ public sealed class ImportPdfInvoiceCommandHandlerTests
         Assert.Null(store.Request);
     }
 
-    private static ImportPdfInvoiceCommandHandler Handler(
+    private static ICommandHandlerAsync<ImportPdfInvoiceCommand, ImportPdfInvoiceCommandOutput> Handler(
         StubStore store,
         StubQueue queue,
-        int maximumBytes = 1024) => new(
-        new ImportPdfInvoiceCommandValidator(new PdfInvoiceImportOptions(maximumBytes)),
-        new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
-        new StubProfileReader(new UserProfileSnapshot(
-            Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now)),
+        int maximumBytes = 1024) => new ImportPdfInvoiceCommandHandler(
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(new UserProfileSnapshot(
+                Guid.NewGuid(), Guid.NewGuid(), "Owner", "BRL", false, Now, Now))),
         store,
         queue,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now))
+            .Validated(new ImportPdfInvoiceCommandValidator(new PdfInvoiceImportOptions(maximumBytes)));
 
     private static ImportPdfInvoiceCommand Command() => new()
     {
         CreditCardId = Guid.NewGuid(),
         FileName = "invoice.pdf",
-        Content = [1, 2, 3],
+        Content = "%PDF-1.7"u8.ToArray(),
         CorrelationId = "request-60"
     };
 
@@ -111,6 +114,7 @@ public sealed class ImportPdfInvoiceCommandHandlerTests
             var job = outcome == QueuePdfInvoiceImportOutcome.Succeeded
                 ? new PdfInvoiceImportJobSnapshot(JobId, ImportJobStatus.Pending, Now, Now)
                 : null;
+
             return Task.FromResult(new QueuePdfInvoiceImportResult(
                 job,
                 job is null ? null : BackgroundJobId,
@@ -121,12 +125,12 @@ public sealed class ImportPdfInvoiceCommandHandlerTests
             Guid importJobId, DateTimeOffset startedAt, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task CompleteAsync(
+        public Task<ImportCompletionResult> CompleteAsync(
             Guid importJobId, Guid userId, Guid creditCardId, ParsedPdfInvoice invoice,
             DateTimeOffset completedAt, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
-        public Task FailAsync(
+        public Task<JobTransitionOutcome> FailAsync(
             Guid importJobId, string reason, DateTimeOffset failedAt,
             CancellationToken cancellationToken) => throw new NotSupportedException();
     }
@@ -139,6 +143,7 @@ public sealed class ImportPdfInvoiceCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 

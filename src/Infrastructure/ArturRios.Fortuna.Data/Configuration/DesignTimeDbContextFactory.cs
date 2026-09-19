@@ -21,6 +21,7 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<App
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         DatabaseProvider.Configure(builder, provider, connection);
         var options = builder.Options;
+
         return new AppDbContext(options, NullLoggerFactory.Instance, DatabaseDiagnosticsOptions.Disabled);
     }
 }

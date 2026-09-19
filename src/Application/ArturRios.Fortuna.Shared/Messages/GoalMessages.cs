@@ -9,15 +9,19 @@ public static class GoalMessages
     public const string ProgressRetrievedSuccessfully =
         "Goal progress retrieved successfully.";
     public const string ListedSuccessfully = "Goals retrieved successfully.";
+    public const string InvalidPageNumber = "PageNumber must be at least 1.";
+    public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string NotFound = "Goal not found.";
     public const string ResourceNotFound =
         "One or more linked accounts or investments were not found.";
     public const string CurrencyNotSupported = "The currency is not supported.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string NameRequired = "Name is required.";
     public const string NameTooLong = "Name cannot exceed 200 characters.";
     public const string TargetAmountMustBePositive =
         "TargetAmount must be greater than zero.";
+    public const string TargetAmountPrecisionInvalid =
+        "TargetAmount must have at most 4 decimal places and 15 integer digits.";
     public const string CurrencyRequired = "CurrencyCode is required.";
     public const string CurrencyInvalid = "CurrencyCode must contain three characters.";
     public const string TargetDateRequired = "TargetDate is required.";

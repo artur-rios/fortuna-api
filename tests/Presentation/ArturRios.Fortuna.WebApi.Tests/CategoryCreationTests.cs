@@ -174,7 +174,7 @@ public sealed class CategoryCreationTests : IAsyncLifetime
             "/api/categories",
             new { Name = "Rejected", ParentId = root.Id });
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains(
             CategoryMessages.CycleDetected,
             await response.Content.ReadAsStringAsync(),
@@ -294,6 +294,7 @@ public sealed class CategoryCreationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -309,6 +310,7 @@ public sealed class CategoryCreationTests : IAsyncLifetime
             "/api/categories",
             new { Name = name, ParentId = parentId });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
         return (await response.Content.ReadFromJsonAsync<CategoryEnvelope>())!.Data!;
     }
 

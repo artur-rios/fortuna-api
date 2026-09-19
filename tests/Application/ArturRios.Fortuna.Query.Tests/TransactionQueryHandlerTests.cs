@@ -3,12 +3,14 @@ using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Currencies;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -231,7 +233,7 @@ public sealed class TransactionQueryHandlerTests
     }
 
     [UnitFact]
-    public async Task GivenSeveralCurrenciesWithoutDisplayCurrency_WhenSearched_ThenTotalsRemainSplit()
+    public async Task GivenNoDisplayCurrency_WhenSearched_ThenTotalsFallBackToTheProfileCurrency()
     {
         var profile = Profile();
         var reader = new StubTransactionReader(
@@ -241,12 +243,19 @@ public sealed class TransactionQueryHandlerTests
                 new("USD", 10m, 3m)
             ]);
 
-        var result = await SearchHandler(profile, reader).HandleAsync(new SearchTransactionsQuery());
+        var result = await SearchHandler(profile, reader).HandleAsync(
+            new SearchTransactionsQuery { DisplayCurrencyCode = "  " });
 
+        Assert.True(result.Success);
         Assert.Equal(2, result.Data?.Totals.ByCurrency.Count);
-        Assert.Null(result.Data?.Totals.DisplayCurrencyCode);
+        Assert.Equal("BRL", result.Data?.Totals.DisplayCurrencyCode);
+        Assert.Equal(-15m, result.Data?.Totals.ByCurrency.First().DisplayNet);
         Assert.Null(result.Data?.Totals.DisplayNet);
-        Assert.Equal(-15m, result.Data?.Totals.ByCurrency.First().Net);
+        Assert.False(result.Data?.Totals.IsFullyConverted);
+        var missing = Assert.Single(result.Data!.Totals.MissingRates);
+        Assert.Equal("USD", missing.BaseCurrencyCode);
+        Assert.Equal("BRL", missing.QuoteCurrencyCode);
+        Assert.Contains(FigureConversionMessages.PartiallyConverted, result.Messages);
     }
 
     [UnitFact]
@@ -275,8 +284,8 @@ public sealed class TransactionQueryHandlerTests
             });
 
         Assert.Equal("BRL", result.Data?.Totals.DisplayCurrencyCode);
-        Assert.Equal(53.37m, result.Data?.Totals.DisplayExpense);
-        Assert.Equal(15.02m, result.Data?.Totals.DisplayEarning);
+        Assert.Equal(53.36m, result.Data?.Totals.DisplayExpense);
+        Assert.Equal(15.01m, result.Data?.Totals.DisplayEarning);
         Assert.Equal(-38.35m, result.Data?.Totals.DisplayNet);
         Assert.Equal(
             result.Data?.Totals.DisplayEarning - result.Data?.Totals.DisplayExpense,
@@ -363,29 +372,27 @@ public sealed class TransactionQueryHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static GetTransactionByIdQueryHandler DetailHandler(
+    private static IQueryHandlerAsync<GetTransactionByIdQuery, TransactionOutput> DetailHandler(
         UserProfileSnapshot? profile,
-        ITransactionReader transactions) => new(
-        new GetTransactionByIdQueryValidator(),
-        new StubProfileReader(profile),
-        transactions,
-        Actor(profile));
+        ITransactionReader transactions) => new GetTransactionByIdQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+        transactions).Validated(new GetTransactionByIdQueryValidator());
 
-    private static SearchTransactionsQueryHandler SearchHandler(
+    private static IQueryHandlerAsync<SearchTransactionsQuery, TransactionSearchOutput> SearchHandler(
         UserProfileSnapshot? profile,
         ITransactionReader transactions,
         int maximumPageSize = 100,
         IExchangeRateReader? rates = null,
         StubProfileReader? profiles = null,
-        RequestActor? actor = null) => new(
-        new SearchTransactionsQueryValidator(),
-        profiles ?? new StubProfileReader(profile),
+        RequestActor? actor = null) => new SearchTransactionsQueryHandler(
+        new CurrentProfileResolver(
+            new StubActor(actor ?? ActorValue(profile)),
+            profiles ?? new StubProfileReader(profile)),
         transactions,
         new StubCurrencyReader(),
         rates ?? new StubRateReader(),
-        new StubActor(actor ?? ActorValue(profile)),
         new PaginationOptions(maximumPageSize),
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new SearchTransactionsQueryValidator());
 
     private static StubActor Actor(UserProfileSnapshot? profile) => new(ActorValue(profile));
 
@@ -461,6 +468,7 @@ public sealed class TransactionQueryHandlerTests
         public IQueryable<TransactionReadSnapshot> Query(TransactionSearchCriteria criteria)
         {
             LastCriteria = criteria;
+
             return snapshots.AsQueryable();
         }
 
@@ -478,6 +486,7 @@ public sealed class TransactionQueryHandlerTests
             CancellationToken cancellationToken)
         {
             LastCriteria = criteria;
+
             return Task.FromResult(totals);
         }
     }
@@ -495,6 +504,7 @@ public sealed class TransactionQueryHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }
@@ -529,6 +539,7 @@ public sealed class TransactionQueryHandlerTests
             CancellationToken cancellationToken)
         {
             LastFigureDate = figureDate;
+
             return Task.FromResult(rate);
         }
     }

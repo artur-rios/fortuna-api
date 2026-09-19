@@ -5,13 +5,15 @@ using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Data.Users;
 
 /// <summary>Executes the irreversible, dependency-ordered user erasure boundary.</summary>
 public sealed class EfUserErasureStore(
     AppDbContext context,
-    IAttachmentStore objects) : IUserErasureStore
+    IAttachmentLifecycleStore attachments,
+    ILogger<EfUserErasureStore> logger) : IUserErasureStore
 {
     public async Task<UserErasureResult?> EraseAsync(
         Guid userId,
@@ -91,7 +93,6 @@ public sealed class EfUserErasureStore(
             .Concat(exports.Select(item => item.StorageKey).OfType<string>())
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var objectBackups = await ReadObjectsAsync(objectKeys, cancellationToken);
 
         var movementIds = context.InvestmentMovements
             .Where(item => investmentIds.Contains(item.InvestmentId))
@@ -150,68 +151,66 @@ public sealed class EfUserErasureStore(
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        await DeleteDependentsAsync(
+            user.Id,
+            accountIds,
+            cardIds,
+            investmentIds,
+            transactionIds,
+            importJobIds,
+            backgroundJobIds,
+            cancellationToken);
 
-        try
+        if (liveConnections.Count > 0)
         {
-            await DeleteDependentsAsync(
-                user.Id,
-                accountIds,
-                cardIds,
-                investmentIds,
-                transactionIds,
-                importJobIds,
-                backgroundJobIds,
-                cancellationToken);
-
-            if (liveConnections.Count > 0)
-            {
-                context.AuditEntries.Add(new AuditEntry(
-                    subjectReference,
-                    "RevokeConnectionsForUserErasure",
-                    null,
-                    null,
-                    AuditOutcome.Succeeded,
-                    null,
-                    erasedAt));
-            }
             context.AuditEntries.Add(new AuditEntry(
                 subjectReference,
-                "EraseUserCommand",
+                "RevokeConnectionsForUserErasure",
                 null,
                 null,
                 AuditOutcome.Succeeded,
                 null,
                 erasedAt));
-            await context.SaveChangesAsync(cancellationToken);
-
-            // Bulk deletes deliberately bypass the change tracker; clear it before the two
-            // identity roots so stale required navigations cannot trigger an implicit cascade.
-            context.ChangeTracker.Clear();
-            await context.AuditSubjects
-                .Where(item => item.UserId == user.Id)
-                .ExecuteDeleteAsync(cancellationToken);
-            await context.UserProfiles
-                .Where(item => item.Id == user.Id)
-                .ExecuteDeleteAsync(cancellationToken);
-
-            foreach (var key in objectKeys)
-            {
-                await objects.DeleteAsync(key, cancellationToken);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
         }
-        catch
+
+        context.AuditEntries.Add(new AuditEntry(
+            subjectReference,
+            "EraseUserCommand",
+            null,
+            null,
+            AuditOutcome.Succeeded,
+            null,
+            erasedAt));
+        await context.SaveChangesAsync(cancellationToken);
+
+        // Bulk deletes deliberately bypass the change tracker; clear it before the two
+        // identity roots so stale required navigations cannot trigger an implicit cascade.
+        context.ChangeTracker.Clear();
+        await context.AuditSubjects
+            .Where(item => item.UserId == user.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+        await context.UserProfiles
+            .Where(item => item.Id == user.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        // Stored objects are removed only once the erasure is committed, so a failed erasure
+        // never leaves records pointing at deleted files. An object that cannot be deleted
+        // now is reported for manual cleanup instead of undoing the committed erasure.
+        var deletion = await attachments.DeleteObjectsAsync(objectKeys, CancellationToken.None);
+        if (deletion.Orphaned.Count > 0)
         {
-            await transaction.RollbackAsync(CancellationToken.None);
-            await RestoreObjectsAsync(objectBackups, CancellationToken.None);
-            throw;
+            logger.LogWarning(
+                "User erasure {SubjectReference} left {Count} stored objects that could not be deleted",
+                subjectReference,
+                deletion.Orphaned.Count);
         }
 
         return new UserErasureResult(
             subjectReference,
             counts,
-            liveConnections.Count);
+            liveConnections.Count,
+            deletion.Orphaned.Count == 0 ? null : deletion.Orphaned);
     }
 
     private async Task DeleteDependentsAsync(
@@ -305,39 +304,5 @@ public sealed class EfUserErasureStore(
             .Where(item => item.LocalAccount.UserId == userId)
             .ExecuteDeleteAsync(cancellationToken);
         await context.LocalAccounts.Where(item => item.UserId == userId).ExecuteDeleteAsync(cancellationToken);
-    }
-
-    private async Task<Dictionary<string, byte[]>> ReadObjectsAsync(
-        IEnumerable<string> keys,
-        CancellationToken cancellationToken)
-    {
-        var backups = new Dictionary<string, byte[]>(StringComparer.Ordinal);
-        foreach (var key in keys)
-        {
-            try
-            {
-                await using var source = await objects.OpenReadAsync(key, cancellationToken);
-                using var copy = new MemoryStream();
-                await source.CopyToAsync(copy, cancellationToken);
-                backups[key] = copy.ToArray();
-            }
-            catch (AttachmentObjectNotFoundException)
-            {
-                // A missing object is already physically erased; its metadata is still removed.
-            }
-        }
-
-        return backups;
-    }
-
-    private async Task RestoreObjectsAsync(
-        IReadOnlyDictionary<string, byte[]> backups,
-        CancellationToken cancellationToken)
-    {
-        foreach (var (key, content) in backups)
-        {
-            await using var stream = new MemoryStream(content, writable: false);
-            await objects.WriteAsync(key, stream, cancellationToken);
-        }
     }
 }

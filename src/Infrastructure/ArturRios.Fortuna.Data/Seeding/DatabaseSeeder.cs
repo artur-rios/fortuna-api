@@ -31,6 +31,7 @@ public sealed class DatabaseSeeder(AppDbContext context)
             ?? throw new InvalidOperationException($"Embedded currency resource '{resourceName}' was not found.");
         var document = JsonSerializer.Deserialize<CurrencyDocument>(stream)
             ?? throw new InvalidOperationException("The ISO 4217 currency resource is invalid.");
+
         return document.Currencies.Select(item => new Currency(item.Code, item.Name, MinorUnits(item.Code))).ToArray();
     }
 

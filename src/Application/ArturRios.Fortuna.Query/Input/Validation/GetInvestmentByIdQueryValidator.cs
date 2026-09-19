@@ -11,7 +11,7 @@ public sealed class GetInvestmentByIdQueryValidator : AbstractValidator<GetInves
             .NotEmpty()
             .WithMessage(InvestmentMessages.InvestmentIdRequired);
         RuleFor(query => query.DisplayCurrencyCode)
-            .Must(InvestmentQueryValidation.IsOptionalCurrencyCode)
+            .OptionalCurrencyCode()
             .WithMessage(InvestmentMessages.DisplayCurrencyInvalid);
     }
 }

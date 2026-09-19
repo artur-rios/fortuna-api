@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -40,6 +42,38 @@ public sealed class EraseUserCommandHandlerTests
         Assert.True(result.Data.Irreversible);
         Assert.Equal(UserId, store.ErasedUserId);
         Assert.Contains(UserErasureMessages.ErasedSuccessfully, result.Messages);
+    }
+
+    [UnitFact]
+    public async Task GivenErasedHeimdallUser_WhenErased_ThenProvisionedProfileIsForgotten()
+    {
+        var provisioned = new StubProvisionedProfiles();
+        var handler = Handler(
+            new RequestActor(ExternalSubject, (int)HeimdallRoles.User, null, []),
+            Profile(),
+            new StubErasureStore(Result()),
+            provisioned);
+
+        var result = await handler.HandleAsync(ConfirmedSelf());
+
+        Assert.True(result.Success);
+        Assert.Equal([ExternalSubject], provisioned.Forgotten);
+    }
+
+    [UnitFact]
+    public async Task GivenErasureFindsNothing_WhenErased_ThenNothingIsForgotten()
+    {
+        var provisioned = new StubProvisionedProfiles();
+        var handler = Handler(
+            new RequestActor(ExternalSubject, (int)HeimdallRoles.User, null, []),
+            Profile(),
+            new StubErasureStore(null),
+            provisioned);
+
+        var result = await handler.HandleAsync(ConfirmedSelf());
+
+        Assert.False(result.Success);
+        Assert.Empty(provisioned.Forgotten);
     }
 
     [UnitFact]
@@ -160,20 +194,24 @@ public sealed class EraseUserCommandHandlerTests
         Now,
         Now);
 
-    private static EraseUserCommandHandler Handler(
+    private static ICommandHandlerAsync<EraseUserCommand, EraseUserCommandOutput> Handler(
         RequestActor actor,
         UserProfileSnapshot? profile,
-        StubErasureStore store) => Handler(actor, new StubProfiles(profile), store);
+        StubErasureStore store,
+        StubProvisionedProfiles? provisioned = null) =>
+        Handler(actor, new StubProfiles(profile), store, provisioned);
 
-    private static EraseUserCommandHandler Handler(
+    private static ICommandHandlerAsync<EraseUserCommand, EraseUserCommandOutput> Handler(
         RequestActor actor,
         StubProfiles profiles,
-        StubErasureStore store) => new(
-        new EraseUserCommandValidator(),
+        StubErasureStore store,
+        StubProvisionedProfiles? provisioned = null) => new EraseUserCommandHandler(
         new StubActor(actor),
         profiles,
+        new CurrentProfileResolver(new StubActor(actor), profiles),
         store,
-        new FixedTimeProvider(Now));
+        provisioned ?? new StubProvisionedProfiles(),
+        new FixedTimeProvider(Now)).Validated(new EraseUserCommandValidator());
 
     private sealed class StubActor(RequestActor actor) : IRequestActorAccessor
     {
@@ -190,6 +228,7 @@ public sealed class EraseUserCommandHandlerTests
             CancellationToken cancellationToken)
         {
             ExternalSubjectLookupUsed = true;
+
             return Task.FromResult(profile);
         }
 
@@ -198,6 +237,7 @@ public sealed class EraseUserCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }
@@ -212,8 +252,22 @@ public sealed class EraseUserCommandHandlerTests
             CancellationToken cancellationToken)
         {
             ErasedUserId = userId;
+
             return Task.FromResult(result);
         }
+    }
+
+    private sealed class StubProvisionedProfiles : IProvisionedProfileCache
+    {
+        public List<Guid> Forgotten { get; } = [];
+
+        public bool IsProvisioned(Guid externalSubject) => false;
+
+        public void MarkProvisioned(Guid externalSubject)
+        {
+        }
+
+        public void Forget(Guid externalSubject) => Forgotten.Add(externalSubject);
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider

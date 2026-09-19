@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Command.Services;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -9,6 +10,7 @@ using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -138,22 +140,20 @@ public sealed class CreateConnectionCommandHandlerTests
         Assert.Contains(ConnectionMessages.Duplicate, result.Errors);
     }
 
-    private static CreateConnectionCommandHandler Handler(
+    private static ICommandHandlerAsync<CreateConnectionCommand, CreateConnectionCommandOutput> Handler(
         UserProfileSnapshot? profile,
         StubConnectionStore store,
         StubGateway gateway,
         StubProtector protector,
-        bool consentCurrent = true) => new(
-            new CreateConnectionCommandValidator(),
-            new StubActorAccessor(new RequestActor(
-                profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-            new StubProfileReader(profile),
+        bool consentCurrent = true) => new CreateConnectionCommandHandler(
+            new CurrentProfileResolver(new StubActorAccessor(new RequestActor(
+                profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])), new StubProfileReader(profile)),
             store,
             gateway,
             protector,
             new FixedTimeProvider(Now),
             new StubConsentReader(consentCurrent),
-            new ProcessingConsentOptions("1.0"));
+            new ProcessingConsentOptions("1.0")).Validated(new CreateConnectionCommandValidator());
 
     private static CreateConnectionCommand ValidCommand(string? reference = null) => new()
     {
@@ -178,6 +178,7 @@ public sealed class CreateConnectionCommandHandlerTests
             ConnectionCreation creation, CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(Result);
         }
     }
@@ -190,6 +191,7 @@ public sealed class CreateConnectionCommandHandlerTests
             string externalReference, CancellationToken cancellationToken)
         {
             CallCount++;
+
             return Task.FromResult(result);
         }
     }
@@ -201,6 +203,7 @@ public sealed class CreateConnectionCommandHandlerTests
         public byte[] Protect(string accessToken)
         {
             ProtectedValue = accessToken;
+
             return [7, 8, 9];
         }
 

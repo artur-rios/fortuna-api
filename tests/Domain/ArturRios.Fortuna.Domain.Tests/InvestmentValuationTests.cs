@@ -132,6 +132,56 @@ public sealed class InvestmentValuationTests
             InvestmentPositionCalculator.Calculate([], null!));
     }
 
+    [UnitFact]
+    public void GivenSameDayMovementRecordedAfterValuation_WhenCalculated_ThenItAdjustsPosition()
+    {
+        var investment = Investment();
+        var valuedOn = new DateOnly(2026, 9, 3);
+        var valuation = Valuation(investment, 120m, valuedOn);
+        var later = new InvestmentMovement(
+            investment, InvestmentMovementType.Contribution, 30m, valuedOn, Now.AddMinutes(5));
+
+        var position = InvestmentPositionCalculator.Calculate([later], [valuation]);
+
+        Assert.Equal(150m, position.Value);
+    }
+
+    [UnitFact]
+    public void GivenSameDayMovementRecordedBeforeValuation_WhenCalculated_ThenItIsAlreadyReflected()
+    {
+        var investment = Investment();
+        var valuedOn = new DateOnly(2026, 9, 3);
+        var earlier = new InvestmentMovement(
+            investment, InvestmentMovementType.Contribution, 30m, valuedOn, Now.AddMinutes(-5));
+        var valuation = Valuation(investment, 120m, valuedOn);
+
+        var position = InvestmentPositionCalculator.Calculate([earlier], [valuation]);
+
+        Assert.Equal(120m, position.Value);
+    }
+
+    [UnitFact]
+    public void GivenDeletedInvestmentOrMissingDate_WhenValued_ThenValuationIsRejected()
+    {
+        var deleted = Investment();
+        deleted.SoftDelete(Now);
+
+        Assert.Throws<ArgumentException>(() =>
+            new InvestmentValuation(deleted, 100m, new DateOnly(2026, 9, 4), Now));
+        Assert.Throws<ArgumentException>(() =>
+            new InvestmentValuation(Investment(), 100m, default, Now));
+    }
+
+    [UnitFact]
+    public void GivenDeletedValuation_WhenReplaced_ThenItIsRefused()
+    {
+        var valuation = Valuation(Investment(), 100m, new DateOnly(2026, 9, 4));
+        valuation.SoftDelete(Now);
+
+        Assert.Throws<InvalidOperationException>(() => valuation.ReplaceValue(200m, Now));
+        Assert.Equal(100m, valuation.Value);
+    }
+
     private static InvestmentValuation Valuation(
         Investment investment,
         decimal value,
@@ -147,6 +197,7 @@ public sealed class InvestmentValuationTests
     {
         var currency = new Currency("BRL", "Brazilian real", 2);
         var user = new UserProfile(Guid.NewGuid(), "Owner", currency, Now);
+
         return new Investment(
             user,
             "Fund",

@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Shared.Jobs;
 
 namespace ArturRios.Fortuna.Shared.Ingestion;
 
@@ -19,13 +20,13 @@ public interface IPluggySynchronizationStore
         DateTimeOffset startedAt,
         CancellationToken cancellationToken);
 
-    Task CompleteAsync(
+    Task<ImportCompletionResult> CompleteAsync(
         Guid importJobId,
         PluggySynchronizationBatch batch,
         DateTimeOffset completedAt,
         CancellationToken cancellationToken);
 
-    Task FailAsync(
+    Task<JobTransitionOutcome> FailAsync(
         Guid importJobId,
         string reason,
         bool requiresReauthentication,
@@ -66,7 +67,6 @@ public sealed record PluggySynchronizationContext(
     Guid ImportJobId,
     Guid ConnectionId,
     string ExternalReference,
-    byte[] AccessTokenCipher,
     DateOnly? PeriodStart,
     DateOnly? PeriodEnd);
 
@@ -104,9 +104,12 @@ public sealed record PluggyTransactionRecord(
 
 public interface IPluggySynchronizationGateway
 {
+    /// <summary>
+    /// Fetches an item's accounts and transactions with a fresh API key obtained from the
+    /// application credentials.
+    /// </summary>
     Task<PluggySynchronizationFetchResult> FetchAsync(
         string externalReference,
-        string accessToken,
         DateOnly? periodStart,
         DateOnly? periodEnd,
         CancellationToken cancellationToken);
@@ -116,7 +119,10 @@ public enum PluggySynchronizationFetchOutcome
 {
     Succeeded = 1,
     RequiresReauthentication = 2,
-    Unavailable = 3
+    Unavailable = 3,
+
+    /// <summary>Pluggy no longer knows the item (for example it was deleted there).</summary>
+    ItemNotFound = 4
 }
 
 public sealed record PluggySynchronizationFetchResult(

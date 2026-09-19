@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
@@ -10,16 +9,15 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetCreditCardStatementByIdQueryHandler(
-    IUserProfileReader profiles,
-    ICreditCardStatementReader statements,
-    IRequestActorAccessor actorAccessor)
+    ICurrentProfileResolver profileResolver,
+    ICreditCardStatementReader statements)
     : IQueryHandlerAsync<GetCreditCardStatementByIdQuery, CreditCardStatementOutput>
 {
     public async Task<DataOutput<CreditCardStatementOutput?>> HandleAsync(
         GetCreditCardStatementByIdQuery query)
     {
         var output = DataOutput<CreditCardStatementOutput?>.New;
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(CreditCardStatementMessages.ProfileNotFound);
@@ -38,11 +36,4 @@ public sealed class GetCreditCardStatementByIdQueryHandler(
             .WithData(CreditCardStatementProjection.From(statement))
             .WithMessage(CreditCardStatementMessages.RetrievedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 }

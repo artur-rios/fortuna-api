@@ -35,10 +35,10 @@ public sealed class ListInvestmentsQueryValidator : AbstractValidator<ListInvest
             .When(query => query.InvestmentType.HasValue)
             .WithMessage(InvestmentMessages.InvestmentTypeInvalid);
         RuleFor(query => query.CurrencyCode)
-            .Must(InvestmentQueryValidation.IsOptionalCurrencyCode)
+            .OptionalCurrencyCode()
             .WithMessage(InvestmentMessages.CurrencyInvalid);
         RuleFor(query => query.DisplayCurrencyCode)
-            .Must(InvestmentQueryValidation.IsOptionalCurrencyCode)
+            .OptionalCurrencyCode()
             .WithMessage(InvestmentMessages.DisplayCurrencyInvalid);
         RuleFor(query => query.SortBy)
             .Must(field => !string.IsNullOrWhiteSpace(field) && SortFields.Contains(field.Trim()))

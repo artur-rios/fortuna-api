@@ -52,9 +52,13 @@ public sealed record LocalAccountCreationResult(
     LocalAccountSnapshot? Account,
     bool AlreadyExists);
 
+/// <param name="RecoveryCode">
+/// The code as the user typed it; the store verifies it with <see cref="LocalRecoveryCodeHash"/>
+/// against each unused digest because the salted digests cannot be looked up directly.
+/// </param>
 public sealed record LocalAccountRecovery(
     string Name,
-    byte[] RecoveryCodeHash,
+    string RecoveryCode,
     byte[] NewSecretHash,
     byte[] NewSalt,
     DateTimeOffset RecoveredAt);

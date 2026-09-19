@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
@@ -10,22 +9,22 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetCategoryByIdQueryHandler(
-    IUserProfileReader profiles,
-    ICategoryReader categories,
-    IRequestActorAccessor actorAccessor)
+    ICurrentProfileResolver profileResolver,
+    ICategoryReader categories)
     : IQueryHandlerAsync<GetCategoryByIdQuery, CategoryOutput>
 {
     public async Task<DataOutput<CategoryOutput?>> HandleAsync(GetCategoryByIdQuery query)
     {
         var output = DataOutput<CategoryOutput?>.New;
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(CategoryMessages.ProfileNotFound);
         }
 
-        var records = await categories.ListAsync(
+        var records = await categories.ListSubtreeAsync(
             profile.Id,
+            query.Id,
             query.IncludeDeleted,
             query.IncludeUsageCounts,
             CancellationToken.None);
@@ -39,11 +38,4 @@ public sealed class GetCategoryByIdQueryHandler(
             .WithData(category)
             .WithMessage(CategoryMessages.RetrievedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 }

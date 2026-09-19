@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -158,7 +160,7 @@ public sealed class TagCommandHandlerTests
 
         Assert.False(result.Success);
         Assert.Contains(TagMessages.MaximumExceeded, result.Errors);
-        Assert.Contains(TagMessages.MaximumAllowed(2), result.Errors);
+        Assert.Contains(TagMessages.MaximumAllowed(2), result.Messages);
     }
 
     [UnitFact]
@@ -191,52 +193,43 @@ public sealed class TagCommandHandlerTests
         Assert.Null(store.Creation);
     }
 
-    private static CreateTagCommandHandler CreateHandler(
+    private static ICommandHandlerAsync<CreateTagCommand, TagCommandOutput> CreateHandler(
         UserProfileSnapshot? profile,
-        ITagStore store) => new(
-        new CreateTagCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        ITagStore store) => new CreateTagCommandHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new CreateTagCommandValidator());
 
-    private static UpdateTagCommandHandler UpdateHandler(
+    private static ICommandHandlerAsync<UpdateTagCommand, TagCommandOutput> UpdateHandler(
         UserProfileSnapshot profile,
-        ITagUpdater store) => new(
-        new UpdateTagCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        ITagUpdater store) => new UpdateTagCommandHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new UpdateTagCommandValidator());
 
     private static DeleteTagCommandHandler DeleteHandler(
         UserProfileSnapshot profile,
         ITagLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
-    private static AttachTransactionTagCommandHandler AttachHandler(
+    private static ICommandHandlerAsync<AttachTransactionTagCommand, TransactionTagCommandOutput> AttachHandler(
         UserProfileSnapshot profile,
         ITransactionTagStore store,
-        int maximum = 50) => new(
-        new AttachTransactionTagCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        int maximum = 50) => new AttachTransactionTagCommandHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new TagOptions(maximum),
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new AttachTransactionTagCommandValidator());
 
-    private static DetachTransactionTagCommandHandler DetachHandler(
+    private static ICommandHandlerAsync<DetachTransactionTagCommand, TransactionTagCommandOutput> DetachHandler(
         UserProfileSnapshot profile,
-        ITransactionTagStore store) => new(
-        new DetachTransactionTagCommandValidator(),
-        Actor(profile),
-        new StubProfileReader(profile),
+        ITransactionTagStore store) => new DetachTransactionTagCommandHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new TagOptions(50),
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new DetachTransactionTagCommandValidator());
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));
@@ -293,6 +286,7 @@ public sealed class TagCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Creation = creation;
+
             return Task.FromResult(CreationResult);
         }
 
@@ -301,6 +295,7 @@ public sealed class TagCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(UpdateResult);
         }
 
@@ -311,6 +306,7 @@ public sealed class TagCommandHandlerTests
             CancellationToken cancellationToken)
         {
             DeletedAt = changedAt;
+
             return Task.FromResult(DeletionResult);
         }
 

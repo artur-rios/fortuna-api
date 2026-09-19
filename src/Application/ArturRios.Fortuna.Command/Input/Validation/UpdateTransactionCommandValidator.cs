@@ -26,7 +26,7 @@ public sealed class UpdateTransactionCommandValidator : AbstractValidator<Update
             .GreaterThan(0m)
             .WithMessage(TransactionMessages.AmountPositive);
         RuleFor(command => command.Amount)
-            .Must(MoneyFitsStorage)
+            .Money()
             .When(command => command.Amount > 0m)
             .WithMessage(TransactionMessages.AmountPrecisionInvalid);
         RuleFor(command => command.Direction)
@@ -39,7 +39,7 @@ public sealed class UpdateTransactionCommandValidator : AbstractValidator<Update
             .MaximumLength(500)
             .WithMessage(TransactionMessages.DescriptionTooLong);
         RuleFor(command => command.Counterparty)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(TransactionMessages.CounterpartyTooLong);
         RuleFor(command => command.Tags)
             .Must(tags => WithinTagLimit(tags, maximumTags))
@@ -50,7 +50,7 @@ public sealed class UpdateTransactionCommandValidator : AbstractValidator<Update
         RuleForEach(command => command.Tags)
             .NotEmpty()
             .WithMessage(TransactionMessages.TagRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(TransactionMessages.TagTooLong);
         RuleFor(command => command.FinancialAccountId)
             .Null()
@@ -65,10 +65,6 @@ public sealed class UpdateTransactionCommandValidator : AbstractValidator<Update
             .Null()
             .WithMessage(TransactionMessages.OwnerImmutable);
     }
-
-    private static bool MoneyFitsStorage(decimal amount) =>
-        decimal.GetBits(amount)[3] >> 16 <= 4 &&
-        Math.Abs(amount) < 1_000_000_000_000_000m;
 
     private static bool WithinTagLimit(IReadOnlyCollection<string>? tags, int maximum) =>
         tags is null || tags

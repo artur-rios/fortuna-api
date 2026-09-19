@@ -1,7 +1,6 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Command.Interfaces;
@@ -10,8 +9,7 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Command.Handlers;
 
 public sealed class DeleteTransactionCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ITransactionLifecycleStore transactions,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteTransactionCommand, TransactionLifecycleCommandOutput>
@@ -19,9 +17,7 @@ public sealed class DeleteTransactionCommandHandler(
     public async Task<DataOutput<TransactionLifecycleCommandOutput?>> HandleAsync(
         DeleteTransactionCommand command)
     {
-        var profile = await TransactionLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return TransactionLifecycleHandler.ProfileNotFound();
@@ -32,6 +28,7 @@ public sealed class DeleteTransactionCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return TransactionLifecycleHandler.Resolve(
             result,
             TransactionMessages.DeletedSuccessfully);
@@ -39,8 +36,7 @@ public sealed class DeleteTransactionCommandHandler(
 }
 
 public sealed class RestoreTransactionCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ITransactionLifecycleStore transactions,
     TimeProvider timeProvider)
     : ICommandHandlerAsync<RestoreTransactionCommand, TransactionLifecycleCommandOutput>
@@ -48,9 +44,7 @@ public sealed class RestoreTransactionCommandHandler(
     public async Task<DataOutput<TransactionLifecycleCommandOutput?>> HandleAsync(
         RestoreTransactionCommand command)
     {
-        var profile = await TransactionLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return TransactionLifecycleHandler.ProfileNotFound();
@@ -61,6 +55,7 @@ public sealed class RestoreTransactionCommandHandler(
             command.Id,
             timeProvider.GetUtcNow(),
             CancellationToken.None);
+
         return TransactionLifecycleHandler.Resolve(
             result,
             TransactionMessages.RestoredSuccessfully);
@@ -68,17 +63,14 @@ public sealed class RestoreTransactionCommandHandler(
 }
 
 public sealed class HardDeleteTransactionCommandHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     ITransactionLifecycleStore transactions)
     : ICommandHandlerAsync<HardDeleteTransactionCommand, TransactionLifecycleCommandOutput>
 {
     public async Task<DataOutput<TransactionLifecycleCommandOutput?>> HandleAsync(
         HardDeleteTransactionCommand command)
     {
-        var profile = await TransactionLifecycleHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return TransactionLifecycleHandler.ProfileNotFound();
@@ -88,6 +80,7 @@ public sealed class HardDeleteTransactionCommandHandler(
             profile.Id,
             command.Id,
             CancellationToken.None);
+
         return TransactionLifecycleHandler.Resolve(
             result,
             TransactionMessages.HardDeletedSuccessfully);
@@ -96,14 +89,6 @@ public sealed class HardDeleteTransactionCommandHandler(
 
 internal static class TransactionLifecycleHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static DataOutput<TransactionLifecycleCommandOutput?> ProfileNotFound() =>
         DataOutput<TransactionLifecycleCommandOutput?>.New
             .WithError(TransactionMessages.ProfileNotFound);
@@ -113,6 +98,7 @@ internal static class TransactionLifecycleHandler
         string successMessage)
     {
         var output = DataOutput<TransactionLifecycleCommandOutput?>.New;
+
         return result.Outcome switch
         {
             TransactionLifecycleOutcome.Succeeded => output

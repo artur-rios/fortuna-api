@@ -7,39 +7,50 @@ public sealed class CreateGoalCommandValidator : AbstractValidator<CreateGoalCom
 {
     public CreateGoalCommandValidator(TimeProvider timeProvider)
     {
-        GoalValidation.Apply(this, timeProvider);
+        GoalValidation.Apply(this);
+        RuleFor(command => command.TargetDate)
+            .Must(date => date > Today(timeProvider))
+            .When(command => command.TargetDate != default)
+            .WithMessage(GoalMessages.TargetDateMustBeFuture);
     }
+
+    // Read on every validation: validators can outlive the day they were built on.
+    private static DateOnly Today(TimeProvider timeProvider) =>
+        DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
 }
 
+/// <remarks>
+/// An update may keep a target date that has already passed, so whether a changed date lies in
+/// the future is decided by the store against the stored goal, not here.
+/// </remarks>
 public sealed class UpdateGoalCommandValidator : AbstractValidator<UpdateGoalCommand>
 {
-    public UpdateGoalCommandValidator(TimeProvider timeProvider)
+    public UpdateGoalCommandValidator()
     {
-        GoalValidation.Apply(this, timeProvider);
+        GoalValidation.Apply(this);
     }
 }
 
 internal static class GoalValidation
 {
-    public static void Apply<T>(AbstractValidator<T> validator, TimeProvider timeProvider)
+    public static void Apply<T>(AbstractValidator<T> validator)
         where T : class
     {
-        var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
         validator.RuleFor(command => Name(command))
             .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage(GoalMessages.NameRequired)
-            .MaximumLength(200).WithMessage(GoalMessages.NameTooLong);
+            .TrimmedMaximumLength(200).WithMessage(GoalMessages.NameTooLong);
         validator.RuleFor(command => TargetAmount(command))
-            .GreaterThan(0m).WithMessage(GoalMessages.TargetAmountMustBePositive);
+            .Cascade(CascadeMode.Stop)
+            .GreaterThan(0m).WithMessage(GoalMessages.TargetAmountMustBePositive)
+            .Money().WithMessage(GoalMessages.TargetAmountPrecisionInvalid);
         validator.RuleFor(command => CurrencyCode(command))
             .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage(GoalMessages.CurrencyRequired)
-            .Must(code => code.Trim().Length == 3 && code.Trim().All(char.IsAsciiLetter))
+            .CurrencyCode()
             .WithMessage(GoalMessages.CurrencyInvalid);
         validator.RuleFor(command => TargetDate(command))
-            .Cascade(CascadeMode.Stop)
-            .NotEqual(default(DateOnly)).WithMessage(GoalMessages.TargetDateRequired)
-            .GreaterThan(today).WithMessage(GoalMessages.TargetDateMustBeFuture);
+            .NotEqual(default(DateOnly)).WithMessage(GoalMessages.TargetDateRequired);
         validator.RuleFor(command => AccountIds(command).Count + InvestmentIds(command).Count)
             .GreaterThan(0).WithMessage(GoalMessages.ResourcesRequired);
         validator.RuleForEach(command => AccountIds(command))

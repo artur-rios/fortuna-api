@@ -232,6 +232,7 @@ public sealed class FinancialAccountLifecycleTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -271,6 +272,7 @@ public sealed class FinancialAccountLifecycleTests : IAsyncLifetime
 
         context.FinancialTransactions.AddRange(first, second);
         await context.SaveChangesAsync();
+
         return [first.PublicId, second.PublicId];
     }
 
@@ -287,6 +289,7 @@ public sealed class FinancialAccountLifecycleTests : IAsyncLifetime
             OpeningBalance = openingBalance
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<AccountEnvelope>())!.Data!;
     }
 

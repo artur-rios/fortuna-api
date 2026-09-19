@@ -11,7 +11,7 @@ public static class RecurringTransactionMessages
     public const string DeletedSuccessfully =
         "Recurring transaction deleted successfully. Materialized transactions were not changed.";
     public const string OccurrenceFailed = "The occurrence could not be materialized.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string FinancialAccountNotFound = "Financial account not found.";
     public const string CreditCardNotFound = "Credit card not found.";
     public const string CategoryNotFound = "Category not found.";
@@ -35,7 +35,4 @@ public static class RecurringTransactionMessages
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string SortByUnsupported =
         "SortBy must be one of StartsOn, EndsOn, Amount, Frequency, CreatedAt, or UpdatedAt.";
-
-    public static string UnsupportedFilter(string field) =>
-        $"The filter '{field}' is not supported by this endpoint.";
 }

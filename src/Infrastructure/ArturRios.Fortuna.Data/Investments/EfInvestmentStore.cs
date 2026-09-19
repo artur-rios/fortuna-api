@@ -1,13 +1,17 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.EntityMaps;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Lifecycle;
+using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Investments;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Investments;
 
-public sealed class EfInvestmentStore(AppDbContext context)
+public sealed class EfInvestmentStore(
+    AppDbContext context,
+    IAttachmentLifecycleStore attachments)
     : IInvestmentStore, IInvestmentReader, IInvestmentUpdater, IInvestmentLifecycleStore
 {
     public IQueryable<InvestmentPositionSnapshot> QueryPositions()
@@ -21,6 +25,17 @@ public sealed class EfInvestmentStore(AppDbContext context)
                 LatestValuationDate = liveValuations
                     .Where(valuation => valuation.InvestmentId == investment.Id)
                     .Max(valuation => (DateOnly?)valuation.ValuedOn)
+            })
+            .Select(item => new
+            {
+                item.Investment,
+                item.LatestValuationDate,
+                LatestValuationUpdatedAt = liveValuations
+                    .Where(valuation =>
+                        valuation.InvestmentId == item.Investment.Id &&
+                        valuation.ValuedOn == item.LatestValuationDate)
+                    .Select(valuation => (DateTimeOffset?)valuation.UpdatedAt)
+                    .FirstOrDefault()
             });
 
         return withLatestDate.Select(item => new InvestmentPositionSnapshot
@@ -41,8 +56,11 @@ public sealed class EfInvestmentStore(AppDbContext context)
                     .Where(movement =>
                         movement.InvestmentId == item.Investment.Id &&
                         !movement.IsDeleted &&
-                        movement.OccurredOn >
-                            (item.LatestValuationDate ?? DateOnly.MinValue))
+                        // Mirrors InvestmentPositionCalculator.FollowsValuation.
+                        (movement.OccurredOn >
+                            (item.LatestValuationDate ?? DateOnly.MinValue) ||
+                         (movement.OccurredOn == item.LatestValuationDate &&
+                          movement.CreatedAt > item.LatestValuationUpdatedAt)))
                     .Select(movement => (decimal?)(
                         movement.MovementType == InvestmentMovementType.Contribution ||
                         movement.MovementType == InvestmentMovementType.Yield
@@ -72,6 +90,18 @@ public sealed class EfInvestmentStore(AppDbContext context)
             investment.Id == id &&
             !investment.IsDeleted,
         cancellationToken);
+
+    public Task<bool> ExistsAsync(
+        Guid userId,
+        Guid id,
+        CancellationToken cancellationToken) => context.Investments
+        .AsNoTracking()
+        .AnyAsync(
+            investment =>
+                investment.User.PublicId == userId &&
+                investment.PublicId == id &&
+                !investment.IsDeleted,
+            cancellationToken);
 
     public IQueryable<InvestmentValuationReadSnapshot> QueryValuations(
         Guid userId,
@@ -120,6 +150,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
             DatabaseException.IsUniqueViolation(exception, InvestmentMap.LiveInstrumentIndex))
         {
             context.Entry(investment).State = EntityState.Detached;
+
             return new InvestmentCreationResult(null, DuplicateInstrument: true);
         }
 
@@ -168,6 +199,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
             DatabaseException.IsUniqueViolation(exception, InvestmentMap.LiveInstrumentIndex))
         {
             context.Entry(investment).State = EntityState.Detached;
+
             return new InvestmentUpdateResult(null, DuplicateInstrument: true);
         }
 
@@ -215,6 +247,7 @@ public sealed class EfInvestmentStore(AppDbContext context)
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
         return LifecycleResult(InvestmentLifecycleOutcome.Succeeded, investment.PublicId);
     }
 
@@ -287,14 +320,28 @@ public sealed class EfInvestmentStore(AppDbContext context)
             return LifecycleResult(InvestmentLifecycleOutcome.NotFound);
         }
 
-        try
-        {
-            investment.EnsureHardDeletionAllowed();
-        }
-        catch (RecordLifecycleConflictException exception) when (
-            exception.Conflict == RecordLifecycleConflict.HardDeleteRequiresSoftDeletion)
+        if (!investment.CheckHardDeletion().IsAllowed)
         {
             return LifecycleResult(InvestmentLifecycleOutcome.HardDeleteRequiresSoftDeletion);
+        }
+
+        var referencingGoals = await context.Goals
+            .AsNoTracking()
+            .Where(goal => goal.Investments.Any(item => item.Id == investment.Id))
+            .OrderBy(goal => goal.IsDeleted)
+            .ThenBy(goal => goal.Name)
+            .Select(goal => new { goal.Name, goal.IsDeleted })
+            .ToListAsync(cancellationToken);
+        if (referencingGoals.FirstOrDefault(goal => !goal.IsDeleted) is { } liveGoal)
+        {
+            return LifecycleResult(
+                InvestmentLifecycleOutcome.HardDeleteHasLiveGoal,
+                referencingGoal: liveGoal.Name);
+        }
+
+        if (referencingGoals.Count > 0)
+        {
+            return LifecycleResult(InvestmentLifecycleOutcome.HardDeleteHasDependents);
         }
 
         var movements = await context.InvestmentMovements
@@ -303,10 +350,43 @@ public sealed class EfInvestmentStore(AppDbContext context)
         var valuations = await context.InvestmentValuations
             .Where(item => item.InvestmentId == investment.Id)
             .ToListAsync(cancellationToken);
+        var movementIds = movements.Select(item => item.Id).ToArray();
+        var fundingTransactions = await context.Transfers
+            .Where(transfer =>
+                transfer.InboundInvestmentMovementId.HasValue &&
+                movementIds.Contains(transfer.InboundInvestmentMovementId.Value))
+            .Select(transfer => transfer.OutboundTransaction)
+            .ToListAsync(cancellationToken);
+        if (fundingTransactions.Any(transaction => !transaction.IsDeleted))
+        {
+            return LifecycleResult(InvestmentLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var deletion = await TransactionHardDeletion.PlanAsync(
+            context,
+            fundingTransactions,
+            [],
+            cancellationToken);
+        if (deletion.LiveReferences.Count > 0)
+        {
+            return LifecycleResult(InvestmentLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var removal = await attachments.RemoveForTransactionsAsync(
+            deletion.TransactionIds,
+            cancellationToken);
+        if (!removal.StorageAvailable)
+        {
+            return LifecycleResult(InvestmentLifecycleOutcome.AttachmentStorageUnavailable);
+        }
+
+        deletion.Remove(context);
         context.InvestmentMovements.RemoveRange(movements);
         context.InvestmentValuations.RemoveRange(valuations);
         context.Investments.Remove(investment);
         await context.SaveChangesAsync(cancellationToken);
+        await attachments.DeleteObjectsAsync(removal.StorageKeys, CancellationToken.None);
+
         return LifecycleResult(InvestmentLifecycleOutcome.Succeeded, investment.PublicId);
     }
 

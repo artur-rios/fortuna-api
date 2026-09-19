@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.Data.Cards;
+using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
@@ -51,13 +53,15 @@ public sealed class EfRecurringTransactionStore(
             return Result(RecurringTransactionRecordOutcome.CategoryNotFound);
         }
 
-        var counterparty = await ResolveCounterpartyAsync(user, record.Counterparty, record.CreatedAt, cancellationToken);
+        var counterparty = await ClassificationResolver.GetOrCreateCounterpartyAsync(
+            context, user, record.Counterparty, record.CreatedAt, cancellationToken);
         var rule = new RecurringTransaction(
             user, account, card, category, record.Direction, record.Amount, record.Frequency,
             record.StartsOn, record.EndsOn, record.CreatedAt, record.Description, counterparty);
         context.RecurringTransactions.Add(rule);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return Result(RecurringTransactionRecordOutcome.Succeeded, Snapshot(rule, record.PreviewFrom));
     }
 
@@ -71,6 +75,7 @@ public sealed class EfRecurringTransactionStore(
             .Include(item => item.Category).Include(item => item.Counterparty).Include(item => item.Currency)
             .SingleOrDefaultAsync(item => item.PublicId == id && item.User.PublicId == userId && !item.IsDeleted,
                 cancellationToken);
+
         return rule is null
             ? null
             : Snapshot(rule, DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime));
@@ -158,13 +163,14 @@ public sealed class EfRecurringTransactionStore(
             return UpdateResult(RecurringTransactionUpdateOutcome.CategoryNotFound);
         }
 
-        var counterparty = await ResolveCounterpartyAsync(
-            rule.User, update.Counterparty, update.UpdatedAt, cancellationToken);
+        var counterparty = await ClassificationResolver.GetOrCreateCounterpartyAsync(
+            context, rule.User, update.Counterparty, update.UpdatedAt, cancellationToken);
         rule.UpdateTemplate(
             account, card, category, update.Direction, update.Amount, update.Frequency,
             update.StartsOn, update.EndsOn, update.Description, counterparty, update.UpdatedAt);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return UpdateResult(
             RecurringTransactionUpdateOutcome.Succeeded,
             Snapshot(rule, update.PreviewFrom));
@@ -187,6 +193,7 @@ public sealed class EfRecurringTransactionStore(
 
         rule.SoftDelete(changedAt);
         await context.SaveChangesAsync(cancellationToken);
+
         return new RecurringTransactionLifecycleResult(
             rule.PublicId, RecurringTransactionLifecycleOutcome.Succeeded);
     }
@@ -215,8 +222,12 @@ public sealed class EfRecurringTransactionStore(
         Guid ruleId,
         CancellationToken cancellationToken)
     {
-        var rule = await FindRuleAsync(run.UserId, ruleId, cancellationToken)
-            ?? throw new InvalidOperationException("A recurring transaction disappeared during materialization.");
+        var rule = await FindRuleAsync(run.UserId, ruleId, cancellationToken);
+        if (rule is null)
+        {
+            return RuleDeleted(ruleId, []);
+        }
+
         var skipReason = DeletedReference(rule);
         if (skipReason.HasValue)
         {
@@ -231,8 +242,12 @@ public sealed class EfRecurringTransactionStore(
         foreach (var dueDate in dueDates)
         {
             context.ChangeTracker.Clear();
-            rule = await FindRuleAsync(run.UserId, ruleId, cancellationToken)
-                ?? throw new InvalidOperationException("A recurring transaction disappeared during materialization.");
+            rule = await FindRuleAsync(run.UserId, ruleId, cancellationToken);
+            if (rule is null)
+            {
+                return RuleDeleted(ruleId, occurrenceResults);
+            }
+
             var existing = await context.FinancialTransactions.AsNoTracking().SingleOrDefaultAsync(transaction =>
                 transaction.RecurringTransactionId == rule.Id && transaction.OccurredOn == dueDate,
                 cancellationToken);
@@ -251,18 +266,22 @@ public sealed class EfRecurringTransactionStore(
             try
             {
                 var possibleDuplicate = await IsPossibleImportedDuplicateAsync(rule, dueDate, cancellationToken);
+                var counterparty = rule.Counterparty is { IsDeleted: false } ? rule.Counterparty : null;
                 var transaction = rule.FinancialAccount is not null
                     ? new FinancialTransaction(
                         rule.User, rule.FinancialAccount, rule.Category, rule.Direction, rule.Amount,
-                        dueDate, run.MaterializedAt, rule.Description, rule.Counterparty)
+                        dueDate, run.MaterializedAt, rule.Description, counterparty)
                     : new FinancialTransaction(
                         rule.User, rule.CreditCard!, rule.Category, rule.Direction, rule.Amount,
-                        dueDate, run.MaterializedAt, rule.Description, rule.Counterparty);
+                        dueDate, run.MaterializedAt, rule.Description, counterparty);
                 transaction.MarkAsRecurringOccurrence(rule, possibleDuplicate, run.MaterializedAt);
+                context.FinancialTransactions.Add(transaction);
                 if (rule.CreditCard is not null)
                 {
-                    await AssignToStatementAsync(
-                        transaction, rule.CreditCard, run.MaterializedAt, cancellationToken);
+                    await CreditCardStatementResolver.AssignAsync(
+                        context, transaction, rule.CreditCard, run.MaterializedAt, cancellationToken);
+                    await CreditCardStatementResolver.RefreshTotalsAsync(
+                        context, [transaction.Statement], run.MaterializedAt, cancellationToken);
                 }
 
                 if (markerCanAdvance)
@@ -270,7 +289,6 @@ public sealed class EfRecurringTransactionStore(
                     rule.MarkMaterializedThrough(dueDate, run.MaterializedAt);
                 }
 
-                context.FinancialTransactions.Add(transaction);
                 await context.SaveChangesAsync(cancellationToken);
                 await databaseTransaction.CommitAsync(cancellationToken);
                 occurrenceResults.Add(new RecurringOccurrenceMaterializationResult(
@@ -291,13 +309,27 @@ public sealed class EfRecurringTransactionStore(
         }
 
         context.ChangeTracker.Clear();
-        rule = await FindRuleAsync(run.UserId, ruleId, cancellationToken)
-            ?? throw new InvalidOperationException("A recurring transaction disappeared during materialization.");
+        rule = await FindRuleAsync(run.UserId, ruleId, cancellationToken);
+        if (rule is null)
+        {
+            return RuleDeleted(ruleId, occurrenceResults);
+        }
+
         return new RecurringRuleMaterializationResult(
             rule.PublicId,
             occurrenceResults,
             rule.IsCompleteOn(run.Through) && occurrenceResults.All(occurrence => occurrence.Error is null));
     }
+
+    // A rule soft-deleted while its job runs is skipped instead of failing the whole run; the
+    // occurrences already materialized are still reported.
+    private static RecurringRuleMaterializationResult RuleDeleted(
+        Guid ruleId,
+        IReadOnlyCollection<RecurringOccurrenceMaterializationResult> occurrences) => new(
+        ruleId,
+        occurrences,
+        true,
+        RecurringMaterializationSkipReason.RuleDeleted);
 
     private Task<RecurringTransaction?> FindRuleAsync(
         Guid userId,
@@ -343,84 +375,13 @@ public sealed class EfRecurringTransactionStore(
         !transaction.IsDeleted,
         cancellationToken);
 
-    private async Task AssignToStatementAsync(
-        FinancialTransaction transaction,
-        CreditCard card,
-        DateTimeOffset changedAt,
-        CancellationToken cancellationToken)
-    {
-        var statements = await context.CreditCardStatements
-            .Where(statement => statement.CreditCardId == card.Id && !statement.IsDeleted)
-            .OrderBy(statement => statement.PeriodStart)
-            .ToListAsync(cancellationToken);
-        var intendedCycle = BillingCycle.Containing(
-            transaction.OccurredOn, card.ClosingDay, card.DueDay);
-        var statement = statements.SingleOrDefault(item =>
-            item.PeriodStart == intendedCycle.PeriodStart && item.PeriodEnd == intendedCycle.PeriodEnd);
-        var isLateArriving = statement?.Status == CreditCardStatementStatus.Settled;
-        if (isLateArriving)
-        {
-            var cycle = intendedCycle.Next(card.ClosingDay, card.DueDay);
-            while (true)
-            {
-                statement = statements.SingleOrDefault(item =>
-                    item.PeriodStart == cycle.PeriodStart && item.PeriodEnd == cycle.PeriodEnd);
-                if (statement is null)
-                {
-                    statement = new CreditCardStatement(card, cycle, changedAt);
-                    context.CreditCardStatements.Add(statement);
-                    break;
-                }
-
-                if (statement.Status == CreditCardStatementStatus.Open)
-                {
-                    break;
-                }
-
-                cycle = cycle.Next(card.ClosingDay, card.DueDay);
-            }
-        }
-        else if (statement is null)
-        {
-            statement = new CreditCardStatement(card, intendedCycle, changedAt);
-            context.CreditCardStatements.Add(statement);
-        }
-
-        var existingTotal = statement.Id == 0
-            ? 0m
-            : await context.FinancialTransactions
-                .Where(item => item.StatementId == statement.Id && !item.IsDeleted)
-                .Select(item => (decimal?)(item.Direction == TransactionDirection.Expense
-                    ? item.Amount
-                    : -item.Amount))
-                .SumAsync(cancellationToken) ?? 0m;
-        var signedAmount = transaction.Direction == TransactionDirection.Expense
-            ? transaction.Amount
-            : -transaction.Amount;
-        transaction.AssignToStatement(statement, isLateArriving, changedAt);
-        statement.RecalculatePurchaseTotal(existingTotal + signedAmount, changedAt);
-    }
-
-    private async Task<Counterparty?> ResolveCounterpartyAsync(
-        UserProfile user, string? name, DateTimeOffset createdAt, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return null;
-        var normalizedName = name.Trim().ToUpperInvariant();
-        var existing = await context.Counterparties.SingleOrDefaultAsync(item =>
-            item.UserId == user.Id && item.NormalizedName == normalizedName && !item.IsDeleted,
-            cancellationToken);
-        if (existing is not null) return existing;
-        var counterparty = new Counterparty(user, name, createdAt);
-        context.Counterparties.Add(counterparty);
-        return counterparty;
-    }
-
     private static RecurringTransactionSnapshot Snapshot(RecurringTransaction rule, DateOnly previewFrom)
     {
         var occurrenceFrom = rule.LastMaterializedOn.HasValue &&
             rule.LastMaterializedOn.Value >= previewFrom
                 ? rule.LastMaterializedOn.Value.AddDays(1)
                 : previewFrom;
+
         return new RecurringTransactionSnapshot
         {
             Id = rule.PublicId,

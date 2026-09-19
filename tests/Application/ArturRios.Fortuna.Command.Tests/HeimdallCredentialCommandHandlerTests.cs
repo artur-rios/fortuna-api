@@ -16,7 +16,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
     {
         var gateway = new StubGateway { EmptyResult = Success() };
         var handler = new RequestPasswordRecoveryThroughApiCommandHandler(
-            new RequestPasswordRecoveryThroughApiCommandValidator(), gateway, new(ScopeId));
+            gateway, new(ScopeId)).Validated(new RequestPasswordRecoveryThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { Email = " user@example.test " });
 
@@ -32,7 +32,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
     {
         var gateway = new StubGateway();
         var handler = new RequestPasswordRecoveryThroughApiCommandHandler(
-            new RequestPasswordRecoveryThroughApiCommandValidator(), gateway, new(ScopeId));
+            gateway, new(ScopeId)).Validated(new RequestPasswordRecoveryThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { Email = email });
 
@@ -45,7 +45,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
     {
         var gateway = new StubGateway { EmptyResult = Success() };
         var handler = new ResetPasswordThroughApiCommandHandler(
-            new ResetPasswordThroughApiCommandValidator(), gateway);
+            gateway).Validated(new ResetPasswordThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -66,7 +66,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
     {
         var gateway = new StubGateway();
         var handler = new ResetPasswordThroughApiCommandHandler(
-            new ResetPasswordThroughApiCommandValidator(), gateway);
+            gateway).Validated(new ResetPasswordThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { Token = token, NewPassword = password });
 
@@ -82,7 +82,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             EmptyResult = new(HeimdallAuthOutcome.InvalidRequest)
         };
         var handler = new ResetPasswordThroughApiCommandHandler(
-            new ResetPasswordThroughApiCommandValidator(), gateway);
+            gateway).Validated(new ResetPasswordThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { Token = "expired", NewPassword = "secret" });
 
@@ -95,7 +95,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
     {
         var gateway = new StubGateway { EmptyResult = Success() };
         var handler = new VerifyEmailThroughApiCommandHandler(
-            new VerifyEmailThroughApiCommandValidator(), gateway);
+            gateway).Validated(new VerifyEmailThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { Token = "verification-token" });
 
@@ -139,7 +139,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
                 new("otpauth://totp/Fortuna", true))
         };
         var handler = new EnableTwoFactorThroughApiCommandHandler(
-            new EnableTwoFactorThroughApiCommandValidator(), gateway);
+            gateway).Validated(new EnableTwoFactorThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -159,7 +159,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
     {
         var gateway = new StubGateway();
         var handler = new EnableTwoFactorThroughApiCommandHandler(
-            new EnableTwoFactorThroughApiCommandValidator(), gateway);
+            gateway).Validated(new EnableTwoFactorThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { Methods = [.. methods] });
 
@@ -176,7 +176,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
                 new(true, ["one-time-1", "one-time-2"]))
         };
         var handler = new ConfirmTwoFactorThroughApiCommandHandler(
-            new ConfirmTwoFactorThroughApiCommandValidator(), gateway);
+            gateway).Validated(new ConfirmTwoFactorThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -197,7 +197,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             RecoveryCodesResult = new(HeimdallAuthOutcome.Rejected)
         };
         var handler = new ConfirmTwoFactorThroughApiCommandHandler(
-            new ConfirmTwoFactorThroughApiCommandValidator(), gateway);
+            gateway).Validated(new ConfirmTwoFactorThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { AppCode = "wrong" });
 
@@ -213,7 +213,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             DisabledResult = new(HeimdallAuthOutcome.NotFound)
         };
         var handler = new DisableTwoFactorThroughApiCommandHandler(
-            new DisableTwoFactorThroughApiCommandValidator(), gateway);
+            gateway).Validated(new DisableTwoFactorThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -232,7 +232,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             DisabledResult = new(HeimdallAuthOutcome.Succeeded, new(true))
         };
         var handler = new DisableTwoFactorThroughApiCommandHandler(
-            new DisableTwoFactorThroughApiCommandValidator(), gateway);
+            gateway).Validated(new DisableTwoFactorThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -256,7 +256,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
     {
         var gateway = new StubGateway();
         var handler = new DisableTwoFactorThroughApiCommandHandler(
-            new DisableTwoFactorThroughApiCommandValidator(), gateway);
+            gateway).Validated(new DisableTwoFactorThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -278,7 +278,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
                 new(null, ["new-code"]))
         };
         var handler = new RegenerateRecoveryCodesThroughApiCommandHandler(
-            new RegenerateRecoveryCodesThroughApiCommandValidator(), gateway);
+            gateway).Validated(new RegenerateRecoveryCodesThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -298,7 +298,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             RecoveryCodesResult = new(HeimdallAuthOutcome.NotFound)
         };
         var handler = new RegenerateRecoveryCodesThroughApiCommandHandler(
-            new RegenerateRecoveryCodesThroughApiCommandValidator(), gateway);
+            gateway).Validated(new RegenerateRecoveryCodesThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { Code = "123456" });
 
@@ -313,7 +313,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             EmptyResult = new(HeimdallAuthOutcome.Unavailable)
         };
         var handler = new VerifyEmailThroughApiCommandHandler(
-            new VerifyEmailThroughApiCommandValidator(), gateway);
+            gateway).Validated(new VerifyEmailThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { Token = "sensitive-token" });
 
@@ -353,6 +353,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string challengeToken, CancellationToken cancellationToken)
         {
             ResendChallengeToken = challengeToken;
+
             return Task.FromResult(ResendResult);
         }
 
@@ -360,6 +361,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string email, Guid scopeId, CancellationToken cancellationToken)
         {
             RecoveryRequest = (email, scopeId);
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -367,6 +369,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string token, string newPassword, CancellationToken cancellationToken)
         {
             ResetRequest = (token, newPassword);
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -374,6 +377,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string token, CancellationToken cancellationToken)
         {
             VerificationToken = token;
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -381,6 +385,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string bearerToken, CancellationToken cancellationToken)
         {
             BearerToken = bearerToken;
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -388,6 +393,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
             string bearerToken, CancellationToken cancellationToken)
         {
             BearerToken = bearerToken;
+
             return Task.FromResult(StatusResult);
         }
 
@@ -397,6 +403,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
         {
             Methods = methods;
             BearerToken = bearerToken;
+
             return Task.FromResult(SetupResult);
         }
 
@@ -406,6 +413,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
         {
             ConfirmationCodes = (appCode, emailCode);
             BearerToken = bearerToken;
+
             return Task.FromResult(RecoveryCodesResult);
         }
 
@@ -415,6 +423,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
         {
             DisableRequest = (password, code, recoveryCode);
             BearerToken = bearerToken;
+
             return Task.FromResult(DisabledResult);
         }
 
@@ -424,6 +433,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
         {
             RegenerationFactor = (code, recoveryCode);
             BearerToken = bearerToken;
+
             return Task.FromResult(RecoveryCodesResult);
         }
 

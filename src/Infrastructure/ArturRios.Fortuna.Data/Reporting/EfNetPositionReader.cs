@@ -1,4 +1,6 @@
+using ArturRios.Fortuna.Data.Accounts;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Investments;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Reporting;
@@ -15,25 +17,23 @@ public sealed class EfNetPositionReader(AppDbContext context) : INetPositionRead
     {
         var endOfDay = new DateTimeOffset(
             asOf.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc));
-        var accounts = await context.FinancialAccounts
+        var openings = await context.FinancialAccounts
             .AsNoTracking()
-            .Where(item =>
-                item.User.PublicId == userId &&
-                !item.IsDeleted &&
-                item.CreatedAt <= endOfDay)
-            .Select(item => new CurrencyAmount(
-                item.Currency.Code,
-                item.OpeningBalance + (context.FinancialTransactions
-                    .Where(transaction =>
-                        transaction.FinancialAccountId == item.Id &&
-                        !transaction.IsDeleted &&
-                        transaction.OccurredOn <= asOf)
-                    .Select(transaction => (decimal?)(transaction.Direction ==
-                        TransactionDirection.Earning
-                            ? transaction.Amount
-                            : -transaction.Amount))
-                    .Sum() ?? 0m)))
+            .Where(item => item.User.PublicId == userId && !item.IsDeleted)
+            .Select(item => new
+            {
+                Opening = new AccountOpening(item.Id, item.OpeningBalance, item.CreatedAt),
+                CurrencyCode = item.Currency.Code
+            })
             .ToArrayAsync(cancellationToken);
+        var balances = await AccountBalanceCalculator.CalculateAsync(
+            context,
+            openings.Select(item => item.Opening).ToArray(),
+            asOf,
+            cancellationToken);
+        var accounts = openings
+            .Select(item => new CurrencyAmount(item.CurrencyCode, balances[item.Opening.Id]))
+            .ToArray();
 
         var cards = await context.CreditCards
             .AsNoTracking()
@@ -56,6 +56,7 @@ public sealed class EfNetPositionReader(AppDbContext context) : INetPositionRead
             .ToArrayAsync(cancellationToken);
 
         var investments = await ReadInvestmentsAsync(userId, asOf, endOfDay, cancellationToken);
+
         return accounts.Select(item => (item.CurrencyCode, Accounts: item.Amount,
                 Investments: 0m, Cards: 0m))
             .Concat(investments.Select(item => (item.CurrencyCode, Accounts: 0m,
@@ -86,36 +87,15 @@ public sealed class EfNetPositionReader(AppDbContext context) : INetPositionRead
                 item.CreatedAt <= endOfDay)
             .Select(item => new { item.Id, CurrencyCode = item.Currency.Code })
             .ToArrayAsync(cancellationToken);
-        var result = new List<CurrencyAmount>(investments.Length);
-        foreach (var investment in investments)
-        {
-            var valuation = await context.InvestmentValuations
-                .AsNoTracking()
-                .Where(item =>
-                    item.InvestmentId == investment.Id &&
-                    !item.IsDeleted &&
-                    item.ValuedOn <= asOf)
-                .OrderByDescending(item => item.ValuedOn)
-                .Select(item => new { item.Value, item.ValuedOn })
-                .FirstOrDefaultAsync(cancellationToken);
-            var movement = await context.InvestmentMovements
-                .AsNoTracking()
-                .Where(item =>
-                    item.InvestmentId == investment.Id &&
-                    !item.IsDeleted &&
-                    item.OccurredOn <= asOf &&
-                    (valuation == null || item.OccurredOn > valuation.ValuedOn))
-                .Select(item => (decimal?)(item.MovementType == InvestmentMovementType.Contribution ||
-                    item.MovementType == InvestmentMovementType.Yield
-                        ? item.Amount
-                        : -item.Amount))
-                .SumAsync(cancellationToken) ?? 0m;
-            result.Add(new CurrencyAmount(
-                investment.CurrencyCode,
-                (valuation?.Value ?? 0m) + movement));
-        }
+        var positions = await InvestmentPositionReader.CalculateAsync(
+            context,
+            investments.Select(item => item.Id).ToArray(),
+            asOf,
+            cancellationToken);
 
-        return result;
+        return investments
+            .Select(item => new CurrencyAmount(item.CurrencyCode, positions[item.Id]))
+            .ToArray();
     }
 
     private sealed record CurrencyAmount(string CurrencyCode, decimal Amount);

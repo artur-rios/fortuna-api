@@ -2,24 +2,33 @@ name: Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
+
+permissions:
+  contents: read
 
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true
 
+# Third-party actions are pinned to the commit of the release named in the trailing comment;
+# Dependabot (.github/dependabot.yml) proposes the updates.
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.x'
       - name: Test Python helpers
         run: python3 -m unittest discover -s scripts -p "test_*.py" --verbose
+      - name: Check blank lines before return, break and yield
+        run: python3 scripts/check_blank_lines.py
+      - name: Restore tools
+        run: dotnet tool restore
       - name: Restore dependencies
         run: dotnet restore src/ArturRios.Fortuna.sln
       - name: Scan dependencies
@@ -30,24 +39,24 @@ jobs:
         run: dotnet test src/ArturRios.Fortuna.sln --configuration Release --no-build -m:1 --filter "Category=Unit" --collect:"XPlat Code Coverage"
       - name: Functional tests
         run: dotnet test src/ArturRios.Fortuna.sln --configuration Release --no-build -m:1 --filter "Category=Functional" --collect:"XPlat Code Coverage"
-      - name: Install ReportGenerator
-        run: |
-          dotnet tool install --global dotnet-reportgenerator-globaltool
-          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
       - name: Enforce coverage
+        id: coverage
         env:
           REPORTGENERATOR_LICENSE: ${{ secrets.REPORTGENERATOR_LICENSE }}
         run: python3 scripts/coverage.py --report-only
+      # The report is written even when the threshold fails (it is how the gap is found), so upload
+      # it whenever the coverage step ran. When an earlier step failed there is no report, and an
+      # upload that errors on the missing files would only hide the real failure.
       - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() && (steps.coverage.outcome == 'success' || steps.coverage.outcome == 'failure') }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-report
           path: docs/coverage-report
           if-no-files-found: error
       - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
           path: '**/TestResults/*.trx'
@@ -56,8 +65,11 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/build-push-action@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

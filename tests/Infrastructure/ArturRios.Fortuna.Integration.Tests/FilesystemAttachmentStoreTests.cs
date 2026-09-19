@@ -16,10 +16,58 @@ public sealed class FilesystemAttachmentStoreTests : IDisposable
         await using var input = new MemoryStream(Encoding.UTF8.GetBytes("receipt"));
 
         await store.WriteAsync("user/attachment.txt", input, CancellationToken.None);
-        await using var output = await store.OpenReadAsync("user/attachment.txt", CancellationToken.None);
-        using var reader = new StreamReader(output);
+        var result = await store.OpenReadAsync("user/attachment.txt", CancellationToken.None);
 
+        Assert.True(result.IsFound);
+        await using var output = result.Content;
+        using var reader = new StreamReader(output);
         Assert.Equal("receipt", await reader.ReadToEndAsync(CancellationToken.None));
+    }
+
+    [UnitFact]
+    public async Task GivenExistingObject_WhenOverwritten_ThenLatestContentIsStoredWithoutTemporaryFiles()
+    {
+        var store = new FilesystemAttachmentStore(root);
+        await store.WriteAsync("user/attachment.txt", new MemoryStream([1]), CancellationToken.None);
+
+        await store.WriteAsync("user/attachment.txt", new MemoryStream([2, 3]), CancellationToken.None);
+
+        Assert.Equal([2, 3], await File.ReadAllBytesAsync(Path.Combine(root, "user", "attachment.txt")));
+        Assert.Single(Directory.GetFiles(Path.Combine(root, "user")));
+    }
+
+    [UnitFact]
+    public async Task GivenFailingSource_WhenWriting_ThenExistingObjectIsKeptAndNoTemporaryFileRemains()
+    {
+        var store = new FilesystemAttachmentStore(root);
+        await store.WriteAsync("user/attachment.txt", new MemoryStream([1]), CancellationToken.None);
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            store.WriteAsync("user/attachment.txt", new FailingStream(), CancellationToken.None));
+
+        Assert.Equal([1], await File.ReadAllBytesAsync(Path.Combine(root, "user", "attachment.txt")));
+        Assert.Single(Directory.GetFiles(Path.Combine(root, "user")));
+    }
+
+    [UnitFact]
+    public async Task GivenMissingDirectory_WhenDeleted_ThenDeletionSucceeds()
+    {
+        var store = new FilesystemAttachmentStore(root);
+
+        await store.DeleteAsync("missing-directory/attachment.txt", CancellationToken.None);
+
+        Assert.False(Directory.Exists(Path.Combine(root, "missing-directory")));
+    }
+
+    [UnitFact]
+    public async Task GivenMissingObject_WhenOpened_ThenNotFoundIsReturned()
+    {
+        var store = new FilesystemAttachmentStore(root);
+
+        var result = await store.OpenReadAsync("missing-directory/attachment.txt", CancellationToken.None);
+
+        Assert.Equal(AttachmentReadStatus.NotFound, result.Status);
+        Assert.Null(result.Content);
     }
 
     [UnitFact]
@@ -40,8 +88,9 @@ public sealed class FilesystemAttachmentStoreTests : IDisposable
 
         await store.DeleteAsync("attachment.txt", CancellationToken.None);
 
-        await Assert.ThrowsAsync<AttachmentObjectNotFoundException>(() =>
-            store.OpenReadAsync("attachment.txt", CancellationToken.None));
+        var result = await store.OpenReadAsync("attachment.txt", CancellationToken.None);
+
+        Assert.Equal(AttachmentReadStatus.NotFound, result.Status);
     }
 
     [UnitFact]
@@ -50,6 +99,16 @@ public sealed class FilesystemAttachmentStoreTests : IDisposable
         var store = new FilesystemAttachmentStore(root);
 
         Assert.True(await store.IsHealthyAsync(CancellationToken.None));
+        Assert.Empty(Directory.GetFileSystemEntries(root));
+    }
+
+    [UnitFact]
+    public async Task GivenRemovedStorageRoot_WhenHealthIsChecked_ThenItIsUnhealthy()
+    {
+        var store = new FilesystemAttachmentStore(root);
+        Directory.Delete(root, recursive: true);
+
+        Assert.False(await store.IsHealthyAsync(CancellationToken.None));
     }
 
     [UnitTheory]
@@ -67,6 +126,16 @@ public sealed class FilesystemAttachmentStoreTests : IDisposable
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             store.WriteAsync(Path.GetFullPath("attachment.txt"), new MemoryStream([1]), CancellationToken.None));
+    }
+
+    private sealed class FailingStream : MemoryStream
+    {
+        public FailingStream() : base([1, 2, 3])
+        {
+        }
+
+        public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken) =>
+            Task.FromException(new IOException("source failed"));
     }
 
     public void Dispose()

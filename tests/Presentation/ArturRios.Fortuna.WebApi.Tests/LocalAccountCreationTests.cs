@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Cryptography;
 using System.Text;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Data.Configuration;
@@ -10,6 +9,7 @@ using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Util.Hashing;
 using ArturRios.Util.Test.Attributes;
@@ -58,10 +58,8 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
         Assert.Null(account.User.ExternalSubject);
         Assert.True(Hash.TextMatches(Secret, account.SecretHash, account.Salt));
         Assert.Equal(10, account.RecoveryCodes.Count);
-        Assert.Equal(
-            envelope.Data.RecoveryCodes.Select(HashRecoveryCode).OrderBy(hash => Convert.ToHexString(hash)),
-            account.RecoveryCodes.Select(x => x.CodeHash).OrderBy(hash => Convert.ToHexString(hash)),
-            ByteArrayComparer.Instance);
+        Assert.All(envelope.Data.RecoveryCodes, raw =>
+            Assert.Single(account.RecoveryCodes, code => LocalRecoveryCodeHash.Matches(raw, code.CodeHash)));
         Assert.All(account.RecoveryCodes, code =>
             Assert.DoesNotContain(envelope.Data.RecoveryCodes, raw =>
                 code.CodeHash.SequenceEqual(Encoding.UTF8.GetBytes(raw))));
@@ -231,6 +229,25 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenTooManyAnonymousAttempts_WhenAuthenticating_ThenRateLimitIsReturned()
+    {
+        await using var factory = CreateFactory(enabled: true);
+        using var client = factory.CreateClient();
+
+        HttpResponseMessage? response = null;
+        for (var attempt = 0; attempt < 11; attempt++)
+        {
+            response?.Dispose();
+            response = await client.PostAsJsonAsync("/api/local-accounts/authenticate", ValidLogin());
+        }
+
+        using (response)
+        {
+            Assert.Equal(HttpStatusCode.TooManyRequests, response!.StatusCode);
+        }
+    }
+
+    [FunctionalFact]
     public async Task GivenLocalAuthenticationDisabled_WhenAuthenticating_ThenEndpointIsHidden()
     {
         await using var factory = CreateFactory(enabled: false);
@@ -302,6 +319,7 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -320,9 +338,6 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
         name = "Local User",
         secret = Secret
     };
-
-    private static byte[] HashRecoveryCode(string recoveryCode) =>
-        SHA256.HashData(Encoding.UTF8.GetBytes(recoveryCode));
 
     private static Dictionary<string, string?> ValidSettings(bool enabled) => new()
     {
@@ -355,14 +370,4 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
     private sealed record ProfileEnvelope(ProfileData? Data);
     private sealed record ProfileData(Guid Id, string DisplayName);
     private sealed record ErrorEnvelope(IReadOnlyCollection<string> Errors);
-
-    private sealed class ByteArrayComparer : IEqualityComparer<byte[]>
-    {
-        public static readonly ByteArrayComparer Instance = new();
-
-        public bool Equals(byte[]? x, byte[]? y) =>
-            ReferenceEquals(x, y) || x is not null && y is not null && x.SequenceEqual(y);
-
-        public int GetHashCode(byte[] value) => value.Aggregate(17, (hash, item) => hash * 31 + item);
-    }
 }

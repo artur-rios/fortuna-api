@@ -11,6 +11,7 @@ public abstract class FileUploadIngestionSource : IFileIngestionSource
     {
         await using var buffer = new MemoryStream();
         await content.CopyToAsync(buffer, cancellationToken);
+
         return new IngestionPayload(Name, new[] { new ReadOnlyMemory<byte>(buffer.ToArray()) });
     }
 }

@@ -52,8 +52,9 @@ public sealed class RecurringTransactionLifecycleCommandHandlerTests
     private static DeleteRecurringTransactionCommandHandler Handler(
         UserProfileSnapshot? profile,
         IRecurringTransactionLifecycleStore store) => new(
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfiles(profile),
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
         store,
         new FixedTimeProvider(Now));
 
@@ -69,6 +70,7 @@ public sealed class RecurringTransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Id = id;
+
             return Task.FromResult(result);
         }
     }

@@ -71,18 +71,21 @@ public sealed class ReconcileTransactionCommandValidatorTests
     private static string SetTransaction(ReconcileTransactionCommand command, Guid id)
     {
         command.Id = id;
+
         return TransactionMessages.TransactionIdRequired;
     }
 
     private static string SetJob(ReconcileTransactionCommand command, Guid? id)
     {
         command.ImportJobId = id;
+
         return TransactionMessages.ImportJobIdRequired;
     }
 
     private static string SetRecord(ReconcileTransactionCommand command, long? id)
     {
         command.ImportedRecordId = id;
+
         return TransactionMessages.ImportedRecordIdRequired;
     }
 }

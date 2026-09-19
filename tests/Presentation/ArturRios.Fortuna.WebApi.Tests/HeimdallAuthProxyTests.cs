@@ -730,6 +730,7 @@ public sealed class HeimdallAuthProxyTests
         {
             DisplayName = "Test User"
         };
+
         return new JwtHandler().CreateToken(new JwtConfiguration(
             3600, Issuer, Audience, Secret, new FortunaIdentityMapper().ToClaims(identity)));
     }
@@ -788,6 +789,7 @@ public sealed class HeimdallAuthProxyTests
             string challengeToken, CancellationToken cancellationToken)
         {
             ResendChallengeToken = challengeToken;
+
             return Task.FromResult(ResendResult);
         }
 
@@ -795,6 +797,7 @@ public sealed class HeimdallAuthProxyTests
             string email, string password, Guid scopeId, CancellationToken cancellationToken)
         {
             LoginCalls++;
+
             return Task.FromResult(LoginResult);
         }
 
@@ -810,6 +813,7 @@ public sealed class HeimdallAuthProxyTests
             string bearerToken, CancellationToken cancellationToken)
         {
             SignOutToken = bearerToken;
+
             return Task.FromResult(SignOutResult);
         }
 
@@ -818,6 +822,7 @@ public sealed class HeimdallAuthProxyTests
         {
             RecoveryCalls++;
             RecoveryRequest = (email, scopeId);
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -833,6 +838,7 @@ public sealed class HeimdallAuthProxyTests
             string bearerToken, CancellationToken cancellationToken)
         {
             AuthenticatedToken = bearerToken;
+
             return Task.FromResult(EmptyResult);
         }
 
@@ -840,6 +846,7 @@ public sealed class HeimdallAuthProxyTests
             string bearerToken, CancellationToken cancellationToken)
         {
             AuthenticatedToken = bearerToken;
+
             return Task.FromResult(StatusResult);
         }
 
@@ -848,6 +855,7 @@ public sealed class HeimdallAuthProxyTests
             CancellationToken cancellationToken)
         {
             AuthenticatedToken = bearerToken;
+
             return Task.FromResult(SetupResult);
         }
 
@@ -856,6 +864,7 @@ public sealed class HeimdallAuthProxyTests
             CancellationToken cancellationToken)
         {
             AuthenticatedToken = bearerToken;
+
             return Task.FromResult(RecoveryCodesResult);
         }
 
@@ -864,6 +873,7 @@ public sealed class HeimdallAuthProxyTests
             CancellationToken cancellationToken)
         {
             AuthenticatedToken = bearerToken;
+
             return Task.FromResult(DisabledResult);
         }
 
@@ -872,6 +882,7 @@ public sealed class HeimdallAuthProxyTests
             CancellationToken cancellationToken)
         {
             AuthenticatedToken = bearerToken;
+
             return Task.FromResult(RecoveryCodesResult);
         }
     }
@@ -884,6 +895,7 @@ public sealed class HeimdallAuthProxyTests
             CancellationToken cancellationToken)
         {
             var now = DateTimeOffset.UtcNow;
+
             return Task.FromResult(new UserProfileSnapshot(
                 Guid.NewGuid(), externalSubject, displayName, "BRL", false, now, now));
         }

@@ -68,7 +68,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         ConnectionMessages.InvalidReference)]
     [InlineData(PluggyConnectionValidationOutcome.Unavailable, HttpStatusCode.ServiceUnavailable,
         ConnectionMessages.SourceUnavailable)]
-    [InlineData(PluggyConnectionValidationOutcome.NotConfigured, HttpStatusCode.NotFound,
+    [InlineData(PluggyConnectionValidationOutcome.NotConfigured, HttpStatusCode.ServiceUnavailable,
         ConnectionMessages.SourceNotAvailable)]
     public async Task GivenPluggyRejection_WhenConnected_ThenNothingIsStored(
         PluggyConnectionValidationOutcome outcome,
@@ -530,7 +530,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         Assert.Contains(ConnectionMessages.InvalidPageNumber,
             await invalidPage.Content.ReadAsStringAsync(), StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.BadRequest, unsupported.StatusCode);
-        Assert.Contains(ConnectionMessages.UnsupportedFilter("Institution"),
+        Assert.Contains(QueryParameterMessages.Unsupported("Institution"),
             await unsupported.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
@@ -953,6 +953,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -973,6 +974,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
         Guid? externalReference = null)
     {
         await GrantConsentAsync(client);
+
         return await client.PostAsJsonAsync("/api/connections", new
         {
             DataSource = "pluggy",
@@ -1081,6 +1083,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
             CancellationToken cancellationToken)
         {
             CallCount++;
+
             return Task.FromResult(result);
         }
     }

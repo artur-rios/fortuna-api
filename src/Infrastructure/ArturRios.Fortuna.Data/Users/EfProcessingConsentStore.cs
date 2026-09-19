@@ -57,6 +57,7 @@ public sealed class EfProcessingConsentStore(AppDbContext context) : IProcessing
             consent.Grant(version, grantedAt);
         }
         await context.SaveChangesAsync(cancellationToken);
+
         return Snapshot(consent);
     }
 
@@ -104,6 +105,7 @@ public sealed class EfProcessingConsentStore(AppDbContext context) : IProcessing
         context.ProcessingConsents.Remove(consent);
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
         return new ProcessingConsentWithdrawal(true, connections.Length, jobs.Length);
     }
 

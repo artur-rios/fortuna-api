@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Ingestion;
@@ -25,9 +26,14 @@ public sealed class EfConnectionStore(AppDbContext context)
             return new ConnectionMutationResult(existing, ConnectionMutationOutcome.Duplicate);
         }
 
-        var user = await context.UserProfiles.SingleAsync(
+        var user = await context.UserProfiles.SingleOrDefaultAsync(
             item => item.PublicId == creation.UserId,
             cancellationToken);
+        if (user is null)
+        {
+            return new ConnectionMutationResult(null, ConnectionMutationOutcome.ProfileNotFound);
+        }
+
         var connection = new Connection(
             user,
             creation.DataSourceType,
@@ -41,7 +47,7 @@ public sealed class EfConnectionStore(AppDbContext context)
         }
         catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(
             exception,
-            "ix_connection_user_id_data_source_type_external_reference"))
+            ConnectionMap.ExternalReferenceIndex))
         {
             context.Entry(connection).State = EntityState.Detached;
             var duplicate = await FindByExternalReferenceAsync(
@@ -49,6 +55,7 @@ public sealed class EfConnectionStore(AppDbContext context)
                 creation.DataSourceType,
                 creation.ExternalReference,
                 cancellationToken);
+
             return new ConnectionMutationResult(
                 duplicate ?? throw new InvalidOperationException(
                     "The duplicate connection could not be resolved."),
@@ -70,6 +77,7 @@ public sealed class EfConnectionStore(AppDbContext context)
         var connection = await Connections().SingleOrDefaultAsync(item =>
             item.User.PublicId == userId && item.PublicId == id,
             cancellationToken);
+
         return connection is null ? null : Snapshot(connection);
     }
 
@@ -109,10 +117,11 @@ public sealed class EfConnectionStore(AppDbContext context)
         }
         catch (DbUpdateException exception) when (DatabaseException.IsUniqueViolation(
             exception,
-            "ix_connection_user_id_data_source_type_external_reference"))
+            ConnectionMap.ExternalReferenceIndex))
         {
             await transaction.RollbackAsync(cancellationToken);
             context.Entry(connection).State = EntityState.Detached;
+
             return ReauthenticationResult(ConnectionReauthenticationOutcome.DuplicateReference);
         }
 
@@ -184,6 +193,7 @@ public sealed class EfConnectionStore(AppDbContext context)
             item.DataSourceType == dataSourceType &&
             item.ExternalReference == externalReference,
             cancellationToken);
+
         return connection is null ? null : Snapshot(connection);
     }
 

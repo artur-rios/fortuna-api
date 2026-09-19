@@ -61,8 +61,9 @@ public sealed class RetryImportJobCommandHandlerTests
     {
         var store = new StubStore(Result(RetryImportJobOutcome.Succeeded));
         var handler = new RetryImportJobCommandHandler(
-            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-            new StubProfileReader(null),
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+                new StubProfileReader(null)),
             store,
             new StubQueue(),
             new FixedTimeProvider());
@@ -75,9 +76,10 @@ public sealed class RetryImportJobCommandHandlerTests
     }
 
     private static RetryImportJobCommandHandler Handler(StubStore store, StubQueue queue) => new(
-        new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
-        new StubProfileReader(new UserProfileSnapshot(
-            UserId, null, "Owner", "BRL", false, Now, Now)),
+        new CurrentProfileResolver(
+            new StubActorAccessor(new RequestActor(UserId, 3, null, []) { IsLocal = true }),
+            new StubProfileReader(new UserProfileSnapshot(
+                UserId, null, "Owner", "BRL", false, Now, Now))),
         store,
         queue,
         new FixedTimeProvider());
@@ -85,6 +87,7 @@ public sealed class RetryImportJobCommandHandlerTests
     private static RetryImportJobResult Result(RetryImportJobOutcome outcome)
     {
         var hasJob = outcome != RetryImportJobOutcome.NotFound;
+
         return new RetryImportJobResult(
             outcome,
             hasJob ? new RetryImportJobSnapshot(
@@ -117,6 +120,7 @@ public sealed class RetryImportJobCommandHandlerTests
         {
             UserId = userId;
             ImportJobId = importJobId;
+
             return Task.FromResult(result);
         }
     }
@@ -129,6 +133,7 @@ public sealed class RetryImportJobCommandHandlerTests
         public ValueTask EnqueueAsync(Guid jobId, CancellationToken cancellationToken)
         {
             JobId = jobId;
+
             return ValueTask.CompletedTask;
         }
 

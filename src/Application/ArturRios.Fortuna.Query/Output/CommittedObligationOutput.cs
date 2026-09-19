@@ -14,6 +14,7 @@ public sealed class CommittedObligationListOutput : QueryOutput
     public IReadOnlyCollection<CommittedObligationOutput> Items { get; set; } = [];
     public IReadOnlyCollection<CommittedObligationPeriodOutput> Periods { get; set; } = [];
     public IReadOnlyCollection<CommittedObligationRateOutput> Rates { get; set; } = [];
+    public IReadOnlyCollection<MissingExchangeRateOutput> MissingRates { get; set; } = [];
 }
 
 public sealed class CommittedObligationOutput

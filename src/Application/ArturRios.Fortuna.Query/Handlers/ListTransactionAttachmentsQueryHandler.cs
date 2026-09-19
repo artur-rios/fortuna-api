@@ -3,19 +3,15 @@ using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
-using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListTransactionAttachmentsQueryHandler(
-    IValidator<ListTransactionAttachmentsQuery> validator,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IAttachmentMetadataReader metadata,
-    IRequestActorAccessor actorAccessor,
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListTransactionAttachmentsQuery, AttachmentOutput>
 {
@@ -23,13 +19,7 @@ public sealed class ListTransactionAttachmentsQueryHandler(
         ListTransactionAttachmentsQuery query)
     {
         var output = PaginatedOutput<AttachmentOutput>.New;
-        var validation = await validator.ValidateAsync(query);
-        if (!validation.IsValid)
-        {
-            return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
-        }
-
-        var profile = await ResolveProfileAsync(actorAccessor.Actor);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(AttachmentMessages.ProfileNotFound);
@@ -75,11 +65,4 @@ public sealed class ListTransactionAttachmentsQueryHandler(
 
         return page.WithMessage(AttachmentMessages.ListedSuccessfully);
     }
-
-    private async Task<UserProfileSnapshot?> ResolveProfileAsync(RequestActor? actor) =>
-        actor?.IsLocal == true
-            ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-            : actor is null
-                ? null
-                : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
 }

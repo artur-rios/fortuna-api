@@ -13,8 +13,8 @@ public sealed record TransactionAggregationOptions(int MaximumSpanDays);
 
 public sealed record TransactionAggregationCriteria(
     Guid UserId,
-    string Dimension,
-    string? Granularity,
+    AggregationDimension Dimension,
+    AggregationGranularity? Granularity,
     DateOnly From,
     DateOnly To,
     bool RollupCategories,
@@ -30,7 +30,7 @@ public sealed record TransactionAggregationCriteria(
     IReadOnlyCollection<TransactionAggregationSelection> Selections);
 
 public sealed record TransactionAggregationSelection(
-    string Dimension,
+    AggregationDimension Dimension,
     string Value,
     bool RollupCategories,
     DateOnly? From = null,
@@ -59,8 +59,8 @@ public sealed record TransactionDrillDownKeyPayload(
     Guid OwnerId,
     DateTimeOffset IssuedAt,
     DateTimeOffset ExpiresAt,
-    string Dimension,
-    string? Granularity,
+    AggregationDimension Dimension,
+    AggregationGranularity? Granularity,
     string DisplayCurrencyCode,
     DateOnly From,
     DateOnly To,

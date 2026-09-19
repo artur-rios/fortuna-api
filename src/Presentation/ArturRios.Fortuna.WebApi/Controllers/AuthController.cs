@@ -1,9 +1,7 @@
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,18 +10,20 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(CommandMediator commandMediator) : Controller
+public sealed class AuthController : FortunaController
 {
     public const string AnonymousRateLimitPolicy = "AuthAnonymous";
 
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [HeimdallAuthMessages.AuthenticationRejected] = StatusCodes.Status401Unauthorized,
             [HeimdallAuthMessages.TwoFactorRejected] = StatusCodes.Status401Unauthorized,
             [HeimdallAuthMessages.TwoFactorNotFound] = StatusCodes.Status404NotFound,
             [HeimdallAuthMessages.ServiceUnavailable] = StatusCodes.Status503ServiceUnavailable
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost("login")]
     [AllowAnonymous]
@@ -31,9 +31,8 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     public async Task<ActionResult<DataOutput<LoginThroughApiCommandOutput?>>> Login(
         [FromBody] LoginThroughApiCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             LoginThroughApiCommand, LoginThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("google")]
@@ -42,9 +41,8 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     public async Task<ActionResult<DataOutput<GoogleSignInThroughApiCommandOutput?>>> Google(
         [FromBody] GoogleSignInThroughApiCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             GoogleSignInThroughApiCommand, GoogleSignInThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("2fa/verify")]
@@ -53,9 +51,8 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     public async Task<ActionResult<DataOutput<VerifyTwoFactorThroughApiCommandOutput?>>> VerifyTwoFactor(
         [FromBody] VerifyTwoFactorThroughApiCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             VerifyTwoFactorThroughApiCommand, VerifyTwoFactorThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("2fa/challenge/resend")]
@@ -65,10 +62,9 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         ResendTwoFactorChallengeCode(
             [FromBody] ResendTwoFactorChallengeCodeThroughApiCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             ResendTwoFactorChallengeCodeThroughApiCommand,
             ResendTwoFactorChallengeCodeThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("google/sign-out")]
@@ -78,9 +74,9 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         {
             BearerToken = BearerToken()
         };
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             GoogleSignOutThroughApiCommand, GoogleSignOutThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("password-recovery")]
@@ -89,10 +85,9 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     public async Task<ActionResult<DataOutput<RequestPasswordRecoveryThroughApiCommandOutput?>>>
         RequestPasswordRecovery([FromBody] RequestPasswordRecoveryThroughApiCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             RequestPasswordRecoveryThroughApiCommand,
             RequestPasswordRecoveryThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("password-reset")]
@@ -101,9 +96,8 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     public async Task<ActionResult<DataOutput<ResetPasswordThroughApiCommandOutput?>>> ResetPassword(
         [FromBody] ResetPasswordThroughApiCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             ResetPasswordThroughApiCommand, ResetPasswordThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("verify-email")]
@@ -112,29 +106,26 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
     public async Task<ActionResult<DataOutput<VerifyEmailThroughApiCommandOutput?>>> VerifyEmail(
         [FromBody] VerifyEmailThroughApiCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             VerifyEmailThroughApiCommand, VerifyEmailThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("resend-verification")]
     public async Task<ActionResult<DataOutput<ResendVerificationThroughApiCommandOutput?>>>
         ResendVerification()
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             ResendVerificationThroughApiCommand, ResendVerificationThroughApiCommandOutput>(
                 new() { BearerToken = BearerToken() });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("2fa")]
     public async Task<ActionResult<DataOutput<GetTwoFactorStatusThroughApiCommandOutput?>>>
         GetTwoFactorStatus()
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             GetTwoFactorStatusThroughApiCommand, GetTwoFactorStatusThroughApiCommandOutput>(
                 new() { BearerToken = BearerToken() });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("2fa/enable")]
@@ -142,9 +133,9 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         [FromBody] EnableTwoFactorThroughApiCommand command)
     {
         command.BearerToken = BearerToken();
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             EnableTwoFactorThroughApiCommand, EnableTwoFactorThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("2fa/confirm")]
@@ -152,9 +143,9 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         [FromBody] ConfirmTwoFactorThroughApiCommand command)
     {
         command.BearerToken = BearerToken();
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             ConfirmTwoFactorThroughApiCommand, ConfirmTwoFactorThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("2fa/disable")]
@@ -162,9 +153,9 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         [FromBody] DisableTwoFactorThroughApiCommand command)
     {
         command.BearerToken = BearerToken();
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             DisableTwoFactorThroughApiCommand, DisableTwoFactorThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("2fa/recovery-codes/regenerate")]
@@ -172,10 +163,10 @@ public sealed class AuthController(CommandMediator commandMediator) : Controller
         RegenerateRecoveryCodes([FromBody] RegenerateRecoveryCodesThroughApiCommand command)
     {
         command.BearerToken = BearerToken();
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             RegenerateRecoveryCodesThroughApiCommand,
             RegenerateRecoveryCodesThroughApiCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     private string BearerToken() =>

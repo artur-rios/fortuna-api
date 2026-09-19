@@ -28,5 +28,9 @@ public sealed class AttachDocumentCommandValidator : AbstractValidator<AttachDoc
                 contentType?.Trim() ?? string.Empty,
                 StringComparer.OrdinalIgnoreCase))
             .WithMessage(AttachmentMessages.ContentTypeNotAllowed(options.AllowedContentTypes));
+        RuleFor(command => command)
+            .Must(command => FileSignatures.MatchesContentType(command.ContentType, command.Content))
+            .When(command => command.Content is { Length: > 0 })
+            .WithMessage(AttachmentMessages.ContentDoesNotMatchType);
     }
 }

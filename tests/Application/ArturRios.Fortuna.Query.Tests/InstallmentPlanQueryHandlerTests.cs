@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -71,13 +73,13 @@ public sealed class InstallmentPlanQueryHandlerTests
         Assert.Null(reader.UserId);
     }
 
-    private static GetInstallmentPlanByIdQueryHandler Handler(
+    private static IQueryHandlerAsync<GetInstallmentPlanByIdQuery, InstallmentPlanOutput> Handler(
         UserProfileSnapshot? profile,
-        IInstallmentPlanReader reader) => new(
-        new GetInstallmentPlanByIdQueryValidator(),
-        new StubProfileReader(profile),
-        reader,
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])));
+        IInstallmentPlanReader reader) => new GetInstallmentPlanByIdQueryHandler(
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfileReader(profile)),
+        reader).Validated(new GetInstallmentPlanByIdQueryValidator());
 
     private static InstallmentPlanSnapshot Snapshot() => new()
     {
@@ -115,6 +117,7 @@ public sealed class InstallmentPlanQueryHandlerTests
         {
             UserId = userId;
             IncludeDeleted = includeDeleted;
+
             return Task.FromResult(snapshot);
         }
     }

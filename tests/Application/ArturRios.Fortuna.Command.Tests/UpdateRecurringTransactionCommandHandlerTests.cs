@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -59,14 +61,16 @@ public sealed class UpdateRecurringTransactionCommandHandlerTests
         Assert.Null(updater.Update);
     }
 
-    private static UpdateRecurringTransactionCommandHandler Handler(
+    private static ICommandHandlerAsync<
+        UpdateRecurringTransactionCommand,
+        UpdateRecurringTransactionCommandOutput> Handler(
         UserProfileSnapshot? profile,
-        IRecurringTransactionUpdater updater) => new(
-        new UpdateRecurringTransactionCommandValidator(),
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new StubProfiles(profile),
+        IRecurringTransactionUpdater updater) => new UpdateRecurringTransactionCommandHandler(
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
         updater,
-        new FixedTimeProvider(Now));
+        new FixedTimeProvider(Now)).Validated(new UpdateRecurringTransactionCommandValidator());
 
     private static UpdateRecurringTransactionCommand Command(Guid id) => new()
     {
@@ -105,6 +109,7 @@ public sealed class UpdateRecurringTransactionCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Update = update;
+
             return Task.FromResult(result);
         }
     }

@@ -39,6 +39,25 @@ public sealed class CreditCardStatementTests
         Assert.Equal(new DateOnly(2027, 3, 5), cycle.DueDate);
     }
 
+    [UnitTheory]
+    [InlineData("2026-04-15", 30, 31, "2026-04-30", "2026-05-31")]
+    [InlineData("2027-02-10", 28, 29, "2027-02-28", "2027-03-29")]
+    [InlineData("2027-02-10", 29, 30, "2027-02-28", "2027-03-30")]
+    public void GivenDueDayClampedOntoClosingDate_WhenCycleCalculated_ThenDueMovesToNextMonth(
+        string date,
+        short closingDay,
+        short dueDay,
+        string expectedClosing,
+        string expectedDue)
+    {
+        var cycle = BillingCycle.Containing(DateOnly.Parse(date), closingDay, dueDay);
+        var statement = new CreditCardStatement(Card(), cycle, Now);
+
+        Assert.Equal(DateOnly.Parse(expectedClosing), cycle.ClosingDate);
+        Assert.Equal(DateOnly.Parse(expectedDue), cycle.DueDate);
+        Assert.True(statement.DueDate > statement.ClosingDate);
+    }
+
     [UnitFact]
     public void GivenCharge_WhenAssigned_ThenStatementTotalAndLinkAreUpdated()
     {
@@ -167,6 +186,135 @@ public sealed class CreditCardStatementTests
         Assert.Contains("does not reconcile", exception.Message, StringComparison.Ordinal);
     }
 
+    [UnitTheory]
+    [InlineData(-1, 160, ImportedSummaryOutcome.PaymentsNegative)]
+    [InlineData(100, 161, ImportedSummaryOutcome.DoesNotReconcile)]
+    public void GivenInvalidInvoiceSummary_WhenTried_ThenOutcomeIsReturnedAndStatementIsUnchanged(
+        int paymentsReceived,
+        int amountDue,
+        ImportedSummaryOutcome expected)
+    {
+        var statement = Statement(Card());
+
+        var outcome = statement.TryApplyImportedSummary(
+            100m, paymentsReceived, 165m, 5m, -10m, amountDue, Now);
+
+        Assert.Equal(expected, outcome);
+        Assert.Equal(0m, statement.AmountDue);
+        Assert.Equal(0m, statement.PreviousBalance);
+    }
+
+    [UnitFact]
+    public void GivenReconciledInvoiceSummary_WhenTried_ThenItIsApplied()
+    {
+        var statement = Statement(Card());
+
+        var outcome = statement.TryApplyImportedSummary(100m, 100m, 165m, 5m, -10m, 160m, Now);
+
+        Assert.Equal(ImportedSummaryOutcome.Applied, outcome);
+        Assert.Equal(160m, statement.AmountDue);
+    }
+
+    [UnitTheory]
+    [InlineData(10, 10, false)]
+    [InlineData(10, 9, false)]
+    [InlineData(10, 11, true)]
+    public void GivenCycleDueDate_WhenValidated_ThenItMustFollowTheClosingDate(
+        int closingDay,
+        int dueDay,
+        bool expected)
+    {
+        var cycle = new BillingCycle(
+            new DateOnly(2026, 7, 11),
+            new DateOnly(2026, 8, closingDay),
+            new DateOnly(2026, 8, closingDay),
+            new DateOnly(2026, 8, dueDay));
+
+        Assert.Equal(expected, CreditCardStatement.IsValidCycle(cycle));
+    }
+
+    [UnitFact]
+    public void GivenSummaryOffByOneYen_WhenAppliedToYenCard_ThenItReconciles()
+    {
+        var statement = Statement(Card(new Currency("JPY", "Japanese yen", 0)));
+
+        statement.ApplyImportedSummary(0m, 0m, 1000m, 0m, 0m, 1001m, Now);
+
+        Assert.Equal(1001m, statement.AmountDue);
+    }
+
+    [UnitFact]
+    public void GivenSummaryOffByTwoCents_WhenAppliedToRealCard_ThenItIsRejected()
+    {
+        var statement = Statement(Card());
+
+        Assert.Throws<ArgumentException>(() =>
+            statement.ApplyImportedSummary(0m, 0m, 100m, 0m, 0m, 100.02m, Now));
+    }
+
+    [UnitFact]
+    public void GivenImportedSummary_WhenPurchaseTotalRecalculated_ThenImportedAdjustmentIsKept()
+    {
+        var statement = Statement(Card());
+        statement.ApplyImportedSummary(0m, 0m, 100m, 0m, 0m, 100.01m, Now);
+
+        statement.RecalculatePurchaseTotal(110m, Now.AddMinutes(1));
+
+        Assert.Equal(110m, statement.PurchaseTotal);
+        Assert.Equal(110.01m, statement.AmountDue);
+    }
+
+    [UnitFact]
+    public void GivenCreditBalance_WhenPreviousBalanceSet_ThenAmountDueIsReduced()
+    {
+        var statement = Statement(Card());
+        statement.RecalculatePurchaseTotal(100m, Now);
+
+        statement.SetPreviousBalance(-30m, Now.AddMinutes(1));
+
+        Assert.Equal(-30m, statement.PreviousBalance);
+        Assert.Equal(70m, statement.AmountDue);
+    }
+
+    [UnitFact]
+    public void GivenSettledStatement_WhenClosed_ThenItIsRejectedLikeSettlement()
+    {
+        var card = Card();
+        var statement = Statement(card);
+        statement.Close(Now);
+        statement.Settle(Settlement(card), Now);
+
+        Assert.Throws<InvalidOperationException>(() => statement.Close(Now.AddMinutes(1)));
+        Assert.Throws<InvalidOperationException>(() =>
+            statement.Settle(Settlement(card), Now.AddMinutes(1)));
+    }
+
+    [UnitFact]
+    public void GivenChargeOnSettledStatement_WhenReassigned_ThenItIsRejected()
+    {
+        var card = Card();
+        var settled = Statement(card);
+        var charge = new FinancialTransaction(
+            card.User,
+            card,
+            Category(card.User),
+            TransactionDirection.Expense,
+            10m,
+            new DateOnly(2026, 9, 1),
+            Now);
+        charge.AssignToStatement(settled, false, Now);
+        settled.Close(Now);
+        settled.Settle(Settlement(card), Now);
+        var next = new CreditCardStatement(
+            card,
+            BillingCycle.Containing(new DateOnly(2026, 10, 10), card.ClosingDay, card.DueDay),
+            Now);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            charge.AssignToStatement(next, false, Now.AddMinutes(1)));
+        Assert.Same(settled, charge.Statement);
+    }
+
     [UnitFact]
     public void GivenOutboundMovement_WhenStatementSettled_ThenItIsRejected()
     {
@@ -220,10 +368,20 @@ public sealed class CreditCardStatementTests
 
     private static Category Category(UserProfile user) => new(user, "General", Now);
 
-    private static CreditCard Card()
+    private static FinancialTransaction Settlement(CreditCard card) => new(
+        card.User,
+        card,
+        Category(card.User),
+        TransactionDirection.Earning,
+        1m,
+        new DateOnly(2026, 9, 25),
+        Now);
+
+    private static CreditCard Card(Currency? currency = null)
     {
-        var currency = new Currency("BRL", "Brazilian real", 2);
+        currency ??= new Currency("BRL", "Brazilian real", 2);
         var user = new UserProfile(Guid.NewGuid(), "Owner", currency, Now);
+
         return new CreditCard(user, "Rewards", "Bank", currency, 1000m, 20, 5, null, Now);
     }
 }

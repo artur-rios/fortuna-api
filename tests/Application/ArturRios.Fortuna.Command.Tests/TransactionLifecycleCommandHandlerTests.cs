@@ -115,8 +115,9 @@ public sealed class TransactionLifecycleCommandHandlerTests
         var profiles = new StubProfileReader(profile);
         var store = SucceedingStore(Guid.NewGuid());
         var handler = new DeleteTransactionCommandHandler(
-            new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActor(new RequestActor(profile.Id, 3, null, []) { IsLocal = true }),
+                profiles),
             store,
             new FixedTimeProvider(Now));
 
@@ -130,24 +131,21 @@ public sealed class TransactionLifecycleCommandHandlerTests
     private static DeleteTransactionCommandHandler DeleteHandler(
         UserProfileSnapshot? profile,
         ITransactionLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static RestoreTransactionCommandHandler RestoreHandler(
         UserProfileSnapshot? profile,
         ITransactionLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store,
         new FixedTimeProvider(Now));
 
     private static HardDeleteTransactionCommandHandler HardDeleteHandler(
         UserProfileSnapshot? profile,
         ITransactionLifecycleStore store) => new(
-        Actor(profile),
-        new StubProfileReader(profile),
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         store);
 
     private static StubActor Actor(UserProfileSnapshot? profile) => new(
@@ -181,6 +179,7 @@ public sealed class TransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             SoftDelete = (userId, id, changedAt);
+
             return Task.FromResult(new TransactionLifecycleResult(resultId, outcome));
         }
 
@@ -191,6 +190,7 @@ public sealed class TransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Restore = (userId, id, changedAt);
+
             return Task.FromResult(new TransactionLifecycleResult(resultId, outcome));
         }
 
@@ -200,6 +200,7 @@ public sealed class TransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             HardDelete = (userId, id);
+
             return Task.FromResult(new TransactionLifecycleResult(resultId, outcome));
         }
     }
@@ -217,6 +218,7 @@ public sealed class TransactionLifecycleCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

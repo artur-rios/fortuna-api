@@ -4,10 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
-using ArturRios.Mediator.Command;
-using ArturRios.Mediator.Query;
 using ArturRios.Output;
-using ArturRios.Util.WebApi.AspNetCore;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,12 +12,10 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 
 [ApiController]
 [Route("api/counterparties")]
-public sealed class CounterpartiesController(
-    CommandMediator commandMediator,
-    QueryMediator queryMediator) : Controller
+public sealed class CounterpartiesController : FortunaController
 {
-    private static readonly IReadOnlyDictionary<string, int> StatusMap =
-        new Dictionary<string, int>
+    private static readonly IReadOnlyDictionary<string, int> Statuses =
+        FortunaStatusMap.With(new Dictionary<string, int>
         {
             [CounterpartyMessages.CreatedSuccessfully] = StatusCodes.Status201Created,
             [CounterpartyMessages.ReusedSuccessfully] = StatusCodes.Status200OK,
@@ -28,40 +23,45 @@ public sealed class CounterpartiesController(
             [CounterpartyMessages.DeletedSuccessfully] = StatusCodes.Status200OK,
             [CounterpartyMessages.MergedSuccessfully] = StatusCodes.Status200OK,
             [CounterpartyMessages.ListedSuccessfully] = StatusCodes.Status200OK,
+            [CounterpartyMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [CounterpartyMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [CounterpartyMessages.SuggestedSuccessfully] = StatusCodes.Status200OK,
             [CounterpartyMessages.NoSuggestion] = StatusCodes.Status200OK,
             [CounterpartyMessages.NotFound] = StatusCodes.Status404NotFound,
-            [CounterpartyMessages.ProfileNotFound] = StatusCodes.Status404NotFound,
             [CounterpartyMessages.DuplicateName] = StatusCodes.Status409Conflict,
             [CounterpartyMessages.SameCounterparty] = StatusCodes.Status400BadRequest,
             [CounterpartyMessages.NameRequired] = StatusCodes.Status400BadRequest,
             [CounterpartyMessages.NameTooLong] = StatusCodes.Status400BadRequest,
             [CounterpartyMessages.TargetIdInvalid] = StatusCodes.Status400BadRequest
-        };
+        });
+
+    protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CounterpartyCommandOutput?>>> Create(
         [FromBody] CreateCounterpartyCommand command)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             CreateCounterpartyCommand,
             CounterpartyCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CounterpartyListOutput?>>> List(
-        [FromQuery] bool includeDeleted = false)
+        [FromQuery] bool includeDeleted = false,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 100)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             ListCounterpartiesQuery,
             CounterpartyListOutput>(new ListCounterpartiesQuery
             {
-                IncludeDeleted = includeDeleted
+                IncludeDeleted = includeDeleted,
+                PageNumber = pageNumber,
+                PageSize = pageSize
             });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPut("{id:guid}")]
@@ -71,20 +71,19 @@ public sealed class CounterpartiesController(
         [FromBody] UpdateCounterpartyCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             UpdateCounterpartyCommand,
             CounterpartyCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpDelete("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<CounterpartyCommandOutput?>>> Delete(Guid id)
     {
-        var result = await commandMediator.ExecuteCommandAsync<
+        return await SendAsync<
             DeleteCounterpartyCommand,
             CounterpartyCommandOutput>(new DeleteCounterpartyCommand { Id = id });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpPost("{id:guid}/merge")]
@@ -94,10 +93,10 @@ public sealed class CounterpartiesController(
         [FromBody] MergeCounterpartiesCommand command)
     {
         command.Id = id;
-        var result = await commandMediator.ExecuteCommandAsync<
+
+        return await SendAsync<
             MergeCounterpartiesCommand,
             CounterpartyMergeCommandOutput>(command);
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 
     [HttpGet("{id:guid}/suggested-category")]
@@ -105,9 +104,8 @@ public sealed class CounterpartiesController(
     public async Task<ActionResult<DataOutput<CounterpartyCategorySuggestionOutput?>>> SuggestCategory(
         Guid id)
     {
-        var result = await queryMediator.ExecuteQueryAsync<
+        return await QueryAsync<
             SuggestCounterpartyCategoryQuery,
             CounterpartyCategorySuggestionOutput>(new SuggestCounterpartyCategoryQuery { Id = id });
-        return ResponseResolver.Resolve(result, statusMap: StatusMap);
     }
 }

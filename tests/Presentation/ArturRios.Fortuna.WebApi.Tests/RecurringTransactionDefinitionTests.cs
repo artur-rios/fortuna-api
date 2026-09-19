@@ -185,6 +185,7 @@ public sealed class RecurringTransactionDefinitionTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -199,6 +200,7 @@ public sealed class RecurringTransactionDefinitionTests : IAsyncLifetime
             OpeningBalance = 1000m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -214,12 +216,14 @@ public sealed class RecurringTransactionDefinitionTests : IAsyncLifetime
             DueDay = 25
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
     private WebApplicationFactory<Program> CreateFactory()
     {
         foreach (var setting in ValidSettings()) Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(Environments.Development);

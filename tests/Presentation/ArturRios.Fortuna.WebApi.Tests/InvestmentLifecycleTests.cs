@@ -248,6 +248,7 @@ public sealed class InvestmentLifecycleTests : IAsyncLifetime
             DateTimeOffset.UtcNow);
         context.Investments.Add(investment);
         await context.SaveChangesAsync();
+
         return investment.PublicId;
     }
 
@@ -282,6 +283,7 @@ public sealed class InvestmentLifecycleTests : IAsyncLifetime
         context.InvestmentMovements.AddRange(liveMovement, predeletedMovement);
         context.InvestmentValuations.AddRange(liveValuation, predeletedValuation);
         await context.SaveChangesAsync();
+
         return new SeededChildren(
             liveMovement.PublicId,
             predeletedMovement.PublicId,
@@ -321,6 +323,7 @@ public sealed class InvestmentLifecycleTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

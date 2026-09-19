@@ -236,6 +236,7 @@ public sealed class CreditCardLifecycleTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -283,6 +284,7 @@ public sealed class CreditCardLifecycleTests : IAsyncLifetime
 
         context.FinancialTransactions.AddRange(expense, credit, preDeleted);
         await context.SaveChangesAsync();
+
         return new TransactionData(expense.PublicId, credit.PublicId, preDeleted.PublicId);
     }
 
@@ -299,6 +301,7 @@ public sealed class CreditCardLifecycleTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<CardEnvelope>())!.Data!;
     }
 

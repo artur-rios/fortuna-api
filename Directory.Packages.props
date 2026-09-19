@@ -36,6 +36,17 @@
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
   <ItemGroup>
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.18.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.18.0" />
+    <!--
+      The Prometheus exporter has never shipped a stable release: upstream keeps it in beta until the
+      OpenTelemetry Prometheus specification is stable. It is pinned to the beta that matches the
+      stable 1.18.0 SDK packages above, and only serves the private scrape endpoint.
+    -->
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.18.0-beta.1" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="Moq" Version="4.20.72" />

@@ -3,7 +3,7 @@ namespace ArturRios.Fortuna.Shared.Messages;
 public static class TableReportMessages
 {
     public const string RetrievedSuccessfully = "The table was retrieved successfully.";
-    public const string ProfileNotFound = "The user profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string RecordSetRequired = "RecordSet is required.";
     public const string ColumnsRequired = "At least one column is required.";
     public const string ColumnsMustBeUnique = "Columns must not contain duplicates.";
@@ -13,9 +13,14 @@ public static class TableReportMessages
     public const string FilterOperatorRequired = "Every filter operator is required.";
     public const string FilterValueRequired = "Every filter value is required.";
     public const string SortFieldRequired = "Every sort field is required.";
+    public const string FiltersRequired = "Filters must be a list; send an empty list for none.";
+    public const string FilterRequired = "Every filter must be an object.";
+    public const string SortsRequired = "Sorts must be a list; send an empty list for none.";
+    public const string SortRequired = "Every sort must be an object.";
     public const string DisplayCurrencyInvalid =
         "DisplayCurrencyCode must be a three-letter currency code.";
     public const string DisplayCurrencyUnsupported = "The display currency is not supported.";
+    public const string ReadFailed = "The table could not be read.";
 
     public static string UnknownRecordSet(string name, IEnumerable<string> supported) =>
         $"Record set '{name}' is not supported. Supported record sets: {Join(supported)}.";

@@ -15,6 +15,7 @@ public sealed class DatabaseOperationalHealthCheck(AppDbContext context)
         try
         {
             var healthy = await context.Database.CanConnectAsync(cancellationToken);
+
             return Result(healthy
                 ? OperationalHealthStatus.Healthy
                 : OperationalHealthStatus.Unhealthy);

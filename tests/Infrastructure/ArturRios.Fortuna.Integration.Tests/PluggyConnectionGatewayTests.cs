@@ -14,7 +14,7 @@ public sealed class PluggyConnectionGatewayTests
     public async Task GivenValidItem_WhenValidated_ThenInstitutionAndAccessTokenAreReturned()
     {
         var handler = new SequenceHandler(
-            Response(HttpStatusCode.OK, "{\"accessToken\":\"api-key\"}"),
+            Response(HttpStatusCode.OK, "{\"apiKey\":\"api-key\"}"),
             Response(HttpStatusCode.OK,
                 $"{{\"id\":\"{ItemId}\",\"connector\":{{\"name\":\"Nubank\"}}}}"));
 

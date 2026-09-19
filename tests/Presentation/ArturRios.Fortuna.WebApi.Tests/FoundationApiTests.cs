@@ -1,6 +1,6 @@
+using System.Globalization;
 using System.Net;
 using ArturRios.Fortuna.WebApi.Configuration;
-using ArturRios.Fortuna.WebApi.Services;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -18,7 +18,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values.Remove("FORTUNA_DATA_CONNECTIONSTRING");
 
-        var exception = Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
+        var exception = Assert.Throws<FortunaConfigurationException>(() => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_DATA_CONNECTIONSTRING", exception.Message, StringComparison.Ordinal);
     }
@@ -54,6 +54,39 @@ public sealed class FoundationApiTests
         Assert.Equal("1.0", options.ConsentExternalDataProcessingVersion);
         Assert.Equal(0.01m, options.ReconciliationAmountTolerance);
         Assert.Equal(1, options.ReconciliationDateToleranceDays);
+        Assert.Equal(9464, options.MetricsPort);
+    }
+
+    [UnitTheory]
+    [InlineData("", 9464)]
+    [InlineData("0", 0)]
+    [InlineData("9100", 9100)]
+    [InlineData("65535", 65535)]
+    public void GivenMetricsPortSetting_WhenConfigurationLoads_ThenPortIsApplied(
+        string value,
+        int expected)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_METRICS_PORT"] = value;
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal(expected, options.MetricsPort);
+    }
+
+    [UnitTheory]
+    [InlineData("-1")]
+    [InlineData("65536")]
+    [InlineData("metrics")]
+    public void GivenInvalidMetricsPort_WhenConfigurationLoads_ThenStartupIsRejected(string value)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_METRICS_PORT"] = value;
+
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_METRICS_PORT", exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]
@@ -73,7 +106,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION"] = new string('v', 51);
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION", exception.Message,
@@ -104,7 +137,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values[key] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains(key, exception.Message, StringComparison.Ordinal);
@@ -138,7 +171,7 @@ public sealed class FoundationApiTests
             : "FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS";
         values[key] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains(key, exception.Message, StringComparison.Ordinal);
@@ -161,7 +194,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values.Remove("FORTUNA_LOCALE");
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<FortunaConfigurationException>(
             () => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_LOCALE", exception.Message, StringComparison.Ordinal);
@@ -175,7 +208,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_LOCALE"] = locale;
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<FortunaConfigurationException>(
             () => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("specific locale", exception.Message, StringComparison.Ordinal);
@@ -189,7 +222,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = currency;
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<FortunaConfigurationException>(
             () => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("ISO 4217", exception.Message, StringComparison.Ordinal);
@@ -230,7 +263,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_DATA_DATABASETYPE"] = "MySql";
 
-        var exception = Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
+        var exception = Assert.Throws<FortunaConfigurationException>(() => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("PostgreSql", exception.Message, StringComparison.Ordinal);
         Assert.Contains("SQLite", exception.Message, StringComparison.Ordinal);
@@ -242,7 +275,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_HEIMDALL_BASE_URL"] = "http://heimdall.example.test";
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("HTTPS", exception.Message, StringComparison.Ordinal);
@@ -254,7 +287,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_STORAGE_PROVIDER"] = "database";
 
-        var exception = Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
+        var exception = Assert.Throws<FortunaConfigurationException>(() => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("Filesystem", exception.Message, StringComparison.Ordinal);
     }
@@ -267,7 +300,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_JOB_QUEUE_CAPACITY"] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
+        var exception = Assert.Throws<FortunaConfigurationException>(() => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("positive integer", exception.Message, StringComparison.Ordinal);
     }
@@ -280,7 +313,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_HEALTH_JOB_MAX_PENDING_SECONDS"] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("positive integer", exception.Message, StringComparison.Ordinal);
@@ -294,7 +327,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_PAGE_SIZE_MAX"] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_PAGE_SIZE_MAX", exception.Message, StringComparison.Ordinal);
@@ -309,7 +342,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_REPORT_MAX_RANGE_DAYS"] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_REPORT_MAX_RANGE_DAYS", exception.Message,
@@ -325,7 +358,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_REPORT_KEY_TTL_MINUTES"] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_REPORT_KEY_TTL_MINUTES", exception.Message,
@@ -341,7 +374,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_PROJECTION_MAX_HORIZON_DAYS"] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_PROJECTION_MAX_HORIZON_DAYS", exception.Message,
@@ -360,7 +393,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values[key] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains(key, exception.Message, StringComparison.Ordinal);
@@ -375,7 +408,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_TRANSACTION_MAX_TAGS"] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_TRANSACTION_MAX_TAGS", exception.Message, StringComparison.Ordinal);
@@ -387,7 +420,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_RUN_MIGRATIONS"] = "sometimes";
 
-        var exception = Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
+        var exception = Assert.Throws<FortunaConfigurationException>(() => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("true or false", exception.Message, StringComparison.Ordinal);
     }
@@ -398,7 +431,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_LOCAL_AUTH_ENABLED"] = "sometimes";
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<FortunaConfigurationException>(
             () => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_LOCAL_AUTH_ENABLED", exception.Message, StringComparison.Ordinal);
@@ -412,7 +445,7 @@ public sealed class FoundationApiTests
         var values = ValidSettings();
         values["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = value;
 
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<FortunaConfigurationException>(
             () => FortunaOptions.From(values.GetValueOrDefault));
 
         Assert.Contains("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT", exception.Message, StringComparison.Ordinal);
@@ -447,17 +480,157 @@ public sealed class FoundationApiTests
         values["FORTUNA_RATES_SYNC_CRON"] = cron;
         values["FORTUNA_RATES_CURRENCIES"] = currencies;
 
-        Assert.Throws<InvalidOperationException>(() => FortunaOptions.From(values.GetValueOrDefault));
+        Assert.Throws<FortunaConfigurationException>(() => FortunaOptions.From(values.GetValueOrDefault));
     }
 
     [UnitFact]
-    public void GivenWeekdayCron_WhenMatchingUtcInstants_ThenOnlyScheduledMinutesMatch()
+    public void GivenSeveralInvalidSettings_WhenConfigurationIsParsed_ThenEveryProblemIsReportedTogether()
     {
-        var schedule = CronSchedule.Parse("*/15 9-17 * * 1-5");
+        var values = ValidSettings();
+        values.Remove("FORTUNA_DATA_CONNECTIONSTRING");
+        values["FORTUNA_JOB_QUEUE_CAPACITY"] = "zero";
+        values["FORTUNA_AUTH_TOKEN_SECRET"] = "too-short";
+        values["FORTUNA_LOCALE"] = "pt";
 
-        Assert.True(schedule.Matches(DateTimeOffset.Parse("2026-09-04T09:30:00Z")));
-        Assert.False(schedule.Matches(DateTimeOffset.Parse("2026-09-05T09:30:00Z")));
-        Assert.False(schedule.Matches(DateTimeOffset.Parse("2026-09-04T09:31:00Z")));
+        var result = FortunaOptions.Parse(values.GetValueOrDefault);
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.False(result.IsValid);
+        Assert.Equal(4, result.Errors.Count);
+        Assert.Contains(result.Errors, error => error.Contains("FORTUNA_DATA_CONNECTIONSTRING", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("FORTUNA_JOB_QUEUE_CAPACITY", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("FORTUNA_AUTH_TOKEN_SECRET", StringComparison.Ordinal));
+        Assert.Contains(result.Errors, error => error.Contains("FORTUNA_LOCALE", StringComparison.Ordinal));
+        Assert.Equal(result.Errors, exception.Errors);
+        Assert.All(result.Errors, error => Assert.Contains(error, exception.Message, StringComparison.Ordinal));
+    }
+
+    [UnitFact]
+    public void GivenValidSettings_WhenConfigurationIsParsed_ThenNoErrorsAreReported()
+    {
+        var result = FortunaOptions.Parse(ValidSettings().GetValueOrDefault);
+
+        Assert.True(result.IsValid);
+        Assert.Empty(result.Errors);
+    }
+
+    [UnitTheory]
+    [InlineData("FORTUNA_AUTH_TOKEN_SECRET", "thirty-one-characters-long-key!")]
+    [InlineData("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS", "short-previous-secret")]
+    public void GivenSigningSecretShorterThan32Bytes_WhenConfigurationIsParsed_ThenItIsRejected(
+        string key,
+        string secret)
+    {
+        var values = ValidSettings();
+        values[key] = secret;
+
+        var result = FortunaOptions.Parse(values.GetValueOrDefault);
+
+        var error = Assert.Single(result.Errors);
+        Assert.Contains(key, error, StringComparison.Ordinal);
+        Assert.Contains("32", error, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
+    public void GivenInvalidRateCurrencies_WhenConfigurationIsParsed_ThenTheRatesVariableIsNamed()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_RATES_SOURCE_BASE_URL"] = "https://rates.example.test/odata";
+        values["FORTUNA_RATES_SYNC_CRON"] = "0 18 * * 1-5";
+        values["FORTUNA_RATES_CURRENCIES"] = "BRL,DOLLAR";
+
+        var result = FortunaOptions.Parse(values.GetValueOrDefault);
+
+        Assert.Contains(result.Errors, error => error.StartsWith("FORTUNA_RATES_CURRENCIES", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Errors, error =>
+            error.Contains("FORTUNA_DEFAULT_DISPLAY_CURRENCY", StringComparison.Ordinal));
+    }
+
+    [UnitFact]
+    public void GivenInvalidRateCron_WhenConfigurationIsParsed_ThenTheCronReasonIsReported()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_RATES_SOURCE_BASE_URL"] = "https://rates.example.test/odata";
+        values["FORTUNA_RATES_SYNC_CRON"] = "0 25 * * *";
+        values["FORTUNA_RATES_CURRENCIES"] = "BRL,USD";
+
+        var error = Assert.Single(FortunaOptions.Parse(values.GetValueOrDefault).Errors);
+
+        Assert.Contains("FORTUNA_RATES_SYNC_CRON", error, StringComparison.Ordinal);
+        Assert.Contains("hour", error, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
+    public void GivenCommaDecimalCulture_WhenNumbersAreParsed_ThenInvariantFormatIsUsed()
+    {
+        var original = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("pt-BR");
+        try
+        {
+            var values = ValidSettings();
+            values["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "1800.5";
+            values["FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE"] = "0.05";
+
+            var options = FortunaOptions.From(values.GetValueOrDefault);
+
+            Assert.Equal(1800.5, options.AuthTokenExpirationInSeconds);
+            Assert.Equal(0.05m, options.ReconciliationAmountTolerance);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [UnitTheory]
+    [InlineData("9464", false)]
+    [InlineData("8080;9464", true)]
+    [InlineData("8080", true)]
+    public void GivenApiPorts_WhenMetricsPortIsChecked_ThenAnApiServedOnlyOnTheMetricsPortIsRejected(
+        string httpPorts,
+        bool valid)
+    {
+        var values = ValidSettings();
+        values["ASPNETCORE_HTTP_PORTS"] = httpPorts;
+
+        var result = FortunaOptions.Parse(values.GetValueOrDefault);
+
+        Assert.Equal(valid, result.IsValid);
+        Assert.Equal(valid, !result.Errors.Any(error => error.Contains("FORTUNA_METRICS_PORT", StringComparison.Ordinal)));
+    }
+
+    [UnitFact]
+    public void GivenForwardedProxySettings_WhenConfigurationIsParsed_ThenNetworksAndAddressesAreApplied()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_FORWARDED_KNOWN_NETWORKS"] = "10.0.0.0/8, 172.16.0.0/12";
+        values["FORTUNA_FORWARDED_KNOWN_PROXIES"] = "192.168.1.10;fd00::1";
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal(
+            [System.Net.IPNetwork.Parse("10.0.0.0/8"), System.Net.IPNetwork.Parse("172.16.0.0/12")],
+            options.ForwardedKnownNetworks);
+        Assert.Equal(
+            [System.Net.IPAddress.Parse("192.168.1.10"), System.Net.IPAddress.Parse("fd00::1")],
+            options.ForwardedKnownProxies);
+    }
+
+    [UnitTheory]
+    [InlineData("FORTUNA_FORWARDED_KNOWN_NETWORKS", "10.0.0.0")]
+    [InlineData("FORTUNA_FORWARDED_KNOWN_NETWORKS", "not-a-network")]
+    [InlineData("FORTUNA_FORWARDED_KNOWN_PROXIES", "10.0.0.0/8")]
+    public void GivenInvalidForwardedProxySettings_WhenConfigurationIsParsed_ThenTheVariableIsNamed(
+        string key,
+        string value)
+    {
+        var values = ValidSettings();
+        values[key] = value;
+
+        var error = Assert.Single(FortunaOptions.Parse(values.GetValueOrDefault).Errors);
+
+        Assert.Contains(key, error, StringComparison.Ordinal);
     }
 
     [FunctionalFact]

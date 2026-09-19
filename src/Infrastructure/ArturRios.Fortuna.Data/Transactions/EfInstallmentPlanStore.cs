@@ -1,4 +1,7 @@
+using ArturRios.Fortuna.Data.Cards;
+using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Currencies;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
@@ -58,16 +61,12 @@ public sealed class EfInstallmentPlanStore(
                 return Result(InstallmentPlanRecordOutcome.CurrencyNotSupported);
             }
 
-            exchangeRate = await context.ExchangeRates
-                .Include(rate => rate.BaseCurrency)
-                .Include(rate => rate.QuoteCurrency)
-                .Where(rate =>
-                    rate.BaseCurrency.Code == sourceCode &&
-                    rate.QuoteCurrency.Code == card.Currency.Code &&
-                    rate.RateDate <= record.PurchasedOn)
-                .OrderByDescending(rate => rate.RateDate)
-                .ThenByDescending(rate => rate.Source)
-                .FirstOrDefaultAsync(cancellationToken);
+            exchangeRate = await ExchangeRateLookup.FindLatestAsync(
+                context,
+                sourceCode,
+                card.Currency.Code,
+                record.PurchasedOn,
+                cancellationToken);
             if (exchangeRate is null)
             {
                 return Result(InstallmentPlanRecordOutcome.ExchangeRateUnavailable);
@@ -79,36 +78,30 @@ public sealed class EfInstallmentPlanStore(
                 MidpointRounding.AwayFromZero);
         }
 
-        IReadOnlyList<decimal> billedAmounts;
-        IReadOnlyList<decimal>? originalAmounts = null;
-        try
-        {
-            billedAmounts = InstallmentPlan.Split(
-                billedTotal,
+        var billedSplit = InstallmentPlan.TrySplit(
+            billedTotal,
+            record.InstallmentCount,
+            card.Currency.MinorUnitDigits);
+        var originalSplit = originalCurrency is null
+            ? null
+            : InstallmentPlan.TrySplit(
+                record.TotalAmount,
                 record.InstallmentCount,
-                card.Currency.MinorUnitDigits);
-            if (originalCurrency is not null)
-            {
-                originalAmounts = InstallmentPlan.Split(
-                    record.TotalAmount,
-                    record.InstallmentCount,
-                    originalCurrency.MinorUnitDigits);
-            }
-        }
-        catch (ArgumentOutOfRangeException)
+                originalCurrency.MinorUnitDigits);
+        if (!billedSplit.Succeeded || originalSplit is { Succeeded: false })
         {
             return Result(InstallmentPlanRecordOutcome.AmountTooSmall);
         }
 
-        var counterparty = await ResolveCounterpartyAsync(
+        var billedAmounts = billedSplit.Amounts;
+        var originalAmounts = originalSplit?.Amounts;
+
+        var counterparty = await ClassificationResolver.GetOrCreateCounterpartyAsync(
+            context,
             card.User,
             record.Counterparty,
             record.CreatedAt,
             cancellationToken);
-        var statements = await context.CreditCardStatements
-            .Where(item => item.CreditCardId == card.Id && !item.IsDeleted)
-            .OrderBy(item => item.PeriodStart)
-            .ToListAsync(cancellationToken);
         var plan = new InstallmentPlan(
             card,
             billedTotal,
@@ -139,12 +132,23 @@ public sealed class EfInstallmentPlanStore(
             }
 
             plan.AddInstallment(transaction, (short)(index + 1), record.CreatedAt);
-            AssignToStatement(transaction, card, statements, record.CreatedAt);
+            await CreditCardStatementResolver.AssignAsync(
+                context,
+                transaction,
+                card,
+                record.CreatedAt,
+                cancellationToken);
         }
 
         context.InstallmentPlans.Add(plan);
+        await CreditCardStatementResolver.RefreshTotalsAsync(
+            context,
+            plan.Installments.Select(installment => installment.Statement),
+            record.CreatedAt,
+            cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
+
         return Result(InstallmentPlanRecordOutcome.Succeeded, Snapshot(plan));
     }
 
@@ -173,6 +177,7 @@ public sealed class EfInstallmentPlanStore(
         }
 
         var plan = await query.SingleOrDefaultAsync(cancellationToken);
+
         return plan is null ? null : Snapshot(plan);
     }
 
@@ -230,6 +235,7 @@ public sealed class EfInstallmentPlanStore(
         }
 
         var result = await change(plan.TransactionId, cancellationToken);
+
         return result.Outcome switch
         {
             TransactionLifecycleOutcome.Succeeded => LifecycleResult(
@@ -244,82 +250,6 @@ public sealed class EfInstallmentPlanStore(
             _ => throw new InvalidOperationException(
                 "The delegated transaction lifecycle returned an unsupported outcome.")
         };
-    }
-
-    private static void AssignToStatement(
-        FinancialTransaction transaction,
-        CreditCard card,
-        ICollection<CreditCardStatement> statements,
-        DateTimeOffset changedAt)
-    {
-        var intendedCycle = BillingCycle.Containing(
-            transaction.OccurredOn,
-            card.ClosingDay,
-            card.DueDay);
-        var statement = statements.SingleOrDefault(item =>
-            item.PeriodStart == intendedCycle.PeriodStart &&
-            item.PeriodEnd == intendedCycle.PeriodEnd);
-        var isLateArriving = statement?.Status == CreditCardStatementStatus.Settled;
-        if (isLateArriving)
-        {
-            var cycle = intendedCycle.Next(card.ClosingDay, card.DueDay);
-            while (true)
-            {
-                statement = statements.SingleOrDefault(item =>
-                    item.PeriodStart == cycle.PeriodStart &&
-                    item.PeriodEnd == cycle.PeriodEnd);
-                if (statement is null)
-                {
-                    statement = new CreditCardStatement(card, cycle, changedAt);
-                    statements.Add(statement);
-                    break;
-                }
-
-                if (statement.Status == CreditCardStatementStatus.Open)
-                {
-                    break;
-                }
-
-                cycle = cycle.Next(card.ClosingDay, card.DueDay);
-            }
-        }
-        else if (statement is null)
-        {
-            statement = new CreditCardStatement(card, intendedCycle, changedAt);
-            statements.Add(statement);
-        }
-
-        transaction.AssignToStatement(statement, isLateArriving, changedAt);
-        statement.RecalculatePurchaseTotal(
-            statement.PurchaseTotal + transaction.Amount,
-            changedAt);
-    }
-
-    private async Task<Counterparty?> ResolveCounterpartyAsync(
-        ArturRios.Fortuna.Domain.Users.UserProfile user,
-        string? name,
-        DateTimeOffset createdAt,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return null;
-        }
-
-        var normalizedName = name.Trim().ToUpperInvariant();
-        var counterparty = await context.Counterparties.SingleOrDefaultAsync(item =>
-            item.UserId == user.Id &&
-            item.NormalizedName == normalizedName &&
-            !item.IsDeleted,
-            cancellationToken);
-        if (counterparty is not null)
-        {
-            return counterparty;
-        }
-
-        counterparty = new Counterparty(user, name, createdAt);
-        context.Counterparties.Add(counterparty);
-        return counterparty;
     }
 
     private static InstallmentPlanSnapshot Snapshot(InstallmentPlan plan)
@@ -341,6 +271,7 @@ public sealed class EfInstallmentPlanStore(
                 item.IsDeleted))
             .ToArray();
         var first = installments[0];
+
         return new InstallmentPlanSnapshot
         {
             Id = plan.PublicId,

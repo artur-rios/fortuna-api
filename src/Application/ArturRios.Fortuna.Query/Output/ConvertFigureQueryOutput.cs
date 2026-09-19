@@ -10,6 +10,7 @@ public sealed class ConvertFigureQueryOutput : QueryOutput
     public decimal? Total { get; set; }
     public bool IsFullyConverted { get; set; }
     public IReadOnlyCollection<ConvertedCurrencyGroupOutput> Groups { get; set; } = [];
+    public IReadOnlyCollection<MissingExchangeRateOutput> MissingRates { get; set; } = [];
 }
 
 public sealed class ConvertedCurrencyGroupOutput

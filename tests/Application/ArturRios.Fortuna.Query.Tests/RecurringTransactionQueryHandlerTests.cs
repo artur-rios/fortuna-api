@@ -2,11 +2,13 @@ using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -172,23 +174,23 @@ public sealed class RecurringTransactionQueryHandlerTests
         Assert.Null(reader.Criteria);
     }
 
-    private static GetRecurringTransactionByIdQueryHandler Handler(
+    private static IQueryHandlerAsync<GetRecurringTransactionByIdQuery, RecurringTransactionOutput> Handler(
         UserProfileSnapshot? profile,
-        IRecurringTransactionReader reader) => new(
-        new GetRecurringTransactionByIdQueryValidator(),
-        new StubProfiles(profile),
-        reader,
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])));
+        IRecurringTransactionReader reader) => new GetRecurringTransactionByIdQueryHandler(
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
+        reader).Validated(new GetRecurringTransactionByIdQueryValidator());
 
-    private static ListRecurringTransactionsQueryHandler ListHandler(
+    private static IPaginatedQueryHandlerAsync<ListRecurringTransactionsQuery, RecurringTransactionOutput> ListHandler(
         UserProfileSnapshot? profile,
         IRecurringTransactionReader reader,
-        int maximumPageSize = 100) => new(
-        new ListRecurringTransactionsQueryValidator(),
-        new StubProfiles(profile),
+        int maximumPageSize = 100) => new ListRecurringTransactionsQueryHandler(
+        new CurrentProfileResolver(
+            new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
+            new StubProfiles(profile)),
         reader,
-        new StubActor(new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new PaginationOptions(maximumPageSize));
+        new PaginationOptions(maximumPageSize)).Validated(new ListRecurringTransactionsQueryValidator());
 
     private static RecurringTransactionSnapshot Snapshot() => new()
     {
@@ -216,6 +218,7 @@ public sealed class RecurringTransactionQueryHandlerTests
         public Task<RecurringTransactionSnapshot?> FindByIdAsync(Guid userId, Guid id, CancellationToken token)
         {
             UserId = userId;
+
             return Task.FromResult(snapshot);
         }
 
@@ -224,6 +227,7 @@ public sealed class RecurringTransactionQueryHandlerTests
             CancellationToken token)
         {
             Criteria = criteria;
+
             return Task.FromResult(new RecurringTransactionListPage(page, page.Length));
         }
     }

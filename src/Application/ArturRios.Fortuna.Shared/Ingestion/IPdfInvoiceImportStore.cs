@@ -1,4 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using ArturRios.Fortuna.Domain.Ingestion;
+using ArturRios.Fortuna.Shared.Jobs;
 
 namespace ArturRios.Fortuna.Shared.Ingestion;
 
@@ -39,7 +41,7 @@ public interface IPdfInvoiceImportStore
         DateTimeOffset startedAt,
         CancellationToken cancellationToken);
 
-    Task CompleteAsync(
+    Task<ImportCompletionResult> CompleteAsync(
         Guid importJobId,
         Guid userId,
         Guid creditCardId,
@@ -47,7 +49,7 @@ public interface IPdfInvoiceImportStore
         DateTimeOffset completedAt,
         CancellationToken cancellationToken);
 
-    Task FailAsync(
+    Task<JobTransitionOutcome> FailAsync(
         Guid importJobId,
         string reason,
         DateTimeOffset failedAt,
@@ -56,7 +58,20 @@ public interface IPdfInvoiceImportStore
 
 public interface IPdfInvoiceParser
 {
-    ParsedPdfInvoice Parse(byte[] content);
+    /// <summary>Parses an invoice; an unreadable or unsupported file is a failed result, not an exception.</summary>
+    PdfInvoiceParseResult Parse(byte[] content);
+}
+
+public sealed record PdfInvoiceParseResult(ParsedPdfInvoice? Invoice, string? Error)
+{
+    [MemberNotNullWhen(true, nameof(Invoice))]
+    [MemberNotNullWhen(false, nameof(Error))]
+    public bool IsSuccess => Invoice is not null;
+
+    public static PdfInvoiceParseResult Success(ParsedPdfInvoice invoice) =>
+        new(invoice ?? throw new ArgumentNullException(nameof(invoice)), null);
+
+    public static PdfInvoiceParseResult Failure(string error) => new(null, error);
 }
 
 public enum PdfInvoiceLineKind
@@ -101,8 +116,6 @@ public sealed record ParsedPdfInvoice(
     decimal ParsedAmountDue,
     decimal ReconciliationDifference,
     IReadOnlyCollection<ParsedPdfInvoiceLine> Lines);
-
-public sealed class PdfInvoiceParseException(string message) : Exception(message);
 
 public static class PdfInvoiceImportJob
 {

@@ -1768,14 +1768,14 @@ namespace ArturRios.Fortuna.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_financial_transaction_recurring_transaction_id_occurred_on");
 
-                    b.HasIndex("UserId", "IsDeleted")
-                        .HasDatabaseName("ix_financial_transaction_user_id_is_deleted");
-
                     b.HasIndex("CreditCardId", "IsDeleted", "OccurredOn")
                         .HasDatabaseName("ix_financial_transaction_credit_card_id_is_deleted_occurred_on");
 
                     b.HasIndex("FinancialAccountId", "IsDeleted", "OccurredOn")
                         .HasDatabaseName("ix_financial_transaction_financial_account_id_is_deleted_occur");
+
+                    b.HasIndex("UserId", "IsDeleted", "OccurredOn")
+                        .HasDatabaseName("ix_financial_transaction_user_id_is_deleted_occurred_on");
 
                     b.ToTable("financial_transaction", "fortuna", t =>
                         {

@@ -201,6 +201,7 @@ public sealed class RecurringTransactionUpdateTests : IAsyncLifetime
         var category = new Category(user, name, clock.GetUtcNow());
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -222,6 +223,7 @@ public sealed class RecurringTransactionUpdateTests : IAsyncLifetime
             Description = "Original commitment"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
@@ -247,6 +249,7 @@ public sealed class RecurringTransactionUpdateTests : IAsyncLifetime
         var response = await client.PostAsJsonAsync(
             "/api/recurring-transactions/materialize", new { });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<MaterializationEnvelope>())!;
     }
 
@@ -261,12 +264,14 @@ public sealed class RecurringTransactionUpdateTests : IAsyncLifetime
             OpeningBalance = 1000m
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<IdEnvelope>())!.Data!.Id;
     }
 
     private WebApplicationFactory<Program> CreateFactory()
     {
         foreach (var setting in ValidSettings()) Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(Environments.Development);

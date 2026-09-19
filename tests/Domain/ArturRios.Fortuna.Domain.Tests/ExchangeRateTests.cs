@@ -81,4 +81,13 @@ public sealed class ExchangeRateTests
 
         Assert.Throws<InvalidOperationException>(() => rate.ReplaceManualRate(5.2m));
     }
+
+    [UnitFact]
+    public void GivenUndefinedSource_WhenCreated_ThenItIsRejected()
+    {
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new ExchangeRate(1, 2, 5m, new DateOnly(2026, 9, 3), (ExchangeRateSource)99));
+
+        Assert.Equal("source", exception.ParamName);
+    }
 }

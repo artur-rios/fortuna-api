@@ -1,11 +1,14 @@
 using ArturRios.Fortuna.Domain.Exports;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Exports;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -73,6 +76,28 @@ public sealed class GetPersonalDataExportQueryHandlerTests
         Assert.Contains(PersonalDataExportMessages.Expired, expired.Errors);
     }
 
+    [UnitTheory]
+    [InlineData(DataExportStatus.Pending)]
+    [InlineData(DataExportStatus.Failed)]
+    public async Task GivenExpiredArchiveInAnyState_WhenRead_ThenItIsReportedAsExpired(
+        DataExportStatus status)
+    {
+        var result = await Handler(Snapshot(status, expiresAt: Now), new StubStorage())
+            .HandleAsync(Query());
+
+        Assert.Contains(PersonalDataExportMessages.Expired, result.Errors);
+    }
+
+    [UnitFact]
+    public async Task GivenEmptyJobId_WhenRead_ThenValidationReportsNotFound()
+    {
+        var result = await Handler(Snapshot(DataExportStatus.Completed), new StubStorage())
+            .HandleAsync(new GetPersonalDataExportQuery { JobId = Guid.Empty });
+
+        Assert.False(result.Success);
+        Assert.Equal([PersonalDataExportMessages.NotFound], result.Errors);
+    }
+
     [UnitFact]
     public async Task GivenMissingOrUnavailableStoredArchive_WhenRead_ThenSafeErrorIsReturned()
     {
@@ -89,15 +114,14 @@ public sealed class GetPersonalDataExportQueryHandlerTests
         Assert.Contains(PersonalDataExportMessages.StorageUnavailable, unavailable.Errors);
     }
 
-    private static GetPersonalDataExportQueryHandler Handler(
+    private static IQueryHandlerAsync<GetPersonalDataExportQuery, PersonalDataExportQueryOutput> Handler(
         DataExportReadSnapshot? snapshot,
-        StubStorage storage) => new(
-        new StubActor(),
-        new StubProfiles(),
+        StubStorage storage) => new GetPersonalDataExportQueryHandler(
+        new CurrentProfileResolver(new StubActor(), new StubProfiles()),
         new StubExports(snapshot),
         storage,
         new FixedTimeProvider(Now),
-        NullLogger<GetPersonalDataExportQueryHandler>.Instance);
+        NullLogger<GetPersonalDataExportQueryHandler>.Instance).Validated(new GetPersonalDataExportQueryValidator());
 
     private static GetPersonalDataExportQuery Query() => new() { JobId = JobId };
 
@@ -159,14 +183,10 @@ public sealed class GetPersonalDataExportQueryHandlerTests
 
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) =>
             Task.FromResult(Healthy);
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken)
-        {
-            if (Missing)
-            {
-                throw new AttachmentObjectNotFoundException(key);
-            }
-            return Task.FromResult<Stream>(new MemoryStream(Content, writable: false));
-        }
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+            Task.FromResult(Missing
+                ? AttachmentReadResult.NotFound
+                : AttachmentReadResult.Found(new MemoryStream(Content, writable: false)));
         public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
         public Task DeleteAsync(string key, CancellationToken cancellationToken) => Task.CompletedTask;

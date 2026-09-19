@@ -1,11 +1,13 @@
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -149,16 +151,14 @@ public sealed class ListTransactionAttachmentsQueryHandlerTests
         Assert.Equal(3, result.TotalItems);
     }
 
-    private static ListTransactionAttachmentsQueryHandler Handler(
+    private static IPaginatedQueryHandlerAsync<ListTransactionAttachmentsQuery, AttachmentOutput> Handler(
         UserProfileSnapshot? profile,
         IAttachmentMetadataReader metadata,
-        int maximumPageSize = 100) => new(
-        new ListTransactionAttachmentsQueryValidator(),
-        new StubProfileReader(profile),
+        int maximumPageSize = 100) => new ListTransactionAttachmentsQueryHandler(
+        new CurrentProfileResolver(new StubActorAccessor(
+            new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])), new StubProfileReader(profile)),
         metadata,
-        new StubActorAccessor(
-            new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, [])),
-        new PaginationOptions(maximumPageSize));
+        new PaginationOptions(maximumPageSize)).Validated(new ListTransactionAttachmentsQueryValidator());
 
     private static ListTransactionAttachmentsQuery Query(bool includeDeleted = false) => new()
     {
@@ -211,6 +211,7 @@ public sealed class ListTransactionAttachmentsQueryHandlerTests
             Guid transactionId)
         {
             Queried = true;
+
             return attachments.AsQueryable();
         }
     }

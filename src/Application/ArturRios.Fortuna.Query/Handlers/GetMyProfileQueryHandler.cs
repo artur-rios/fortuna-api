@@ -7,14 +7,12 @@ using ArturRios.Output;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
-public sealed class GetMyProfileQueryHandler(IUserProfileReader profiles)
+public sealed class GetMyProfileQueryHandler(ICurrentProfileResolver profileResolver)
     : IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>
 {
     public async Task<DataOutput<UserProfileOutput?>> HandleAsync(GetMyProfileQuery query)
     {
-        var profile = query.IsLocal
-            ? await profiles.FindByPublicIdAsync(query.ExternalSubject, CancellationToken.None)
-            : await profiles.FindByExternalSubjectAsync(query.ExternalSubject, CancellationToken.None);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<UserProfileOutput?>.New.WithError(UserProfileMessages.ProfileNotFound);

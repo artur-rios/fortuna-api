@@ -29,6 +29,7 @@ internal static class CategoryTreeProjection
         }
 
         var visited = new HashSet<Guid>();
+
         return roots
             .Select(root => root.ToOutput(includeUsageCounts, visited))
             .ToArray();

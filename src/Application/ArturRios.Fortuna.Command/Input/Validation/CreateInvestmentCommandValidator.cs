@@ -11,11 +11,11 @@ public sealed class CreateInvestmentCommandValidator : AbstractValidator<CreateI
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(InvestmentMessages.InstrumentRequired)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(InvestmentMessages.InstrumentTooLong);
 
         RuleFor(command => command.Institution)
-            .MaximumLength(200)
+            .TrimmedMaximumLength(200)
             .WithMessage(InvestmentMessages.InstitutionTooLong);
 
         RuleFor(command => command.InvestmentType)
@@ -26,7 +26,7 @@ public sealed class CreateInvestmentCommandValidator : AbstractValidator<CreateI
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(InvestmentMessages.CurrencyRequired)
-            .Length(3)
+            .CurrencyCode()
             .WithMessage(InvestmentMessages.CurrencyInvalid);
     }
 }

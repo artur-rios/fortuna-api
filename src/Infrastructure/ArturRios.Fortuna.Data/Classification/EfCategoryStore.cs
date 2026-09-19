@@ -1,4 +1,6 @@
 using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.EntityMaps;
+using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Shared.Classification;
@@ -16,9 +18,8 @@ public sealed class EfCategoryStore(
         ICategoryTransactionReassigner,
         ICategoryLifecycleStore
 {
-    private const string RootSiblingNameIndex = "ix_category_user_id_normalized_name";
-    private const string NestedSiblingNameIndex =
-        "ix_category_user_id_parent_id_normalized_name";
+    private const string RootSiblingNameIndex = CategoryMap.RootNameIndex;
+    private const string NestedSiblingNameIndex = CategoryMap.NestedNameIndex;
 
     public async Task<CategoryCreationResult> CreateAsync(
         CategoryCreation creation,
@@ -72,6 +73,7 @@ public sealed class EfCategoryStore(
             DatabaseException.IsUniqueViolation(exception, RootSiblingNameIndex, NestedSiblingNameIndex))
         {
             context.Entry(category).State = EntityState.Detached;
+
             return Result(CategoryCreationOutcome.DuplicateSiblingName);
         }
 
@@ -91,11 +93,59 @@ public sealed class EfCategoryStore(
         Guid userId,
         bool includeDeleted,
         bool includeUsageCounts,
-        CancellationToken cancellationToken) => await context.Categories
-        .AsNoTracking()
-        .Where(category =>
-            category.User.PublicId == userId &&
-            (includeDeleted || !category.IsDeleted))
+        CancellationToken cancellationToken) => await ReadSnapshots(
+            VisibleCategories(userId, includeDeleted),
+            includeUsageCounts)
+        .ToArrayAsync(cancellationToken);
+
+    public async Task<IReadOnlyCollection<CategoryReadSnapshot>> ListSubtreeAsync(
+        Guid userId,
+        Guid rootId,
+        bool includeDeleted,
+        bool includeUsageCounts,
+        CancellationToken cancellationToken)
+    {
+        var visible = VisibleCategories(userId, includeDeleted);
+        var structure = await visible
+            .Select(category => new { category.Id, category.PublicId, category.ParentId })
+            .ToArrayAsync(cancellationToken);
+        var root = structure.FirstOrDefault(category => category.PublicId == rootId);
+        if (root is null)
+        {
+            return [];
+        }
+
+        var children = structure
+            .Where(category => category.ParentId.HasValue)
+            .ToLookup(category => category.ParentId!.Value, category => category.Id);
+        var subtree = new HashSet<long> { root.Id };
+        var pending = new Queue<long>([root.Id]);
+        while (pending.TryDequeue(out var current))
+        {
+            foreach (var child in children[current].Where(subtree.Add))
+            {
+                pending.Enqueue(child);
+            }
+        }
+
+        var ids = subtree.ToArray();
+
+        return await ReadSnapshots(
+                visible.Where(category => ids.Contains(category.Id)),
+                includeUsageCounts)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    private IQueryable<Category> VisibleCategories(Guid userId, bool includeDeleted) =>
+        context.Categories
+            .AsNoTracking()
+            .Where(category =>
+                category.User.PublicId == userId &&
+                (includeDeleted || !category.IsDeleted));
+
+    private IQueryable<CategoryReadSnapshot> ReadSnapshots(
+        IQueryable<Category> categories,
+        bool includeUsageCounts) => categories
         .Select(category => new CategoryReadSnapshot(
             category.PublicId,
             category.Name,
@@ -106,8 +156,7 @@ public sealed class EfCategoryStore(
                     transaction.CategoryId == category.Id && !transaction.IsDeleted)
                 : 0,
             category.CreatedAt,
-            category.UpdatedAt))
-        .ToArrayAsync(cancellationToken);
+            category.UpdatedAt));
 
     public async Task<CategoryUpdateResult> UpdateAsync(
         CategoryUpdate update,
@@ -173,6 +222,7 @@ public sealed class EfCategoryStore(
             DatabaseException.IsUniqueViolation(exception, RootSiblingNameIndex, NestedSiblingNameIndex))
         {
             context.Entry(category).State = EntityState.Detached;
+
             return UpdateResult(CategoryUpdateOutcome.DuplicateSiblingName);
         }
 
@@ -278,6 +328,7 @@ public sealed class EfCategoryStore(
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
         return LifecycleResult(CategoryLifecycleOutcome.Succeeded, category.PublicId);
     }
 
@@ -349,46 +400,52 @@ public sealed class EfCategoryStore(
         var liveTransactionCount =
             transactions.Count(item => !item.IsDeleted) +
             recurringTransactions.Count(item => !item.IsDeleted);
-        try
+        var refusal = subtree
+            .Select(item => item.CheckHardDeletion(
+                item.Id == category.Id && liveTransactionCount > 0
+                    ? ["transactions"]
+                    : []))
+            .FirstOrDefault(check => !check.IsAllowed);
+        if (refusal is not null)
         {
-            foreach (var item in subtree)
-            {
-                item.EnsureHardDeletionAllowed(
-                    item.Id == category.Id && liveTransactionCount > 0
-                        ? ["transactions"]
-                        : []);
-            }
-        }
-        catch (RecordLifecycleConflictException exception)
-        {
-            return exception.Conflict switch
-            {
-                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion => LifecycleResult(
-                    CategoryLifecycleOutcome.HardDeleteRequiresSoftDeletion),
-                RecordLifecycleConflict.HardDeleteHasLiveReferences => LifecycleResult(
+            return refusal.Conflict == RecordLifecycleConflict.HardDeleteRequiresSoftDeletion
+                ? LifecycleResult(CategoryLifecycleOutcome.HardDeleteRequiresSoftDeletion)
+                : LifecycleResult(
                     CategoryLifecycleOutcome.HardDeleteHasLiveTransactions,
                     category.PublicId,
-                    liveTransactionCount),
-                _ => throw new InvalidOperationException(
-                    "An unexpected lifecycle conflict prevented hard deletion.",
-                    exception)
-            };
+                    liveTransactionCount);
         }
 
-        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
-            cancellationToken);
-        if (!await attachments.HardDeleteForTransactionsAsync(
-                transactions.Select(transaction => transaction.Id).ToArray(),
+        if (await context.Budgets.AnyAsync(
+                budget => budget.Categories.Any(item => categoryIds.Contains(item.Id)),
                 cancellationToken))
+        {
+            return LifecycleResult(CategoryLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var deletion = await TransactionHardDeletion.PlanAsync(
+            context,
+            transactions,
+            [],
+            cancellationToken);
+        if (deletion.LiveReferences.Count > 0)
+        {
+            return LifecycleResult(CategoryLifecycleOutcome.HardDeleteHasDependents);
+        }
+
+        var removal = await attachments.RemoveForTransactionsAsync(
+            deletion.TransactionIds,
+            cancellationToken);
+        if (!removal.StorageAvailable)
         {
             return LifecycleResult(CategoryLifecycleOutcome.AttachmentStorageUnavailable);
         }
 
-        context.FinancialTransactions.RemoveRange(transactions);
+        deletion.Remove(context);
         context.RecurringTransactions.RemoveRange(recurringTransactions);
         context.Categories.RemoveRange(subtree);
         await context.SaveChangesAsync(cancellationToken);
-        await databaseTransaction.CommitAsync(cancellationToken);
+        await attachments.DeleteObjectsAsync(removal.StorageKeys, CancellationToken.None);
 
         return LifecycleResult(CategoryLifecycleOutcome.Succeeded, category.PublicId);
     }

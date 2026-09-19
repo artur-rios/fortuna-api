@@ -1,3 +1,4 @@
+using ArturRios.Fortuna.Domain.Guards;
 using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Users;
 
@@ -12,15 +13,14 @@ public sealed class Tag : RecordLifecycleEntity
     public Tag(UserProfile user, string name, DateTimeOffset createdAt) : base(createdAt)
     {
         User = user ?? throw new ArgumentNullException(nameof(user));
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A tag name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A tag name between 1 and 200 characters is required.");
 
         UserId = user.Id;
-        Name = name.Trim();
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
     }
 
@@ -32,14 +32,14 @@ public sealed class Tag : RecordLifecycleEntity
 
     public void Rename(string name, DateTimeOffset updatedAt)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200)
-        {
-            throw new ArgumentException(
-                "A tag name between 1 and 200 characters is required.",
-                nameof(name));
-        }
+        EnsureNotDeleted();
+        name = BoundedText.Required(
+            name,
+            200,
+            nameof(name),
+            "A tag name between 1 and 200 characters is required.");
 
-        Name = name.Trim();
+        Name = name;
         NormalizedName = Name.ToUpperInvariant();
         MarkUpdated(updatedAt);
     }

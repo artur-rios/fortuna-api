@@ -1,10 +1,12 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Investments;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Command.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Command.Tests;
@@ -125,12 +127,13 @@ public sealed class RecordInvestmentValuationCommandHandlerTests
         var userId = Guid.NewGuid();
         var profiles = new StubUserProfileReader(Profile(userId, null));
         var handler = new RecordInvestmentValuationCommandHandler(
-            new RecordInvestmentValuationCommandValidator(new FixedTimeProvider(Now)),
-            new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
-            profiles,
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(userId, 3, null, []) { IsLocal = true }),
+                profiles),
             new StubValuationStore(Result(
                 Snapshot(Guid.NewGuid(), Guid.NewGuid(), 100m, false))),
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now))
+                .Validated(new RecordInvestmentValuationCommandValidator(new FixedTimeProvider(Now)));
 
         var result = await handler.HandleAsync(ValidCommand());
 
@@ -138,15 +141,18 @@ public sealed class RecordInvestmentValuationCommandHandlerTests
         Assert.True(profiles.PublicIdLookupUsed);
     }
 
-    private static RecordInvestmentValuationCommandHandler Handler(
+    private static ICommandHandlerAsync<
+        RecordInvestmentValuationCommand,
+        RecordInvestmentValuationCommandOutput> Handler(
         Guid subject,
         UserProfileSnapshot? profile,
-        IInvestmentValuationStore store) => new(
-            new RecordInvestmentValuationCommandValidator(new FixedTimeProvider(Now)),
-            new StubActorAccessor(new RequestActor(subject, 3, null, [])),
-            new StubUserProfileReader(profile),
+        IInvestmentValuationStore store) => new RecordInvestmentValuationCommandHandler(
+            new CurrentProfileResolver(
+                new StubActorAccessor(new RequestActor(subject, 3, null, [])),
+                new StubUserProfileReader(profile)),
             store,
-            new FixedTimeProvider(Now));
+            new FixedTimeProvider(Now))
+                .Validated(new RecordInvestmentValuationCommandValidator(new FixedTimeProvider(Now)));
 
     private static RecordInvestmentValuationCommand ValidCommand(Guid? investmentId = null) =>
         new()
@@ -192,6 +198,7 @@ public sealed class RecordInvestmentValuationCommandHandlerTests
             CancellationToken cancellationToken)
         {
             Record = record;
+
             return Task.FromResult(result);
         }
     }
@@ -209,6 +216,7 @@ public sealed class RecordInvestmentValuationCommandHandlerTests
             CancellationToken cancellationToken)
         {
             PublicIdLookupUsed = true;
+
             return Task.FromResult(profile);
         }
     }

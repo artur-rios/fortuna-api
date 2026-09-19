@@ -479,6 +479,7 @@ public sealed class TransferRecordingTests : IAsyncLifetime
     {
         var result = await client.GetFromJsonAsync<BalanceEnvelope>(
             $"/api/accounts/{accountId}/balance?asOf={Today:yyyy-MM-dd}");
+
         return result!.Data!.Balance;
     }
 
@@ -492,6 +493,7 @@ public sealed class TransferRecordingTests : IAsyncLifetime
             "/api/transfers",
             Request(origin, destination, amount));
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<TransferEnvelope>())!.Data!;
     }
 
@@ -521,6 +523,7 @@ public sealed class TransferRecordingTests : IAsyncLifetime
         var category = new Category(user, name, DateTimeOffset.UtcNow);
         context.Categories.Add(category);
         await context.SaveChangesAsync();
+
         return category.PublicId;
     }
 
@@ -539,6 +542,7 @@ public sealed class TransferRecordingTests : IAsyncLifetime
             OccurredOn = Today
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<ChargeEnvelope>())!.Data!;
     }
 
@@ -555,6 +559,7 @@ public sealed class TransferRecordingTests : IAsyncLifetime
             LastFourDigits = "1234"
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<CardEnvelope>())!.Data!.Id;
     }
 
@@ -573,6 +578,7 @@ public sealed class TransferRecordingTests : IAsyncLifetime
             OpeningBalance = openingBalance
         });
         response.EnsureSuccessStatusCode();
+
         return (await response.Content.ReadFromJsonAsync<AccountEnvelope>())!.Data!.Id;
     }
 
@@ -602,6 +608,7 @@ public sealed class TransferRecordingTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

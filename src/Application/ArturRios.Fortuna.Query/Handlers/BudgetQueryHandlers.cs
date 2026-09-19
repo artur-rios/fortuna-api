@@ -1,8 +1,8 @@
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Planning;
-using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
@@ -10,43 +10,50 @@ using ArturRios.Output;
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class ListBudgetsQueryHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IBudgetReader budgets,
-    TimeProvider timeProvider) : IQueryHandlerAsync<ListBudgetsQuery, BudgetListOutput>
+    TimeProvider timeProvider,
+    PaginationOptions paginationOptions) : IQueryHandlerAsync<ListBudgetsQuery, BudgetListOutput>
 {
     public async Task<DataOutput<BudgetListOutput?>> HandleAsync(ListBudgetsQuery query)
     {
-        var profile = await BudgetQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return DataOutput<BudgetListOutput?>.New.WithError(BudgetMessages.ProfileNotFound);
         }
 
+        var page = new PageRequest(
+            query.PageNumber,
+            Math.Min(query.PageSize, paginationOptions.MaximumPageSize));
         var snapshots = await budgets.ListAsync(
             profile.Id,
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
+            page,
             CancellationToken.None);
+
         return DataOutput<BudgetListOutput?>.New
             .WithData(new BudgetListOutput
             {
-                Budgets = snapshots.Select(BudgetQueryHandler.ToOutput).ToArray()
+                Budgets = snapshots.Items.Select(BudgetQueryHandler.ToOutput).ToArray(),
+                PageNumber = page.PageNumber,
+                PageSize = page.PageSize,
+                TotalItems = snapshots.TotalItems
             })
             .WithMessage(BudgetMessages.ListedSuccessfully);
     }
 }
 
 public sealed class GetBudgetByIdQueryHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IBudgetReader budgets,
     TimeProvider timeProvider) : IQueryHandlerAsync<GetBudgetByIdQuery, BudgetOutput>
 {
     public async Task<DataOutput<BudgetOutput?>> HandleAsync(GetBudgetByIdQuery query)
     {
         var output = DataOutput<BudgetOutput?>.New;
-        var profile = await BudgetQueryHandler.ResolveProfileAsync(actorAccessor.Actor, profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(BudgetMessages.ProfileNotFound);
@@ -58,6 +65,7 @@ public sealed class GetBudgetByIdQueryHandler(
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
             CancellationToken.None);
+
         return snapshot is null
             ? output.WithError(BudgetMessages.NotFound)
             : output
@@ -67,8 +75,7 @@ public sealed class GetBudgetByIdQueryHandler(
 }
 
 public sealed class GetBudgetConsumptionQueryHandler(
-    IRequestActorAccessor actorAccessor,
-    IUserProfileReader profiles,
+    ICurrentProfileResolver profileResolver,
     IBudgetConsumptionReader budgets,
     TimeProvider timeProvider)
     : IQueryHandlerAsync<GetBudgetConsumptionQuery, BudgetConsumptionDetailOutput>
@@ -77,9 +84,7 @@ public sealed class GetBudgetConsumptionQueryHandler(
         GetBudgetConsumptionQuery query)
     {
         var output = DataOutput<BudgetConsumptionDetailOutput?>.New;
-        var profile = await BudgetQueryHandler.ResolveProfileAsync(
-            actorAccessor.Actor,
-            profiles);
+        var profile = await profileResolver.ResolveAsync();
         if (profile is null)
         {
             return output.WithError(BudgetMessages.ProfileNotFound);
@@ -107,6 +112,7 @@ public sealed class GetBudgetConsumptionQueryHandler(
             .WithMessage(result.Outcome == BudgetConsumptionOutcome.PeriodPrecedesBudget
                 ? BudgetMessages.PeriodPrecedesBudget
                 : BudgetMessages.ConsumptionRetrievedSuccessfully);
+
         return consumption.IsFullyConverted
             ? response
             : response.WithMessage(FigureConversionMessages.PartiallyConverted);
@@ -115,14 +121,6 @@ public sealed class GetBudgetConsumptionQueryHandler(
 
 internal static class BudgetQueryHandler
 {
-    public static async Task<UserProfileSnapshot?> ResolveProfileAsync(
-        RequestActor? actor,
-        IUserProfileReader profiles) => actor?.IsLocal == true
-        ? await profiles.FindByPublicIdAsync(actor.SubjectId, CancellationToken.None)
-        : actor is null
-            ? null
-            : await profiles.FindByExternalSubjectAsync(actor.SubjectId, CancellationToken.None);
-
     public static BudgetOutput ToOutput(BudgetSnapshot budget) => new()
     {
         Id = budget.Id,

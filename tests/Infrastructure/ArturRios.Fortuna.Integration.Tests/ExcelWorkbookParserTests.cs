@@ -36,7 +36,7 @@ public sealed class ExcelWorkbookParserTests
         var parser = new ExcelWorkbookParser();
 
         var validation = parser.Validate(content, Mapping);
-        var rows = parser.Parse(content, Mapping).ToArray();
+        var rows = Rows(parser.Parse(content, Mapping)).ToArray();
 
         Assert.True(validation.IsValid);
         Assert.Equal(2, rows.Length);
@@ -63,9 +63,9 @@ public sealed class ExcelWorkbookParserTests
         });
         var parser = new ExcelWorkbookParser();
 
-        var row = Assert.Single(parser.Parse(
+        var row = Assert.Single(Rows(parser.Parse(
             content,
-            new ExcelColumnMapping("Date", "Amount", "Direction", null, null, null)));
+            new ExcelColumnMapping("Date", "Amount", "Direction", null, null, null))));
 
         Assert.Equal(new DateOnly(2026, 9, 6), row.OccurredOn);
         Assert.Equal(1234.56m, row.Amount);
@@ -100,6 +100,66 @@ public sealed class ExcelWorkbookParserTests
         Assert.Equal(ExcelImportMessages.WorkbookInvalid, result.Error);
     }
 
+    [UnitFact]
+    public void GivenUnreadableBytes_WhenParsed_ThenFailureIsReturnedInsteadOfThrowing()
+    {
+        var result = new ExcelWorkbookParser().Parse([1, 2, 3], Mapping);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ExcelImportMessages.WorkbookInvalid, result.Error);
+    }
+
+    [UnitFact]
+    public void GivenEmptyWorksheet_WhenParsed_ThenWorkbookIsInvalid()
+    {
+        var content = Workbook(_ => { });
+
+        var result = new ExcelWorkbookParser().Parse(content, Mapping);
+
+        Assert.Equal(ExcelImportMessages.WorkbookInvalid, result.Error);
+    }
+
+    [UnitFact]
+    public void GivenDuplicateHeaders_WhenParsedOrValidated_ThenWorkbookIsInvalid()
+    {
+        var content = Workbook(sheet =>
+        {
+            sheet.Cell("A1").Value = "Date";
+            sheet.Cell("B1").Value = "date";
+            sheet.Cell("C1").Value = "Amount";
+        });
+        var parser = new ExcelWorkbookParser();
+
+        var parsed = parser.Parse(content, Mapping);
+        var validated = parser.Validate(content, Mapping);
+
+        Assert.Equal(ExcelImportMessages.WorkbookInvalid, parsed.Error);
+        Assert.Equal(ExcelImportMessages.WorkbookInvalid, validated.Error);
+    }
+
+    [UnitFact]
+    public void GivenMissingMappedColumn_WhenParsed_ThenNamedErrorIsReturned()
+    {
+        var content = Workbook(sheet =>
+        {
+            sheet.Cell("A1").Value = "Date";
+            sheet.Cell("B1").Value = "Amount";
+        });
+
+        var result = new ExcelWorkbookParser().Parse(
+            content,
+            new ExcelColumnMapping("Date", "Amount", "Direction", null, null, null));
+
+        Assert.Equal(ExcelImportMessages.ColumnNotFound("Direction"), result.Error);
+    }
+
+    private static IReadOnlyCollection<ExcelWorkbookRow> Rows(ExcelWorkbookParseResult result)
+    {
+        Assert.True(result.IsSuccess, result.Error);
+
+        return result.Rows;
+    }
+
     private static byte[] Workbook(Action<IXLWorksheet> populate)
     {
         using var workbook = new XLWorkbook();
@@ -107,6 +167,7 @@ public sealed class ExcelWorkbookParserTests
         populate(sheet);
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
+
         return stream.ToArray();
     }
 }

@@ -19,6 +19,19 @@ public sealed class RecordLifecycleConflictException(
 
 public sealed record SoftDeletionResult(Guid CascadeId, bool Changed);
 
+public sealed record HardDeletionCheck(
+    RecordLifecycleConflict? Conflict,
+    IReadOnlyCollection<string> LiveReferences)
+{
+    public static HardDeletionCheck Allowed { get; } = new(null, []);
+
+    public bool IsAllowed => Conflict is null;
+
+    public static HardDeletionCheck Refused(
+        RecordLifecycleConflict conflict,
+        IReadOnlyCollection<string>? liveReferences = null) => new(conflict, liveReferences ?? []);
+}
+
 [NotMapped]
 public abstract class RecordLifecycleEntity
 {
@@ -48,6 +61,7 @@ public abstract class RecordLifecycleEntity
 
         var cascadeId = Guid.NewGuid();
         MarkDeleted(cascadeId, deletedAt);
+
         return new SoftDeletionResult(cascadeId, true);
     }
 
@@ -64,6 +78,7 @@ public abstract class RecordLifecycleEntity
         }
 
         MarkDeleted(cascadeId, deletedAt);
+
         return true;
     }
 
@@ -77,6 +92,7 @@ public abstract class RecordLifecycleEntity
 
         var cascadeId = DeletionCascadeId!.Value;
         MarkRestored(restoredAt);
+
         return cascadeId;
     }
 
@@ -88,15 +104,15 @@ public abstract class RecordLifecycleEntity
         }
 
         MarkRestored(restoredAt);
+
         return true;
     }
 
-    public void EnsureHardDeletionAllowed(IReadOnlyCollection<string>? liveReferences = null)
+    public HardDeletionCheck CheckHardDeletion(IReadOnlyCollection<string>? liveReferences = null)
     {
         if (!IsDeleted)
         {
-            throw new RecordLifecycleConflictException(
-                RecordLifecycleConflict.HardDeleteRequiresSoftDeletion);
+            return HardDeletionCheck.Refused(RecordLifecycleConflict.HardDeleteRequiresSoftDeletion);
         }
 
         var references = liveReferences?
@@ -104,12 +120,10 @@ public abstract class RecordLifecycleEntity
             .Distinct(StringComparer.Ordinal)
             .OrderBy(reference => reference, StringComparer.Ordinal)
             .ToArray() ?? [];
-        if (references.Length > 0)
-        {
-            throw new RecordLifecycleConflictException(
-                RecordLifecycleConflict.HardDeleteHasLiveReferences,
-                references);
-        }
+
+        return references.Length > 0
+            ? HardDeletionCheck.Refused(RecordLifecycleConflict.HardDeleteHasLiveReferences, references)
+            : HardDeletionCheck.Allowed;
     }
 
     protected void MarkUpdated(DateTimeOffset updatedAt) => UpdatedAt = updatedAt;
@@ -126,5 +140,17 @@ public abstract class RecordLifecycleEntity
         IsDeleted = false;
         DeletionCascadeId = null;
         UpdatedAt = restoredAt;
+    }
+
+    /// <summary>
+    /// Guards edits of a soft-deleted record. Stores only load live records for editing, so
+    /// reaching this with a deleted record is a programming error rather than a user outcome.
+    /// </summary>
+    protected void EnsureNotDeleted()
+    {
+        if (IsDeleted)
+        {
+            throw new InvalidOperationException("A deleted record cannot be changed.");
+        }
     }
 }

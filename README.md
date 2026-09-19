@@ -91,6 +91,11 @@ docker compose --env-file docker/local.env up -d --build
 The API's liveness is observable at the public `GET /healthcheck` endpoint. Instance administrators
 can inspect dependency health at `GET /healthcheck/detailed`.
 
+Prometheus metrics are served at `GET /metrics` only on the private port `9464`
+(`FORTUNA_METRICS_PORT`; `0` disables them), never through the public port `8080`. The compose file
+does not publish that port: Prometheus scrapes the container over a private Docker network — see the
+[Operations & Infrastructure Document](docs/requirements/Operations%20%26%20Infrastructure%20Document.md#55-metrics).
+
 For desktop offline mode, keep the same application configuration and select the local provider:
 
 ```dotenv
@@ -133,7 +138,7 @@ is a floor, not a target — the standard is to test everything that can be test
 ships with its tests before its pull request is opened.
 
 ```bash
-dotnet tool install --global dotnet-reportgenerator-globaltool
+dotnet tool restore  # ReportGenerator is pinned in .config/dotnet-tools.json
 python3 scripts/coverage.py
 ```
 

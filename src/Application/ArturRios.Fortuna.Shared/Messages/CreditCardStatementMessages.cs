@@ -10,7 +10,7 @@ public static class CreditCardStatementMessages
     public const string NotFound = "Credit card statement not found.";
     public const string CreditCardNotFound = "Credit card not found.";
     public const string FinancialAccountNotFound = "Financial account not found.";
-    public const string ProfileNotFound = "The acting user's profile was not found.";
+    public const string ProfileNotFound = UserProfileMessages.ProfileNotFound;
     public const string SettledStatementFrozen =
         "A settled credit card statement is frozen and cannot be recomputed.";
     public const string StatementOpen =
@@ -25,12 +25,11 @@ public static class CreditCardStatementMessages
     public const string PaymentAmountPrecisionInvalid =
         "Amount must contain at most 15 whole and 4 decimal digits.";
     public const string PaymentDateRequired = "PaymentDate is required.";
+    public const string PaymentDateTooFarInFuture =
+        "PaymentDate cannot be more than one day in the future.";
     public const string InvalidPageNumber = "PageNumber must be at least 1.";
     public const string InvalidPageSize = "PageSize must be at least 1.";
     public const string StatusInvalid = "Status must be Open, Closed or Settled.";
     public const string PeriodInvalid = "From must be on or before To.";
     public const string SortByUnsupported = "SortBy is not supported.";
-
-    public static string UnsupportedFilter(string field) =>
-        $"The filter '{field}' is not supported.";
 }

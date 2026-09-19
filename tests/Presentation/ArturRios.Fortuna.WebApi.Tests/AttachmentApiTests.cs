@@ -113,11 +113,11 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         var deletedId = await SeedTransactionAsync(ownerSubject, deleted: true);
 
         var foreign = await AttachAsync(
-            other, transactionId, [1], "file.pdf", "application/pdf");
+            other, transactionId, Pdf(1), "file.pdf", "application/pdf");
         var deleted = await AttachAsync(
-            owner, deletedId, [1], "file.pdf", "application/pdf");
+            owner, deletedId, Pdf(1), "file.pdf", "application/pdf");
         var missing = await AttachAsync(
-            owner, Guid.NewGuid(), [1], "file.pdf", "application/pdf");
+            owner, Guid.NewGuid(), Pdf(1), "file.pdf", "application/pdf");
 
         Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, deleted.StatusCode);
@@ -141,7 +141,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         var transactionId = await SeedTransactionAsync(subject);
 
         var response = await AttachAsync(
-            client, transactionId, [1], "file.pdf", "application/pdf");
+            client, transactionId, Pdf(1), "file.pdf", "application/pdf");
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         await using var context = CreateContext();
@@ -158,9 +158,9 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         Authorize(administrator, Guid.NewGuid(), HeimdallRoles.SystemAdmin);
 
         var anonymousResponse = await AttachAsync(
-            anonymous, Guid.NewGuid(), [1], "file.pdf", "application/pdf");
+            anonymous, Guid.NewGuid(), Pdf(1), "file.pdf", "application/pdf");
         var administratorResponse = await AttachAsync(
-            administrator, Guid.NewGuid(), [1], "file.pdf", "application/pdf");
+            administrator, Guid.NewGuid(), Pdf(1), "file.pdf", "application/pdf");
 
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, administratorResponse.StatusCode);
@@ -202,7 +202,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         (await other.GetAsync("/api/me")).EnsureSuccessStatusCode();
         var transactionId = await SeedTransactionAsync(ownerSubject);
         var attached = await AttachAsync(
-            owner, transactionId, [1], "file.pdf", "application/pdf");
+            owner, transactionId, Pdf(1), "file.pdf", "application/pdf");
         var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
 
         var foreign = await other.GetAsync($"/api/attachments/{attachmentId}");
@@ -230,7 +230,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
         var transactionId = await SeedTransactionAsync(subject);
         var attached = await AttachAsync(
-            client, transactionId, [1], "file.pdf", "application/pdf");
+            client, transactionId, Pdf(1), "file.pdf", "application/pdf");
         var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
         await using (var context = CreateContext())
         {
@@ -265,7 +265,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
             var transactionId = await SeedTransactionAsync(subject);
             var attached = await AttachAsync(
-                client, transactionId, [1], "file.pdf", "application/pdf");
+                client, transactionId, Pdf(1), "file.pdf", "application/pdf");
             attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
         }
 
@@ -304,7 +304,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
         var transactionId = await SeedTransactionAsync(subject);
         var attached = await AttachAsync(
-            client, transactionId, [1, 2, 3], "file.pdf", "application/pdf");
+            client, transactionId, Pdf(1, 2, 3), "file.pdf", "application/pdf");
         var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
         var objectPath = await AttachmentObjectPathAsync(attachmentId);
 
@@ -345,7 +345,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
         var transactionId = await SeedTransactionAsync(subject);
         var attached = await AttachAsync(
-            client, transactionId, [1], "file.pdf", "application/pdf");
+            client, transactionId, Pdf(1), "file.pdf", "application/pdf");
         var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
         var objectPath = await AttachmentObjectPathAsync(attachmentId);
 
@@ -359,12 +359,12 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         Assert.True(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
         Assert.Contains(await context.AuditEntries.ToArrayAsync(), entry =>
             entry.Operation == "HardDeleteAttachmentCommand" &&
-            entry.EntityPublicId == null &&
+            entry.EntityPublicId == attachmentId &&
             entry.Reason == AttachmentMessages.HardDeleteRequiresSoftDeletion);
     }
 
     [FunctionalFact]
-    public async Task GivenObjectDeleteFailure_WhenHardDeleted_ThenRowAndObjectRemainTracked()
+    public async Task GivenObjectDeleteFailure_WhenHardDeleted_ThenRowIsRemovedAndObjectIsOrphaned()
     {
         var subject = Guid.NewGuid();
         Guid attachmentId;
@@ -376,7 +376,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
             var transactionId = await SeedTransactionAsync(subject);
             var attached = await AttachAsync(
-                client, transactionId, [1], "file.pdf", "application/pdf");
+                client, transactionId, Pdf(1), "file.pdf", "application/pdf");
             attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
             objectPath = await AttachmentObjectPathAsync(attachmentId);
             (await client.DeleteAsync($"/api/attachments/{attachmentId}"))
@@ -388,14 +388,12 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         Authorize(failing, subject, HeimdallRoles.User);
         var response = await failing.DeleteAsync($"/api/attachments/{attachmentId}/hard");
 
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        // Objects are deleted only after the database commit, so a storage failure leaves an
+        // orphaned object behind instead of a record pointing at a deleted file.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(File.Exists(objectPath));
         await using var context = CreateContext();
-        Assert.True(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
-        Assert.Contains(await context.AuditEntries.ToArrayAsync(), entry =>
-            entry.Operation == "HardDeleteAttachmentCommand" &&
-            entry.EntityPublicId == null &&
-            entry.Reason == AttachmentMessages.StorageUnavailable);
+        Assert.False(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
     }
 
     [FunctionalFact]
@@ -408,7 +406,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
         var transactionId = await SeedTransactionAsync(subject);
         var attached = await AttachAsync(
-            client, transactionId, [1], "file.pdf", "application/pdf");
+            client, transactionId, Pdf(1), "file.pdf", "application/pdf");
         var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
         var objectPath = await AttachmentObjectPathAsync(attachmentId);
 
@@ -433,7 +431,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
     }
 
     [FunctionalFact]
-    public async Task GivenAttachmentObjectDeleteFailure_WhenTransactionHardDeleted_ThenRowsRemain()
+    public async Task GivenAttachmentObjectDeleteFailure_WhenTransactionHardDeleted_ThenRowsAreRemovedAndObjectIsOrphaned()
     {
         var subject = Guid.NewGuid();
         Guid transactionId;
@@ -446,7 +444,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
             transactionId = await SeedTransactionAsync(subject);
             var attached = await AttachAsync(
-                client, transactionId, [1], "file.pdf", "application/pdf");
+                client, transactionId, Pdf(1), "file.pdf", "application/pdf");
             attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
             objectPath = await AttachmentObjectPathAsync(attachmentId);
             (await client.DeleteAsync($"/api/transactions/{transactionId}"))
@@ -458,12 +456,12 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         Authorize(failing, subject, HeimdallRoles.User);
         var response = await failing.DeleteAsync($"/api/transactions/{transactionId}/hard");
 
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(File.Exists(objectPath));
         await using var context = CreateContext();
-        Assert.True(await context.FinancialTransactions.AnyAsync(item =>
+        Assert.False(await context.FinancialTransactions.AnyAsync(item =>
             item.PublicId == transactionId));
-        Assert.True(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
+        Assert.False(await context.Attachments.AnyAsync(item => item.PublicId == attachmentId));
     }
 
     [FunctionalFact]
@@ -483,7 +481,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         (await other.GetAsync("/api/me")).EnsureSuccessStatusCode();
         var transactionId = await SeedTransactionAsync(ownerSubject);
         var attached = await AttachAsync(
-            owner, transactionId, [1], "file.pdf", "application/pdf");
+            owner, transactionId, Pdf(1), "file.pdf", "application/pdf");
         var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
 
         var foreign = await other.DeleteAsync($"/api/attachments/{attachmentId}");
@@ -570,6 +568,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
 
         context.AddRange(account, category, transaction);
         await context.SaveChangesAsync();
+
         return transaction.PublicId;
     }
 
@@ -594,6 +593,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
@@ -605,6 +605,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         await using var context = CreateContext();
         var attachment = await context.Attachments.SingleAsync(item =>
             item.PublicId == attachmentId);
+
         return Path.Combine(
             storageRoot,
             attachment.StorageKey.Replace('/', Path.DirectorySeparatorChar));
@@ -666,10 +667,10 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
         var transactionId = await SeedTransactionAsync(subject);
         var live = (await (await AttachAsync(
-            client, transactionId, [1, 2], "live.pdf", "application/pdf"))
+            client, transactionId, Pdf(1, 2), "live.pdf", "application/pdf"))
             .Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!;
         var archived = (await (await AttachAsync(
-            client, transactionId, [3, 4], "archived.pdf", "application/pdf"))
+            client, transactionId, Pdf(3, 4), "archived.pdf", "application/pdf"))
             .Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!;
         (await client.DeleteAsync($"/api/attachments/{archived.Id}")).EnsureSuccessStatusCode();
 
@@ -708,7 +709,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         (await owner.GetAsync("/api/me")).EnsureSuccessStatusCode();
         (await other.GetAsync("/api/me")).EnsureSuccessStatusCode();
         var transactionId = await SeedTransactionAsync(ownerSubject);
-        (await AttachAsync(owner, transactionId, [1], "private.pdf", "application/pdf"))
+        (await AttachAsync(owner, transactionId, Pdf(1), "private.pdf", "application/pdf"))
             .EnsureSuccessStatusCode();
 
         // When
@@ -794,13 +795,16 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         // Then
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains(
-            AttachmentMessages.UnsupportedFilter("FileName"),
+            QueryParameterMessages.Unsupported("FileName"),
             body,
             StringComparison.Ordinal);
     }
 
     private static string WithoutTimestamp(string body) =>
         Regex.Replace(body, "\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"\"");
+
+    // Uploads are sniffed against their declared type, so fixtures carry the PDF signature.
+    private static byte[] Pdf(params byte[] tail) => [.. "%PDF-"u8, .. tail];
 
     private static async Task<HttpResponseMessage> AttachAsync(
         HttpClient client,
@@ -813,6 +817,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         var file = new ByteArrayContent(document);
         file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         form.Add(file, "File", fileName);
+
         return await client.PostAsync($"/api/transactions/{transactionId}/attachments", form);
     }
 
@@ -860,7 +865,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             Task.FromResult(false);
         public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
         public Task DeleteAsync(string key, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
@@ -875,7 +880,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             inner.IsHealthyAsync(cancellationToken);
         public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken) =>
             inner.WriteAsync(key, content, cancellationToken);
-        public Task<Stream> OpenReadAsync(string key, CancellationToken cancellationToken) =>
+        public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>
             inner.OpenReadAsync(key, cancellationToken);
         public Task DeleteAsync(string key, CancellationToken cancellationToken) =>
             throw new IOException("delete unavailable");

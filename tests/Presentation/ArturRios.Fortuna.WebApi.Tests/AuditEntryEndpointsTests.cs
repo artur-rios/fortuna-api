@@ -92,7 +92,7 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
                 targetId));
             target.SoftDelete(DateTimeOffset.UtcNow.AddMinutes(1));
             await context.SaveChangesAsync();
-            target.EnsureHardDeletionAllowed();
+            Assert.True(target.CheckHardDeletion().IsAllowed);
             context.UserProfiles.Remove(target);
             await context.SaveChangesAsync();
         }
@@ -139,20 +139,14 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
         using var client = factory.CreateClient();
         Authorize(client, subject, HeimdallRoles.User);
 
-        var refused = await client.PostAsJsonAsync("/api/exchange-rates", new
-        {
-            BaseCurrencyCode = "USD",
-            QuoteCurrencyCode = "BRL",
-            Rate = 0,
-            RateDate = new DateOnly(2026, 9, 4)
-        });
+        var refused = await client.PostAsJsonAsync("/api/tags", new { Name = "" });
         var envelope = await client.GetFromJsonAsync<AuditPageEnvelope>(
-            "/api/audit-entries?operation=RecordManualExchangeRateCommand&outcome=Refused");
+            "/api/audit-entries?operation=CreateTagCommand&outcome=Refused");
 
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         var item = Assert.Single(envelope!.Data!);
         Assert.Equal(AuditOutcome.Refused, item.Outcome);
-        Assert.Equal("Rate must be greater than zero.", item.Reason);
+        Assert.Equal("Name is required.", item.Reason);
     }
 
     [FunctionalTheory]
@@ -183,13 +177,13 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
         Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
 
         var response = await client.GetAsync(
-            "/api/audit-entries?pageNumber=0&pageSize=101" +
+            "/api/audit-entries?pageNumber=0&pageSize=0" +
             "&from=2026-09-05T00%3A00%3A00Z&to=2026-09-04T00%3A00%3A00Z");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("Page number must be at least 1.", body, StringComparison.Ordinal);
-        Assert.Contains("Page size must be between 1 and 100.", body, StringComparison.Ordinal);
+        Assert.Contains("Page size must be at least 1.", body, StringComparison.Ordinal);
         Assert.Contains("The period start must not be later than its end.", body, StringComparison.Ordinal);
     }
 
@@ -278,6 +272,7 @@ public sealed class AuditEntryEndpointsTests : IAsyncLifetime
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(database.GetConnectionString())
             .Options;
+
         return new AppDbContext(
             options,
             Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,

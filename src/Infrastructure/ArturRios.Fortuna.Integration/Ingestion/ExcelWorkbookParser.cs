@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -11,46 +12,47 @@ public sealed class ExcelWorkbookParser : IExcelWorkbookParser
 {
     public ExcelWorkbookValidation Validate(byte[] content, ExcelColumnMapping mapping)
     {
-        try
-        {
-            using var workbook = Open(content);
-            var worksheet = workbook.Worksheets.FirstOrDefault();
-            var header = worksheet?.FirstRowUsed();
-            if (header is null)
-            {
-                return Invalid();
-            }
-
-            var columns = Headers(header);
-            foreach (var mapped in MappedColumns(mapping))
-            {
-                if (!columns.ContainsKey(mapped))
-                {
-                    return new ExcelWorkbookValidation(
-                        false,
-                        ExcelImportMessages.ColumnNotFound(mapped));
-                }
-            }
-
-            return new ExcelWorkbookValidation(true, null);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        if (!TryOpen(content, out var workbook))
         {
             return Invalid();
         }
+
+        using (workbook)
+        {
+            var error = ReadHeader(workbook, mapping, out _, out _);
+
+            return new ExcelWorkbookValidation(error is null, error);
+        }
     }
 
-    public IReadOnlyCollection<ExcelWorkbookRow> Parse(
+    public ExcelWorkbookParseResult Parse(
         byte[] content,
         ExcelColumnMapping mapping)
     {
-        using var workbook = Open(content);
-        var worksheet = workbook.Worksheets.First();
-        var header = worksheet.FirstRowUsed()
-            ?? throw new InvalidOperationException(ExcelImportMessages.WorkbookInvalid);
-        var columns = Headers(header);
+        if (!TryOpen(content, out var workbook))
+        {
+            return ExcelWorkbookParseResult.Failure(ExcelImportMessages.WorkbookInvalid);
+        }
+
+        using (workbook)
+        {
+            var error = ReadHeader(workbook, mapping, out var header, out var columns);
+            if (error is not null)
+            {
+                return ExcelWorkbookParseResult.Failure(error);
+            }
+
+            return ExcelWorkbookParseResult.Success(Rows(header!, columns, mapping));
+        }
+    }
+
+    private static List<ExcelWorkbookRow> Rows(
+        IXLRow header,
+        IReadOnlyDictionary<string, int> columns,
+        ExcelColumnMapping mapping)
+    {
         var rows = new List<ExcelWorkbookRow>();
-        foreach (var row in worksheet.RowsUsed().Where(row => row.RowNumber() > header.RowNumber()))
+        foreach (var row in header.Worksheet.RowsUsed().Where(row => row.RowNumber() > header.RowNumber()))
         {
             if (columns.Values.All(number => row.Cell(number).IsEmpty()))
             {
@@ -86,25 +88,57 @@ public sealed class ExcelWorkbookParser : IExcelWorkbookParser
         return rows;
     }
 
-    private static XLWorkbook Open(byte[] content) => new(new MemoryStream(content, false));
-
-    private static ExcelWorkbookValidation Invalid() =>
-        new(false, ExcelImportMessages.WorkbookInvalid);
-
-    private static Dictionary<string, int> Headers(IXLRow header)
+    /// <summary>
+    /// Opens the workbook. ClosedXML reports an unreadable file by throwing, so this is the one
+    /// place its exceptions are translated into an outcome.
+    /// </summary>
+    private static bool TryOpen(byte[] content, [NotNullWhen(true)] out XLWorkbook? workbook)
     {
-        var columns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            workbook = new XLWorkbook(new MemoryStream(content, false));
+
+            return true;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            workbook = null;
+
+            return false;
+        }
+    }
+
+    /// <summary>Reads the header row and checks the mapping; returns the error, or null when usable.</summary>
+    private static string? ReadHeader(
+        XLWorkbook workbook,
+        ExcelColumnMapping mapping,
+        out IXLRow? header,
+        out Dictionary<string, int> columns)
+    {
+        columns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        header = workbook.Worksheets.FirstOrDefault()?.FirstRowUsed();
+        if (header is null)
+        {
+            return ExcelImportMessages.WorkbookInvalid;
+        }
+
         foreach (var cell in header.CellsUsed())
         {
             var name = Text(cell).Trim();
             if (name.Length == 0 || !columns.TryAdd(name, cell.Address.ColumnNumber))
             {
-                throw new InvalidOperationException(ExcelImportMessages.WorkbookInvalid);
+                return ExcelImportMessages.WorkbookInvalid;
             }
         }
 
-        return columns;
+        var available = columns;
+        var missing = MappedColumns(mapping).FirstOrDefault(column => !available.ContainsKey(column));
+
+        return missing is null ? null : ExcelImportMessages.ColumnNotFound(missing);
     }
+
+    private static ExcelWorkbookValidation Invalid() =>
+        new(false, ExcelImportMessages.WorkbookInvalid);
 
     private static IEnumerable<string> MappedColumns(ExcelColumnMapping mapping) =>
         new[]
@@ -128,6 +162,7 @@ public sealed class ExcelWorkbookParser : IExcelWorkbookParser
         }
 
         var value = Text(row.Cell(columns[mappedColumn.Trim()])).Trim();
+
         return value.Length == 0 ? null : value;
     }
 
@@ -162,6 +197,7 @@ public sealed class ExcelWorkbookParser : IExcelWorkbookParser
         var firstCulture = text.Contains(',')
             ? CultureInfo.GetCultureInfo("pt-BR")
             : CultureInfo.InvariantCulture;
+
         return decimal.TryParse(text, NumberStyles.Number, firstCulture, out var amount) ||
             decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out amount)
             ? amount

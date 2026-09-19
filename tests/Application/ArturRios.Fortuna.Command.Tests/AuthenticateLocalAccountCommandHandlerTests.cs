@@ -1,5 +1,6 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
+using ArturRios.Fortuna.Command.Input.Validation;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
@@ -73,10 +74,44 @@ public sealed class AuthenticateLocalAccountCommandHandlerTests
         Assert.Equal(0, issuer.IssueCount);
     }
 
+    [UnitTheory]
+    [InlineData("", Secret, LocalAuthenticationMessages.NameRequired)]
+    [InlineData("   ", Secret, LocalAuthenticationMessages.NameRequired)]
+    [InlineData("Local User", "", LocalAuthenticationMessages.SecretRequired)]
+    public async Task GivenMissingInput_WhenAuthenticating_ThenFieldErrorIsReturnedWithoutLookup(
+        string name,
+        string secret,
+        string expectedError)
+    {
+        var store = new StubStore(Credentials(Secret));
+        var issuer = new StubTokenIssuer();
+
+        var result = await Handler(store, issuer)
+            .HandleAsync(new AuthenticateLocalAccountCommand { Name = name, Secret = secret });
+
+        Assert.Equal([expectedError], result.Errors);
+        Assert.Equal(0, issuer.IssueCount);
+    }
+
+    [UnitFact]
+    public async Task GivenOversizedSecret_WhenAuthenticating_ThenItIsRejectedBeforeHashing()
+    {
+        var issuer = new StubTokenIssuer();
+
+        var result = await Handler(new StubStore(null), issuer).HandleAsync(new AuthenticateLocalAccountCommand
+        {
+            Name = "Local User",
+            Secret = new string('s', 1025)
+        });
+
+        Assert.Equal([LocalAuthenticationMessages.SecretTooLong], result.Errors);
+    }
+
     private static AuthenticateLocalAccountCommandHandler Handler(
         StubStore store,
         StubTokenIssuer issuer,
         bool enabled = true) => new(
+            new AuthenticateLocalAccountCommandValidator(),
             store,
             issuer,
             new LocalAccountOptions(enabled, 10, "BRL", "pt-BR"));
@@ -84,6 +119,7 @@ public sealed class AuthenticateLocalAccountCommandHandlerTests
     private static LocalAccountCredentialSnapshot Credentials(string secret)
     {
         var hash = Hash.EncodeWithRandomSalt(secret, out var salt);
+
         return new LocalAccountCredentialSnapshot(Guid.NewGuid(), "Local User", hash, salt);
     }
 
@@ -123,6 +159,7 @@ public sealed class AuthenticateLocalAccountCommandHandlerTests
             Subject = subject;
             DisplayName = displayName;
             IssueCount++;
+
             return new LocalAuthToken("local-token", DateTimeOffset.UtcNow.AddHours(1));
         }
     }

@@ -1,3 +1,5 @@
+using ArturRios.Fortuna.Shared.Pagination;
+
 namespace ArturRios.Fortuna.Shared.Planning;
 
 public interface IGoalStore
@@ -9,10 +11,11 @@ public interface IGoalStore
 
 public interface IGoalReader
 {
-    Task<IReadOnlyCollection<GoalSnapshot>> ListAsync(
+    Task<ReadPage<GoalSnapshot>> ListAsync(
         Guid userId,
         bool includeDeleted,
         DateOnly asOf,
+        PageRequest page,
         CancellationToken cancellationToken);
 
     Task<GoalSnapshot?> FindByIdAsync(
@@ -54,7 +57,8 @@ public enum GoalMutationOutcome
     Succeeded = 1,
     NotFound = 2,
     ResourceNotFound = 3,
-    CurrencyNotFound = 4
+    CurrencyNotFound = 4,
+    TargetDateNotFuture = 5
 }
 
 public sealed record GoalCreation(

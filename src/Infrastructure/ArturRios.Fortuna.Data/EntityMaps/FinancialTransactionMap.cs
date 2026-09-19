@@ -6,6 +6,8 @@ namespace ArturRios.Fortuna.Data.EntityMaps;
 
 public sealed class FinancialTransactionMap : IEntityTypeConfiguration<FinancialTransaction>
 {
+    public const string ImportedRecordIndex = "ix_financial_transaction_imported_record_id";
+
     public void Configure(EntityTypeBuilder<FinancialTransaction> builder)
     {
         builder.ToTable("financial_transaction", table =>
@@ -87,7 +89,12 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
             transaction.IsDeleted,
             transaction.OccurredOn
         });
-        builder.HasIndex(transaction => new { transaction.UserId, transaction.IsDeleted });
+        builder.HasIndex(transaction => new
+        {
+            transaction.UserId,
+            transaction.IsDeleted,
+            transaction.OccurredOn
+        });
         builder.HasIndex(transaction => new
         {
             transaction.InstallmentPlanId,
@@ -98,7 +105,9 @@ public sealed class FinancialTransactionMap : IEntityTypeConfiguration<Financial
             transaction.RecurringTransactionId,
             transaction.OccurredOn
         }).IsUnique();
-        builder.HasIndex(transaction => transaction.ImportedRecordId).IsUnique();
+        builder.HasIndex(transaction => transaction.ImportedRecordId)
+            .HasDatabaseName(ImportedRecordIndex)
+            .IsUnique();
         builder.HasOne(transaction => transaction.User)
             .WithMany()
             .HasForeignKey(transaction => transaction.UserId)

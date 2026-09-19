@@ -5,11 +5,13 @@ using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Query.Handlers;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Input.Validation;
+using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Pagination;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Util.Test.Attributes;
 
 namespace ArturRios.Fortuna.Query.Tests;
@@ -169,27 +171,25 @@ public sealed class ImportJobQueryHandlerTests
         Assert.Contains(ImportJobMessages.SortByUnsupported, result.Errors);
     }
 
-    private static GetImportJobByIdQueryHandler GetHandler(
+    private static IQueryHandlerAsync<GetImportJobByIdQuery, ImportJobOutput> GetHandler(
         UserProfileSnapshot? profile,
-        IImportJobReader reader) => new(new StubProfileReader(profile), reader, Actor(profile));
+        IImportJobReader reader) => new GetImportJobByIdQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
+        reader).Validated(new GetImportJobByIdQueryValidator());
 
-    private static ListImportJobsQueryHandler ListHandler(
+    private static IPaginatedQueryHandlerAsync<ListImportJobsQuery, ImportJobOutput> ListHandler(
         UserProfileSnapshot? profile,
-        IImportJobReader reader) => new(
-        new ListImportJobsQueryValidator(),
-        new StubProfileReader(profile),
+        IImportJobReader reader) => new ListImportJobsQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         reader,
-        Actor(profile),
-        new PaginationOptions(100));
+        new PaginationOptions(100)).Validated(new ListImportJobsQueryValidator());
 
-    private static ListImportedRecordsQueryHandler RecordsHandler(
+    private static IPaginatedQueryHandlerAsync<ListImportedRecordsQuery, ImportedRecordOutput> RecordsHandler(
         UserProfileSnapshot? profile,
-        IImportJobReader reader) => new(
-        new ListImportedRecordsQueryValidator(),
-        new StubProfileReader(profile),
+        IImportJobReader reader) => new ListImportedRecordsQueryHandler(
+        new CurrentProfileResolver(Actor(profile), new StubProfileReader(profile)),
         reader,
-        Actor(profile),
-        new PaginationOptions(100));
+        new PaginationOptions(100)).Validated(new ListImportedRecordsQueryValidator());
 
     private static StubActorAccessor Actor(UserProfileSnapshot? profile) => new(
         new RequestActor(profile?.ExternalSubject ?? Guid.NewGuid(), 3, null, []));
@@ -246,6 +246,7 @@ public sealed class ImportJobQueryHandlerTests
         {
             var job = jobs.SingleOrDefault(item =>
                 item.User.PublicId == userId && item.PublicId == id);
+
             return Task.FromResult(job is null ? null : Snapshot(job));
         }
 

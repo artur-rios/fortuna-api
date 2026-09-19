@@ -64,6 +64,7 @@ public sealed class EfImportJobRetryStore(AppDbContext context) : IImportJobRetr
         backgroundJob.Retry();
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
         return Result(RetryImportJobOutcome.Succeeded, importJob, backgroundJob.Id);
     }
 

@@ -21,7 +21,7 @@ public sealed class HeimdallAuthCommandHandlerTests
                 new("token", ExpiresAt, true, false, null, null))
         };
         var handler = new LoginThroughApiCommandHandler(
-            new LoginThroughApiCommandValidator(), gateway, new(ScopeId));
+            gateway, new(ScopeId)).Validated(new LoginThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -44,7 +44,7 @@ public sealed class HeimdallAuthCommandHandlerTests
                 new(null, null, null, true, "challenge", ["App", "Email"]))
         };
         var handler = new LoginThroughApiCommandHandler(
-            new LoginThroughApiCommandValidator(), gateway, new(ScopeId));
+            gateway, new(ScopeId)).Validated(new LoginThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -68,7 +68,7 @@ public sealed class HeimdallAuthCommandHandlerTests
     {
         var gateway = new StubGateway { LoginResult = new(outcome) };
         var handler = new LoginThroughApiCommandHandler(
-            new LoginThroughApiCommandValidator(), gateway, new(ScopeId));
+            gateway, new(ScopeId)).Validated(new LoginThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -91,7 +91,7 @@ public sealed class HeimdallAuthCommandHandlerTests
     {
         var gateway = new StubGateway();
         var handler = new LoginThroughApiCommandHandler(
-            new LoginThroughApiCommandValidator(), gateway, new(ScopeId));
+            gateway, new(ScopeId)).Validated(new LoginThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { Email = email, Password = password });
 
@@ -108,7 +108,7 @@ public sealed class HeimdallAuthCommandHandlerTests
                 new("google-token", ExpiresAt, true))
         };
         var handler = new GoogleSignInThroughApiCommandHandler(
-            new GoogleSignInThroughApiCommandValidator(), gateway, new(ScopeId));
+            gateway, new(ScopeId)).Validated(new GoogleSignInThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new() { IdToken = "google-id-token" });
 
@@ -125,7 +125,7 @@ public sealed class HeimdallAuthCommandHandlerTests
                 new("full-token", ExpiresAt, true))
         };
         var handler = new VerifyTwoFactorThroughApiCommandHandler(
-            new VerifyTwoFactorThroughApiCommandValidator(), gateway);
+            gateway).Validated(new VerifyTwoFactorThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -149,7 +149,7 @@ public sealed class HeimdallAuthCommandHandlerTests
     {
         var gateway = new StubGateway();
         var handler = new VerifyTwoFactorThroughApiCommandHandler(
-            new VerifyTwoFactorThroughApiCommandValidator(), gateway);
+            gateway).Validated(new VerifyTwoFactorThroughApiCommandValidator());
 
         var result = await handler.HandleAsync(new()
         {
@@ -177,7 +177,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             ResendResult = new(outcome, outcome == HeimdallAuthOutcome.Succeeded ? new object() : null)
         };
         var handler = new ResendTwoFactorChallengeCodeThroughApiCommandHandler(
-            new ResendTwoFactorChallengeCodeThroughApiCommandValidator(), gateway);
+            gateway).Validated(new ResendTwoFactorChallengeCodeThroughApiCommandValidator());
 
         // When
         var result = await handler.HandleAsync(new() { ChallengeToken = "challenge" });
@@ -201,7 +201,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             ResendResult = new(HeimdallAuthOutcome.Unavailable)
         };
         var handler = new ResendTwoFactorChallengeCodeThroughApiCommandHandler(
-            new ResendTwoFactorChallengeCodeThroughApiCommandValidator(), gateway);
+            gateway).Validated(new ResendTwoFactorChallengeCodeThroughApiCommandValidator());
 
         // When
         var result = await handler.HandleAsync(new() { ChallengeToken = "challenge" });
@@ -218,7 +218,7 @@ public sealed class HeimdallAuthCommandHandlerTests
         // Given
         var gateway = new StubGateway();
         var handler = new ResendTwoFactorChallengeCodeThroughApiCommandHandler(
-            new ResendTwoFactorChallengeCodeThroughApiCommandValidator(), gateway);
+            gateway).Validated(new ResendTwoFactorChallengeCodeThroughApiCommandValidator());
 
         // When
         var result = await handler.HandleAsync(new() { ChallengeToken = "  " });
@@ -268,6 +268,7 @@ public sealed class HeimdallAuthCommandHandlerTests
         {
             ResendChallengeToken = challengeToken;
             ResendCalls++;
+
             return Task.FromResult(ResendResult);
         }
 
@@ -275,6 +276,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             string email, string password, Guid scopeId, CancellationToken cancellationToken)
         {
             LoginRequest = (email, password, scopeId);
+
             return Task.FromResult(LoginResult);
         }
 
@@ -282,6 +284,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             string idToken, Guid scopeId, CancellationToken cancellationToken)
         {
             GoogleRequest = (idToken, scopeId);
+
             return Task.FromResult(GoogleResult);
         }
 
@@ -290,6 +293,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             CancellationToken cancellationToken)
         {
             TwoFactorRequest = (challengeToken, code, recoveryCode);
+
             return Task.FromResult(TwoFactorResult);
         }
 
@@ -297,6 +301,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             string bearerToken, CancellationToken cancellationToken)
         {
             SignOutToken = bearerToken;
+
             return Task.FromResult(SignOutResult);
         }
 
