@@ -73,16 +73,29 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Events;
-using Serilog.Formatting.Json;
 using System.Text;
 using System.Threading.RateLimiting;
 
-var options = FortunaOptions.From(Environment.GetEnvironmentVariable);
-ConfigureLogging(options);
+FortunaLogging.UseBootstrapLogger();
+var parsedOptions = FortunaOptions.Parse(Environment.GetEnvironmentVariable);
+if (!parsedOptions.IsValid)
+{
+    foreach (var error in parsedOptions.Errors)
+    {
+        Log.Fatal("Invalid configuration: {ConfigurationError}", error);
+    }
+
+    await Log.CloseAndFlushAsync();
+
+    throw new FortunaConfigurationException(parsedOptions.Errors);
+}
+
+var options = parsedOptions.Options;
 
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    FortunaLogging.UseHostLogger(builder.Configuration, options);
     builder.Host.UseSerilog();
     builder.Services.AddSingleton(options);
     builder.Services.AddSingleton(new DatabaseDiagnosticsOptions(
@@ -909,6 +922,7 @@ try
     });
 
     var app = builder.Build();
+
     app.UsePrometheusMetrics(options.MetricsPort);
     if (!app.Environment.IsProduction())
     {
@@ -929,20 +943,6 @@ try
 finally
 {
     await Log.CloseAndFlushAsync();
-}
-
-static void ConfigureLogging(FortunaOptions options)
-{
-    Log.Logger = new LoggerConfiguration()
-        .MinimumLevel.Information()
-        .WriteTo.Console(new JsonFormatter())
-        .WriteTo.Map(
-            logEvent => logEvent.Timestamp.ToString("yyyy/MM"),
-            (yearMonth, sink) => sink.File(
-                new JsonFormatter(),
-                Path.Combine(options.LogDirectory, yearMonth, "fortuna-.json"),
-                rollingInterval: RollingInterval.Day))
-        .CreateLogger();
 }
 
 static void RegisterAttachmentStore(IServiceCollection services, FortunaOptions options)

@@ -11,6 +11,9 @@ public sealed class ExchangeRateSyncHostedService(
     TimeProvider timeProvider,
     ILogger<ExchangeRateSyncHostedService> logger) : BackgroundService
 {
+    // How far back a held-up scheduler catches up on minutes it slept through.
+    private static readonly TimeSpan MaximumCatchUp = TimeSpan.FromHours(24);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!options.IsConfigured || string.IsNullOrWhiteSpace(options.Cron))
@@ -18,24 +21,33 @@ public sealed class ExchangeRateSyncHostedService(
             return;
         }
 
-        var schedule = CronSchedule.Parse(options.Cron);
+        if (!CronSchedule.TryParse(options.Cron, out var schedule, out var error))
+        {
+            // Startup validation rejects an invalid cron, so this only guards direct construction.
+            logger.LogError("The exchange-rate synchronization schedule is invalid: {Error}", error);
+
+            return;
+        }
+
+        var lastConsidered = CronSchedule.TruncateToMinute(timeProvider.GetUtcNow());
         while (!stoppingToken.IsCancellationRequested)
         {
             var now = timeProvider.GetUtcNow();
-            var nextMinute = new DateTimeOffset(
-                now.Year,
-                now.Month,
-                now.Day,
-                now.Hour,
-                now.Minute,
-                0,
-                TimeSpan.Zero).AddMinutes(1);
-            await Task.Delay(nextMinute - now, timeProvider, stoppingToken);
-            now = timeProvider.GetUtcNow();
-            if (schedule.Matches(now))
+            var nextMinute = lastConsidered.AddMinutes(1);
+            if (nextMinute > now)
             {
-                await TryEnqueueAsync(now, stoppingToken);
+                await Task.Delay(nextMinute - now, timeProvider, stoppingToken);
             }
+
+            // Enqueueing waits while the job queue is full, so several minutes can pass in one
+            // iteration; every matching minute since the last one considered is scheduled.
+            now = timeProvider.GetUtcNow();
+            foreach (var occurrence in schedule.OccurrencesBetween(lastConsidered, now, MaximumCatchUp))
+            {
+                await TryEnqueueAsync(occurrence, stoppingToken);
+            }
+
+            lastConsidered = CronSchedule.TruncateToMinute(now);
         }
     }
 
