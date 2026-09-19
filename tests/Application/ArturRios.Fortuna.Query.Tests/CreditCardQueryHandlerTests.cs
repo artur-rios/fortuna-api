@@ -155,7 +155,7 @@ public sealed class CreditCardQueryHandlerTests
     {
         var reader = new StubCreditCardReader();
 
-        var detail = await GetHandler(null, reader).HandleAsync(new GetCreditCardByIdQuery());
+        var detail = await GetHandler(null, reader).HandleAsync(new GetCreditCardByIdQuery { Id = Guid.NewGuid() });
         var list = await ListHandler(null, reader).HandleAsync(new ListCreditCardsQuery());
 
         Assert.Contains(CreditCardMessages.ProfileNotFound, detail.Errors);
@@ -207,6 +207,7 @@ public sealed class CreditCardQueryHandlerTests
     private static GetCreditCardByIdQueryHandler GetHandler(
         UserProfileSnapshot? profile,
         ICreditCardReader cards) => new(
+            new GetCreditCardByIdQueryValidator(),
             new StubUserProfileReader(profile),
             cards,
             Actor(profile));

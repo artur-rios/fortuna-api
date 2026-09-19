@@ -76,23 +76,13 @@ public sealed class ListConnectionsQueryHandler(
     private static IOrderedQueryable<Connection> Order(
         IQueryable<Connection> connections,
         string sortBy,
-        bool descending) => (sortBy.ToLowerInvariant(), descending) switch
+        bool descending) => sortBy.ToLowerInvariant() switch
         {
-            ("datasourcetype", false) => connections.OrderBy(item => item.DataSourceType)
-                .ThenBy(item => item.PublicId),
-            ("datasourcetype", true) => connections.OrderByDescending(item => item.DataSourceType)
-                .ThenByDescending(item => item.PublicId),
-            ("status", false) => connections.OrderBy(item => item.Status)
-                .ThenBy(item => item.PublicId),
-            ("status", true) => connections.OrderByDescending(item => item.Status)
-                .ThenByDescending(item => item.PublicId),
-            ("updatedat", false) => connections.OrderBy(item => item.UpdatedAt)
-                .ThenBy(item => item.PublicId),
-            ("updatedat", true) => connections.OrderByDescending(item => item.UpdatedAt)
-                .ThenByDescending(item => item.PublicId),
-            (_, false) => connections.OrderBy(item => item.CreatedAt)
-                .ThenBy(item => item.PublicId),
-            _ => connections.OrderByDescending(item => item.CreatedAt)
-                .ThenByDescending(item => item.PublicId)
+            "datasourcetype" => connections
+                .SortBy(item => item.DataSourceType, item => item.PublicId, descending),
+            "status" => connections.SortBy(item => item.Status, item => item.PublicId, descending),
+            "updatedat" => connections
+                .SortBy(item => item.UpdatedAt, item => item.PublicId, descending),
+            _ => connections.SortBy(item => item.CreatedAt, item => item.PublicId, descending)
         };
 }
