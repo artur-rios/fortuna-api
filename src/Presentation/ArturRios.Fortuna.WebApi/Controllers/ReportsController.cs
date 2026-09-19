@@ -28,6 +28,10 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
             [TableReportMessages.FilterOperatorRequired] = StatusCodes.Status400BadRequest,
             [TableReportMessages.FilterValueRequired] = StatusCodes.Status400BadRequest,
             [TableReportMessages.SortFieldRequired] = StatusCodes.Status400BadRequest,
+            [TableReportMessages.FiltersRequired] = StatusCodes.Status400BadRequest,
+            [TableReportMessages.FilterRequired] = StatusCodes.Status400BadRequest,
+            [TableReportMessages.SortsRequired] = StatusCodes.Status400BadRequest,
+            [TableReportMessages.SortRequired] = StatusCodes.Status400BadRequest,
             [TableReportMessages.DisplayCurrencyInvalid] = StatusCodes.Status400BadRequest,
             [TableReportMessages.DisplayCurrencyUnsupported] = StatusCodes.Status400BadRequest
         };
@@ -112,6 +116,7 @@ public sealed class ReportsController(QueryMediator queryMediator) : Controller
         {
             [NetPositionMessages.RetrievedSuccessfully] = StatusCodes.Status200OK,
             [NetPositionMessages.PartiallyConverted] = StatusCodes.Status200OK,
+            [NetPositionMessages.AsOfOutOfRange] = StatusCodes.Status400BadRequest,
             [NetPositionMessages.ProfileNotFound] = StatusCodes.Status404NotFound
         });
     }

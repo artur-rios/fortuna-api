@@ -54,6 +54,7 @@ public sealed class AccountsController(CommandMediator commandMediator, QueryMed
             [AttachmentMessages.StorageUnavailable] = StatusCodes.Status503ServiceUnavailable,
             [FinancialAccountMessages.NotFound] = StatusCodes.Status404NotFound,
             [FinancialAccountMessages.InvalidPageNumber] = StatusCodes.Status400BadRequest,
+            [FinancialAccountMessages.AsOfOutOfRange] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.InvalidPageSize] = StatusCodes.Status400BadRequest,
             [FinancialAccountMessages.SortByUnsupported] = StatusCodes.Status400BadRequest
         };

@@ -171,7 +171,11 @@ public sealed class ImportJobQueryHandlerTests
 
     private static GetImportJobByIdQueryHandler GetHandler(
         UserProfileSnapshot? profile,
-        IImportJobReader reader) => new(new StubProfileReader(profile), reader, Actor(profile));
+        IImportJobReader reader) => new(
+        new GetImportJobByIdQueryValidator(),
+        new StubProfileReader(profile),
+        reader,
+        Actor(profile));
 
     private static ListImportJobsQueryHandler ListHandler(
         UserProfileSnapshot? profile,

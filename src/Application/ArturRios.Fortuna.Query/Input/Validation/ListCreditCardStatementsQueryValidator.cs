@@ -21,6 +21,9 @@ public sealed class ListCreditCardStatementsQueryValidator
 
     public ListCreditCardStatementsQueryValidator()
     {
+        RuleFor(query => query.CreditCardId)
+            .NotEmpty()
+            .WithMessage(CreditCardStatementMessages.CreditCardNotFound);
         RuleFor(query => query.PageNumber)
             .GreaterThanOrEqualTo(1)
             .WithMessage(CreditCardStatementMessages.InvalidPageNumber);

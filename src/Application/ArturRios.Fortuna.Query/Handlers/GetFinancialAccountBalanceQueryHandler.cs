@@ -6,10 +6,12 @@ using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Mediator.Query.Interfaces;
 using ArturRios.Output;
+using FluentValidation;
 
 namespace ArturRios.Fortuna.Query.Handlers;
 
 public sealed class GetFinancialAccountBalanceQueryHandler(
+    IValidator<GetFinancialAccountBalanceQuery> validator,
     IUserProfileReader profiles,
     IFinancialAccountReader accounts,
     IRequestActorAccessor actorAccessor,
@@ -19,6 +21,13 @@ public sealed class GetFinancialAccountBalanceQueryHandler(
     public async Task<DataOutput<FinancialAccountBalanceOutput?>> HandleAsync(
         GetFinancialAccountBalanceQuery query)
     {
+        var validation = await validator.ValidateAsync(query);
+        if (!validation.IsValid)
+        {
+            return DataOutput<FinancialAccountBalanceOutput?>.New.WithErrors(
+                validation.Errors.Select(failure => failure.ErrorMessage));
+        }
+
         var output = DataOutput<FinancialAccountBalanceOutput?>.New;
         var profile = await ResolveProfileAsync(actorAccessor.Actor);
         if (profile is null)

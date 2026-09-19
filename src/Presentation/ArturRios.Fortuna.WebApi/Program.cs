@@ -644,28 +644,43 @@ try
         ProcessingConsentQueryOutput>, GetMyProcessingConsentsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCategoryTreeQuery, CategoryTreeOutput>,
         GetCategoryTreeQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetCategoryByIdQuery>, GetCategoryByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCategoryByIdQuery, CategoryOutput>,
         GetCategoryByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListTagsQuery>, ListTagsQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListTagsQuery, TagListOutput>,
         ListTagsQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListCounterpartiesQuery>,
+        ListCounterpartiesQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListCounterpartiesQuery,
         CounterpartyListOutput>, ListCounterpartiesQueryHandler>();
+    builder.Services.AddScoped<IValidator<SuggestCounterpartyCategoryQuery>,
+        SuggestCounterpartyCategoryQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<SuggestCounterpartyCategoryQuery,
         CounterpartyCategorySuggestionOutput>, SuggestCounterpartyCategoryQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListBudgetsQuery>, ListBudgetsQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListBudgetsQuery, BudgetListOutput>,
         ListBudgetsQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetBudgetByIdQuery>, GetBudgetByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetBudgetByIdQuery, BudgetOutput>,
         GetBudgetByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetBudgetConsumptionQuery>,
+        GetBudgetConsumptionQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetBudgetConsumptionQuery,
         BudgetConsumptionDetailOutput>, GetBudgetConsumptionQueryHandler>();
+    builder.Services.AddScoped<IValidator<ListGoalsQuery>, ListGoalsQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListGoalsQuery, GoalListOutput>,
         ListGoalsQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetGoalByIdQuery>, GetGoalByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetGoalByIdQuery, GoalOutput>,
         GetGoalByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetGoalProgressQuery>, GetGoalProgressQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetGoalProgressQuery,
         GoalProgressDetailOutput>, GetGoalProgressQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListSupportedCurrenciesQuery,
         ListSupportedCurrenciesQueryOutput>, ListSupportedCurrenciesQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetCurrencyByCodeQuery>,
+        GetCurrencyByCodeQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>,
         GetCurrencyByCodeQueryHandler>();
     builder.Services.AddScoped<IValidator<ConvertFigureQuery>, ConvertFigureQueryValidator>();
@@ -684,18 +699,26 @@ try
     builder.Services.AddScoped<IValidator<ListAuditEntriesQuery>, ListAuditEntriesQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>,
         ListAuditEntriesQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetFinancialAccountByIdQuery>,
+        GetFinancialAccountByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetFinancialAccountByIdQuery, FinancialAccountOutput>,
         GetFinancialAccountByIdQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetFinancialAccountBalanceQuery>,
+        GetFinancialAccountBalanceQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetFinancialAccountBalanceQuery,
         FinancialAccountBalanceOutput>, GetFinancialAccountBalanceQueryHandler>();
     builder.Services.AddScoped<IValidator<ListFinancialAccountsQuery>, ListFinancialAccountsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListFinancialAccountsQuery, FinancialAccountOutput>,
         ListFinancialAccountsQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetCreditCardByIdQuery>,
+        GetCreditCardByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCreditCardByIdQuery, CreditCardOutput>,
         GetCreditCardByIdQueryHandler>();
     builder.Services.AddScoped<IValidator<ListCreditCardsQuery>, ListCreditCardsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListCreditCardsQuery, CreditCardOutput>,
         ListCreditCardsQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetCreditCardStatementByIdQuery>,
+        GetCreditCardStatementByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetCreditCardStatementByIdQuery,
         CreditCardStatementOutput>, GetCreditCardStatementByIdQueryHandler>();
     builder.Services.AddScoped<IValidator<ListCreditCardStatementsQuery>,
@@ -746,16 +769,21 @@ try
         RecurringTransactionOutput>, ListRecurringTransactionsQueryHandler>();
     builder.Services.AddScoped<IQueryHandlerAsync<ListDataSourcesQuery, DataSourceListOutput>,
         ListDataSourcesQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetConnectionByIdQuery>,
+        GetConnectionByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetConnectionByIdQuery, ConnectionOutput>,
         GetConnectionByIdQueryHandler>();
     builder.Services.AddScoped<IValidator<ListConnectionsQuery>, ListConnectionsQueryValidator>();
     builder.Services.AddScoped<IPaginatedQueryHandlerAsync<ListConnectionsQuery, ConnectionOutput>,
         ListConnectionsQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetImportJobByIdQuery>, GetImportJobByIdQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetImportJobByIdQuery, ImportJobOutput>,
         GetImportJobByIdQueryHandler>();
     builder.Services.AddScoped<IValidator<GetDataExportQuery>, GetDataExportQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetDataExportQuery,
-        RetrieveDataExportQueryOutput>, RetrieveDataExportQueryHandler>();
+        RetrieveDataExportQueryOutput>, GetDataExportQueryHandler>();
+    builder.Services.AddScoped<IValidator<GetPersonalDataExportQuery>,
+        GetPersonalDataExportQueryValidator>();
     builder.Services.AddScoped<IQueryHandlerAsync<GetPersonalDataExportQuery,
         PersonalDataExportQueryOutput>, GetPersonalDataExportQueryHandler>();
     builder.Services.AddScoped<IValidator<ListImportJobsQuery>, ListImportJobsQueryValidator>();
