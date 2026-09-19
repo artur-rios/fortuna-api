@@ -93,7 +93,7 @@ public sealed class ImportPdfInvoiceCommandHandlerTests
     {
         CreditCardId = Guid.NewGuid(),
         FileName = "invoice.pdf",
-        Content = [1, 2, 3],
+        Content = "%PDF-1.7"u8.ToArray(),
         CorrelationId = "request-60"
     };
 

@@ -16,10 +16,13 @@ public sealed class ImportExcelWorkbookCommandValidator
             .IsInEnum()
             .WithMessage(ExcelImportMessages.TargetTypeInvalid);
         RuleFor(command => command.Content)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .WithMessage(ExcelImportMessages.FileRequired)
             .Must(content => content.Length <= options.MaximumFileBytes)
-            .WithMessage(ExcelImportMessages.FileTooLarge);
+            .WithMessage(ExcelImportMessages.FileTooLarge)
+            .Must(FileSignatures.IsZipPackage)
+            .WithMessage(ExcelImportMessages.WorkbookInvalid);
         RuleFor(command => command.FileName)
             .TrimmedMaximumLength(300)
             .WithMessage(ExcelImportMessages.FileNameTooLong);
