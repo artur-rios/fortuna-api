@@ -22,7 +22,7 @@ sha2 = "0.11.0"
 rust_decimal = "1.40.0"
 uuid = { version = "1.26.0", features = ["serde", "v4"] }
 zeroize = "1.9.0"
-zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
+zip = { version = "7.2.0", default-features = false, features = ["deflate"] }
 
 [build-dependencies]
 cbindgen = "0.29.4"
