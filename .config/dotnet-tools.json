@@ -3,18 +3,24 @@
   "isRoot": true,
   "tools": {
     "dotnet-ef": {
-      "version": "10.0.11",
-      "commands": ["dotnet-ef"],
+      "version": "10.0.12",
+      "commands": [
+        "dotnet-ef"
+      ],
       "rollForward": false
     },
     "dotnet-reportgenerator-globaltool": {
       "version": "5.5.11",
-      "commands": ["reportgenerator"],
+      "commands": [
+        "reportgenerator"
+      ],
       "rollForward": false
     },
     "swashbuckle.aspnetcore.cli": {
       "version": "10.2.3",
-      "commands": ["swagger"],
+      "commands": [
+        "swagger"
+      ],
       "rollForward": false
     }
   }
