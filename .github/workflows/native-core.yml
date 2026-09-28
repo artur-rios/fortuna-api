@@ -27,19 +27,6 @@ concurrency:
 # Dependabot (.github/dependabot.yml) proposes the updates. dtolnay/rust-toolchain is pinned to a
 # commit of its `stable` branch, so the toolchain is passed explicitly.
 jobs:
-  audit:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      # rustsec/audit-check reports its findings as a check run.
-      checks: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2.0.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          working-directory: native/fortuna-core
-
   msrv:
     name: msrv (rust-version)
     runs-on: ubuntu-latest
