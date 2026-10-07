@@ -15,7 +15,9 @@ public sealed class ListBudgetsQueryHandler(
     TimeProvider timeProvider,
     PaginationOptions paginationOptions) : IQueryHandlerAsync<ListBudgetsQuery, BudgetListOutput>
 {
-    public async Task<DataOutput<BudgetListOutput?>> HandleAsync(ListBudgetsQuery query)
+    public async Task<DataOutput<BudgetListOutput?>> HandleAsync(
+        ListBudgetsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -31,7 +33,7 @@ public sealed class ListBudgetsQueryHandler(
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
             page,
-            CancellationToken.None);
+            cancellationToken);
 
         return DataOutput<BudgetListOutput?>.New
             .WithData(new BudgetListOutput
@@ -50,7 +52,9 @@ public sealed class GetBudgetByIdQueryHandler(
     IBudgetReader budgets,
     TimeProvider timeProvider) : IQueryHandlerAsync<GetBudgetByIdQuery, BudgetOutput>
 {
-    public async Task<DataOutput<BudgetOutput?>> HandleAsync(GetBudgetByIdQuery query)
+    public async Task<DataOutput<BudgetOutput?>> HandleAsync(
+        GetBudgetByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<BudgetOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -64,7 +68,7 @@ public sealed class GetBudgetByIdQueryHandler(
             query.Id,
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
-            CancellationToken.None);
+            cancellationToken);
 
         return snapshot is null
             ? output.WithError(BudgetMessages.NotFound)
@@ -81,7 +85,8 @@ public sealed class GetBudgetConsumptionQueryHandler(
     : IQueryHandlerAsync<GetBudgetConsumptionQuery, BudgetConsumptionDetailOutput>
 {
     public async Task<DataOutput<BudgetConsumptionDetailOutput?>> HandleAsync(
-        GetBudgetConsumptionQuery query)
+        GetBudgetConsumptionQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<BudgetConsumptionDetailOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -96,7 +101,7 @@ public sealed class GetBudgetConsumptionQueryHandler(
             profile.Id,
             query.Id,
             periodDate,
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome == BudgetConsumptionOutcome.NotFound)
         {
             return output.WithError(BudgetMessages.NotFound);

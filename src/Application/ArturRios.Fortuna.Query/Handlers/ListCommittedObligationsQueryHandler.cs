@@ -19,7 +19,8 @@ public sealed class ListCommittedObligationsQueryHandler(
     : IQueryHandlerAsync<ListCommittedObligationsQuery, CommittedObligationListOutput>
 {
     public async Task<DataOutput<CommittedObligationListOutput?>> HandleAsync(
-        ListCommittedObligationsQuery query)
+        ListCommittedObligationsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CommittedObligationListOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -29,7 +30,7 @@ public sealed class ListCommittedObligationsQueryHandler(
         }
 
         var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
-        var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
+        var displayCurrency = await currencies.FindByCodeAsync(displayCode, cancellationToken);
         if (displayCurrency is null)
         {
             return output.WithError(CommittedObligationMessages.DisplayCurrencyUnsupported);
@@ -38,7 +39,7 @@ public sealed class ListCommittedObligationsQueryHandler(
         var asOf = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
         var through = asOf.AddDays(query.HorizonDays);
         var snapshots = await obligations.ReadAsync(
-            profile.Id, asOf, through, CancellationToken.None);
+            profile.Id, asOf, through, cancellationToken);
         var converter = new FigureConverter(rates, displayCurrency);
         var converted = new List<ConvertedObligation>(snapshots.Count);
         foreach (var snapshot in snapshots)

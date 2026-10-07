@@ -16,7 +16,8 @@ public sealed class ListRecurringTransactionsQueryHandler(
     : IPaginatedQueryHandlerAsync<ListRecurringTransactionsQuery, RecurringTransactionOutput>
 {
     public async Task<PaginatedOutput<RecurringTransactionOutput>> HandleAsync(
-        ListRecurringTransactionsQuery query)
+        ListRecurringTransactionsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = PaginatedOutput<RecurringTransactionOutput>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -35,7 +36,7 @@ public sealed class ListRecurringTransactionsQueryHandler(
                 query.Descending,
                 query.PageNumber,
                 pageSize),
-            CancellationToken.None);
+            cancellationToken);
 
         return output
             .WithData(page.Rules.Select(RecurringTransactionProjection.Project).ToList())

@@ -14,7 +14,9 @@ public sealed class ListTagsQueryHandler(
     ITagReader tags,
     PaginationOptions paginationOptions) : IQueryHandlerAsync<ListTagsQuery, TagListOutput>
 {
-    public async Task<DataOutput<TagListOutput?>> HandleAsync(ListTagsQuery query)
+    public async Task<DataOutput<TagListOutput?>> HandleAsync(
+        ListTagsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -29,7 +31,7 @@ public sealed class ListTagsQueryHandler(
             profile.Id,
             query.IncludeDeleted,
             page,
-            CancellationToken.None);
+            cancellationToken);
 
         return DataOutput<TagListOutput?>.New
             .WithData(new TagListOutput

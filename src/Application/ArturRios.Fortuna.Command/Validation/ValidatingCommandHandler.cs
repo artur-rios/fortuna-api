@@ -17,15 +17,15 @@ public sealed class ValidatingCommandHandler<TCommand, TOutput>(
     where TCommand : BaseCommand
     where TOutput : CommandOutput
 {
-    public async Task<DataOutput<TOutput?>> HandleAsync(TCommand command)
+    public async Task<DataOutput<TOutput?>> HandleAsync(TCommand command, CancellationToken cancellationToken = default)
     {
-        var validation = await validator.ValidateAsync(command);
+        var validation = await validator.ValidateAsync(command, cancellationToken);
         if (!validation.IsValid)
         {
             return DataOutput<TOutput?>.New.WithErrors(
                 validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
-        return await inner.HandleAsync(command);
+        return await inner.HandleAsync(command, cancellationToken);
     }
 }

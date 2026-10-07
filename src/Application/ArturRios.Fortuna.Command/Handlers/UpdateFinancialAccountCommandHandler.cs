@@ -15,7 +15,8 @@ public sealed class UpdateFinancialAccountCommandHandler(
     : ICommandHandlerAsync<UpdateFinancialAccountCommand, UpdateFinancialAccountCommandOutput>
 {
     public async Task<DataOutput<UpdateFinancialAccountCommandOutput?>> HandleAsync(
-        UpdateFinancialAccountCommand command)
+        UpdateFinancialAccountCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<UpdateFinancialAccountCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -32,7 +33,7 @@ public sealed class UpdateFinancialAccountCommandHandler(
                 command.Institution,
                 command.AccountType,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (updated.DuplicateName)
         {
             return output.WithError(FinancialAccountMessages.DuplicateName);

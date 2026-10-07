@@ -15,7 +15,8 @@ public sealed class UpdateTransactionCommandHandler(
     : ICommandHandlerAsync<UpdateTransactionCommand, UpdateTransactionCommandOutput>
 {
     public async Task<DataOutput<UpdateTransactionCommandOutput?>> HandleAsync(
-        UpdateTransactionCommand command)
+        UpdateTransactionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<UpdateTransactionCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -36,7 +37,7 @@ public sealed class UpdateTransactionCommandHandler(
                 command.Counterparty,
                 command.Tags ?? [],
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome != TransactionUpdateOutcome.Succeeded ||
             result.Transaction is null)
         {

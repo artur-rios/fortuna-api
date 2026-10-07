@@ -18,7 +18,9 @@ public sealed class GetInvestmentByIdQueryHandler(
     TimeProvider timeProvider)
     : IQueryHandlerAsync<GetInvestmentByIdQuery, InvestmentOutput>
 {
-    public async Task<DataOutput<InvestmentOutput?>> HandleAsync(GetInvestmentByIdQuery query)
+    public async Task<DataOutput<InvestmentOutput?>> HandleAsync(
+        GetInvestmentByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<InvestmentOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -30,14 +32,14 @@ public sealed class GetInvestmentByIdQueryHandler(
         var investment = await investments.FindByIdWithPositionAsync(
             profile.Id,
             query.Id,
-            CancellationToken.None);
+            cancellationToken);
         if (investment is null)
         {
             return output.WithError(InvestmentMessages.NotFound);
         }
 
         var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
-        var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
+        var displayCurrency = await currencies.FindByCodeAsync(displayCode, cancellationToken);
         if (displayCurrency is null)
         {
             return output

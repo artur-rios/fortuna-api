@@ -19,7 +19,8 @@ public sealed class RecoverLocalAccountCommandHandler(
     : ICommandHandlerAsync<RecoverLocalAccountCommand, RecoverLocalAccountCommandOutput>
 {
     public async Task<DataOutput<RecoverLocalAccountCommandOutput?>> HandleAsync(
-        RecoverLocalAccountCommand command)
+        RecoverLocalAccountCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RecoverLocalAccountCommandOutput?>.New;
         if (!options.Enabled)
@@ -27,7 +28,7 @@ public sealed class RecoverLocalAccountCommandHandler(
             return output.WithError(LocalAccountMessages.Disabled);
         }
 
-        var validation = await validator.ValidateAsync(command);
+        var validation = await validator.ValidateAsync(command, cancellationToken);
         if (!validation.IsValid)
         {
             return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
@@ -41,7 +42,7 @@ public sealed class RecoverLocalAccountCommandHandler(
                 newSecretHash,
                 newSalt,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         if (recovery.Status == LocalAccountRecoveryStatus.Exhausted)
         {

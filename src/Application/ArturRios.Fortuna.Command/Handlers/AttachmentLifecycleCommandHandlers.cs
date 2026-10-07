@@ -15,7 +15,8 @@ public sealed class DeleteAttachmentCommandHandler(
     : ICommandHandlerAsync<DeleteAttachmentCommand, AttachmentLifecycleCommandOutput>
 {
     public async Task<DataOutput<AttachmentLifecycleCommandOutput?>> HandleAsync(
-        DeleteAttachmentCommand command)
+        DeleteAttachmentCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -27,7 +28,7 @@ public sealed class DeleteAttachmentCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return AttachmentLifecycleHandler.Resolve(
             result,
@@ -41,7 +42,8 @@ public sealed class HardDeleteAttachmentCommandHandler(
     : ICommandHandlerAsync<HardDeleteAttachmentCommand, AttachmentLifecycleCommandOutput>
 {
     public async Task<DataOutput<AttachmentLifecycleCommandOutput?>> HandleAsync(
-        HardDeleteAttachmentCommand command)
+        HardDeleteAttachmentCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -52,7 +54,7 @@ public sealed class HardDeleteAttachmentCommandHandler(
         var result = await attachments.HardDeleteAsync(
             profile.Id,
             command.Id,
-            CancellationToken.None);
+            cancellationToken);
 
         return AttachmentLifecycleHandler.Resolve(
             result,

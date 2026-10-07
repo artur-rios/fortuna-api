@@ -15,7 +15,8 @@ public sealed class UpdateCategoryCommandHandler(
     : ICommandHandlerAsync<UpdateCategoryCommand, UpdateCategoryCommandOutput>
 {
     public async Task<DataOutput<UpdateCategoryCommandOutput?>> HandleAsync(
-        UpdateCategoryCommand command)
+        UpdateCategoryCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<UpdateCategoryCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -31,7 +32,7 @@ public sealed class UpdateCategoryCommandHandler(
                 command.Name.Trim(),
                 command.ParentId,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         if (result.Outcome != CategoryUpdateOutcome.Succeeded)
         {

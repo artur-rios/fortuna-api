@@ -16,7 +16,8 @@ public sealed class ListTransactionAttachmentsQueryHandler(
     : IPaginatedQueryHandlerAsync<ListTransactionAttachmentsQuery, AttachmentOutput>
 {
     public async Task<PaginatedOutput<AttachmentOutput>> HandleAsync(
-        ListTransactionAttachmentsQuery query)
+        ListTransactionAttachmentsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = PaginatedOutput<AttachmentOutput>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -30,7 +31,7 @@ public sealed class ListTransactionAttachmentsQueryHandler(
         var owned = await metadata.IsOwnedTransactionAsync(
             profile.Id,
             query.TransactionId,
-            CancellationToken.None);
+            cancellationToken);
         if (!owned)
         {
             return output.WithError(AttachmentMessages.TransactionNotFound);
@@ -61,7 +62,7 @@ public sealed class ListTransactionAttachmentsQueryHandler(
             query.PageNumber,
             pageSize,
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         return page.WithMessage(AttachmentMessages.ListedSuccessfully);
     }

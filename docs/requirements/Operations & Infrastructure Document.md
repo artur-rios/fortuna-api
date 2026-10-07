@@ -195,6 +195,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Transaction tags | `FORTUNA_TRANSACTION_MAX_TAGS` | Maximum number of live tags attached to one transaction; defaults to `50`. |
 | Reconciliation | `FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE`, `FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS` | Differences beyond these non-negative amount and day tolerances are accepted but flagged. Defaults to `0.01` and `1`. |
 | Metrics | `FORTUNA_METRICS_PORT` | Local port whose listener serves `GET /metrics` (IR-27). Defaults to `9464`; `0` disables the exporter. The container entrypoint opens this port next to `8080`; outside the container it must also be one Kestrel listens on (`ASPNETCORE_HTTP_PORTS`). |
+| Reverse proxy | `FORTUNA_FORWARDED_KNOWN_NETWORKS`, `FORTUNA_FORWARDED_KNOWN_PROXIES` | Comma-separated CIDR networks and IP addresses whose `X-Forwarded-For` / `X-Forwarded-Proto` are believed, one hop deep; loopback is always trusted. Set the proxy's network in production, or every caller is the proxy — see [4.1](#41-client-ip-addresses). |
 | CORS | `FORTUNA_CORS_ALLOWED_ORIGINS` | Empty by default, which refuses every cross-origin request; a browser client does not reach the API until its origin is listed. |
 | Logging | `FORTUNA_LOG_DIRECTORY`, `FORTUNA_LOG_LEVEL` | The log directory is a mounted volume in a container. |
 
@@ -208,9 +209,10 @@ files carry keys with empty or placeholder values only.
 | Concern | Approach |
 | --- | --- |
 | Format | Structured JSON, through Serilog, wired with `Host.UseSerilog()`. |
-| Destination | Console, plus a rolling file in the configured log directory, which is a named volume in a container. |
-| Correlation | Every request carries a correlation identifier, propagated into any job it starts, so a job's log lines can be traced back to the request that queued it. |
-| Levels | `Information` for request completion, job state transitions and startup decisions; `Warning` for a degraded external dependency; `Error` for an unhandled failure. |
+| Destination | Console, plus a JSON file rolled daily under `FORTUNA_LOG_DIRECTORY/<yyyy>/<MM>/` (`fortuna-<yyyyMMdd>.json`), which is a named volume in a container. Fortuna deletes no log file itself: how long one is kept is the operator's rotation. |
+| Correlation | Every request carries a correlation identifier — its W3C trace id, returned in the `traceparent` response header — propagated into any job it starts, so a job's log lines can be traced back to the request that queued it. |
+| Request start | `ArturRios.Util.WebApi`'s `TraceActivityMiddleware` logs `Started request with TraceId {TraceId} from {ClientIp}` for every API request and tags the request's activity with `client.address` — see [4.1](#41-client-ip-addresses). |
+| Levels | `Information` for request start and completion, job state transitions and startup decisions; `Warning` for a degraded external dependency; `Error` for an unhandled failure. |
 | Job logging | Each job logs its acceptance, its start, its per-outcome counts and its completion — never the content of a row it processed. |
 | **Never logged** | A monetary amount. An account, card or investment identifier or name. A token, a signing key, an aggregator secret, an access token, a recovery code or its hash. Attachment content. The contents of an imported file. A connection string with its password. |
 
@@ -218,6 +220,36 @@ The exclusion list is longer than most services need, and deliberately so: a log
 second copy of whatever reaches it, held under weaker controls than the database. A support engineer
 reading a log should be able to tell **that** an import processed 412 rows and rejected 3, and
 **why** those 3 were rejected in the system's own words — without learning what anybody spent.
+
+### 4.1 Client IP addresses
+
+The client IP address is the one identifying value the logs carry on purpose. Every request that
+reaches the API — anonymous, refused, rate-limited or served — is logged at `Information` with its
+trace id and the caller's address, before request logging, rate limiting and authentication run, so
+the source of a credential-stuffing run or of an account's misuse can be found afterwards. The same
+address is tagged on the request's activity as `client.address`; no trace exporter is configured
+today, so the tag leaves the process only if one is added. A Prometheus scrape on the private
+listener is answered before the middleware and is not logged. The behavior is set explicitly in
+`AddFortunaWebApi` (`TraceActivityOptions.LogClientIp` and `TagClientAddress`, both `true`), not
+inherited from the library's defaults.
+
+**An IP address is personal data under the GDPR and the LGPD.** It is written to the console and to
+the monthly JSON log files under `FORTUNA_LOG_DIRECTORY`, and kept for as long as those files are —
+whole-account erasure does not rewrite them, so the deployment's log rotation is what bounds it. It
+is never written to the database, an audit entry or an export.
+
+Which address it is depends on the reverse proxy configuration. Behind a proxy every connection
+comes from the proxy, and the caller's own address travels in `X-Forwarded-For`. Forwarded headers
+are applied first in the pipeline, and only from the networks and addresses in
+`FORTUNA_FORWARDED_KNOWN_NETWORKS` / `FORTUNA_FORWARDED_KNOWN_PROXIES` (plus loopback):
+
+| Proxy configuration | Address logged (and used by the per-client rate limiter) |
+| --- | --- |
+| The proxy is listed | The caller's — the rightmost `X-Forwarded-For` entry, the one hop the proxy vouches for; an earlier entry a caller forged is ignored |
+| The proxy is not listed | The proxy's, which identifies nobody — and every caller shares one rate-limit partition |
+| A connection from outside the listed ranges sends `X-Forwarded-For` | The connection's own address; the header is ignored |
+
+Never list a range a caller can originate from: anything trusted here can claim any address it likes.
 
 ---
 
@@ -351,8 +383,8 @@ the connection's local port equals `FORTUNA_METRICS_PORT` (IR-27). The `Host` he
 the proxy forwards the caller's, so a client could forge any value. The private port serves nothing
 but the scrape: every other path that arrives on it is answered `404` before it reaches the API.
 
-The exporter runs before request logging, rate limiting, authentication and authorization, so a
-scrape needs no token and is not logged; it is middleware rather than a controller, so it is absent
+The exporter runs before the request-start entry, request logging, rate limiting, authentication
+and authorization, so a scrape needs no token and is not logged; it is middleware rather than a controller, so it is absent
 from the OpenAPI document. On `8080`, `/metrics` falls through to the normal pipeline like any
 unknown path (`401` anonymous, `404` authenticated) and is never served. Setting
 `FORTUNA_METRICS_PORT=0` removes the exporter and its instrumentation entirely.

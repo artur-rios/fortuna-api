@@ -10,7 +10,9 @@ namespace ArturRios.Fortuna.Query.Handlers;
 public sealed class ListDataSourcesQueryHandler(IDataSourceCatalog sources)
     : IQueryHandlerAsync<ListDataSourcesQuery, DataSourceListOutput>
 {
-    public Task<DataOutput<DataSourceListOutput?>> HandleAsync(ListDataSourcesQuery query) =>
+    public Task<DataOutput<DataSourceListOutput?>> HandleAsync(
+        ListDataSourcesQuery query,
+        CancellationToken cancellationToken = default) =>
         Task.FromResult(DataOutput<DataSourceListOutput?>.New.WithData(new DataSourceListOutput
         {
             Sources = sources.List().Select(source => new DataSourceOutput

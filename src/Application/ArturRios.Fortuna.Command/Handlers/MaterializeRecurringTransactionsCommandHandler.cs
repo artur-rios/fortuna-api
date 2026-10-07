@@ -16,7 +16,8 @@ public sealed class MaterializeRecurringTransactionsCommandHandler(
         MaterializeRecurringTransactionsCommandOutput>
 {
     public async Task<DataOutput<MaterializeRecurringTransactionsCommandOutput?>> HandleAsync(
-        MaterializeRecurringTransactionsCommand command)
+        MaterializeRecurringTransactionsCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<MaterializeRecurringTransactionsCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -29,7 +30,7 @@ public sealed class MaterializeRecurringTransactionsCommandHandler(
         var through = DateOnly.FromDateTime(now.UtcDateTime);
         var result = await materializer.MaterializeAsync(
             new RecurringMaterializationRun(profile.Id, through, now),
-            CancellationToken.None);
+            cancellationToken);
 
         return output.WithData(new MaterializeRecurringTransactionsCommandOutput
         {

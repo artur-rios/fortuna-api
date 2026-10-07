@@ -47,9 +47,9 @@ public abstract class FortunaController : Controller
     protected ActionResult<DataOutput<T?>> Respond<T>(
         DataOutput<T?> result,
         IReadOnlyDictionary<string, int>? statusMap = null) =>
-        ResponseResolver.Resolve(result, statusMap: statusMap ?? StatusMap);
+        result.ToActionResult(statusMap: statusMap ?? StatusMap);
 
     /// <summary>Resolves a page with the controller's map.</summary>
     protected ActionResult<PaginatedOutput<T>> Respond<T>(PaginatedOutput<T> result) =>
-        ResponseResolver.Resolve(result, statusMap: StatusMap);
+        result.ToActionResult(statusMap: StatusMap);
 }

@@ -13,7 +13,9 @@ public sealed class GetTransactionByIdQueryHandler(
     ITransactionReader transactions)
     : IQueryHandlerAsync<GetTransactionByIdQuery, TransactionOutput>
 {
-    public async Task<DataOutput<TransactionOutput?>> HandleAsync(GetTransactionByIdQuery query)
+    public async Task<DataOutput<TransactionOutput?>> HandleAsync(
+        GetTransactionByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<TransactionOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -26,7 +28,7 @@ public sealed class GetTransactionByIdQueryHandler(
             profile.Id,
             query.Id,
             query.IncludeDeleted,
-            CancellationToken.None);
+            cancellationToken);
         if (transaction is null)
         {
             return output.WithError(TransactionMessages.NotFound);

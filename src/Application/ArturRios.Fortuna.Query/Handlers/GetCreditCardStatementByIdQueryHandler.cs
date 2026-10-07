@@ -14,7 +14,8 @@ public sealed class GetCreditCardStatementByIdQueryHandler(
     : IQueryHandlerAsync<GetCreditCardStatementByIdQuery, CreditCardStatementOutput>
 {
     public async Task<DataOutput<CreditCardStatementOutput?>> HandleAsync(
-        GetCreditCardStatementByIdQuery query)
+        GetCreditCardStatementByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CreditCardStatementOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -26,7 +27,7 @@ public sealed class GetCreditCardStatementByIdQueryHandler(
         var statement = await statements.FindByIdAsync(
             profile.Id,
             query.Id,
-            CancellationToken.None);
+            cancellationToken);
         if (statement is null)
         {
             return output.WithError(CreditCardStatementMessages.NotFound);

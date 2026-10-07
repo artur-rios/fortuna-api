@@ -18,7 +18,8 @@ public sealed class AttachDocumentCommandHandler(
     : ICommandHandlerAsync<AttachDocumentCommand, AttachDocumentCommandOutput>
 {
     public async Task<DataOutput<AttachDocumentCommandOutput?>> HandleAsync(
-        AttachDocumentCommand command)
+        AttachDocumentCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<AttachDocumentCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -30,14 +31,14 @@ public sealed class AttachDocumentCommandHandler(
         if (!await metadata.IsOwnedLiveTransactionAsync(
                 profile.Id,
                 command.TransactionId,
-                CancellationToken.None))
+                cancellationToken))
         {
             return output.WithError(AttachmentMessages.TransactionNotFound);
         }
 
         try
         {
-            if (!await storage.IsHealthyAsync(CancellationToken.None))
+            if (!await storage.IsHealthyAsync(cancellationToken))
             {
                 return output.WithError(AttachmentMessages.StorageUnavailable);
             }
@@ -53,7 +54,7 @@ public sealed class AttachDocumentCommandHandler(
         try
         {
             await using var content = new MemoryStream(command.Content, writable: false);
-            await storage.WriteAsync(key, content, CancellationToken.None);
+            await storage.WriteAsync(key, content, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -75,7 +76,7 @@ public sealed class AttachDocumentCommandHandler(
                     command.Content.LongLength,
                     key,
                     timeProvider.GetUtcNow()),
-                CancellationToken.None);
+                cancellationToken);
         }
         catch (Exception exception)
         {
@@ -111,6 +112,8 @@ public sealed class AttachDocumentCommandHandler(
     {
         try
         {
+            // Compensation runs to completion even when the request was cancelled, so a written
+            // object is never left behind without its metadata.
             await storage.DeleteAsync(key, CancellationToken.None);
         }
         catch (Exception exception)

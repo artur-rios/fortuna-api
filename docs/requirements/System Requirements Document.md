@@ -969,6 +969,7 @@ receiving deployment detail that it cannot act on.
 | NFR-35 | Compatibility | The native build shall derive its offline operation registry from the checked-in OpenAPI contract, export one concrete symbol for every eligible method/path pair, and expose capability discovery that states both available and deliberately unavailable operations |
 | NFR-36 | Responsiveness | Native imports and exports shall return an accepted job with progress immediately; callers shall monitor completion through the generated job retrieval operations rather than block the calling thread |
 | NFR-37 | Compatibility | Every integer enum published in OpenAPI shall include an `x-enum-varnames` entry whose names align positionally with its values, so generated clients preserve the domain vocabulary without changing the integer wire format |
+| NFR-38 | Privacy | The hosted API shall log the start of every request with its client IP address, taking the address from `X-Forwarded-For` only when the connection comes from a configured trusted proxy; the address shall be kept only in the application logs, never in the database, an audit entry or an export |
 
 ---
 
@@ -1126,3 +1127,4 @@ outcome and time; deleting the mapping makes all retained entries unlinkable.
 | BR-43 Processing consent is explicit | FR-ID-39, FR-ID-40 |
 | BR-44 Consent text is versioned | FR-ID-38, FR-ID-39 |
 | BR-45 Withdrawal stops external access, not local use or history | FR-ID-41, FR-ID-43, FR-IM-16 |
+| BR-46 Every request is logged with its client IP address | NFR-38 |

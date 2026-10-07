@@ -14,6 +14,7 @@ using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Serialization;
 using ArturRios.Fortuna.WebApi.Services;
 using ArturRios.Jwt;
+using ArturRios.Util.WebApi.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
@@ -25,8 +26,8 @@ namespace ArturRios.Fortuna.WebApi.Extensions;
 public static class FortunaWebApiServiceCollectionExtensions
 {
     /// <summary>
-    ///     Registers the HTTP surface: request identity, controllers, JWT authentication,
-    ///     authorization, rate limiting, metrics and the OpenAPI document.
+    ///     Registers the HTTP surface: request identity, controllers, forwarded headers, request
+    ///     tracing, JWT authentication, authorization, rate limiting, metrics and the OpenAPI document.
     /// </summary>
     public static IServiceCollection AddFortunaWebApi(
         this IServiceCollection services,
@@ -47,6 +48,14 @@ public static class FortunaWebApiServiceCollectionExtensions
                 api.InvalidModelStateResponseFactory = ApiErrorResponses.InvalidModelState);
         services.Configure<ForwardedHeadersOptions>(forwarded =>
             ForwardedHeadersSetup.Configure(forwarded, options));
+        // Both are the library's defaults, set explicitly because writing the client IP address to
+        // the logs, and tagging it on traces as client.address, is a decision about personal data
+        // that the documentation declares rather than a technicality to inherit silently.
+        services.Configure<TraceActivityOptions>(trace =>
+        {
+            trace.LogClientIp = true;
+            trace.TagClientAddress = true;
+        });
         var jwtConfiguration = BuildJwtConfiguration(options);
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(authentication =>

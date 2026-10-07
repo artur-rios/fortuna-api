@@ -58,6 +58,24 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenEmptySecret_WhenRegenerating_ThenSecretIsRejectedWithoutHashing()
+    {
+        var actor = LocalActor();
+        var store = new StubStore(Credentials(actor.SubjectId, Secret), regenerated: true);
+        var generator = new StubGenerator([]);
+
+        var result = await Handler(actor, store, generator).HandleAsync(new()
+        {
+            Secret = string.Empty
+        });
+
+        Assert.False(result.Success);
+        Assert.Contains(LocalRecoveryCodeRegenerationMessages.InvalidSecret, result.Errors);
+        Assert.Equal(0, generator.CallCount);
+        Assert.Null(store.Regeneration);
+    }
+
+    [UnitFact]
     public async Task GivenHeimdallActor_WhenRegenerating_ThenLocalOnlyEndpointIsHidden()
     {
         var actor = LocalActor() with { IsLocal = false };

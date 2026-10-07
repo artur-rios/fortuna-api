@@ -15,7 +15,9 @@ public sealed class ListGoalsQueryHandler(
     TimeProvider timeProvider,
     PaginationOptions paginationOptions) : IQueryHandlerAsync<ListGoalsQuery, GoalListOutput>
 {
-    public async Task<DataOutput<GoalListOutput?>> HandleAsync(ListGoalsQuery query)
+    public async Task<DataOutput<GoalListOutput?>> HandleAsync(
+        ListGoalsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -31,7 +33,7 @@ public sealed class ListGoalsQueryHandler(
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
             page,
-            CancellationToken.None);
+            cancellationToken);
 
         return DataOutput<GoalListOutput?>.New.WithData(new GoalListOutput
         {
@@ -48,7 +50,9 @@ public sealed class GetGoalByIdQueryHandler(
     IGoalReader goals,
     TimeProvider timeProvider) : IQueryHandlerAsync<GetGoalByIdQuery, GoalOutput>
 {
-    public async Task<DataOutput<GoalOutput?>> HandleAsync(GetGoalByIdQuery query)
+    public async Task<DataOutput<GoalOutput?>> HandleAsync(
+        GetGoalByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<GoalOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -62,7 +66,7 @@ public sealed class GetGoalByIdQueryHandler(
             query.Id,
             query.IncludeDeleted,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
-            CancellationToken.None);
+            cancellationToken);
 
         return goal is null
             ? output.WithError(GoalMessages.NotFound)
@@ -77,7 +81,8 @@ public sealed class GetGoalProgressQueryHandler(
     TimeProvider timeProvider) : IQueryHandlerAsync<GetGoalProgressQuery, GoalProgressDetailOutput>
 {
     public async Task<DataOutput<GoalProgressDetailOutput?>> HandleAsync(
-        GetGoalProgressQuery query)
+        GetGoalProgressQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<GoalProgressDetailOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -90,7 +95,7 @@ public sealed class GetGoalProgressQueryHandler(
             profile.Id,
             query.Id,
             DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome == GoalProgressOutcome.NotFound)
         {
             return output.WithError(GoalMessages.NotFound);

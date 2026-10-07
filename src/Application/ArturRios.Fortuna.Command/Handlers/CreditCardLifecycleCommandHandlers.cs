@@ -15,7 +15,8 @@ public sealed class DeleteCreditCardCommandHandler(
     : ICommandHandlerAsync<DeleteCreditCardCommand, CreditCardLifecycleCommandOutput>
 {
     public async Task<DataOutput<CreditCardLifecycleCommandOutput?>> HandleAsync(
-        DeleteCreditCardCommand command)
+        DeleteCreditCardCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -27,7 +28,7 @@ public sealed class DeleteCreditCardCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return CreditCardLifecycleHandler.Resolve(result, CreditCardMessages.DeletedSuccessfully);
     }
@@ -40,7 +41,8 @@ public sealed class RestoreCreditCardCommandHandler(
     : ICommandHandlerAsync<RestoreCreditCardCommand, CreditCardLifecycleCommandOutput>
 {
     public async Task<DataOutput<CreditCardLifecycleCommandOutput?>> HandleAsync(
-        RestoreCreditCardCommand command)
+        RestoreCreditCardCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -52,7 +54,7 @@ public sealed class RestoreCreditCardCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return CreditCardLifecycleHandler.Resolve(result, CreditCardMessages.RestoredSuccessfully);
     }
@@ -64,7 +66,8 @@ public sealed class HardDeleteCreditCardCommandHandler(
     : ICommandHandlerAsync<HardDeleteCreditCardCommand, CreditCardLifecycleCommandOutput>
 {
     public async Task<DataOutput<CreditCardLifecycleCommandOutput?>> HandleAsync(
-        HardDeleteCreditCardCommand command)
+        HardDeleteCreditCardCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -75,7 +78,7 @@ public sealed class HardDeleteCreditCardCommandHandler(
         var result = await cards.HardDeleteAsync(
             profile.Id,
             command.Id,
-            CancellationToken.None);
+            cancellationToken);
 
         return CreditCardLifecycleHandler.Resolve(result, CreditCardMessages.HardDeletedSuccessfully);
     }

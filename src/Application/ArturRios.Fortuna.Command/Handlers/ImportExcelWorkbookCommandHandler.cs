@@ -18,7 +18,8 @@ public sealed class ImportExcelWorkbookCommandHandler(
     : ICommandHandlerAsync<ImportExcelWorkbookCommand, ImportExcelWorkbookCommandOutput>
 {
     public async Task<DataOutput<ImportExcelWorkbookCommandOutput?>> HandleAsync(
-        ImportExcelWorkbookCommand command)
+        ImportExcelWorkbookCommand command,
+        CancellationToken cancellationToken = default)
     {
         var workbook = parser.Validate(command.Content, command.Mapping);
         if (!workbook.IsValid)
@@ -43,10 +44,10 @@ public sealed class ImportExcelWorkbookCommandHandler(
             command.Mapping,
             command.CreateMissingCategories,
             command.CorrelationId,
-            timeProvider.GetUtcNow()), CancellationToken.None);
+            timeProvider.GetUtcNow()), cancellationToken);
         if (result.Outcome == QueueExcelImportOutcome.Succeeded)
         {
-            await queue.EnqueueAsync(result.BackgroundJobId!.Value, CancellationToken.None);
+            await queue.EnqueueAsync(result.BackgroundJobId!.Value, cancellationToken);
         }
 
         return Resolve(result);

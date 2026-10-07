@@ -46,7 +46,7 @@ the `requirements/` documents for the normative detail.
 | [Project Overview](docs/initial/Project%20Overview.md) | What the project is, who it's for, and how success is measured. |
 | [Technology Stack](docs/initial/Technology%20Stack.md) | The informal stack decisions. |
 | [Workflow](docs/initial/Workflow.md) | How one use case is delivered, step by step. |
-| [Business Rules](docs/initial/Business%20Rules.md) | Domain entities, relationships, and the `BR-01` … `BR-45` rules. |
+| [Business Rules](docs/initial/Business%20Rules.md) | Domain entities, relationships, and the `BR-01` … `BR-46` rules. |
 | [Vision Document](docs/requirements/Vision%20Document.md) | Stakeholders, positioning, and the `F-01` … `F-20` features. |
 | [System Requirements Document](docs/requirements/System%20Requirements%20Document.md) | The `FR-<AREA>-xx` and `NFR-xx` requirements, data model, endpoint surface, authorization matrix and traceability. |
 | [Use Case Specification Document](docs/requirements/Use%20Case%20Specification%20Document.md) | The application use cases, their flows, and their `AF-xx` alternatives. |
@@ -95,6 +95,14 @@ Prometheus metrics are served at `GET /metrics` only on the private port `9464`
 (`FORTUNA_METRICS_PORT`; `0` disables them), never through the public port `8080`. The compose file
 does not publish that port: Prometheus scrapes the container over a private Docker network — see the
 [Operations & Infrastructure Document](docs/requirements/Operations%20%26%20Infrastructure%20Document.md#55-metrics).
+
+Logs are structured JSON, written to the console and to daily files under
+`FORTUNA_LOG_DIRECTORY/<yyyy>/<MM>/`. **Every API request is logged with its client IP address**,
+which is personal data under the GDPR and the LGPD, and the address is tagged on the request's trace
+as `client.address`. Behind a reverse proxy, list the proxy in `FORTUNA_FORWARDED_KNOWN_NETWORKS` or
+`FORTUNA_FORWARDED_KNOWN_PROXIES` so the logs and the rate limiter see the real caller rather than the
+proxy — see the
+[Operations & Infrastructure Document](docs/requirements/Operations%20%26%20Infrastructure%20Document.md#41-client-ip-addresses).
 
 For desktop offline mode, keep the same application configuration and select the local provider:
 

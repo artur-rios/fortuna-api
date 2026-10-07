@@ -16,16 +16,16 @@ public sealed class ValidatingQueryHandler<TQuery, TOutput>(
     where TQuery : BaseQuery
     where TOutput : QueryOutput
 {
-    public async Task<DataOutput<TOutput?>> HandleAsync(TQuery query)
+    public async Task<DataOutput<TOutput?>> HandleAsync(TQuery query, CancellationToken cancellationToken = default)
     {
-        var validation = await validator.ValidateAsync(query);
+        var validation = await validator.ValidateAsync(query, cancellationToken);
         if (!validation.IsValid)
         {
             return DataOutput<TOutput?>.New.WithErrors(
                 validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
-        return await inner.HandleAsync(query);
+        return await inner.HandleAsync(query, cancellationToken);
     }
 }
 
@@ -37,15 +37,15 @@ public sealed class ValidatingPaginatedQueryHandler<TQuery, TOutput>(
     where TQuery : BaseQuery
     where TOutput : QueryOutput
 {
-    public async Task<PaginatedOutput<TOutput>> HandleAsync(TQuery query)
+    public async Task<PaginatedOutput<TOutput>> HandleAsync(TQuery query, CancellationToken cancellationToken = default)
     {
-        var validation = await validator.ValidateAsync(query);
+        var validation = await validator.ValidateAsync(query, cancellationToken);
         if (!validation.IsValid)
         {
             return PaginatedOutput<TOutput>.New.WithErrors(
                 validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
-        return await inner.HandleAsync(query);
+        return await inner.HandleAsync(query, cancellationToken);
     }
 }

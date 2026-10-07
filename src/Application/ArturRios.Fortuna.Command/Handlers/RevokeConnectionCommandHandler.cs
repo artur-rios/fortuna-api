@@ -15,7 +15,8 @@ public sealed class RevokeConnectionCommandHandler(
     : ICommandHandlerAsync<RevokeConnectionCommand, RevokeConnectionCommandOutput>
 {
     public async Task<DataOutput<RevokeConnectionCommandOutput?>> HandleAsync(
-        RevokeConnectionCommand command)
+        RevokeConnectionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RevokeConnectionCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -26,7 +27,7 @@ public sealed class RevokeConnectionCommandHandler(
 
         var result = await connections.RevokeAsync(
             new ConnectionRevocation(profile.Id, command.Id, timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Connection is null)
         {
             return output.WithError(ConnectionMessages.NotFound);

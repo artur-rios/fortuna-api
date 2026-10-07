@@ -15,7 +15,8 @@ public sealed class GetFinancialAccountBalanceQueryHandler(
     : IQueryHandlerAsync<GetFinancialAccountBalanceQuery, FinancialAccountBalanceOutput>
 {
     public async Task<DataOutput<FinancialAccountBalanceOutput?>> HandleAsync(
-        GetFinancialAccountBalanceQuery query)
+        GetFinancialAccountBalanceQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<FinancialAccountBalanceOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -29,7 +30,7 @@ public sealed class GetFinancialAccountBalanceQueryHandler(
             profile.Id,
             query.Id,
             asOf,
-            CancellationToken.None);
+            cancellationToken);
         if (balance is null)
         {
             return output.WithError(FinancialAccountMessages.NotFound);
