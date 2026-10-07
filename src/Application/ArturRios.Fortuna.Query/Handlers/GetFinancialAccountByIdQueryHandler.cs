@@ -14,7 +14,8 @@ public sealed class GetFinancialAccountByIdQueryHandler(
     : IQueryHandlerAsync<GetFinancialAccountByIdQuery, FinancialAccountOutput>
 {
     public async Task<DataOutput<FinancialAccountOutput?>> HandleAsync(
-        GetFinancialAccountByIdQuery query)
+        GetFinancialAccountByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<FinancialAccountOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -27,7 +28,7 @@ public sealed class GetFinancialAccountByIdQueryHandler(
             profile.Id,
             query.Id,
             query.IncludeDeleted,
-            CancellationToken.None);
+            cancellationToken);
         if (account is null)
         {
             return output.WithError(FinancialAccountMessages.NotFound);

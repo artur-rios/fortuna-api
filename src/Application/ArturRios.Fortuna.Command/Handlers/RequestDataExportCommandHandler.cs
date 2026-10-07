@@ -22,7 +22,8 @@ public sealed class RequestDataExportCommandHandler(
     : ICommandHandlerAsync<RequestDataExportCommand, RequestDataExportCommandOutput>
 {
     public async Task<DataOutput<RequestDataExportCommandOutput?>> HandleAsync(
-        RequestDataExportCommand command)
+        RequestDataExportCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RequestDataExportCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -60,7 +61,7 @@ public sealed class RequestDataExportCommandHandler(
             profile.Id,
             specification,
             requestedRows,
-            CancellationToken.None);
+            cancellationToken);
         if (built.Error is not null)
         {
             return output.WithError(built.Error);
@@ -77,8 +78,8 @@ public sealed class RequestDataExportCommandHandler(
                 command.CorrelationId,
                 now,
                 now.Add(options.Retention)),
-                CancellationToken.None);
-            await queue.EnqueueAsync(queued.BackgroundJobId, CancellationToken.None);
+                cancellationToken);
+            await queue.EnqueueAsync(queued.BackgroundJobId, cancellationToken);
 
             return output
                 .WithData(new RequestDataExportCommandOutput

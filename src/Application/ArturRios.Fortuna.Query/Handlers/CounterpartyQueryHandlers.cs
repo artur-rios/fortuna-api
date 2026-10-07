@@ -16,7 +16,8 @@ public sealed class ListCounterpartiesQueryHandler(
     : IQueryHandlerAsync<ListCounterpartiesQuery, CounterpartyListOutput>
 {
     public async Task<DataOutput<CounterpartyListOutput?>> HandleAsync(
-        ListCounterpartiesQuery query)
+        ListCounterpartiesQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -32,7 +33,7 @@ public sealed class ListCounterpartiesQueryHandler(
             profile.Id,
             query.IncludeDeleted,
             page,
-            CancellationToken.None);
+            cancellationToken);
 
         return DataOutput<CounterpartyListOutput?>.New
             .WithData(new CounterpartyListOutput
@@ -60,7 +61,8 @@ public sealed class SuggestCounterpartyCategoryQueryHandler(
         CounterpartyCategorySuggestionOutput>
 {
     public async Task<DataOutput<CounterpartyCategorySuggestionOutput?>> HandleAsync(
-        SuggestCounterpartyCategoryQuery query)
+        SuggestCounterpartyCategoryQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CounterpartyCategorySuggestionOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -72,7 +74,7 @@ public sealed class SuggestCounterpartyCategoryQueryHandler(
         var result = await counterparties.SuggestCategoryAsync(
             profile.Id,
             query.Id,
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome == CounterpartyCategorySuggestionOutcome.NotFound)
         {
             return output.WithError(CounterpartyMessages.NotFound);

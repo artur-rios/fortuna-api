@@ -13,7 +13,9 @@ public sealed class GetCategoryByIdQueryHandler(
     ICategoryReader categories)
     : IQueryHandlerAsync<GetCategoryByIdQuery, CategoryOutput>
 {
-    public async Task<DataOutput<CategoryOutput?>> HandleAsync(GetCategoryByIdQuery query)
+    public async Task<DataOutput<CategoryOutput?>> HandleAsync(
+        GetCategoryByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CategoryOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -27,7 +29,7 @@ public sealed class GetCategoryByIdQueryHandler(
             query.Id,
             query.IncludeDeleted,
             query.IncludeUsageCounts,
-            CancellationToken.None);
+            cancellationToken);
         var category = CategoryTreeProjection.Find(records, query.Id, query.IncludeUsageCounts);
         if (category is null)
         {

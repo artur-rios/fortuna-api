@@ -14,7 +14,9 @@ public sealed class CreateBudgetCommandHandler(
     TimeProvider timeProvider)
     : ICommandHandlerAsync<CreateBudgetCommand, BudgetCommandOutput>
 {
-    public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(CreateBudgetCommand command)
+    public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(
+        CreateBudgetCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -32,7 +34,7 @@ public sealed class CreateBudgetCommandHandler(
                 command.CategoryIds,
                 command.IncludeDescendants,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         return BudgetHandler.Resolve(result, BudgetMessages.CreatedSuccessfully);
     }
@@ -44,7 +46,9 @@ public sealed class UpdateBudgetCommandHandler(
     TimeProvider timeProvider)
     : ICommandHandlerAsync<UpdateBudgetCommand, BudgetCommandOutput>
 {
-    public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(UpdateBudgetCommand command)
+    public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(
+        UpdateBudgetCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -63,7 +67,7 @@ public sealed class UpdateBudgetCommandHandler(
                 command.CategoryIds,
                 command.IncludeDescendants,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         return BudgetHandler.Resolve(result, BudgetMessages.UpdatedSuccessfully);
     }
@@ -75,7 +79,9 @@ public sealed class DeleteBudgetCommandHandler(
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteBudgetCommand, BudgetCommandOutput>
 {
-    public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(DeleteBudgetCommand command)
+    public async Task<DataOutput<BudgetCommandOutput?>> HandleAsync(
+        DeleteBudgetCommand command,
+        CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
         var profile = await profileResolver.ResolveAsync();
@@ -89,7 +95,7 @@ public sealed class DeleteBudgetCommandHandler(
             command.Id,
             now,
             DateOnly.FromDateTime(now.UtcDateTime),
-            CancellationToken.None);
+            cancellationToken);
 
         return BudgetHandler.Resolve(result, BudgetMessages.DeletedSuccessfully);
     }

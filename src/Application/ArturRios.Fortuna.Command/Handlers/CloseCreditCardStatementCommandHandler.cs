@@ -15,7 +15,8 @@ public sealed class CloseCreditCardStatementCommandHandler(
     : ICommandHandlerAsync<CloseCreditCardStatementCommand, CloseCreditCardStatementCommandOutput>
 {
     public async Task<DataOutput<CloseCreditCardStatementCommandOutput?>> HandleAsync(
-        CloseCreditCardStatementCommand command)
+        CloseCreditCardStatementCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CloseCreditCardStatementCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -31,7 +32,7 @@ public sealed class CloseCreditCardStatementCommandHandler(
             DateOnly.FromDateTime(now.UtcDateTime),
             explicitRequest: true,
             now,
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome == CreditCardStatementCloseOutcome.NotFound)
         {
             return output.WithError(CreditCardStatementMessages.NotFound);

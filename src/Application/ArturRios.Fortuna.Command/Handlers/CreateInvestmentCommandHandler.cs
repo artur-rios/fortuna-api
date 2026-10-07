@@ -17,7 +17,8 @@ public sealed class CreateInvestmentCommandHandler(
     : ICommandHandlerAsync<CreateInvestmentCommand, CreateInvestmentCommandOutput>
 {
     public async Task<DataOutput<CreateInvestmentCommandOutput?>> HandleAsync(
-        CreateInvestmentCommand command)
+        CreateInvestmentCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CreateInvestmentCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -27,7 +28,7 @@ public sealed class CreateInvestmentCommandHandler(
         }
 
         var currencyCode = command.CurrencyCode.Trim().ToUpperInvariant();
-        if (await currencies.FindByCodeAsync(currencyCode, CancellationToken.None) is null)
+        if (await currencies.FindByCodeAsync(currencyCode, cancellationToken) is null)
         {
             return output
                 .WithError(InvestmentMessages.CurrencyNotSupported)
@@ -42,7 +43,7 @@ public sealed class CreateInvestmentCommandHandler(
                 command.InvestmentType,
                 currencyCode,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (created.DuplicateInstrument)
         {
             return output.WithError(InvestmentMessages.DuplicateInstrument);

@@ -17,7 +17,8 @@ public sealed class RetryImportJobCommandHandler(
     : ICommandHandlerAsync<RetryImportJobCommand, RetryImportJobCommandOutput>
 {
     public async Task<DataOutput<RetryImportJobCommandOutput?>> HandleAsync(
-        RetryImportJobCommand command)
+        RetryImportJobCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -30,10 +31,10 @@ public sealed class RetryImportJobCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome == RetryImportJobOutcome.Succeeded)
         {
-            await queue.EnqueueAsync(result.BackgroundJobId!.Value, CancellationToken.None);
+            await queue.EnqueueAsync(result.BackgroundJobId!.Value, cancellationToken);
         }
 
         return Resolve(result);

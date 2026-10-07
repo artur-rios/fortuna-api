@@ -21,7 +21,8 @@ public sealed class SearchTransactionsQueryHandler(
     : IQueryHandlerAsync<SearchTransactionsQuery, TransactionSearchOutput>
 {
     public async Task<DataOutput<TransactionSearchOutput?>> HandleAsync(
-        SearchTransactionsQuery query)
+        SearchTransactionsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<TransactionSearchOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -31,7 +32,7 @@ public sealed class SearchTransactionsQueryHandler(
         }
 
         var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
-        var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
+        var displayCurrency = await currencies.FindByCodeAsync(displayCode, cancellationToken);
         if (displayCurrency is null)
         {
             return output
@@ -46,10 +47,10 @@ public sealed class SearchTransactionsQueryHandler(
             query.PageNumber,
             pageSize,
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
         var aggregateSnapshots = await transactions.SummarizeAsync(
             criteria,
-            CancellationToken.None);
+            cancellationToken);
         var totals = await BuildTotalsAsync(
             aggregateSnapshots,
             displayCurrency,

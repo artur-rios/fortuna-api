@@ -15,7 +15,8 @@ public sealed class UpdateInvestmentCommandHandler(
     : ICommandHandlerAsync<UpdateInvestmentCommand, UpdateInvestmentCommandOutput>
 {
     public async Task<DataOutput<UpdateInvestmentCommandOutput?>> HandleAsync(
-        UpdateInvestmentCommand command)
+        UpdateInvestmentCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<UpdateInvestmentCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -32,7 +33,7 @@ public sealed class UpdateInvestmentCommandHandler(
                 command.Institution,
                 command.InvestmentType,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (updated.DuplicateInstrument)
         {
             return output.WithError(InvestmentMessages.DuplicateInstrument);

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Base images are pinned by digest for reproducible builds; Dependabot (docker ecosystem) bumps them.
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:2fa828c68761b1b8c23d7662dc134421b9d3b59fe1425fdbc80804e390cdb24d AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317 AS build
 WORKDIR /source
 
 # Every step that restores or builds mounts the same NuGet cache, so packages survive layer
@@ -36,7 +36,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --output /app/fortuna-migrate \
     --force
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:6a94333d37514e385650a3c81a55e5350b67253dbe136e9cf17e499c35606a8c AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:222759b391a1aaf241166672c8f99b2d4ada452e7b5319f3c6e8f265a37b5ad4 AS final
 WORKDIR /app
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl \

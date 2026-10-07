@@ -19,7 +19,8 @@ public sealed class DownloadAttachmentQueryHandler(
     : IQueryHandlerAsync<DownloadAttachmentQuery, DownloadAttachmentQueryOutput>
 {
     public async Task<DataOutput<DownloadAttachmentQueryOutput?>> HandleAsync(
-        DownloadAttachmentQuery query)
+        DownloadAttachmentQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<DownloadAttachmentQueryOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -31,7 +32,7 @@ public sealed class DownloadAttachmentQueryHandler(
         var attachment = await metadata.FindOwnedAsync(
             profile.Id,
             query.Id,
-            CancellationToken.None);
+            cancellationToken);
         if (attachment is null)
         {
             return output.WithError(AttachmentMessages.AttachmentNotFound);
@@ -39,14 +40,14 @@ public sealed class DownloadAttachmentQueryHandler(
 
         try
         {
-            if (!await storage.IsHealthyAsync(CancellationToken.None))
+            if (!await storage.IsHealthyAsync(cancellationToken))
             {
                 return output.WithError(AttachmentMessages.StorageUnavailable);
             }
 
             var read = await storage.OpenReadAsync(
                 attachment.StorageKey,
-                CancellationToken.None);
+                cancellationToken);
             if (read.Status == AttachmentReadStatus.NotFound)
             {
                 await RecordDiscrepancyAsync(attachment.Id);

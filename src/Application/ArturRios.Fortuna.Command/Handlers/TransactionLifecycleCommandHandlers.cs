@@ -15,7 +15,8 @@ public sealed class DeleteTransactionCommandHandler(
     : ICommandHandlerAsync<DeleteTransactionCommand, TransactionLifecycleCommandOutput>
 {
     public async Task<DataOutput<TransactionLifecycleCommandOutput?>> HandleAsync(
-        DeleteTransactionCommand command)
+        DeleteTransactionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -27,7 +28,7 @@ public sealed class DeleteTransactionCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return TransactionLifecycleHandler.Resolve(
             result,
@@ -42,7 +43,8 @@ public sealed class RestoreTransactionCommandHandler(
     : ICommandHandlerAsync<RestoreTransactionCommand, TransactionLifecycleCommandOutput>
 {
     public async Task<DataOutput<TransactionLifecycleCommandOutput?>> HandleAsync(
-        RestoreTransactionCommand command)
+        RestoreTransactionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -54,7 +56,7 @@ public sealed class RestoreTransactionCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return TransactionLifecycleHandler.Resolve(
             result,
@@ -68,7 +70,8 @@ public sealed class HardDeleteTransactionCommandHandler(
     : ICommandHandlerAsync<HardDeleteTransactionCommand, TransactionLifecycleCommandOutput>
 {
     public async Task<DataOutput<TransactionLifecycleCommandOutput?>> HandleAsync(
-        HardDeleteTransactionCommand command)
+        HardDeleteTransactionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -79,7 +82,7 @@ public sealed class HardDeleteTransactionCommandHandler(
         var result = await transactions.HardDeleteAsync(
             profile.Id,
             command.Id,
-            CancellationToken.None);
+            cancellationToken);
 
         return TransactionLifecycleHandler.Resolve(
             result,

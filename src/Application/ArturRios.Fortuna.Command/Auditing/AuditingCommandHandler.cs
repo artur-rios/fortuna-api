@@ -28,12 +28,12 @@ public sealed class AuditingCommandHandler<TCommand, TOutput>(
         GuidProperty(typeof(TOutput), "Id") ?? GuidProperty(typeof(TOutput), "PublicId");
     private static readonly PropertyInfo? CommandIdProperty = GuidProperty(typeof(TCommand), "Id");
 
-    public async Task<DataOutput<TOutput?>> HandleAsync(TCommand command)
+    public async Task<DataOutput<TOutput?>> HandleAsync(TCommand command, CancellationToken cancellationToken = default)
     {
         DataOutput<TOutput?> result;
         try
         {
-            result = await inner.HandleAsync(command);
+            result = await inner.HandleAsync(command, cancellationToken);
         }
         catch (Exception)
         {

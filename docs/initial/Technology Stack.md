@@ -30,8 +30,8 @@ The architecture is **layered CQRS**, mirroring Heimdall's `src/` layout:
 | `Presentation` | The Web API: controllers, binding, security wiring, configuration. |
 
 Handlers are dispatched through **ArturRios.Mediator** and return a `DataOutput<T>` (from the
-`ArturRios.Util` family) rather than throwing; the `ResponseResolver` in `ArturRios.Util.WebApi`
-maps that result to the HTTP response.
+`ArturRios.Util` family) rather than throwing; the `ToActionResult` extensions in
+`ArturRios.Util.WebApi` map that result to the HTTP response.
 
 ## Data Storage
 
@@ -48,9 +48,10 @@ maps that result to the HTTP response.
 
 - **Entity Framework Core**, code-first, with migrations.
 - **EFCore.NamingConventions** mapping to `snake_case`, singular table and column names.
-- **Repository-based access**: application handlers depend on `IAsyncRepository<T>` /
-  `IAsyncReadOnlyRepository<T>` from `ArturRios.Data.Relational.Core`, never on `DbContext`
-  directly — which is also what makes them unit-testable against `AsyncFakeRepository<T>`.
+- **Repository-based access**: application handlers depend on repository abstractions — the
+  key-typed `IAsyncRepository<T, TKey>` / `IAsyncReadOnlyRepository<T, TKey>` from
+  `ArturRios.Data.Relational.Core`, or Fortuna's own store contracts — never on `DbContext`
+  directly — which is also what makes them unit-testable against in-memory fakes.
 - Reporting and chart aggregations are the deliberate exception: where a repository query cannot
   express an aggregation efficiently, a read-side query may go to the database directly.
 
@@ -106,7 +107,9 @@ statement layout, an OFX file) is added without touching the ones already there.
 to the export side for CSV, Excel and PDF.
 
 Cross-cutting choices follow Heimdall: **FluentValidation** for input validation, **Serilog** for
-structured logging, **Swagger/OpenAPI** for the documented surface.
+structured logging, **Swagger/OpenAPI** for the documented surface. As in Heimdall, every request's
+start is logged with the caller's IP address (through `ArturRios.Util.WebApi`'s
+`TraceActivityMiddleware`) — personal data, kept with the logs.
 
 ## Deployment
 

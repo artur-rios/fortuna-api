@@ -15,7 +15,9 @@ public sealed class ListAuditEntriesQueryHandler(
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListAuditEntriesQuery, AuditEntryOutput>
 {
-    public async Task<PaginatedOutput<AuditEntryOutput>> HandleAsync(ListAuditEntriesQuery query)
+    public async Task<PaginatedOutput<AuditEntryOutput>> HandleAsync(
+        ListAuditEntriesQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -26,7 +28,7 @@ public sealed class ListAuditEntriesQueryHandler(
 
         var subjectReference = await entries.FindSubjectReferenceAsync(
             profile.Id,
-            CancellationToken.None);
+            cancellationToken);
         var filtered = entries.Query().Where(entry =>
             subjectReference.HasValue && entry.SubjectReference == subjectReference);
 
@@ -93,7 +95,7 @@ public sealed class ListAuditEntriesQueryHandler(
             query.PageNumber,
             Math.Min(query.PageSize, paginationOptions.MaximumPageSize),
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         return output.WithMessage(AuditEntryMessages.RetrievedSuccessfully);
     }

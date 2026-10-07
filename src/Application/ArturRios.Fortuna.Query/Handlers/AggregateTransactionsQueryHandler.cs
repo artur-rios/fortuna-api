@@ -23,7 +23,8 @@ public sealed class AggregateTransactionsQueryHandler(
     : IQueryHandlerAsync<AggregateTransactionsQuery, TransactionAggregationOutput>
 {
     public async Task<DataOutput<TransactionAggregationOutput?>> HandleAsync(
-        AggregateTransactionsQuery query)
+        AggregateTransactionsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<TransactionAggregationOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -35,7 +36,7 @@ public sealed class AggregateTransactionsQueryHandler(
         var displayCurrencyCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
         var displayCurrency = await currencies.FindByCodeAsync(
             displayCurrencyCode,
-            CancellationToken.None);
+            cancellationToken);
         if (displayCurrency is null)
         {
             return output
@@ -88,7 +89,7 @@ public sealed class AggregateTransactionsQueryHandler(
             query.MaximumAmount,
             string.IsNullOrWhiteSpace(query.Text) ? null : query.Text.Trim(),
             query.Selections);
-        var figures = await aggregations.ReadAsync(criteria, CancellationToken.None);
+        var figures = await aggregations.ReadAsync(criteria, cancellationToken);
         var converter = new FigureConverter(rates, displayCurrency);
         var buckets = await BuildBucketsAsync(
             figures,

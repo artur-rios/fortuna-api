@@ -16,7 +16,8 @@ public sealed class RecordInvestmentMovementCommandHandler(
         RecordInvestmentMovementCommandOutput>
 {
     public async Task<DataOutput<RecordInvestmentMovementCommandOutput?>> HandleAsync(
-        RecordInvestmentMovementCommand command)
+        RecordInvestmentMovementCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RecordInvestmentMovementCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -34,7 +35,7 @@ public sealed class RecordInvestmentMovementCommandHandler(
                 command.OccurredOn,
                 command.FinancialAccountId,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome != InvestmentMovementRecordOutcome.Succeeded ||
             result.Movement is null)
         {

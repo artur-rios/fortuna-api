@@ -93,7 +93,9 @@ public sealed class ValidatedCommandHandlerRegistrationTests
 
         public int Calls { get; private set; }
 
-        public Task<DataOutput<AuditStubOutput?>> HandleAsync(AuditStubCommand command)
+        public Task<DataOutput<AuditStubOutput?>> HandleAsync(
+            AuditStubCommand command,
+            CancellationToken cancellationToken = default)
         {
             Calls++;
 

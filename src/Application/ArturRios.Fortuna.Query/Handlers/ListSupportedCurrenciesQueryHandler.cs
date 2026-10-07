@@ -11,9 +11,10 @@ public sealed class ListSupportedCurrenciesQueryHandler(ICurrencyReader currenci
     : IQueryHandlerAsync<ListSupportedCurrenciesQuery, ListSupportedCurrenciesQueryOutput>
 {
     public async Task<DataOutput<ListSupportedCurrenciesQueryOutput?>> HandleAsync(
-        ListSupportedCurrenciesQuery query)
+        ListSupportedCurrenciesQuery query,
+        CancellationToken cancellationToken = default)
     {
-        var references = await currencies.ListAsync(CancellationToken.None);
+        var references = await currencies.ListAsync(cancellationToken);
 
         return DataOutput<ListSupportedCurrenciesQueryOutput?>.New
             .WithData(new ListSupportedCurrenciesQueryOutput

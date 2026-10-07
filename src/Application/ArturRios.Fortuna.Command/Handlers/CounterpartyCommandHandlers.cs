@@ -15,7 +15,8 @@ public sealed class CreateCounterpartyCommandHandler(
     : ICommandHandlerAsync<CreateCounterpartyCommand, CounterpartyCommandOutput>
 {
     public async Task<DataOutput<CounterpartyCommandOutput?>> HandleAsync(
-        CreateCounterpartyCommand command)
+        CreateCounterpartyCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -26,7 +27,7 @@ public sealed class CreateCounterpartyCommandHandler(
 
         var result = await counterparties.CreateAsync(
             new CounterpartyCreation(profile.Id, command.Name, timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         return CounterpartyHandler.Resolve(
             result.Counterparty,
@@ -45,7 +46,8 @@ public sealed class UpdateCounterpartyCommandHandler(
     : ICommandHandlerAsync<UpdateCounterpartyCommand, CounterpartyCommandOutput>
 {
     public async Task<DataOutput<CounterpartyCommandOutput?>> HandleAsync(
-        UpdateCounterpartyCommand command)
+        UpdateCounterpartyCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -60,7 +62,7 @@ public sealed class UpdateCounterpartyCommandHandler(
                 command.Id,
                 command.Name,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         return CounterpartyHandler.Resolve(
             result.Counterparty,
@@ -76,7 +78,8 @@ public sealed class DeleteCounterpartyCommandHandler(
     : ICommandHandlerAsync<DeleteCounterpartyCommand, CounterpartyCommandOutput>
 {
     public async Task<DataOutput<CounterpartyCommandOutput?>> HandleAsync(
-        DeleteCounterpartyCommand command)
+        DeleteCounterpartyCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -89,7 +92,7 @@ public sealed class DeleteCounterpartyCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return CounterpartyHandler.Resolve(
             result.Counterparty,
@@ -105,7 +108,8 @@ public sealed class MergeCounterpartiesCommandHandler(
     : ICommandHandlerAsync<MergeCounterpartiesCommand, CounterpartyMergeCommandOutput>
 {
     public async Task<DataOutput<CounterpartyMergeCommandOutput?>> HandleAsync(
-        MergeCounterpartiesCommand command)
+        MergeCounterpartiesCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CounterpartyMergeCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -120,7 +124,7 @@ public sealed class MergeCounterpartiesCommandHandler(
                 command.Id,
                 command.TargetId,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         return result.Outcome switch
         {

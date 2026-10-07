@@ -18,7 +18,9 @@ public sealed class EraseUserCommandHandler(
     TimeProvider timeProvider)
     : ICommandHandlerAsync<EraseUserCommand, EraseUserCommandOutput>
 {
-    public async Task<DataOutput<EraseUserCommandOutput?>> HandleAsync(EraseUserCommand command)
+    public async Task<DataOutput<EraseUserCommandOutput?>> HandleAsync(
+        EraseUserCommand command,
+        CancellationToken cancellationToken = default)
     {
         var actor = actorAccessor.Actor;
         UserProfileSnapshot? target = null;
@@ -30,7 +32,7 @@ public sealed class EraseUserCommandHandler(
                  actor?.RoleId == (int)HeimdallRoles.SystemAdmin &&
                  command.UserId.HasValue)
         {
-            target = await profiles.FindByPublicIdAsync(command.UserId.Value, CancellationToken.None);
+            target = await profiles.FindByPublicIdAsync(command.UserId.Value, cancellationToken);
         }
 
         if (target is null)
@@ -42,7 +44,7 @@ public sealed class EraseUserCommandHandler(
         var result = await erasure.EraseAsync(
             target.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
         if (result is null)
         {
             return DataOutput<EraseUserCommandOutput?>.New.WithError(

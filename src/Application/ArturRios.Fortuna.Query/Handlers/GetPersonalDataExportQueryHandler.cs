@@ -20,7 +20,8 @@ public sealed class GetPersonalDataExportQueryHandler(
     : IQueryHandlerAsync<GetPersonalDataExportQuery, PersonalDataExportQueryOutput>
 {
     public async Task<DataOutput<PersonalDataExportQueryOutput?>> HandleAsync(
-        GetPersonalDataExportQuery query)
+        GetPersonalDataExportQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -32,7 +33,7 @@ public sealed class GetPersonalDataExportQueryHandler(
         var export = await exports.FindOwnedPersonalAsync(
             profile.Id,
             query.JobId,
-            CancellationToken.None);
+            cancellationToken);
         if (export is null)
         {
             return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
@@ -61,13 +62,13 @@ public sealed class GetPersonalDataExportQueryHandler(
 
         try
         {
-            if (!await storage.IsHealthyAsync(CancellationToken.None))
+            if (!await storage.IsHealthyAsync(cancellationToken))
             {
                 return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(
                     PersonalDataExportMessages.StorageUnavailable);
             }
 
-            var read = await storage.OpenReadAsync(export.StorageKey, CancellationToken.None);
+            var read = await storage.OpenReadAsync(export.StorageKey, cancellationToken);
             if (!read.IsFound)
             {
                 return DataOutput<PersonalDataExportQueryOutput?>.New.WithError(

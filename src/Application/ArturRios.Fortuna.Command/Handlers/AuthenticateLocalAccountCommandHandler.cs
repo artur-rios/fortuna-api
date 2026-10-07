@@ -21,7 +21,8 @@ public sealed class AuthenticateLocalAccountCommandHandler(
     private static readonly Lazy<(byte[] Hash, byte[] Salt)> DummyCredentials = new(CreateDummyCredentials);
 
     public async Task<DataOutput<AuthenticateLocalAccountCommandOutput?>> HandleAsync(
-        AuthenticateLocalAccountCommand command)
+        AuthenticateLocalAccountCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<AuthenticateLocalAccountCommandOutput?>.New;
         if (!options.Enabled)
@@ -29,14 +30,14 @@ public sealed class AuthenticateLocalAccountCommandHandler(
             return output.WithError(LocalAccountMessages.Disabled);
         }
 
-        var validation = await validator.ValidateAsync(command);
+        var validation = await validator.ValidateAsync(command, cancellationToken);
         if (!validation.IsValid)
         {
             return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
         var dummy = DummyCredentials.Value;
-        var account = await accounts.FindForAuthenticationAsync(command.Name.Trim(), CancellationToken.None);
+        var account = await accounts.FindForAuthenticationAsync(command.Name.Trim(), cancellationToken);
         var hash = account?.SecretHash ?? dummy.Hash;
         var salt = account?.Salt ?? dummy.Salt;
         var secretMatches = Hash.TextMatches(command.Secret, hash, salt);

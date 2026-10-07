@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Observability;
 using ArturRios.Util.Test.Attributes;
+using ArturRios.Util.WebApi.Middleware;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Core;
@@ -25,6 +26,17 @@ public sealed class FortunaLoggingTests
         using var logger = CreateLogger(new Dictionary<string, string?>());
 
         Assert.Equal(enabled, logger.ForContext(Constants.SourceContextPropertyName, sourceContext).IsEnabled(level));
+    }
+
+    [UnitFact]
+    public void GivenDefaultConfiguration_WhenTraceActivityMiddlewareLogsARequest_ThenItIsWritten()
+    {
+        // The per-request entry carrying the client IP address is written at Information; no
+        // override may hold the library's namespace below that.
+        using var logger = CreateLogger(new Dictionary<string, string?>());
+
+        Assert.True(logger.ForContext(Constants.SourceContextPropertyName, typeof(TraceActivityMiddleware).FullName)
+            .IsEnabled(LogEventLevel.Information));
     }
 
     [UnitFact]

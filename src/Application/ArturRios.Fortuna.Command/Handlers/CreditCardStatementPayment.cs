@@ -11,9 +11,10 @@ internal static class CreditCardStatementPayment
 {
     public static async Task<CreditCardStatementPaymentResult> PayAsync(
         ICreditCardStatementSettlementStore settlements,
-        CreditCardStatementSettlement request)
+        CreditCardStatementSettlement request,
+        CancellationToken cancellationToken)
     {
-        var result = await settlements.SettleAsync(request, CancellationToken.None);
+        var result = await settlements.SettleAsync(request, cancellationToken);
 
         return result.Outcome == CreditCardStatementSettlementOutcome.Succeeded &&
                result.Settlement is not null

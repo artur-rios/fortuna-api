@@ -127,6 +127,12 @@ access immediately without deleting the financial history already imported. A de
 owner remains their own controller; because its native persistence has no external processor,
 manual and file-based ingestion need no processing consent.
 
+One piece of personal data reaches the logs by design: the hosted API records every request's
+client IP address, with the time and trace id, as security telemetry. The controller holds it in the
+console output and the log files for as long as their log rotation keeps them; erasure removes the
+person's records, not past log lines. Behind a reverse proxy it is the real caller's address only
+when the controller lists that proxy as trusted; otherwise it is the proxy's own.
+
 ---
 
 ## 4. Stakeholders

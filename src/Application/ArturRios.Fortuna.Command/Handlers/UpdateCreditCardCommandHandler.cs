@@ -15,7 +15,8 @@ public sealed class UpdateCreditCardCommandHandler(
     : ICommandHandlerAsync<UpdateCreditCardCommand, UpdateCreditCardCommandOutput>
 {
     public async Task<DataOutput<UpdateCreditCardCommandOutput?>> HandleAsync(
-        UpdateCreditCardCommand command)
+        UpdateCreditCardCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<UpdateCreditCardCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -34,7 +35,7 @@ public sealed class UpdateCreditCardCommandHandler(
                 command.ClosingDay,
                 command.DueDay,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (updated.DuplicateName)
         {
             return output.WithError(CreditCardMessages.DuplicateName);
