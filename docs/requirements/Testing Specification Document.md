@@ -201,7 +201,7 @@ injected so a test can pin them.
 
 | Collaborator | Double |
 | --- | --- |
-| `IAsyncRepository<T>` / `IAsyncReadOnlyRepository<T>` | `AsyncFakeRepository<T>` from `ArturRios.Util.Test` — a real in-memory collection, not a mock. Assert against its contents. |
+| `IAsyncRepository<T, TKey>` / `IAsyncReadOnlyRepository<T, TKey>` | `AsyncFakeRepository<T, TKey>` from `ArturRios.Util.Test` — a real in-memory collection, not a mock. Assert against its contents. |
 | A validator, a mediator, a domain service, a clock | **Moq**. One mocking library; do not introduce a second. |
 | An ingestion source, a rate client, an attachment store | A hand-written fake in the test project, plus recorded fixtures (§7.2). Never a live call. |
 | Entities, commands and DTOs used as input | **Bogus** `Faker<T>`, seeded deterministically. Not large inline literals, and not a shared mutable fixture. |
