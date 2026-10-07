@@ -6,8 +6,6 @@ WORKDIR /source
 # Every step that restores or builds mounts the same NuGet cache, so packages survive layer
 # invalidation (any source change) and later steps find what the restore step downloaded.
 COPY .config/dotnet-tools.json .config/
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet tool restore
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/Domain/ArturRios.Fortuna.Domain/ArturRios.Fortuna.Domain.csproj src/Domain/ArturRios.Fortuna.Domain/
 COPY src/Application/ArturRios.Fortuna.Command/ArturRios.Fortuna.Command.csproj src/Application/ArturRios.Fortuna.Command/
@@ -27,7 +25,10 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
 RUN find /app -name '.env*' -delete
 # The placeholder connection string only satisfies the design-time factory while bundling; the
 # bundle reads the real one from FORTUNA_DATA_CONNECTIONSTRING when it runs (docker/entrypoint.sh).
+# dotnet-ef is restored in this same step: a tool restored by an earlier step lives only in the cache
+# mount, which CI does not keep, so a cached restore layer would leave this step without the tool.
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet tool restore && \
     FORTUNA_DATA_CONNECTIONSTRING="Host=localhost;Database=fortuna;Username=postgres;Search Path=fortuna" \
     dotnet ef migrations bundle \
     --project src/Infrastructure/ArturRios.Fortuna.Data \

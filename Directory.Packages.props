@@ -8,7 +8,7 @@
     <PackageVersion Include="ArturRios.Data.Relational.Core" Version="5.0.0" />
     <PackageVersion Include="ArturRios.Mediator" Version="2.0.0" />
     <PackageVersion Include="ArturRios.Util" Version="2.1.0" />
-    <PackageVersion Include="ArturRios.Util.Test" Version="3.0.0" />
+    <PackageVersion Include="ArturRios.Util.Test" Version="4.0.0" />
     <PackageVersion Include="ArturRios.Util.WebApi" Version="5.1.0" />
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <PackageVersion Include="PdfPig" Version="0.1.16" />
