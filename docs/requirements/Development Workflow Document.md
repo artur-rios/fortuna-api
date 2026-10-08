@@ -28,7 +28,7 @@ flowchart TD
     A2 --> A3["Refine design and plan"]
     A3 --> A4{Approved?}
     A4 -->|Changes requested| A3
-    A4 -->|Yes| B["Create branch from main<br/>feature/uc-##-use-case-name"]
+    A4 -->|Yes| B["Create branch from develop<br/>feature/uc-##-use-case-name"]
     B --> C["Move issue → In Progress"]
     C --> D["Implement main flow<br/>and every AF-xx"]
     D --> D2{Approved?}
@@ -45,7 +45,7 @@ flowchart TD
     J --> K["Human review"]
     K --> L{Approved?}
     L -->|Changes requested| I
-    L -->|Yes| M["Human merge to main<br/>delete feature branch"]
+    L -->|Yes| M["Human merge to develop<br/>delete feature branch"]
     M --> N["Move issue → Done and close it"]
 ```
 
@@ -63,7 +63,7 @@ these columns, in order:
 | 1 | **Todo** | The use case has not been started (default). |
 | 2 | **In Progress** | A feature branch has been created and implementation has begun. |
 | 3 | **Testing** | Implementation is finished; unit and functional tests are being written, run, and fixed until green. |
-| 4 | **Done** | The pull request has been reviewed and merged to `main`; the issue is then **closed**. |
+| 4 | **Done** | The pull request has been reviewed and merged to `develop`; the issue is then **closed**. |
 
 An issue only ever moves **forward** during normal flow. If review requests changes, work continues
 on the same branch — still linked to the same issue — until the suite is green again and the pull
@@ -89,12 +89,14 @@ written, test-first implementation plan.
 
 **This is the first approval gate.** The plan is reviewed before the branch exists.
 
-### Step 1 — Branch from `main`
+### Step 1 — Branch from `develop`
 
-Every use case is implemented on its own branch, created from an up-to-date `main`:
+Every use case is implemented on its own branch, created from an up-to-date `develop`, the
+integration branch. `main` only ever receives release branches (see
+[Releases](#step-9--releases)):
 
 ```bash
-git switch main
+git switch develop
 git pull
 git switch -c feature/uc-30-record-a-transaction
 ```
@@ -161,14 +163,14 @@ request.
 ### Step 6 — Open a pull request
 
 With all tests passing and the gate cleared, push the branch and open a pull request from
-`feature/uc-##-…` into `main`. The description references the use case and its issue — e.g.
+`feature/uc-##-…` into `develop`. The description references the use case and its issue — e.g.
 `Closes #<issue-number>` — so the merge closes it.
 
 ### Step 7 — Human review and merge
 
 - The pull request is **reviewed by a human**. Requested changes are addressed on the same branch,
   returning to Step 5 whenever code changes so the suite stays green.
-- Once approved, a human **merges the pull request into `main`**.
+- Once approved, a human **merges the pull request into `develop`**.
 - The **feature branch is deleted** after the merge.
 
 > Review and merge are **human actions**. An agent may prepare and push the pull request, but must
@@ -202,11 +204,19 @@ After the merge, set the issue `Status` to **Done** and **close** it. If the pul
 `Closes #<issue-number>` reference the merge closes it automatically — still confirm the board shows
 it in **Done**.
 
+### Step 9 — Releases
+
+A use case is done once it is merged into `develop`; it reaches production in the next release.
+Releases are cut from `develop` as `release/x.y.z` branches, deployed to homologation, and merged
+into `main` by the deployment pipeline, which then tags `vx.y.z`. The branching model, the
+Branch Policy check that enforces it, and the release steps are in
+[CONTRIBUTING.md](../../CONTRIBUTING.md).
+
 ## 5. Definition of Done
 
 A use case is done only when **all** of the following hold:
 
-- [ ] Implemented on a `feature/uc-##-use-case-name` branch created from `main`.
+- [ ] Implemented on a `feature/uc-##-use-case-name` branch created from `develop`.
 - [ ] Main flow and every alternative flow from the use case specification are implemented.
 - [ ] Unit tests cover each handler, each validator and any new domain behavior — main plus each
       applicable `AF-xx`.
@@ -214,7 +224,7 @@ A use case is done only when **all** of the following hold:
       and cross-user isolation flows.
 - [ ] The full test suite passes (`Category=Unit` and `Category=Functional`), and merged line
       coverage holds at or above the floor.
-- [ ] A pull request was merged to `main` — reviewed by a human, or merged by an agent under an
+- [ ] A pull request was merged to `develop` — reviewed by a human, or merged by an agent under an
       authorized batch run (Step 7.1).
 - [ ] The feature branch was deleted.
 - [ ] The issue is in **Done** and closed.

@@ -80,11 +80,11 @@ first review gate.
 
 ## Step 3 — Branch and move the issue to In Progress
 
-Once the plan is approved, create the branch from an up-to-date `main` using the naming pattern
+Once the plan is approved, create the branch from an up-to-date `develop` using the naming pattern
 `feature/uc-##-use-case-name`:
 
 ```bash
-git switch main && git pull
+git switch develop && git pull
 git switch -c feature/uc-01-record-expense
 ```
 
@@ -122,7 +122,7 @@ Report the passing results. **Do not open a pull request yet — stop and ask.**
 
 ## Step 7 — Open the pull request (after approval)
 
-Once approved, push the branch and open a pull request from `feature/uc-##-…` into `main`,
+Once approved, push the branch and open a pull request from `feature/uc-##-…` into `develop`,
 referencing the issue so the merge closes it. Then **hand off to a human** for review and merge.
 Do **not** merge or delete the branch.
 
@@ -157,13 +157,13 @@ issue to **Done** and confirm it is closed.
 
 ## Definition of Done
 
-- [ ] Implemented on a `feature/uc-##-use-case-name` branch created from `main`.
+- [ ] Implemented on a `feature/uc-##-use-case-name` branch created from `develop`.
 - [ ] Main flow and every alternative flow implemented.
 - [ ] Unit tests cover each handler, validator and new domain behavior (main + applicable `AF-xx`).
 - [ ] Functional tests cover each endpoint (main + every `AF-xx`, including the authorization flows).
 - [ ] The full suite passes — `Category=Unit` and `Category=Functional` — and merged line coverage
       holds at or above the floor.
-- [ ] The pull request was merged to `main` — reviewed by a human, or merged by an agent under an
+- [ ] The pull request was merged to `develop` — reviewed by a human, or merged by an agent under an
       authorized batch run (Step 7.1).
 - [ ] The branch was deleted.
 - [ ] The issue is in **Done** and closed.
