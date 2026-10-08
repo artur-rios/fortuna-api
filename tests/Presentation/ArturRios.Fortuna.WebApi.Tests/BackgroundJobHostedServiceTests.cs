@@ -37,7 +37,8 @@ public sealed class BackgroundJobHostedServiceTests
         await handler.Executed.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await service.StopAsync(CancellationToken.None);
 
-        Assert.Equal(2, store.FindCount);
+        // The failed attempt, the attempt that runs, and its re-read before recording the outcome.
+        Assert.Equal(3, store.FindCount);
         Assert.Equal(BackgroundJobState.Succeeded, job.State);
     }
 

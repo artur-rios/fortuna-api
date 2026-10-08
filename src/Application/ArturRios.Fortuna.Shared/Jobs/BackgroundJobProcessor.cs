@@ -50,6 +50,10 @@ public sealed class BackgroundJobProcessor(
             output = ProcessOutput.New.WithError(exception.Message);
         }
 
+        // A handler's store may discard its pending work with ChangeTracker.Clear(), which also
+        // detaches this job; recording the outcome on a detached entity would save nothing and
+        // leave the job running. Reading it again returns the tracked instance when there is one.
+        job = await store.FindAsync(jobId, CancellationToken.None) ?? job;
         if (output.Success)
         {
             job.Succeed(timeProvider.GetUtcNow());

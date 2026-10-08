@@ -758,12 +758,19 @@ request is `{"token":"...","route":{...},"query":{...},"body":{...}}`; `body` is
 HTTP JSON body. Anonymous local-account operations may pass that body directly. Every response uses
 the matching HTTP numeric status and camel-case output envelope.
 
-There are 113 generated offline route exports. `fortuna_capabilities` returns their method, path,
-area, symbol and long-running flag plus the unavailable route families. Connected `/api/auth/**`,
+There are 115 generated offline route exports. `fortuna_capabilities` returns the method, path,
+area, symbol and long-running flag of each one the native core implements (`operations`), the same
+fields plus a reason for each one it exports but does not implement (`notImplemented`), and the
+unavailable route families (`unavailable`). An export that is not implemented always answers `501`
+with a failure envelope stating the reason and does no work; it never reports success. These are
+file imports and import retry, data-set exports, reports and projections, transfers, installment
+plans, statements, recurring materialization, budget consumption, goal progress and
+reconciliation; [Use Case Specification §1.4](Use%20Case%20Specification%20Document.md) lists them
+by use case. Connected `/api/auth/**`,
 Pluggy data-source and connection routes, remote exchange-rate synchronization and host-only health
 routes, hosted processing-consent routes, plus the administrator-only `DELETE /api/users/{id}`, are
 deliberately not generated. The native equivalents for health and local recovery are
-`fortuna_health` and the recovery-code operations; native local and file ingestion need no consent.
+`fortuna_health` and the recovery-code operations; native manual entry needs no consent.
 
 ### 5.1 Identity Endpoints
 
@@ -959,15 +966,15 @@ receiving deployment detail that it cannot act on.
 | NFR-25 | Maintainability | Merged line coverage shall not fall below **90%**, enforced in continuous integration and reproducibly on a developer machine |
 | NFR-26 | Portability | One `docker compose` invocation shall bring the instance up on Docker Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in the environment file supplied |
 | NFR-27 | Privacy | An export, an error message and a log line shall each contain only data the requesting user owns |
-| NFR-28 | Portability | Shared deployments shall use the managed PostgreSQL persistence implementation and desktop offline deployments shall use the native SQLite persistence implementation. Both shall implement the same documented business model and preserve exact monetary results |
+| NFR-28 | Portability | Shared deployments shall use the managed PostgreSQL persistence implementation and desktop offline deployments shall use the native SQLite persistence implementation. Both shall implement the same documented business model and preserve exact monetary results; an operation the native core does not implement shall answer `501` rather than a result that differs from the HTTP API's |
 | NFR-29 | Portability | Desktop offline mode shall be available as an in-process C ABI dynamic library on Windows x64 and Linux x64, without starting a process or opening a listening socket |
 | NFR-30 | Compatibility | The native ABI shall return HTTP-compatible numeric statuses and the same camel-case `DataOutput<T>` response shapes as corresponding HTTP operations; route, query and authorization metadata may be wrapped into the ABI's single JSON request object |
 | NFR-31 | Memory safety | Every native response, successful or failed, shall be owned by the library, released through one exported free function, and protected so no Rust panic unwinds across the C boundary |
 | NFR-32 | Concurrency | Native operations shall permit calls from concurrent background threads and synchronize lifecycle and authentication state without sharing an SQLite connection between calls |
 | NFR-33 | Security | The native core shall never log credentials, shall zeroize its credential-bearing request copies, and shall retain local session tokens only as cryptographic hashes until expiration or shutdown |
 | NFR-34 | Maintainability | The C header shall be generated from the exports, committed, drift-checked in continuous integration, and shipped with each Windows and Linux native artifact |
-| NFR-35 | Compatibility | The native build shall derive its offline operation registry from the checked-in OpenAPI contract, export one concrete symbol for every eligible method/path pair, and expose capability discovery that states both available and deliberately unavailable operations |
-| NFR-36 | Responsiveness | Native imports and exports shall return an accepted job with progress immediately; callers shall monitor completion through the generated job retrieval operations rather than block the calling thread |
+| NFR-35 | Compatibility | The native build shall derive its offline operation registry from the checked-in OpenAPI contract, export one concrete symbol for every eligible method/path pair, and expose capability discovery that states the available operations, the exported operations it does not implement, and the deliberately unavailable operations |
+| NFR-36 | Responsiveness | Native long-running operations (the personal data archive) shall return an accepted job with progress immediately; callers shall monitor completion through the generated job retrieval operations rather than block the calling thread |
 | NFR-37 | Compatibility | Every integer enum published in OpenAPI shall include an `x-enum-varnames` entry whose names align positionally with its values, so generated clients preserve the domain vocabulary without changing the integer wire format |
 | NFR-38 | Privacy | The hosted API shall log the start of every request with its client IP address, taking the address from `X-Forwarded-For` only when the connection comes from a configured trusted proxy; the address shall be kept only in the application logs, never in the database, an audit entry or an export |
 

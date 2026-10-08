@@ -7,6 +7,7 @@ using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Ingestion;
+using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
@@ -173,6 +174,35 @@ public sealed class PdfInvoiceImportTests : IAsyncLifetime
         Assert.Equal(PdfInvoiceImportMessages.NoTextLayer, textless.FailureReason);
         Assert.False(await context.ImportedRecords.AnyAsync(item =>
             item.ImportJobId == unknown.Id || item.ImportJobId == textless.Id));
+    }
+
+    [FunctionalFact]
+    public async Task GivenCardRemovedBeforeProcessing_WhenProcessed_ThenImportAndBackgroundJobsBothFail()
+    {
+        var subject = Guid.NewGuid();
+        var cardId = await SeedCardAsync(subject);
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+
+        var response = await ImportAsync(client, cardId, InvoicePdf());
+        var jobId = (await response.Content.ReadFromJsonAsync<ImportEnvelope>())!.Data!.ImportJobId;
+        await using (var setup = CreateContext())
+        {
+            var card = await setup.CreditCards.SingleAsync(item => item.PublicId == cardId);
+            card.SoftDeleteFromCascade(Guid.NewGuid(), Now);
+            await setup.SaveChangesAsync();
+        }
+
+        await ProcessNextAsync(factory);
+
+        // The store discards its work with ChangeTracker.Clear(); the background job must still
+        // be recorded as failed, or a retry is refused while it stays "running".
+        await using var context = CreateContext();
+        var job = await context.ImportJobs.SingleAsync(item => item.PublicId == jobId);
+        Assert.Equal(ImportJobStatus.Failed, job.Status);
+        Assert.Equal(BackgroundJobState.Failed, (await context.BackgroundJobs.SingleAsync(
+            item => item.IdempotencyKey.EndsWith(jobId.ToString("N")))).State);
     }
 
     [FunctionalFact]

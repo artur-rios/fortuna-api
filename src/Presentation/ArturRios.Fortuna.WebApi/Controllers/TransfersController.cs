@@ -29,6 +29,7 @@ public sealed class TransfersController : FortunaController
             [TransferMessages.NotFound] = StatusCodes.Status404NotFound,
             [TransferMessages.AccountsMustDiffer] = StatusCodes.Status400BadRequest,
             [TransferMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest,
             [CreditCardStatementMessages.StatementOpen] = StatusCodes.Status409Conflict,
             [CreditCardStatementMessages.StatementAlreadySettled] = StatusCodes.Status409Conflict,
             [TransferMessages.SettledStatementFrozen] = StatusCodes.Status409Conflict,

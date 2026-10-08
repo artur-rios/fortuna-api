@@ -11,6 +11,7 @@ using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ArturRios.Fortuna.Data.Ingestion;
 
@@ -144,8 +145,36 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
 
         await using var databaseTransaction = await context.Database.BeginTransactionAsync(
             cancellationToken);
+        try
+        {
+            return await ApplyAsync(
+                importJobId,
+                connectionId.Value,
+                batch,
+                completedAt,
+                databaseTransaction,
+                cancellationToken);
+        }
+        catch
+        {
+            // Discard the rows applied so far: the failure recorded next (FailAsync) saves through
+            // this same context and would otherwise commit them under a failed job.
+            await databaseTransaction.RollbackAsync(CancellationToken.None);
+            context.ChangeTracker.Clear();
+            throw;
+        }
+    }
+
+    private async Task<ImportCompletionResult> ApplyAsync(
+        Guid importJobId,
+        long connectionId,
+        PluggySynchronizationBatch batch,
+        DateTimeOffset completedAt,
+        IDbContextTransaction databaseTransaction,
+        CancellationToken cancellationToken)
+    {
         var lockedConnection = await ConnectionRowLock.FindAsync(
-            context, connectionId.Value, cancellationToken);
+            context, connectionId, cancellationToken);
         var job = await context.ImportJobs
             .Include(item => item.Connection)
                 .ThenInclude(item => item!.User)
@@ -213,7 +242,11 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
                     job,
                     item.RawPayload,
                     ImportedRecordOutcome.Rejected,
-                    item.Amount is > 0 ? item.Amount : null,
+                    // Kept only when positive as stored (ck_imported_record_amount).
+                    item.Amount is > 0 &&
+                    decimal.Round(item.Amount.Value, 4, MidpointRounding.AwayFromZero) > 0m
+                        ? decimal.Round(item.Amount.Value, 4, MidpointRounding.AwayFromZero)
+                        : null,
                     item.OccurredOn,
                     ValidExternalId(item.ExternalReference),
                     !mappings.TryGetValue(item.AccountExternalReference, out var mapped) ||
@@ -224,7 +257,9 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
                 continue;
             }
 
-            var amount = item.Amount!.Value;
+            // Compared and stored at the column's scale (numeric(19,4)), so a re-synchronized
+            // record matches the one stored the first time (FR-IM-11).
+            var amount = decimal.Round(item.Amount!.Value, 4, MidpointRounding.AwayFromZero);
             var occurredOn = item.OccurredOn!.Value;
             var externalId = item.ExternalReference;
             var signature = Signature(target, occurredOn, amount, externalId);
@@ -507,20 +542,15 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
         DateTimeOffset changedAt,
         CancellationToken cancellationToken)
     {
+        // BR-14: a charge whose cycle is already settled goes to the next open statement and is
+        // flagged as late-arriving, as CreditCardStatementResolver does for manual charges.
         var cycle = BillingCycle.Containing(transaction.OccurredOn, card.ClosingDay, card.DueDay);
-        var statement = await context.CreditCardStatements.SingleOrDefaultAsync(item =>
-            item.CreditCardId == card.Id &&
-            item.PeriodStart == cycle.PeriodStart &&
-            item.PeriodEnd == cycle.PeriodEnd &&
-            !item.IsDeleted,
-            cancellationToken);
-        statement ??= context.CreditCardStatements.Local.SingleOrDefault(item =>
-            item.CreditCard == card &&
-            item.PeriodStart == cycle.PeriodStart && item.PeriodEnd == cycle.PeriodEnd);
-        if (statement is null)
+        var statement = await FindOrAddStatementAsync(card, cycle, changedAt, cancellationToken);
+        var isLateArriving = statement.Status == CreditCardStatementStatus.Settled;
+        while (isLateArriving && statement.Status != CreditCardStatementStatus.Open)
         {
-            statement = new CreditCardStatement(card, cycle, changedAt);
-            context.CreditCardStatements.Add(statement);
+            cycle = cycle.Next(card.ClosingDay, card.DueDay);
+            statement = await FindOrAddStatementAsync(card, cycle, changedAt, cancellationToken);
         }
 
         var existingTotal = statement.Id == 0
@@ -536,7 +566,7 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
             .Sum(item => item.Direction == TransactionDirection.Expense
                 ? item.Amount
                 : -item.Amount);
-        transaction.AssignToStatement(statement, false, changedAt);
+        transaction.AssignToStatement(statement, isLateArriving, changedAt);
         statement.RecalculatePurchaseTotal(
             existingTotal + localTotal + (transaction.Direction == TransactionDirection.Expense
                 ? transaction.Amount
@@ -544,12 +574,38 @@ public sealed class EfPluggySynchronizationStore(AppDbContext context)
             changedAt);
     }
 
+    private async Task<CreditCardStatement> FindOrAddStatementAsync(
+        CreditCard card,
+        BillingCycle cycle,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        var statement = await context.CreditCardStatements.SingleOrDefaultAsync(item =>
+            item.CreditCardId == card.Id &&
+            item.PeriodStart == cycle.PeriodStart &&
+            item.PeriodEnd == cycle.PeriodEnd &&
+            !item.IsDeleted,
+            cancellationToken);
+        statement ??= context.CreditCardStatements.Local.SingleOrDefault(item =>
+            item.CreditCard == card &&
+            item.PeriodStart == cycle.PeriodStart && item.PeriodEnd == cycle.PeriodEnd);
+        if (statement is null)
+        {
+            statement = new CreditCardStatement(card, cycle, changedAt);
+            context.CreditCardStatements.Add(statement);
+        }
+
+        return statement;
+    }
+
     private static bool IsValid(PluggyTransactionRecord item) =>
         !string.IsNullOrWhiteSpace(item.RawPayload) &&
         !string.IsNullOrWhiteSpace(item.AccountExternalReference) &&
         (string.IsNullOrWhiteSpace(item.ExternalReference) || item.ExternalReference.Length <= 200) &&
         item.Direction.HasValue &&
+        // Positive at the stored scale too: a smaller amount would be stored as zero.
         item.Amount is > 0 &&
+        decimal.Round(item.Amount.Value, 4, MidpointRounding.AwayFromZero) > 0m &&
         item.OccurredOn.HasValue;
 
     private static string? ValidExternalId(string? value) =>

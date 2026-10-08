@@ -182,6 +182,36 @@ public sealed class AuditingCommandHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenImportCommand_WhenAudited_ThenQueuedImportJobIsTheEntity()
+    {
+        var importJobId = Guid.NewGuid();
+        var inner = new Mock<ICommandHandlerAsync<
+            ImportExcelWorkbookCommand,
+            ImportExcelWorkbookCommandOutput>>();
+        inner.Setup(handler => handler.HandleAsync(It.IsAny<ImportExcelWorkbookCommand>()))
+            .ReturnsAsync(DataOutput<ImportExcelWorkbookCommandOutput?>.New
+                .WithData(new ImportExcelWorkbookCommandOutput { ImportJobId = importJobId }));
+        var writer = new Mock<IAuditEntryWriter>();
+        var handler = new AuditingCommandHandler<
+            ImportExcelWorkbookCommand,
+            ImportExcelWorkbookCommandOutput>(
+            inner.Object,
+            writer.Object,
+            NullLogger<AuditingCommandHandler<
+                ImportExcelWorkbookCommand,
+                ImportExcelWorkbookCommandOutput>>.Instance);
+
+        await handler.HandleAsync(new ImportExcelWorkbookCommand());
+
+        writer.Verify(entry => entry.WriteAsync(
+            nameof(ImportExcelWorkbookCommand),
+            "ImportJob",
+            importJobId,
+            true,
+            null), Times.Once);
+    }
+
+    [UnitFact]
     public async Task GivenRefusedCommandWithId_WhenAudited_ThenCommandIdIsTheEntity()
     {
         var id = Guid.NewGuid();

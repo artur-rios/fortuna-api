@@ -19,6 +19,8 @@ public static class CreditCardStatementMessages
         "The credit card statement is already settled.";
     public const string ExchangeRateUnavailable =
         "No exchange rate is available for the statement payment date.";
+    public const string ConvertedAmountTooSmall =
+        "The converted payment amount is too small for the card currency.";
     public const string StatementIdRequired = "StatementId is required.";
     public const string FinancialAccountIdRequired = "FinancialAccountId is required.";
     public const string PaymentAmountPositive = "Amount must be greater than zero.";

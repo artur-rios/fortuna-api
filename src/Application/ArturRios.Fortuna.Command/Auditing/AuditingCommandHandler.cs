@@ -28,6 +28,13 @@ public sealed class AuditingCommandHandler<TCommand, TOutput>(
         GuidProperty(typeof(TOutput), "Id") ?? GuidProperty(typeof(TOutput), "PublicId");
     private static readonly PropertyInfo? CommandIdProperty = GuidProperty(typeof(TCommand), "Id");
 
+    // Commands that start background work identify the job they queued rather than an Id; the
+    // ImportJob entity-type overrides in AuditEntityTypes rely on this.
+    private static readonly PropertyInfo? OutputJobIdProperty =
+        GuidProperty(typeof(TOutput), "ImportJobId") ??
+        GuidProperty(typeof(TOutput), "ExportId") ??
+        GuidProperty(typeof(TOutput), "JobId");
+
     public async Task<DataOutput<TOutput?>> HandleAsync(TCommand command, CancellationToken cancellationToken = default)
     {
         DataOutput<TOutput?> result;
@@ -42,7 +49,9 @@ public sealed class AuditingCommandHandler<TCommand, TOutput>(
             throw;
         }
 
-        var entityPublicId = IdOf(OutputIdProperty, result.Data) ?? IdOf(CommandIdProperty, command);
+        var entityPublicId = IdOf(OutputIdProperty, result.Data) ??
+            IdOf(CommandIdProperty, command) ??
+            IdOf(OutputJobIdProperty, result.Data);
         await WriteAsync(
             entityPublicId,
             result.Success,

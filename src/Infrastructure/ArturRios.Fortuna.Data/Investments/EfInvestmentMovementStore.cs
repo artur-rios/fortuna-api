@@ -110,14 +110,15 @@ public sealed class EfInvestmentMovementStore(AppDbContext context) : IInvestmen
         }
 
         await context.SaveChangesAsync(cancellationToken);
-        var position = await context.InvestmentMovements
-            .Where(item => item.InvestmentId == investment.Id && !item.IsDeleted)
-            .Select(item => (decimal?)(
-                item.MovementType == InvestmentMovementType.Contribution ||
-                item.MovementType == InvestmentMovementType.Yield
-                    ? item.Amount
-                    : -item.Amount))
-            .SumAsync(cancellationToken) ?? 0m;
+        // The recomputed position (UC-25) is the one every other reader reports: the latest
+        // valuation plus the movements that follow it, not the sum of every movement.
+        var movements = await context.InvestmentMovements
+            .Where(item => item.InvestmentId == investment.Id)
+            .ToArrayAsync(cancellationToken);
+        var valuations = await context.InvestmentValuations
+            .Where(item => item.InvestmentId == investment.Id)
+            .ToArrayAsync(cancellationToken);
+        var position = InvestmentPositionCalculator.Calculate(movements, valuations).Value;
         await databaseTransaction.CommitAsync(cancellationToken);
 
         return Result(

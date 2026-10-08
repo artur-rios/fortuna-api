@@ -187,7 +187,7 @@ fn safe_component(value: &str) -> String {
             other => other,
         })
         .collect::<String>();
-    if value.is_empty() {
+    if value.is_empty() || value == "." || value == ".." {
         "attachment".to_owned()
     } else {
         value
@@ -250,4 +250,19 @@ fn money_name(name: &str) -> bool {
     ]
     .iter()
     .any(|marker| name.contains(marker))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::safe_component;
+
+    #[test]
+    fn given_traversal_file_names_when_used_as_archive_entries_then_they_stay_in_their_folder() {
+        assert_eq!("receipt.pdf", safe_component("receipt.pdf"));
+        assert_eq!(".._.._evil.bat", safe_component("..\\..\\evil.bat"));
+        assert_eq!(".._.._evil.bat", safe_component("../../evil.bat"));
+        assert_eq!("attachment", safe_component(".."));
+        assert_eq!("attachment", safe_component("."));
+        assert_eq!("attachment", safe_component(""));
+    }
 }

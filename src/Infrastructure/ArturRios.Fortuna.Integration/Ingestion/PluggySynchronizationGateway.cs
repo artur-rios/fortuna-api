@@ -287,7 +287,7 @@ public sealed class PluggySynchronizationGateway(
     private static short? ReadPathInt16(JsonElement element, string parent, string child)
     {
         var value = ReadPath(element, parent, child);
-        if (value is not null && DateOnly.TryParse(value, CultureInfo.InvariantCulture, out var date))
+        if (ParseDate(value) is { } date)
         {
             return (short)date.Day;
         }
@@ -302,11 +302,37 @@ public sealed class PluggySynchronizationGateway(
             ? value
             : null;
 
-    private static DateOnly? ReadDate(JsonElement element, string name)
-    {
-        var value = ReadString(element, name);
+    private static DateOnly? ReadDate(JsonElement element, string name) =>
+        ParseDate(ReadString(element, name));
 
-        return DateOnly.TryParse(value, CultureInfo.InvariantCulture, out var date) ? date : null;
+    // Pluggy sends dates as ISO 8601 date-times ("2026-08-14T00:00:00.000Z"), which
+    // DateOnly.TryParse rejects. The calendar date is the one written in the value, not the value
+    // shifted to another zone: Pluggy stamps a posting date at midnight in either UTC or the
+    // institution's zone, and both mean that day.
+    private static DateOnly? ParseDate(string? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        if (DateOnly.TryParseExact(
+                value,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var date))
+        {
+            return date;
+        }
+
+        return DateTimeOffset.TryParse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal,
+            out var timestamp)
+            ? DateOnly.FromDateTime(timestamp.DateTime)
+            : null;
     }
 
     private static PluggySynchronizationFetchResult Result(

@@ -438,7 +438,7 @@ public sealed class EfBudgetStore(AppDbContext context)
         return covered;
     }
 
-    private static (DateOnly Start, DateOnly End) PeriodContaining(
+    internal static (DateOnly Start, DateOnly End) PeriodContaining(
         DateOnly anchor,
         BudgetPeriodType periodType,
         DateOnly asOf)
@@ -452,13 +452,17 @@ public sealed class EfBudgetStore(AppDbContext context)
         };
         var elapsedMonths = (asOf.Year - anchor.Year) * 12 + asOf.Month - anchor.Month;
         var periods = elapsedMonths < 0 ? 0 : elapsedMonths / monthsPerPeriod;
-        var start = anchor.AddMonths(periods * monthsPerPeriod);
-        if (start > asOf && periods > 0)
+        if (anchor.AddMonths(periods * monthsPerPeriod) > asOf && periods > 0)
         {
-            start = anchor.AddMonths((periods - 1) * monthsPerPeriod);
+            periods--;
         }
 
-        return (start, start.AddMonths(monthsPerPeriod).AddDays(-1));
+        // Both bounds count from the anchor: deriving the end from an already clamped start
+        // (anchor 31 Jan -> start 28 Feb -> end 27 Mar) would leave days between periods that no
+        // period covers.
+        return (
+            anchor.AddMonths(periods * monthsPerPeriod),
+            anchor.AddMonths((periods + 1) * monthsPerPeriod).AddDays(-1));
     }
 
     private static BudgetMutationResult Result(BudgetMutationOutcome outcome) => new(null, outcome);
