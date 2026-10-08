@@ -7,7 +7,7 @@ use argon2::Argon2;
 use argon2::password_hash::{PasswordVerifier, phc::PasswordHash};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use rust_decimal::{Decimal, RoundingStrategy};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Number, Value};
@@ -15,13 +15,16 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use zeroize::Zeroize;
 
+use super::classification::{self, CounterpartyLink};
+use super::persistence::{self, LocalAccountCreationError};
 use super::{
     AUTHENTICATED, AuthenticateRequest, Core, DataOutput, FORTUNA_STATUS_ACCEPTED,
     FORTUNA_STATUS_BAD_REQUEST, FORTUNA_STATUS_CONFLICT, FORTUNA_STATUS_CREATED,
-    FORTUNA_STATUS_INTERNAL_ERROR, FORTUNA_STATUS_NOT_FOUND, FORTUNA_STATUS_NOT_INITIALIZED,
-    FORTUNA_STATUS_OK, FORTUNA_STATUS_UNAUTHORIZED, INTERNAL_ERROR, INVALID_CREDENTIALS,
-    INVALID_JSON, LOCAL_AUTH_DISABLED, NATIVE_OPERATIONS, NOT_INITIALIZED, current_core,
-    hash_secret, read_json, serialize, wire_timestamp,
+    FORTUNA_STATUS_INTERNAL_ERROR, FORTUNA_STATUS_NOT_FOUND, FORTUNA_STATUS_NOT_IMPLEMENTED,
+    FORTUNA_STATUS_NOT_INITIALIZED, FORTUNA_STATUS_OK, FORTUNA_STATUS_UNAUTHORIZED, INTERNAL_ERROR,
+    INVALID_AUTHENTICATION_REQUEST, INVALID_CREDENTIALS, INVALID_JSON, LOCAL_AUTH_DISABLED,
+    NATIVE_OPERATIONS, NOT_IMPLEMENTED_OPERATIONS, NOT_INITIALIZED, current_core, hash_secret,
+    read_json, serialize, wire_timestamp,
 };
 
 const INVALID_TOKEN: &str = "The local authentication token is invalid or expired.";
@@ -29,6 +32,14 @@ const INVALID_REQUEST: &str =
     "The request does not contain the route values or body required by this operation.";
 const NOT_FOUND: &str = "The requested record was not found.";
 const RECOVERY_WARNING: &str = "Store these recovery codes securely. They are shown only once.";
+const INVALID_RECOVERY_CODE: &str = "The recovery code is invalid or has already been used.";
+const LOCAL_ACCOUNT_EXISTS: &str = "A local account already exists on this installation.";
+/// Mirrors `LocalAccountInputLimits` in the HTTP host. Lengths count characters, not bytes.
+const NAME_MAXIMUM_LENGTH: usize = 200;
+const SECRET_MINIMUM_LENGTH: usize = 8;
+/// Bounds the input handed to Argon2 from anonymous requests.
+const SECRET_MAXIMUM_LENGTH: usize = 1024;
+const AS_OF_OUT_OF_RANGE: &str = "AsOf must be between 1900-01-01 and 2100-12-31.";
 const INVALID_PAGE_NUMBER: &str = "PageNumber must be at least 1.";
 const INVALID_PAGE_SIZE: &str = "PageSize must be at least 1.";
 /// Mirrors the HTTP host: `BaseQuery.PageSize` defaults to 100 and every paginated handler
@@ -47,9 +58,18 @@ pub(crate) struct OperationSpec {
     pub(crate) response_schema: &'static str,
 }
 
+/// An exported route the native core does not implement, and why.
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct NotImplementedOperation {
+    #[serde(flatten)]
+    pub(crate) operation: OperationSpec,
+    pub(crate) reason: &'static str,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct OperationRequest {
+pub(crate) struct OperationRequest {
     #[serde(default)]
     token: String,
     #[serde(default)]
@@ -85,7 +105,11 @@ impl Drop for OperationRequest {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CapabilitiesOutput<'a> {
+    /// Exported routes the native core implements.
     operations: &'a [OperationSpec],
+    /// Exported routes that always answer `FORTUNA_STATUS_NOT_IMPLEMENTED`.
+    not_implemented: &'a [NotImplementedOperation],
+    /// Route families that are deliberately not exported at all.
     unavailable: &'a [UnavailableOperation<'a>],
 }
 
@@ -152,9 +176,22 @@ pub(crate) fn capabilities(request_json: *const c_char) -> (c_int, String) {
         FORTUNA_STATUS_OK,
         CapabilitiesOutput {
             operations: NATIVE_OPERATIONS,
+            not_implemented: NOT_IMPLEMENTED_OPERATIONS,
             unavailable: UNAVAILABLE,
         },
         "Offline capabilities retrieved successfully.",
+    )
+}
+
+/// The answer of every exported route the native core does not implement: a failure that says
+/// so, never a success for work that was not done.
+pub(crate) fn not_implemented(operation: NotImplementedOperation) -> (c_int, String) {
+    failure(
+        FORTUNA_STATUS_NOT_IMPLEMENTED,
+        format!(
+            "{} {} is not available offline. {}",
+            operation.operation.method, operation.operation.path, operation.reason
+        ),
     )
 }
 
@@ -260,50 +297,7 @@ fn execute_authenticated(
         return get_personal_archive(core, request, user_id);
     }
     if operation.path.starts_with("/api/import-jobs") || operation.path == "/api/exports/{id}" {
-        return job_operation(core, operation, request, user_id, &timestamp);
-    }
-    if operation.long_running {
-        let body = request_body(request);
-        return match core
-            .store
-            .create_job(user_id, operation.path, &body, &timestamp)
-        {
-            Ok(job) => {
-                let job_id = job["id"]
-                    .as_str()
-                    .and_then(|value| Uuid::parse_str(value).ok());
-                if let Some(job_id) = job_id {
-                    let store = core.store.clone();
-                    std::thread::spawn(move || {
-                        let _ = store.complete_job(user_id, job_id, &wire_timestamp(Utc::now()));
-                    });
-                }
-                let data = if operation.path.starts_with("/api/imports/") {
-                    serde_json::json!({
-                        "importJobId": job["id"],
-                        "status": 1,
-                        "progress": 0,
-                    })
-                } else {
-                    serde_json::json!({
-                        "delivery": 2,
-                        "exportId": job["id"],
-                        "jobId": job["id"],
-                        "format": body.get("format").cloned().unwrap_or(Value::Number(1.into())),
-                        "rowCount": 0,
-                        "fileName": Value::Null,
-                        "contentType": Value::Null,
-                        "progress": 0,
-                    })
-                };
-                success(
-                    FORTUNA_STATUS_ACCEPTED,
-                    data,
-                    "Operation queued successfully.",
-                )
-            }
-            Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
-        };
+        return job_operation(core, operation, request, user_id);
     }
     if operation.path == "/api/exchange-rates" && operation.method == "POST" {
         return record_manual_rate(core, request, user_id, &timestamp);
@@ -311,12 +305,6 @@ fn execute_authenticated(
     if operation.path == "/api/exchange-rates/convert" {
         return convert_figure(core, request, user_id);
     }
-    if operation.path.starts_with("/api/reports/")
-        || operation.path.starts_with("/api/projections/")
-    {
-        return analytical_output(core, operation, request, user_id);
-    }
-
     execute_record_operation(core, operation, request, user_id, &timestamp)
 }
 
@@ -423,7 +411,10 @@ fn create_local_account(core: &Core, request: &mut OperationRequest) -> (c_int, 
     let Some(secret) = body.0.get("secret").and_then(Value::as_str) else {
         return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST);
     };
-    if display_name.is_empty() || secret.len() < 8 {
+    if display_name.is_empty()
+        || display_name.chars().count() > NAME_MAXIMUM_LENGTH
+        || !secret_length_is_valid(secret)
+    {
         return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST);
     }
     let Ok(secret_hash) = hash_secret(secret) else {
@@ -452,8 +443,24 @@ fn create_local_account(core: &Core, request: &mut OperationRequest) -> (c_int, 
             }),
             "Local account created successfully.",
         ),
-        Err(_) => failure(FORTUNA_STATUS_CONFLICT, "A local account already exists."),
+        Err(LocalAccountCreationError::AlreadyExists) => {
+            failure(FORTUNA_STATUS_CONFLICT, LOCAL_ACCOUNT_EXISTS)
+        }
+        Err(LocalAccountCreationError::Store) => {
+            failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR)
+        }
     }
+}
+
+/// Secrets are bounded in characters, as the HTTP host's validators count them.
+fn secret_length_is_valid(secret: &str) -> bool {
+    (SECRET_MINIMUM_LENGTH..=SECRET_MAXIMUM_LENGTH).contains(&secret.chars().count())
+}
+
+/// Recovery codes are issued in upper case; case and surrounding whitespace in user input do
+/// not matter, as in the HTTP host's `LocalRecoveryCodeHash.Normalize`.
+fn normalize_recovery_code(code: &str) -> String {
+    code.trim().to_uppercase()
 }
 
 fn authenticate(core: &Core, request: &mut OperationRequest) -> (c_int, String) {
@@ -466,6 +473,9 @@ fn authenticate(core: &Core, request: &mut OperationRequest) -> (c_int, String) 
     match core.authenticate(&mut command) {
         Ok(output) => success(FORTUNA_STATUS_OK, output, AUTHENTICATED),
         Err(super::AuthError::Disabled) => failure(FORTUNA_STATUS_NOT_FOUND, LOCAL_AUTH_DISABLED),
+        Err(super::AuthError::InvalidRequest) => {
+            failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_AUTHENTICATION_REQUEST)
+        }
         Err(super::AuthError::InvalidCredentials) => {
             failure(FORTUNA_STATUS_UNAUTHORIZED, INVALID_CREDENTIALS)
         }
@@ -474,8 +484,11 @@ fn authenticate(core: &Core, request: &mut OperationRequest) -> (c_int, String) 
 }
 
 fn recover_local_account(core: &Core, request: &mut OperationRequest) -> (c_int, String) {
+    if !core.local_auth_enabled {
+        return failure(FORTUNA_STATUS_NOT_FOUND, LOCAL_AUTH_DISABLED);
+    }
     let body = SensitiveValue(take_request_body(request));
-    let Some(name) = body.0.get("name").and_then(Value::as_str) else {
+    let Some(name) = body.0.get("name").and_then(Value::as_str).map(str::trim) else {
         return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST);
     };
     let Some(code) = body.0.get("recoveryCode").and_then(Value::as_str) else {
@@ -484,14 +497,19 @@ fn recover_local_account(core: &Core, request: &mut OperationRequest) -> (c_int,
     let Some(new_secret) = body.0.get("newSecret").and_then(Value::as_str) else {
         return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST);
     };
-    if new_secret.len() < 8 {
+    if name.is_empty()
+        || name.chars().count() > NAME_MAXIMUM_LENGTH
+        || !secret_length_is_valid(new_secret)
+    {
         return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST);
     }
+    // The new secret is hashed before the name is looked up, so an unknown name costs the same
+    // Argon2 run as a known one and the response time does not reveal which names exist.
+    let Ok(new_hash) = hash_secret(new_secret) else {
+        return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
+    };
     let Ok(Some(account)) = core.store.find_local_account(name) else {
-        return failure(
-            FORTUNA_STATUS_UNAUTHORIZED,
-            "The recovery code is invalid or already used.",
-        );
+        return failure(FORTUNA_STATUS_UNAUTHORIZED, INVALID_RECOVERY_CODE);
     };
     // Everything that can fail runs before the one-time code is consumed, so a failure never
     // burns a code without issuing the session that should come with it.
@@ -501,13 +519,10 @@ fn recover_local_account(core: &Core, request: &mut OperationRequest) -> (c_int,
     let Some(expires_at) = core.session_expiry() else {
         return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
     };
-    let Ok(new_hash) = hash_secret(new_secret) else {
-        return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
-    };
     let timestamp = wire_timestamp(Utc::now());
     match core.store.consume_recovery_code(
         &account.account_id,
-        &sha256_hex(code),
+        &sha256_hex(&normalize_recovery_code(code)),
         &new_hash,
         &timestamp,
     ) {
@@ -523,20 +538,25 @@ fn recover_local_account(core: &Core, request: &mut OperationRequest) -> (c_int,
                 "Local account recovered successfully.",
             )
         }
-        Ok(None) => failure(
-            FORTUNA_STATUS_UNAUTHORIZED,
-            "The recovery code is invalid or already used.",
-        ),
+        Ok(None) => failure(FORTUNA_STATUS_UNAUTHORIZED, INVALID_RECOVERY_CODE),
         Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
     }
 }
 
 fn regenerate_recovery_codes(core: &Core, request: &mut OperationRequest) -> (c_int, String) {
+    if !core.local_auth_enabled {
+        return failure(FORTUNA_STATUS_NOT_FOUND, LOCAL_AUTH_DISABLED);
+    }
     let Ok(user_id) = core.authorize(&mut request.token) else {
         return failure(FORTUNA_STATUS_UNAUTHORIZED, INVALID_TOKEN);
     };
     let body = SensitiveValue(take_request_body(request));
-    let Some(secret) = body.0.get("secret").and_then(Value::as_str) else {
+    let Some(secret) = body
+        .0
+        .get("secret")
+        .and_then(Value::as_str)
+        .filter(|secret| secret.chars().count() <= SECRET_MAXIMUM_LENGTH)
+    else {
         return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST);
     };
     let Ok(Some(account)) = core.store.find_local_account_by_user(user_id) else {
@@ -592,8 +612,20 @@ fn execute_record_operation(
         };
     }
     if operation.method == "POST" && !operation.path.contains("{id}") {
-        let body = request_body(request);
-        return match core.store.create_record(user_id, resource, body, timestamp) {
+        let mut body = request_body(request);
+        let created = if classification::names_counterparty(resource) {
+            let link = match classification::counterparty_link(&mut body, true) {
+                Ok(link) => link,
+                Err((status, error)) => return failure(status, error),
+            };
+            core.store.write(user_id, timestamp, |records| {
+                classification::apply_counterparty_link(records, &mut body, link)?;
+                records.insert(resource, body)
+            })
+        } else {
+            core.store.create_record(user_id, resource, body, timestamp)
+        };
+        return match created {
             Ok(record) => success(
                 FORTUNA_STATUS_CREATED,
                 project_payload(operation.response_schema, &record),
@@ -621,11 +653,32 @@ fn execute_record_operation(
         };
     }
     if operation.method == "PUT" {
-        let body = request_body(request);
-        return match core
-            .store
-            .update_record(user_id, resource, id, body, timestamp)
-        {
+        let mut body = request_body(request);
+        let updated = if classification::names_counterparty(resource) {
+            let link = match classification::counterparty_link(&mut body, false) {
+                Ok(link) => link,
+                Err((status, error)) => return failure(status, error),
+            };
+            core.store.write(user_id, timestamp, |records| {
+                // Nothing, not even a counterparty, is created for a record that is not live.
+                if matches!(link, CounterpartyLink::Unchanged) {
+                    return records.update_with(resource, id, |_| body);
+                }
+                let live = records
+                    .records(resource, false)?
+                    .iter()
+                    .any(|record| persistence::record_id(record) == Some(id));
+                if !live {
+                    return Ok(None);
+                }
+                classification::apply_counterparty_link(records, &mut body, link)?;
+                records.update_with(resource, id, |_| body)
+            })
+        } else {
+            core.store
+                .update_record(user_id, resource, id, body, timestamp)
+        };
+        return match updated {
             Ok(Some(record)) => success(
                 FORTUNA_STATUS_OK,
                 project_payload(operation.response_schema, &record),
@@ -677,6 +730,22 @@ fn nested_operation(
     parent_id: Uuid,
     timestamp: &str,
 ) -> (c_int, String) {
+    match (operation.method, operation.path) {
+        ("POST", "/api/categories/{id}/reassign") => {
+            return classification::reassign_category_transactions(
+                core, request, user_id, parent_id, timestamp,
+            );
+        }
+        ("POST", "/api/counterparties/{id}/merge") => {
+            return classification::merge_counterparties(
+                core, request, user_id, parent_id, timestamp,
+            );
+        }
+        ("GET", "/api/counterparties/{id}/suggested-category") => {
+            return classification::suggest_category(core, user_id, parent_id);
+        }
+        _ => {}
+    }
     let parent_resource = resource_for(operation.path);
     let Ok(Some(parent)) = core
         .store
@@ -690,13 +759,31 @@ fn nested_operation(
             .get("openingBalance")
             .and_then(value_decimal)
             .unwrap_or(Decimal::ZERO);
-        let balance = core
-            .store
-            .list_records(user_id, "transactions", false)
-            .unwrap_or_default()
+        // Same rule as the HTTP host's AccountBalanceCalculator: before the UTC day the account
+        // was opened its balance is the opening balance; from then on it adds every live
+        // movement dated on or before `asOf`.
+        let as_of = match query_string(request, "asOf") {
+            None => Utc::now().date_naive(),
+            Some(value) => match NaiveDate::parse_from_str(&value, "%Y-%m-%d") {
+                Ok(date) if (1900..=2100).contains(&date.year()) => date,
+                _ => return failure(FORTUNA_STATUS_BAD_REQUEST, AS_OF_OUT_OF_RANGE),
+            },
+        };
+        let opened_after = record_date(&parent, "createdAt").is_some_and(|opened| as_of < opened);
+        let Ok(transactions) = core.store.list_records(user_id, "transactions", false) else {
+            return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
+        };
+        let balance = transactions
             .into_iter()
+            .filter(|_| !opened_after)
             .filter(|transaction| {
-                transaction["financialAccountId"].as_str() == Some(&parent_id.to_string())
+                transaction["financialAccountId"]
+                    .as_str()
+                    .and_then(|value| Uuid::parse_str(value).ok())
+                    == Some(parent_id)
+            })
+            .filter(|transaction| {
+                record_date(transaction, "occurredOn").is_none_or(|occurred| occurred <= as_of)
             })
             .fold(opening_balance, |total, transaction| {
                 let amount = transaction
@@ -715,8 +802,7 @@ fn nested_operation(
                 "id": parent_id,
                 "balance": decimal_number(balance),
                 "currencyCode": parent.get("currencyCode").cloned().unwrap_or(Value::Null),
-                "asOf": query_string(request, "asOf")
-                    .unwrap_or_else(|| Utc::now().date_naive().to_string()),
+                "asOf": as_of.to_string(),
             }),
             "Financial account balance retrieved successfully.",
         );
@@ -737,63 +823,33 @@ fn nested_operation(
             Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
         };
     }
-    if matches!(
-        action,
-        "close" | "settle" | "reconcile" | "reassign" | "merge"
-    ) {
-        let mut update = request_body(request);
-        if !update.is_object() {
-            update = Value::Object(Map::new());
-        }
-        update.as_object_mut().expect("object").insert(
-            action_state_field(action).to_owned(),
-            if action == "reconcile" {
-                Value::Bool(true)
-            } else {
-                Value::String(timestamp.to_owned())
-            },
-        );
-        return match core.store.update_record(
-            user_id,
-            parent_resource,
-            parent_id,
-            update,
-            timestamp,
-        ) {
-            Ok(Some(record)) => success(
-                FORTUNA_STATUS_OK,
-                project_payload(operation.response_schema, &record),
-                "Operation completed successfully.",
-            ),
-            Ok(None) => failure(FORTUNA_STATUS_NOT_FOUND, NOT_FOUND),
-            Err(_) => failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST),
-        };
-    }
     if operation.path.contains("/tags/{tagId}") {
         let Some(tag_id) = route_uuid(request, "tagId") else {
             return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST);
         };
-        let mut tags = parent
-            .get("tagIds")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-        if operation.method == "POST"
-            && !tags
-                .iter()
-                .any(|value| value.as_str() == Some(&tag_id.to_string()))
-        {
-            tags.push(Value::String(tag_id.to_string()));
-        } else if operation.method == "DELETE" {
-            tags.retain(|value| value.as_str() != Some(&tag_id.to_string()));
-        }
-        let update = serde_json::json!({"tagIds": tags});
-        return match core.store.update_record(
+        let tag = tag_id.to_string();
+        let add = operation.method == "POST";
+        let remove = operation.method == "DELETE";
+        // The tag list is read and rewritten inside the store's write transaction, so
+        // concurrent assignments to one transaction cannot overwrite each other.
+        return match core.store.update_record_with(
             user_id,
             parent_resource,
             parent_id,
-            update,
             timestamp,
+            |current| {
+                let mut tags = current
+                    .get("tagIds")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                if add && !tags.iter().any(|value| value.as_str() == Some(&tag)) {
+                    tags.push(Value::String(tag.clone()));
+                } else if remove {
+                    tags.retain(|value| value.as_str() != Some(&tag));
+                }
+                serde_json::json!({ "tagIds": tags })
+            },
         ) {
             Ok(Some(_)) => success(
                 FORTUNA_STATUS_OK,
@@ -830,7 +886,6 @@ fn job_operation(
     operation: OperationSpec,
     request: &OperationRequest,
     user_id: Uuid,
-    timestamp: &str,
 ) -> (c_int, String) {
     if operation.path == "/api/import-jobs" {
         return match core.store.list_jobs(user_id) {
@@ -852,36 +907,29 @@ fn job_operation(
     let Some(id) = route_uuid(request, "id") else {
         return failure(FORTUNA_STATUS_BAD_REQUEST, INVALID_REQUEST);
     };
-    if operation.path.ends_with("/retry") {
-        return match core.store.requeue_job(user_id, id, timestamp) {
-            Ok(true) => {
-                let store = core.store.clone();
-                std::thread::spawn(move || {
-                    let _ = store.complete_job(user_id, id, &wire_timestamp(Utc::now()));
-                });
-                match core.store.get_job(user_id, id) {
-                    Ok(Some(job)) => success(
-                        FORTUNA_STATUS_ACCEPTED,
-                        import_job_output(job),
-                        "Import job queued for retry.",
-                    ),
-                    _ => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
-                }
-            }
-            Ok(false) => failure(FORTUNA_STATUS_NOT_FOUND, NOT_FOUND),
-            Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
-        };
-    }
-    if operation.path.ends_with("/records") {
-        return paginated(
-            Vec::<Value>::new(),
-            request,
-            "Imported records retrieved successfully.",
-        );
-    }
+    // Import-job routes see only import jobs and the export route only export jobs, as in the
+    // HTTP host, where they are separate tables; any other kind is indistinguishable from missing.
+    let import_route = operation.path.starts_with("/api/import-jobs");
+    let records_route = operation.path.ends_with("/records");
     match core.store.get_job(user_id, id) {
-        Ok(Some(job)) => {
-            let data = if operation.path.starts_with("/api/import-jobs") {
+        Ok(Some(job))
+            if job["kind"].as_str().is_some_and(|kind| {
+                if import_route {
+                    kind.starts_with("/api/imports/")
+                } else {
+                    kind.starts_with("/api/exports")
+                }
+            }) =>
+        {
+            if records_route {
+                // The native core creates no imported records: an import job never ran here.
+                return paginated(
+                    Vec::<Value>::new(),
+                    request,
+                    "Imported records retrieved successfully.",
+                );
+            }
+            let data = if import_route {
                 import_job_output(job)
             } else {
                 export_job_output(job)
@@ -892,7 +940,7 @@ fn job_operation(
                 "Operation job retrieved successfully.",
             )
         }
-        Ok(None) => failure(FORTUNA_STATUS_NOT_FOUND, NOT_FOUND),
+        Ok(_) => failure(FORTUNA_STATUS_NOT_FOUND, NOT_FOUND),
         Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
     }
 }
@@ -914,7 +962,7 @@ fn import_job_output(job: Value) -> Value {
         "rejectedCount": 0,
         "periodStart": null,
         "periodEnd": null,
-        "failureReason": null,
+        "failureReason": job["failureReason"],
         "progress": job["progress"],
         "createdAt": job["createdAt"],
         "updatedAt": job["updatedAt"],
@@ -930,7 +978,7 @@ fn export_job_output(job: Value) -> Value {
         "rowCount": 0,
         "fileName": Value::Null,
         "contentType": Value::Null,
-        "failureReason": Value::Null,
+        "failureReason": job["failureReason"],
         "progress": job["progress"],
         "createdAt": job["createdAt"],
         "updatedAt": job["updatedAt"],
@@ -973,7 +1021,7 @@ fn record_manual_rate(
     }
     let existing = core
         .store
-        .list_records(user_id, "exchange-rates", true)
+        .list_records(user_id, "exchange-rates", false)
         .unwrap_or_default()
         .into_iter()
         .find(|record| {
@@ -1003,7 +1051,7 @@ fn record_manual_rate(
             .create_record(user_id, "exchange-rates", storage, timestamp)
             .map(Some)
     };
-    if stored.is_err() {
+    if !matches!(stored, Ok(Some(_))) {
         return failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR);
     }
     success(
@@ -1161,35 +1209,7 @@ fn convert_figure(core: &Core, request: &OperationRequest, user_id: Uuid) -> (c_
     )
 }
 
-fn analytical_output(
-    core: &Core,
-    operation: OperationSpec,
-    request: &OperationRequest,
-    user_id: Uuid,
-) -> (c_int, String) {
-    let transactions = core
-        .store
-        .list_records(user_id, "transactions", false)
-        .unwrap_or_default();
-    let data = match operation.path {
-        "/api/reports/table" => serde_json::json!({"columns": [], "rows": transactions}),
-        "/api/reports/aggregate" => serde_json::json!({"buckets": [], "rates": []}),
-        "/api/reports/drill-down" => {
-            serde_json::json!({"items": transactions, "key": query_string(request, "Key")})
-        }
-        "/api/reports/net-position" => {
-            serde_json::json!({"total": 0, "positions": [], "rates": []})
-        }
-        "/api/projections/cash-flow" => {
-            serde_json::json!({"periods": [], "openingBalance": 0, "closingBalance": 0})
-        }
-        "/api/projections/commitments" => serde_json::json!({"items": [], "rates": []}),
-        _ => Value::Null,
-    };
-    success(FORTUNA_STATUS_OK, data, "Report retrieved successfully.")
-}
-
-fn request_body(request: &OperationRequest) -> Value {
+pub(crate) fn request_body(request: &OperationRequest) -> Value {
     request
         .body
         .clone()
@@ -1270,15 +1290,10 @@ fn parent_key(parent: &str) -> &str {
     }
 }
 
-fn action_state_field(action: &str) -> &str {
-    match action {
-        "close" => "closedAt",
-        "settle" => "settledAt",
-        "reconcile" => "isReconciled",
-        "reassign" => "reassignedAt",
-        "merge" => "mergedAt",
-        _ => "completedAt",
-    }
+/// The calendar day of a `yyyy-MM-dd` date or a wire timestamp field.
+fn record_date(record: &Value, name: &str) -> Option<NaiveDate> {
+    let value = record.get(name)?.as_str()?;
+    NaiveDate::parse_from_str(value.get(..10)?, "%Y-%m-%d").ok()
 }
 
 fn decimal_field(body: &Value, name: &str) -> Option<Decimal> {
@@ -1651,10 +1666,14 @@ fn openapi_document() -> &'static Value {
     })
 }
 
-fn success<T: Serialize>(status: c_int, data: T, message: impl Into<String>) -> (c_int, String) {
+pub(crate) fn success<T: Serialize>(
+    status: c_int,
+    data: T,
+    message: impl Into<String>,
+) -> (c_int, String) {
     (status, serialize(&DataOutput::success(data, message)))
 }
 
-fn failure(status: c_int, error: impl Into<String>) -> (c_int, String) {
+pub(crate) fn failure(status: c_int, error: impl Into<String>) -> (c_int, String) {
     (status, serialize(&DataOutput::<Value>::failure(error)))
 }
