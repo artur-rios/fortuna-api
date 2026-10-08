@@ -11,6 +11,7 @@ using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Shared.Messages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace ArturRios.Fortuna.Data.Ingestion;
 
@@ -92,6 +93,56 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         DateTimeOffset completedAt,
         CancellationToken cancellationToken)
     {
+        // All rows are applied in one database transaction. When anything fails, the rows applied
+        // so far are discarded from the context too, so the failure that is recorded next cannot
+        // commit them under a failed job.
+        await using var databaseTransaction = await context.Database.BeginTransactionAsync(
+            cancellationToken);
+        try
+        {
+            var result = await ApplyAsync(
+                importJobId,
+                userId,
+                targetId,
+                targetType,
+                createMissingCategories,
+                rows,
+                completedAt,
+                cancellationToken);
+            if (result.Outcome != ImportCompletionOutcome.Completed)
+            {
+                await DiscardAsync(databaseTransaction);
+
+                return result;
+            }
+
+            await databaseTransaction.CommitAsync(cancellationToken);
+
+            return result;
+        }
+        catch
+        {
+            await DiscardAsync(databaseTransaction);
+            throw;
+        }
+    }
+
+    private async Task DiscardAsync(IDbContextTransaction databaseTransaction)
+    {
+        await databaseTransaction.RollbackAsync(CancellationToken.None);
+        context.ChangeTracker.Clear();
+    }
+
+    private async Task<ImportCompletionResult> ApplyAsync(
+        Guid importJobId,
+        Guid userId,
+        Guid targetId,
+        ImportTargetType targetType,
+        bool createMissingCategories,
+        IReadOnlyCollection<ExcelWorkbookRow> rows,
+        DateTimeOffset completedAt,
+        CancellationToken cancellationToken)
+    {
         var job = await context.ImportJobs.Include(item => item.User).SingleOrDefaultAsync(
             item => item.PublicId == importJobId &&
                 item.User.PublicId == userId &&
@@ -129,13 +180,14 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         foreach (var row in rows)
         {
             if (row.RejectionReason is not null || row.OccurredOn is null ||
-                row.Amount is not > 0 || row.Direction is null)
+                row.Amount is not > 0 || StoredAmount(row.Amount.Value) <= 0m ||
+                row.Direction is null)
             {
                 context.ImportedRecords.Add(new ImportedRecord(
                     job,
                     row.RawPayload,
                     ImportedRecordOutcome.Rejected,
-                    row.Amount is > 0 ? row.Amount : null,
+                    PositiveStoredAmount(row.Amount),
                     row.OccurredOn,
                     ValidExternalId(row.ExternalId),
                     row.RejectionReason ?? RejectionReason(row)));
@@ -143,13 +195,34 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
                 continue;
             }
 
-            var signature = Signature(row.OccurredOn.Value, row.Amount.Value, row.ExternalId);
+            if (createMissingCategories &&
+                row.Category?.Trim().Length > CategoryNameMaximumLength)
+            {
+                // A category that cannot be created rejects its row only (BR-27).
+                context.ImportedRecords.Add(new ImportedRecord(
+                    job,
+                    row.RawPayload,
+                    ImportedRecordOutcome.Rejected,
+                    row.Amount,
+                    row.OccurredOn,
+                    ValidExternalId(row.ExternalId),
+                    ExcelImportMessages.RowCategoryTooLong));
+                rejected++;
+                continue;
+            }
+
+            // Compare what is stored: amounts are persisted at the column's scale and an
+            // over-long external id is not kept, so the duplicate check (FR-IM-11) uses the same
+            // normalized values or a re-import would never match the first one.
+            var amount = StoredAmount(row.Amount.Value);
+            var externalId = ValidExternalId(row.ExternalId);
+            var signature = Signature(row.OccurredOn.Value, amount, externalId);
             var duplicate = !signatures.Add(signature) || await IsDuplicateAsync(
                 account,
                 card,
                 row.OccurredOn.Value,
-                row.Amount.Value,
-                row.ExternalId,
+                amount,
+                externalId,
                 cancellationToken);
             if (duplicate)
             {
@@ -157,9 +230,9 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
                     job,
                     row.RawPayload,
                     ImportedRecordOutcome.Duplicate,
-                    row.Amount,
+                    amount,
                     row.OccurredOn,
-                    ValidExternalId(row.ExternalId)));
+                    externalId));
                 duplicates++;
                 continue;
             }
@@ -174,16 +247,16 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
                 job,
                 row.RawPayload,
                 ImportedRecordOutcome.Imported,
-                row.Amount,
+                amount,
                 row.OccurredOn,
-                ValidExternalId(row.ExternalId));
+                externalId);
             var transaction = account is not null
                 ? new FinancialTransaction(
                     job.User,
                     account,
                     category,
                     row.Direction.Value,
-                    row.Amount.Value,
+                    amount,
                     row.OccurredOn.Value,
                     completedAt,
                     Description(row.Description))
@@ -192,7 +265,7 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
                     card!,
                     category,
                     row.Direction.Value,
-                    row.Amount.Value,
+                    amount,
                     row.OccurredOn.Value,
                     completedAt,
                     Description(row.Description));
@@ -323,7 +396,8 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
 
     private static string RejectionReason(ExcelWorkbookRow row) =>
         row.OccurredOn is null ? ExcelImportMessages.RowDateInvalid
-        : row.Amount is not > 0 ? ExcelImportMessages.RowAmountInvalid
+        : row.Amount is not > 0 || StoredAmount(row.Amount.Value) <= 0m
+            ? ExcelImportMessages.RowAmountInvalid
         : ExcelImportMessages.RowDirectionInvalid;
 
     private async Task AssignToStatementAsync(
@@ -332,18 +406,15 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
         DateTimeOffset changedAt,
         CancellationToken cancellationToken)
     {
+        // BR-14: a charge whose cycle is already settled goes to the next open statement and is
+        // flagged as late-arriving, as CreditCardStatementResolver does for manual charges.
         var cycle = BillingCycle.Containing(transaction.OccurredOn, card.ClosingDay, card.DueDay);
-        var statement = await context.CreditCardStatements.SingleOrDefaultAsync(item =>
-            item.CreditCardId == card.Id && item.PeriodStart == cycle.PeriodStart &&
-            item.PeriodEnd == cycle.PeriodEnd && !item.IsDeleted,
-            cancellationToken);
-        statement ??= context.CreditCardStatements.Local.SingleOrDefault(item =>
-            item.CreditCard == card && item.PeriodStart == cycle.PeriodStart &&
-            item.PeriodEnd == cycle.PeriodEnd);
-        if (statement is null)
+        var statement = await FindOrAddStatementAsync(card, cycle, changedAt, cancellationToken);
+        var isLateArriving = statement.Status == CreditCardStatementStatus.Settled;
+        while (isLateArriving && statement.Status != CreditCardStatementStatus.Open)
         {
-            statement = new CreditCardStatement(card, cycle, changedAt);
-            context.CreditCardStatements.Add(statement);
+            cycle = cycle.Next(card.ClosingDay, card.DueDay);
+            statement = await FindOrAddStatementAsync(card, cycle, changedAt, cancellationToken);
         }
 
         var existingTotal = statement.Id == 0
@@ -359,13 +430,47 @@ public sealed class EfExcelImportStore(AppDbContext context) : IExcelImportStore
             .Sum(item => item.Direction == TransactionDirection.Expense
                 ? item.Amount
                 : -item.Amount);
-        transaction.AssignToStatement(statement, false, changedAt);
+        transaction.AssignToStatement(statement, isLateArriving, changedAt);
         statement.RecalculatePurchaseTotal(
             existingTotal + localTotal + (transaction.Direction == TransactionDirection.Expense
                 ? transaction.Amount
                 : -transaction.Amount),
             changedAt);
     }
+
+    private async Task<CreditCardStatement> FindOrAddStatementAsync(
+        CreditCard card,
+        BillingCycle cycle,
+        DateTimeOffset changedAt,
+        CancellationToken cancellationToken)
+    {
+        var statement = await context.CreditCardStatements.SingleOrDefaultAsync(item =>
+            item.CreditCardId == card.Id &&
+            item.PeriodStart == cycle.PeriodStart &&
+            item.PeriodEnd == cycle.PeriodEnd &&
+            !item.IsDeleted,
+            cancellationToken);
+        statement ??= context.CreditCardStatements.Local.SingleOrDefault(item =>
+            item.CreditCard == card &&
+            item.PeriodStart == cycle.PeriodStart && item.PeriodEnd == cycle.PeriodEnd);
+        if (statement is null)
+        {
+            statement = new CreditCardStatement(card, cycle, changedAt);
+            context.CreditCardStatements.Add(statement);
+        }
+
+        return statement;
+    }
+
+    private const int CategoryNameMaximumLength = 200;
+
+    // Monetary columns are numeric(19,4); PostgreSQL rounds half away from zero on insert.
+    private static decimal StoredAmount(decimal amount) =>
+        decimal.Round(amount, 4, MidpointRounding.AwayFromZero);
+
+    // A rejected row keeps its amount only when it is positive as stored (ck_imported_record_amount).
+    private static decimal? PositiveStoredAmount(decimal? amount) =>
+        amount is > 0 && StoredAmount(amount.Value) > 0m ? StoredAmount(amount.Value) : null;
 
     private static string Signature(DateOnly date, decimal amount, string? externalId) =>
         $"{date:O}|{amount}|{externalId}";

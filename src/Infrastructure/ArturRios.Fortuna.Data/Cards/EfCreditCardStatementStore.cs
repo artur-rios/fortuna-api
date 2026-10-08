@@ -164,6 +164,13 @@ public sealed class EfCreditCardStatementStore(AppDbContext context)
                 settlement.Amount * exchangeRate.Rate,
                 statement.CreditCard.Currency.MinorUnitDigits,
                 MidpointRounding.AwayFromZero);
+            if (appliedAmount <= 0m)
+            {
+                // As for transfers and transactions: a payment that converts to nothing cannot
+                // become a transaction, which requires a positive amount.
+                return SettlementResult(
+                    CreditCardStatementSettlementOutcome.ConvertedAmountTooSmall);
+            }
         }
 
         var transferCategory = await TransactionCategoryResolver.GetOrCreateAsync(

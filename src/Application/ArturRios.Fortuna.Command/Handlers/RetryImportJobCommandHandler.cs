@@ -68,6 +68,11 @@ public sealed class RetryImportJobCommandHandler(
                 ImportJobMessages.RetryRequiresFailedJob),
             RetryImportJobOutcome.SourceFileNotRetained => output.WithError(
                 ImportJobMessages.SourceFileNotRetained),
+            RetryImportJobOutcome.ConnectionRevoked => output.WithError(ConnectionMessages.Revoked),
+            RetryImportJobOutcome.ConnectionRequiresReauthentication => output.WithError(
+                ConnectionMessages.RequiresReauthentication),
+            RetryImportJobOutcome.SynchronizationAlreadyRunning => output.WithError(
+                PluggySynchronizationMessages.AlreadyRunning),
             _ => throw new ArgumentOutOfRangeException(nameof(result))
         };
     }

@@ -159,6 +159,35 @@ public sealed class ImportJobRetryTests : IAsyncLifetime
             item.Id == seeded.BackgroundJobId)).State);
     }
 
+    [FunctionalTheory]
+    [InlineData(ConnectionStatus.Revoked)]
+    [InlineData(ConnectionStatus.RequiresReauthentication)]
+    [InlineData(ConnectionStatus.Active)]
+    public async Task GivenFailedSynchronizationOnUnavailableConnection_WhenRetried_ThenConflictIsReturned(
+        ConnectionStatus connectionStatus)
+    {
+        var subject = Guid.NewGuid();
+        var failedJobId = await SeedFailedSynchronizationAsync(subject, connectionStatus);
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+
+        var response = await client.PostAsync($"/api/import-jobs/{failedJobId}/retry", null);
+        var body = await response.Content.ReadFromJsonAsync<ErrorEnvelope>();
+
+        // An active connection is unavailable here because another synchronization is running.
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains(connectionStatus switch
+        {
+            ConnectionStatus.Revoked => ConnectionMessages.Revoked,
+            ConnectionStatus.RequiresReauthentication => ConnectionMessages.RequiresReauthentication,
+            _ => PluggySynchronizationMessages.AlreadyRunning
+        }, body!.Errors);
+        await using var context = CreateContext();
+        Assert.Equal(ImportJobStatus.Failed, (await context.ImportJobs.SingleAsync(item =>
+            item.PublicId == failedJobId)).Status);
+    }
+
     [FunctionalFact]
     public async Task GivenSystemAdministrator_WhenRetrying_ThenFinancialJobIsForbidden()
     {
@@ -224,6 +253,48 @@ public sealed class ImportJobRetryTests : IAsyncLifetime
                     options.UseNpgsql(database.GetConnectionString()));
             });
         });
+    }
+
+    private async Task<Guid> SeedFailedSynchronizationAsync(
+        Guid subject,
+        ConnectionStatus connectionStatus)
+    {
+        await using var context = CreateContext();
+        var currency = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+        var user = new UserProfile(subject, $"Owner {subject:N}", currency, Now);
+        var connection = new Connection(
+            user, TransactionSourceType.Pluggy, $"item-{subject:N}", [1, 2, 3], Now);
+        var failed = new ImportJob(user, connection, null, null, Now);
+        failed.Start(Now.AddMinutes(1));
+        failed.Fail(ConnectionMessages.SourceUnavailable, Now.AddMinutes(2));
+        var backgroundJob = BackgroundJob.Create(
+            PluggySynchronizationJob.Type,
+            JsonSerializer.Serialize(new PluggySynchronizationJobPayload(failed.PublicId)),
+            $"{PluggySynchronizationJob.Type}:{failed.PublicId:N}",
+            null,
+            Now);
+        backgroundJob.Start(Now.AddMinutes(1));
+        backgroundJob.Fail(ConnectionMessages.SourceUnavailable, Now.AddMinutes(2));
+        context.AddRange(user, connection, failed, backgroundJob);
+        switch (connectionStatus)
+        {
+            case ConnectionStatus.Revoked:
+                connection.Revoke(Now.AddMinutes(3));
+
+                break;
+            case ConnectionStatus.RequiresReauthentication:
+                connection.MarkRequiresReauthentication(Now.AddMinutes(3));
+
+                break;
+            default:
+                context.Add(new ImportJob(user, connection, null, null, Now.AddMinutes(3)));
+
+                break;
+        }
+
+        await context.SaveChangesAsync();
+
+        return failed.PublicId;
     }
 
     private async Task<SeededJob> SeedFailedExcelAsync(

@@ -22,7 +22,8 @@ public enum CreditCardStatementSettlementOutcome
     FinancialAccountNotFound = 3,
     StatementOpen = 4,
     StatementAlreadySettled = 5,
-    ExchangeRateUnavailable = 6
+    ExchangeRateUnavailable = 6,
+    ConvertedAmountTooSmall = 7
 }
 
 public sealed record CreditCardStatementSettlementResult(

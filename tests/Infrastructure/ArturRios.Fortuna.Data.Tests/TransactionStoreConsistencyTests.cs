@@ -1,9 +1,11 @@
 using ArturRios.Fortuna.Data.Attachments;
+using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Transactions;
+using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.EntityFrameworkCore;
@@ -88,6 +90,56 @@ public sealed class TransactionStoreConsistencyTests
             context.ChangeTracker.Clear();
             var counterparty = Assert.Single(await context.Counterparties.ToListAsync());
             Assert.Equal(counterparty.PublicId, result.Transaction!.CounterpartyId);
+        });
+    }
+
+    [FunctionalFact]
+    public async Task GivenStatementPaymentLeg_WhenOnlyItsDescriptionChanges_ThenItStaysOutOfEveryStatement()
+    {
+        await WithDatabaseAsync(async context =>
+        {
+            var data = await StoreTestData.SeedAsync(context);
+            var account = data.Account(context, "Checking", 1000m);
+            var card = Card(context, data);
+            await context.SaveChangesAsync();
+            var store = Store(context);
+            await store.RecordAsync(Charge(data, card, 100m), CancellationToken.None);
+            var statements = new EfCreditCardStatementStore(context);
+            var statementId = (await context.CreditCardStatements.SingleAsync()).PublicId;
+            await statements.CloseAsync(
+                data.User.PublicId, statementId, StoreTestData.Today, true, StoreTestData.Now,
+                CancellationToken.None);
+            var paid = await statements.SettleAsync(
+                new CreditCardStatementSettlement(
+                    data.User.PublicId, statementId, account.PublicId, 100m,
+                    new DateOnly(2026, 9, 25), StoreTestData.Now),
+                CancellationToken.None);
+            Assert.Equal(CreditCardStatementSettlementOutcome.Succeeded, paid.Outcome);
+            var transfersCategory = await context.Categories.SingleAsync(item => item.Name == "Transfers");
+            context.ChangeTracker.Clear();
+
+            var updated = await store.UpdateAsync(
+                new TransactionUpdate(
+                    data.User.PublicId,
+                    paid.Settlement!.InboundTransactionId,
+                    transfersCategory.PublicId,
+                    TransactionDirection.Earning,
+                    100m,
+                    new DateOnly(2026, 9, 25),
+                    "Card bill",
+                    null,
+                    [],
+                    StoreTestData.Now),
+                CancellationToken.None);
+
+            Assert.Equal(TransactionUpdateOutcome.Succeeded, updated.Outcome);
+            Assert.Null(updated.Transaction!.StatementId);
+            context.ChangeTracker.Clear();
+            Assert.Null((await context.FinancialTransactions.SingleAsync(item =>
+                item.PublicId == paid.Settlement.InboundTransactionId)).StatementId);
+            Assert.DoesNotContain(
+                await context.CreditCardStatements.ToListAsync(),
+                statement => statement.PurchaseTotal < 0m);
         });
     }
 

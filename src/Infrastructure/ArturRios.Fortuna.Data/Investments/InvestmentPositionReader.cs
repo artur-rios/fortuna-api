@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace ArturRios.Fortuna.Data.Investments;
 
 // Positions of several investments on a day in two queries: the latest live valuation on or
-// before the day plus the live movements dated after that valuation and on or before the day.
+// before the day plus the live movements that follow it (InvestmentPositionCalculator's rule:
+// dated after it, or dated the same day and recorded after it) and are on or before the day.
 internal static class InvestmentPositionReader
 {
     public static async Task<IReadOnlyDictionary<long, decimal>> CalculateAsync(
@@ -30,13 +31,17 @@ internal static class InvestmentPositionReader
                 {
                     valuation.InvestmentId,
                     valuation.ValuedOn,
+                    valuation.UpdatedAt,
                     valuation.Value
                 })
                 .ToListAsync(cancellationToken))
             .GroupBy(valuation => valuation.InvestmentId)
             .ToDictionary(
                 group => group.Key,
-                group => group.MaxBy(valuation => valuation.ValuedOn)!);
+                group => group
+                    .OrderByDescending(valuation => valuation.ValuedOn)
+                    .ThenByDescending(valuation => valuation.UpdatedAt)
+                    .First());
         var movements = await context.InvestmentMovements
             .AsNoTracking()
             .Where(movement =>
@@ -47,6 +52,7 @@ internal static class InvestmentPositionReader
             {
                 movement.InvestmentId,
                 movement.OccurredOn,
+                movement.CreatedAt,
                 Amount = movement.MovementType == InvestmentMovementType.Contribution ||
                     movement.MovementType == InvestmentMovementType.Yield
                         ? movement.Amount
@@ -59,10 +65,13 @@ internal static class InvestmentPositionReader
             id =>
             {
                 var latest = latestValuations.GetValueOrDefault(id);
-                var after = latest?.ValuedOn ?? DateOnly.MinValue;
 
                 return (latest?.Value ?? 0m) + movements
-                    .Where(movement => movement.InvestmentId == id && movement.OccurredOn > after)
+                    .Where(movement => movement.InvestmentId == id &&
+                        (latest is null ||
+                         movement.OccurredOn > latest.ValuedOn ||
+                         (movement.OccurredOn == latest.ValuedOn &&
+                          movement.CreatedAt > latest.UpdatedAt)))
                     .Sum(movement => movement.Amount);
             });
     }

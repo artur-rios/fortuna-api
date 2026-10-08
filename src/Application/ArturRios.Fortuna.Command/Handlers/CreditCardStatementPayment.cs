@@ -32,6 +32,8 @@ internal static class CreditCardStatementPayment
             CreditCardStatementMessages.StatementAlreadySettled,
         CreditCardStatementSettlementOutcome.ExchangeRateUnavailable =>
             CreditCardStatementMessages.ExchangeRateUnavailable,
+        CreditCardStatementSettlementOutcome.ConvertedAmountTooSmall =>
+            CreditCardStatementMessages.ConvertedAmountTooSmall,
         _ => throw new InvalidOperationException("Unknown statement settlement outcome.")
     };
 }

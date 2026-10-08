@@ -10,7 +10,8 @@ namespace ArturRios.Fortuna.WebApi.Controllers;
 ///     Base for Fortuna's API controllers: dispatches commands and queries through the request's
 ///     mediators and turns their envelopes into responses with the controller's status map, which
 ///     is built over <see cref="FortunaStatusMap.Shared" />. An action with its own map passes it
-///     explicitly.
+///     explicitly. Queries are read-only and stop when the client disconnects; commands run to
+///     completion so a disconnect never leaves a change half applied.
 /// </summary>
 public abstract class FortunaController : Controller
 {
@@ -35,13 +36,17 @@ public abstract class FortunaController : Controller
         IReadOnlyDictionary<string, int>? statusMap = null)
         where TQuery : BaseQuery
         where TOutput : QueryOutput =>
-        Respond(await Queries.ExecuteQueryAsync<TQuery, TOutput>(query), statusMap);
+        Respond(
+            await Queries.ExecuteQueryAsync<TQuery, TOutput>(query, HttpContext.RequestAborted),
+            statusMap);
 
     protected async Task<ActionResult<PaginatedOutput<TOutput>>> QueryPageAsync<TQuery, TOutput>(
         TQuery query)
         where TQuery : BaseQuery
         where TOutput : QueryOutput =>
-        Respond(await Queries.ExecutePaginatedQueryAsync<TQuery, TOutput>(query));
+        Respond(await Queries.ExecutePaginatedQueryAsync<TQuery, TOutput>(
+            query,
+            HttpContext.RequestAborted));
 
     /// <summary>Resolves an envelope with <paramref name="statusMap" />, or the controller's map.</summary>
     protected ActionResult<DataOutput<T?>> Respond<T>(
