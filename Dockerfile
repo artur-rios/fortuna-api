@@ -3,7 +3,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317 AS build
 WORKDIR /source
 
-# Every step that restores or builds mounts the same NuGet cache, so packages survive layer
+# Every step that restores or builds mounts the same NuGet cache, so locally packages survive layer
 # invalidation (any source change) and later steps find what the restore step downloaded.
 COPY .config/dotnet-tools.json .config/
 COPY Directory.Build.props Directory.Packages.props ./
@@ -19,9 +19,12 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet restore src/Presentation/ArturRios.Fortuna.WebApi/ArturRios.Fortuna.WebApi.csproj
 
 COPY src/ src/
+# Publish restores again rather than passing --no-restore: CI keeps the restore layer in its layer
+# cache but not the cache mount, so a source-only change would otherwise publish against an empty
+# package folder. When the mount already holds the packages, this restore is a no-op.
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet publish src/Presentation/ArturRios.Fortuna.WebApi/ArturRios.Fortuna.WebApi.csproj \
-    --configuration Release --no-restore --output /app
+    --configuration Release --output /app
 RUN find /app -name '.env*' -delete
 # The placeholder connection string only satisfies the design-time factory while bundling; the
 # bundle reads the real one from FORTUNA_DATA_CONNECTIONSTRING when it runs (docker/entrypoint.sh).
