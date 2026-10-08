@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Jobs;
+using ArturRios.Util.Test.Attributes;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -9,7 +10,7 @@ namespace ArturRios.Fortuna.Data.Tests;
 
 public sealed class SqlitePersistenceTests
 {
-    [Fact]
+    [FunctionalFact]
     public async Task GivenSqliteConfiguration_WhenMigrated_ThenDatabaseIsReadyWithoutCodeChanges()
     {
         var path = TemporaryDatabasePath();
@@ -31,7 +32,7 @@ public sealed class SqlitePersistenceTests
         }
     }
 
-    [Fact]
+    [FunctionalFact]
     public async Task GivenExactMoneyValues_WhenStoredAndAggregated_ThenNoPrecisionIsLost()
     {
         var path = TemporaryDatabasePath();
@@ -67,7 +68,7 @@ public sealed class SqlitePersistenceTests
         }
     }
 
-    [Fact]
+    [FunctionalFact]
     public void GivenSqliteModel_WhenMonetaryPropertiesAreInspected_ThenNoneUseFloatingPoint()
     {
         var path = TemporaryDatabasePath();
@@ -90,7 +91,7 @@ public sealed class SqlitePersistenceTests
         }
     }
 
-    [Fact]
+    [FunctionalFact]
     public async Task GivenTimestampedRows_WhenOrdered_ThenSqliteMatchesApplicationSemantics()
     {
         var path = TemporaryDatabasePath();
