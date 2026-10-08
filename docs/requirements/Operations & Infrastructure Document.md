@@ -154,7 +154,7 @@ fortuna-api/
 | IR-14 | The API shall serve a Swagger/OpenAPI document, and the committed document shall be verified against the code in continuous integration |
 | IR-15 | A migration helper script shall be provided under `scripts/`, and shall never print a connection string containing a password |
 | IR-16 | Test projects shall mirror the `src/` layer folders one-for-one, and the functional harness shall apply migrations to a real PostgreSQL container and assert the resulting schema |
-| IR-17 | Continuous integration shall, on every pull request and every commit to `main`, restore, scan for vulnerable dependencies, build, run the unit suite, run the functional suite, enforce the coverage floor, and build the container image |
+| IR-17 | Continuous integration shall, on every pull request into and every commit to `develop` and `main`, restore, scan for vulnerable dependencies, build, run the unit suite, run the functional suite, enforce the coverage floor, and build the container image |
 | IR-18 | A single `docker-compose.yml` shall bring the instance up on Docker Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in the environment file supplied |
 | IR-19 | The container shall declare a health check against the liveness endpoint |
 | IR-20 | The instance shall run without a Heimdall connection on the request path, and a desktop installation shall run with no network at all |
@@ -162,7 +162,7 @@ fortuna-api/
 | IR-22 | Native initialization shall take an explicit database path and configuration, create and migrate the native SQLite schema on demand, and native shutdown shall invalidate all process-local sessions |
 | IR-23 | A native operation called before initialization shall return the distinct HTTP-compatible status `503` and a JSON failure envelope rather than crash |
 | IR-24 | Every native function that returns JSON shall allocate it in the native library, document ownership in the header, and accept release through `fortuna_string_free` on success and failure alike |
-| IR-25 | Native CI shall build and test the library on Windows and Linux, reject generated-header drift, and publish both platform artifacts on every pull request and commit to `main` |
+| IR-25 | Native CI shall build and test the library on Windows and Linux, reject generated-header drift, and publish both platform artifacts on every pull request into and every commit to `develop` and `main` that changes the native core or the OpenAPI document it is generated from |
 | IR-26 | The native core shall own a namespaced SQLite schema independent from EF migrations; monetary values in it shall use SQLite `TEXT` and arbitrary-precision JSON serialization |
 | IR-27 | The hosted API shall expose Prometheus metrics only on a dedicated private listener, selected by the connection's local port and never by a request header, outside authentication and the OpenAPI document |
 
@@ -442,15 +442,26 @@ docker compose --env-file docker/development.env up -d --build
 docker compose --env-file docker/production.env up -d --build
 ```
 
-**Continuous integration** (IR-17). Three workflows, all on every pull request and every commit to
-`main`, with no path filters — a filter would let a change to an unlisted path merge without evidence
-that anything still passes:
+The hosted homologation and production instances are deployed by
+[yggdrasil](https://github.com/artur-rios/yggdrasil)'s Jenkins pipeline (`Jenkinsfile`), which runs
+this same `docker-compose.yml` when a `release/x.y.z` branch is pushed and when its pull request into
+`main` passes every check; the release process is described in
+[CONTRIBUTING.md](../../CONTRIBUTING.md#releasing).
+
+**Continuous integration** (IR-17). The workflows run on every pull request into `develop` and
+`main` and on every commit to either branch. Those that report a required check run with no path
+filters — a filter would let a change to an unlisted path merge without evidence that anything still
+passes, and a required check whose workflow is skipped never reports, which blocks the pull request.
+Only `native-core.yml`, which reports no required check, runs only when the native core or the
+OpenAPI document it is generated from changes:
 
 | Workflow | Stages |
 | --- | --- |
-| `tests.yml` | Restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor → upload the report and the test results → build the container image in a separate job |
+| `tests.yml` | Test the helper scripts → check for a blank line above every `return`, `break` and `yield` → restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor → upload the report and the test results → build the container image in a separate job |
 | `check-openapi.yml` | Regenerate the OpenAPI document from the code and fail if the committed one differs (IR-14) |
-| `native-core.yml` | Audit Cargo dependencies → format-check, lint and test the Rust boundary on Windows and Linux → build each release dynamic library → reject generated-header drift → upload the library and header as platform artifacts (IR-21 … IR-25) |
+| `native-core.yml` | Test on the declared minimum Rust version → format-check, lint and test the Rust boundary on Windows and Linux → build each release dynamic library → reject generated-header drift → upload the library and header as platform artifacts (IR-21 … IR-25) |
+| `audit.yml` | Check the native core's Cargo dependencies against the RustSec advisory database — on every pull request, so a newly published advisory fails it without any change here |
+| `branch-policy.yml` | Enforce the branching model on pull requests into `develop` and `main`, described in [CONTRIBUTING.md](../../CONTRIBUTING.md#branching-model) |
 
 The unit suite runs before the functional one on purpose: it costs seconds, so a broken handler is
 reported before the runner spends minutes pulling and starting a database container. The vulnerability
