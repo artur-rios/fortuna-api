@@ -28,6 +28,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Dependencies upgraded to their latest stable releases, among them the `ArturRios.*` packages (Util.WebApi 5.1.0,
   Mediator 2.0.0, Util 2.1.0, Data.Relational.Core 5.0.0), Microsoft 10.0.12, OpenTelemetry 1.19 and
   Swashbuckle 10.3.0, the Docker base images, and the native core's `zip`, `base64` and `uuid` crates.
+- The deployment targets four environments: `local` on Docker Desktop, and `development`, `homologation` and
+  `production` on one Linux VPS, deployed by yggdrasil (development and homologation on demand). Docker in WSL is no
+  longer a target. `docker/homologation.env.example` is new, and the templates now carry each environment's public
+  host names (`PUBLIC_HOST`, `UI_HOST`), its own database (`fortuna_local`, `fortuna_development`,
+  `fortuna_homologation`, `fortuna`) on that machine's PostgreSQL at `host.docker.internal`, its own Heimdall
+  (`https://heimdall-api-dev.example.com/`, `-hml`, `https://heimdall-api.example.com/`) and, on the VPS, the Docker
+  networks as trusted proxies. Locally the API is published on port `8083`, beside heimdall-api's `8080`.
 
 ### Fixed
 

@@ -141,7 +141,7 @@ when the controller lists that proxy as trusted; otherwise it is the proxy's own
 | --- | --- | --- |
 | **Account Owner** | The end user, and the primary actor of nearly every use case | That the picture is complete and correct, that imports need no cleanup, that the interface responds instantly, and that their data stays theirs. |
 | **Instance Administrator** | Operator of a shared deployment | That the instance stays up, that users are isolated from one another, that integrations keep working, and that operating the system does not require reading anybody's records. |
-| **Self-hosting owner** | Runs a single-user instance on their own machine or VPS | That deployment is one command, that it works identically on Docker Desktop, WSL and a Linux VPS, and that upgrades do not risk the data. |
+| **Self-hosting owner** | Runs a single-user instance on their own machine or VPS | That deployment is one command, that it works identically on Docker Desktop and a Linux VPS, and that upgrades do not risk the data. |
 | **Fortuna client applications** | The Flutter desktop, web and mobile app | A single, stable, documented API surface that behaves identically for every target, and read models shaped for the views it renders. |
 | **Heimdall API** | The identity provider | That Fortuna consumes tokens as issued and never attempts to own identity. |
 | **Pluggy** | The open-banking aggregator | That Fortuna respects its API contract and rate limits, and holds only the references it is meant to hold. |
@@ -319,7 +319,8 @@ what is in it. It is a rule the API enforces, not a convention.
 - **Ingestion and storage are extension points.** A new data source or a new attachment backing is
   added by implementing a contract, without modifying what already exists.
 - **One deployment shape.** The same `docker compose` invocation must work on Docker Desktop for
-  Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in configuration.
+  Windows (local) and on a Linux VPS (development, homologation and production), differing only in
+  configuration.
 
 ---
 
@@ -341,7 +342,7 @@ what is in it. It is a rule the API enforces, not a convention.
   or the difference between two response codes.
 - **A new ingestion source is additive.** Adding one requires no change to any existing source or
   to any consumer of imported data.
-- **Deployment is one command**, working unchanged on all three target environments.
+- **Deployment is one command**, working unchanged in all four environments.
 - **The suite proves it.** Every use case ships with unit and functional tests per the
   [Testing Specification Document](Testing%20Specification%20Document.md), and the suite is green
   before anything merges.
