@@ -115,9 +115,9 @@ start is logged with the caller's IP address (through `ArturRios.Util.WebApi`'s
 
 - **Docker Compose**, one `docker-compose.yml` for every environment, with the differences carried
   by per-environment `.env` files rather than by separate compose files.
-- It must run unchanged on **Docker Desktop for Windows**, on **Docker in WSL Ubuntu**, and on a
-  **Linux VPS** — which is why the compose file declares `host.docker.internal:host-gateway` and
-  assembles its connection string from parts.
+- It must run unchanged on **Docker Desktop for Windows** (the local environment) and on a **Linux
+  VPS** (development, homologation and production) — which is why the compose file declares
+  `host.docker.internal:host-gateway` and assembles its connection string from parts.
 - PostgreSQL is **not** a service in the compose file: each environment already runs an instance,
   shared between services, each service owning its own database.
 - Configuration is resolved entirely from environment variables, prefixed `FORTUNA_`.

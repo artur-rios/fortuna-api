@@ -121,4 +121,4 @@ Authentication has two distinct paths, and the split matters to nearly every use
 - **Imports need no cleanup.** A statement or spreadsheet brought in lands in the right accounts,
   with duplicates detected against what is already there, without the user correcting it row by row.
 - **It runs the same everywhere.** One `docker compose` invocation brings the instance up on Docker
-  Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS — differing only in configuration.
+  Desktop for Windows and on a Linux VPS — differing only in configuration.

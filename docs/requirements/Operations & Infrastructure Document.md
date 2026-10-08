@@ -28,7 +28,7 @@ Specification Document rather than restarting.
 - **Configuration** — how every setting reaches the process, and which of them are secrets.
 - **Logging and monitoring** — what is recorded, and what is deliberately never recorded.
 - **Health endpoints** — liveness and a detailed dependency check.
-- **Environments** — the three this project must run on, and what differs between them.
+- **Environments** — the four this project runs in, and what differs between them.
 - **Build and delivery** — the container image, the compose deployment, and continuous integration.
 
 ---
@@ -109,7 +109,7 @@ to write a row.
 ```
 fortuna-api/
 ├── .github/workflows/            tests.yml, check-openapi.yml, native-core.yml
-├── docker/                       local.env.example, development.env.example, production.env.example
+├── docker/                       local, development, homologation and production .env.example
 ├── docs/
 │   ├── initial/                  Brainstorm, Project Overview, Technology Stack, Workflow, Business Rules
 │   └── requirements/             this document and the six beside it
@@ -155,7 +155,7 @@ fortuna-api/
 | IR-15 | A migration helper script shall be provided under `scripts/`, and shall never print a connection string containing a password |
 | IR-16 | Test projects shall mirror the `src/` layer folders one-for-one, and the functional harness shall apply migrations to a real PostgreSQL container and assert the resulting schema |
 | IR-17 | Continuous integration shall, on every pull request into and every commit to `develop` and `main`, restore, scan for vulnerable dependencies, build, run the unit suite, run the functional suite, enforce the coverage floor, and build the container image |
-| IR-18 | A single `docker-compose.yml` shall bring the instance up on Docker Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in the environment file supplied |
+| IR-18 | A single `docker-compose.yml` shall bring the instance up on Docker Desktop for Windows and on a Linux VPS — in every environment of [section 6](#6-environments) — differing only in the environment file supplied |
 | IR-19 | The container shall declare a health check against the liveness endpoint |
 | IR-20 | The instance shall run without a Heimdall connection on the request path, and a desktop installation shall run with no network at all |
 | IR-21 | The in-process desktop core shall publish `fortuna_core.dll` for Windows x64 and `libfortuna_core.so` for Linux x64 together with its generated C header |
@@ -176,7 +176,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 
 | Concern | Keys | Notes |
 | --- | --- | --- |
-| Runtime | `ASPNETCORE_ENVIRONMENT` | `Development` locally and in the WSL environment; `Production` on the server. Governs Swagger, the developer exception page and EF diagnostics. |
+| Runtime | `ASPNETCORE_ENVIRONMENT` | `Development` in the local and development environments; `Production` in homologation and production. Governs Swagger, the developer exception page and EF diagnostics. |
 | Database | `FORTUNA_DATA_CONNECTIONSTRING`, `FORTUNA_DATA_DATABASETYPE` | `PostgreSql` plus a server connection string for shared deployments; `SQLite` plus either `Data Source=/path/fortuna.db` or the file path alone for desktop offline mode. PostgreSQL credentials are **secret**. |
 | Migrations | `FORTUNA_RUN_MIGRATIONS` | Whether the entrypoint applies pending migrations before starting. `false` when they are applied out of band. |
 | Token validation | `FORTUNA_AUTH_TOKEN_SECRET`, `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS`, `FORTUNA_AUTH_TOKEN_ISSUER`, `FORTUNA_AUTH_TOKEN_AUDIENCE` | The signing configuration Heimdall issues with and Fortuna validates against. The `PREVIOUS` key is set during a rotation so tokens signed with the retired key keep working. **Secret.** |
@@ -400,20 +400,33 @@ scrape_configs:
 
 ## 6. Environments
 
-One topology, three deployments. What differs is configuration, not shape — which is why there is one
-compose file and one environment file per environment rather than three compose files.
+One topology, four deployments. What differs is configuration, not shape — which is why there is one
+compose file and one environment file per environment (`docker/<environment>.env.example`) rather
+than four compose files. Local runs on the developer's machine; the other three share one Linux VPS,
+deployed by [yggdrasil](https://github.com/artur-rios/yggdrasil), each as its own Compose project
+(`fortuna-api-<environment>`) with its own volumes, database and secrets. `example.com` stands for the
+real domain.
 
-| Environment | Purpose | Differences |
-| --- | --- | --- |
-| **Local** | Development on Docker Desktop for Windows | Runs as `Development`: Swagger served, developer exception page on, EF logs parameter values. Reaches the host's PostgreSQL through `host.docker.internal`, which Docker Desktop defines. Attachment storage is the filesystem. External services usually unconfigured, so their sources list as unavailable. |
-| **Development** | Integration on Docker in WSL Ubuntu | Also runs as `Development`. `host.docker.internal` is **not** defined by the plain Docker engine, so the compose file maps it to the bridge gateway — which is what lets one `DB_HOST` value work on all three. |
-| **Production** | The Linux VPS | Runs as `Production`: Swagger off, developer page off, EF diagnostics off. Attachment storage is the S3-compatible store. Published to `127.0.0.1` only, behind a reverse proxy. Every secret supplied by the environment file, none defaulted. |
+| Environment | Where | Deployed by | Public host | Database | Differences |
+| --- | --- | --- | --- | --- | --- |
+| **Local** | The developer's Windows machine, Docker Desktop | By hand (`docker compose --env-file docker/local.env up -d --build`), or yggdrasil's `scripts/deploy.sh local fortuna-api …` | `http://localhost:8083` | `fortuna_local`, on the PostgreSQL installed on Windows | Runs as `Development`: Swagger served, developer exception page on, EF logs parameter values. Reaches the host's PostgreSQL through `host.docker.internal`, which Docker Desktop defines. Attachment storage is the filesystem. Signs in with the local account (`FORTUNA_LOCAL_AUTH_ENABLED`), since the local Heimdall is plain HTTP; external services unconfigured, so their sources list as unavailable. |
+| **Development** | The VPS, on demand (started only when used) | Jenkins, on every push to `develop`; a stopped development stays stopped, and `scripts/ygg.sh env start development` on the VPS turns it on | `fortuna-api-dev.example.com` | `fortuna_development`, on the VPS's PostgreSQL | Also runs as `Development`. `host.docker.internal` is **not** defined by the plain Docker engine, so the compose file maps it to the bridge gateway — which is what lets one `DB_HOST` value work on both machines. Validates tokens from development's Heimdall (`heimdall-api-dev.example.com`). |
+| **Homologation** | The VPS, on demand | Jenkins, on every push of a `release/x.y.z` branch | `fortuna-api-hml.example.com` | `fortuna_homologation` | Configured like production, with its own secrets, bucket and Heimdall (`heimdall-api-hml.example.com`). Runs as `Production`, because any other ASP.NET environment serves the OpenAPI UI and detailed errors. |
+| **Production** | The VPS, always on | Jenkins, on a green `release/x.y.z → main` pull request, which it then merges and tags | `fortuna-api.example.com` | `fortuna` | Runs as `Production`: Swagger off, developer page off, EF diagnostics off. Attachment storage is the S3-compatible store. Every secret supplied by the environment file, none defaulted. |
 
-PostgreSQL is **not** a service in the compose file. Each environment already runs an instance shared
-between services, each service owning its own database and schema — which is why `Search Path` is
-pinned (IR-05).
+On the VPS, Traefik routes each environment's public host to its container over the shared `edge`
+network, and also serves the API under its web UI's host at `/api/` (`fortuna-dev.example.com/api/`,
+`fortuna-hml.example.com/api/`, `fortuna.example.com/api/`), so the browser client reaches it on its
+own origin. No host port is published there, and the Docker networks (`172.16.0.0/12`) are the
+trusted proxies ([4.1](#41-client-ip-addresses)). `FORTUNA_HEIMDALL_BASE_URL` must be HTTPS, so each
+environment reaches its Heimdall through that Heimdall's public host, and `FORTUNA_AUTH_TOKEN_SECRET`
+equals that environment's Heimdall signing secret.
 
-A **desktop installation** is a fourth shape rather than a fourth environment. Its preferred package
+PostgreSQL is **not** a service in the compose file. Each machine already runs an instance shared
+between services and environments, each service and environment owning its own database — which is
+why `Search Path` is pinned (IR-05).
+
+A **desktop installation** is another shape rather than another environment. Its preferred package
 places the generated `fortuna_core.h` contract and `fortuna_core.dll` (Windows) or
 `libfortuna_core.so` (Linux) beside the client. The client calls initialization with a writable
 SQLite path, calls operations from a worker isolate, frees every returned string and shuts the core
@@ -434,19 +447,18 @@ implementations and are not interchangeable files.
 file and no secret. The entrypoint applies pending migrations when `FORTUNA_RUN_MIGRATIONS` is set,
 then starts the API.
 
-**Deployment.** One command per environment:
+**Deployment.** Locally, one command:
 
 ```bash
 docker compose --env-file docker/local.env up -d --build
-docker compose --env-file docker/development.env up -d --build
-docker compose --env-file docker/production.env up -d --build
 ```
 
-The hosted homologation and production instances are deployed by
+The development, homologation and production instances on the VPS are deployed by
 [yggdrasil](https://github.com/artur-rios/yggdrasil)'s Jenkins pipeline (`Jenkinsfile`), which runs
-this same `docker-compose.yml` when a `release/x.y.z` branch is pushed and when its pull request into
-`main` passes every check; the release process is described in
-[CONTRIBUTING.md](../../CONTRIBUTING.md#releasing).
+this same `docker-compose.yml`, with `/etc/yggdrasil/<environment>/fortuna-api.env` as the
+environment file, when `develop` is pushed (development), when a `release/x.y.z` branch is pushed
+(homologation) and when its pull request into `main` passes every check (production); the release
+process is described in [CONTRIBUTING.md](../../CONTRIBUTING.md#releasing).
 
 **Continuous integration** (IR-17). The workflows run on every pull request into `develop` and
 `main` and on every commit to either branch. Those that report a required check run with no path

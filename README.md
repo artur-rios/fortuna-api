@@ -81,12 +81,35 @@ cp docker/local.env.example docker/local.env
 
 ## Running
 
-One compose file serves all three target environments — Docker Desktop on Windows, Docker in WSL
-Ubuntu, and a Linux VPS — differing only in the environment file supplied:
+One compose file serves all four environments, differing only in the environment file supplied
+(`docker/<environment>.env.example`). `example.com` stands for the real domain:
+
+| Environment | Where | Deployed by | `ASPNETCORE_ENVIRONMENT` | Address | Database |
+|---|---|---|---|---|---|
+| `local` | The developer's Windows machine, Docker Desktop | By hand, with the command below, or with yggdrasil's `scripts/deploy.sh local fortuna-api …` | `Development` | `http://localhost:8083` | `fortuna_local`, on the PostgreSQL installed on Windows |
+| `development` | The VPS, on demand (started only when used) | Jenkins, on every push to `develop` | `Development` | `https://fortuna-api-dev.example.com` | `fortuna_development`, on the VPS's PostgreSQL |
+| `homologation` | The VPS, on demand | Jenkins, on every push of a `release/x.y.z` branch | `Production` | `https://fortuna-api-hml.example.com` | `fortuna_homologation` |
+| `production` | The VPS, always on | Jenkins, on a green `release/x.y.z → main` pull request | `Production` | `https://fortuna-api.example.com` | `fortuna` |
+
+Locally:
 
 ```bash
 docker compose --env-file docker/local.env up -d --build
 ```
+
+Local signs in with Fortuna's own local account (`FORTUNA_LOCAL_AUTH_ENABLED=true`): the local
+heimdall-api (`http://localhost:8080`) is plain HTTP, which `FORTUNA_HEIMDALL_BASE_URL` does not
+accept. The API has no CORS support, so a browser build of the web UI on another local port cannot
+call it; the UI's README describes how to work with it locally.
+
+The three VPS environments are deployed by [yggdrasil](https://github.com/artur-rios/yggdrasil),
+from a copy of the matching template at `/etc/yggdrasil/<environment>/fortuna-api.env` on the VPS:
+Traefik serves the API on its own host and under the web UI's host at `/api/`, so the browser
+reaches it on the UI's own origin. Homologation runs as `Production` because the API treats every
+other ASP.NET environment as a debugging one (Swagger UI, detailed errors). Each of them has its
+own secrets, its own Heimdall (`FORTUNA_HEIMDALL_BASE_URL`, which must be HTTPS) and a
+`FORTUNA_AUTH_TOKEN_SECRET` equal to that Heimdall's signing secret. The release process, and how to
+turn development or homologation on, are in [CONTRIBUTING.md](./CONTRIBUTING.md#releasing).
 
 The API's liveness is observable at the public `GET /healthcheck` endpoint. Instance administrators
 can inspect dependency health at `GET /healthcheck/detailed`.

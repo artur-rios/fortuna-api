@@ -964,7 +964,7 @@ receiving deployment detail that it cannot act on.
 | NFR-23 | Resilience | Calls to an external service shall respect that service's published rate limits and shall back off rather than retry immediately |
 | NFR-24 | Extensibility | Adding an ingestion source or an attachment storage backing shall require implementing one contract and registering it, with no modification to existing implementations or their callers |
 | NFR-25 | Maintainability | Merged line coverage shall not fall below **90%**, enforced in continuous integration and reproducibly on a developer machine |
-| NFR-26 | Portability | One `docker compose` invocation shall bring the instance up on Docker Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in the environment file supplied |
+| NFR-26 | Portability | One `docker compose` invocation shall bring the instance up on Docker Desktop for Windows (the local environment) and on a Linux VPS (development, homologation and production), differing only in the environment file supplied |
 | NFR-27 | Privacy | An export, an error message and a log line shall each contain only data the requesting user owns |
 | NFR-28 | Portability | Shared deployments shall use the managed PostgreSQL persistence implementation and desktop offline deployments shall use the native SQLite persistence implementation. Both shall implement the same documented business model and preserve exact monetary results; an operation the native core does not implement shall answer `501` rather than a result that differs from the HTTP API's |
 | NFR-29 | Portability | Desktop offline mode shall be available as an in-process C ABI dynamic library on Windows x64 and Linux x64, without starting a process or opening a listening socket |
