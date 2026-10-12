@@ -1,3 +1,14 @@
+# One compose file for the four environments, differing only in the env file supplied
+# (docker/<environment>.env.example):
+#
+#   local         the developer's Windows machine, Docker Desktop, by hand:
+#                 docker compose --env-file docker/local.env up -d --build
+#   development   the VPS, on demand   } deployed by yggdrasil, which adds its Traefik overlay (no host
+#   homologation  the VPS, on demand   } port), names the project fortuna-api-<environment> and reads
+#   production    the VPS, always on   } /etc/yggdrasil/<environment>/fortuna-api.env
+#
+# PostgreSQL is not a service here: each machine runs its own, reached at host.docker.internal.
+
 services:
   api:
     build:
@@ -5,6 +16,7 @@ services:
       dockerfile: Dockerfile
     image: ${API_IMAGE:-fortuna-api}:${API_IMAGE_TAG:-latest}
     restart: unless-stopped
+    # Docker Desktop defines host.docker.internal; the Docker engine on Linux needs it mapped.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Every FORTUNA_* setting the API reads (FortunaOptions) is forwarded. A setting left empty
@@ -65,8 +77,9 @@ services:
     volumes:
       - logs:/app/logs
       - attachments:/app/attachments
-    # Only the API port is published. Prometheus reaches the metrics port (FORTUNA_METRICS_PORT,
-    # 9464 by default) over a private Docker network, so it is intentionally never mapped to the host.
+    # Only the API port is published, and yggdrasil's Traefik overlay removes even that. Prometheus
+    # reaches the metrics port (FORTUNA_METRICS_PORT, 9464 by default) over a private Docker network,
+    # so it is intentionally never mapped to the host.
     ports:
       - "${API_PORT:-8080}:8080"
     healthcheck:

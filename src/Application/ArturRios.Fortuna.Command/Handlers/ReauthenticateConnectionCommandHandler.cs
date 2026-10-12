@@ -21,7 +21,8 @@ public sealed class ReauthenticateConnectionCommandHandler(
         ReauthenticateConnectionCommandOutput>
 {
     public async Task<DataOutput<ReauthenticateConnectionCommandOutput?>> HandleAsync(
-        ReauthenticateConnectionCommand command)
+        ReauthenticateConnectionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -30,7 +31,7 @@ public sealed class ReauthenticateConnectionCommandHandler(
         }
 
         var existing = await connectionReader.FindByIdAsync(
-            profile.Id, command.Id, CancellationToken.None);
+            profile.Id, command.Id, cancellationToken);
         if (existing is null)
         {
             return Output().WithError(ConnectionMessages.NotFound);
@@ -52,7 +53,7 @@ public sealed class ReauthenticateConnectionCommandHandler(
         }
 
         var externalReference = itemId.ToString();
-        var verified = await pluggy.ValidateAsync(externalReference, CancellationToken.None);
+        var verified = await pluggy.ValidateAsync(externalReference, cancellationToken);
         if (verified.Outcome != PluggyConnectionValidationOutcome.Succeeded)
         {
             return PluggyFailure(verified.Outcome);
@@ -65,7 +66,7 @@ public sealed class ReauthenticateConnectionCommandHandler(
                 externalReference,
                 protector.Protect(verified.AccessToken!),
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         return Resolve(result, verified.Institution!);
     }

@@ -13,7 +13,9 @@ public sealed class GetTransferByIdQueryHandler(
     ITransferReader transfers)
     : IQueryHandlerAsync<GetTransferByIdQuery, TransferOutput>
 {
-    public async Task<DataOutput<TransferOutput?>> HandleAsync(GetTransferByIdQuery query)
+    public async Task<DataOutput<TransferOutput?>> HandleAsync(
+        GetTransferByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<TransferOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -26,7 +28,7 @@ public sealed class GetTransferByIdQueryHandler(
             profile.Id,
             query.Id,
             query.IncludeDeleted,
-            CancellationToken.None);
+            cancellationToken);
         if (transfer is null)
         {
             return output.WithError(TransferMessages.NotFound);

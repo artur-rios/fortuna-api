@@ -32,7 +32,9 @@ public sealed class AttachmentsController : FortunaController
     {
         var result = await Queries.ExecuteQueryAsync<
             DownloadAttachmentQuery,
-            DownloadAttachmentQueryOutput>(new DownloadAttachmentQuery { Id = id });
+            DownloadAttachmentQueryOutput>(
+            new DownloadAttachmentQuery { Id = id },
+            HttpContext.RequestAborted);
         if (!result.Success || result.Data is null)
         {
             var response = Respond(result);

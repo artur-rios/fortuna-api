@@ -645,15 +645,18 @@ public sealed class EfPersonalDataArchiveBuilder(
     private static string JsonName(string value) =>
         JsonNamingPolicy.CamelCase.ConvertName(value);
 
-    private static string SafeFileName(string value)
+    // The archive is extracted on any platform, so a backslash is a directory separator too:
+    // on Linux Path.GetFileName keeps "..\..\evil.bat" whole, and a Windows extractor would
+    // write it outside the archive's folder. "." and ".." are never a file name.
+    internal static string SafeFileName(string value)
     {
-        var name = Path.GetFileName(value);
+        var name = Path.GetFileName(value.Replace('\\', '/'));
         foreach (var character in Path.GetInvalidFileNameChars())
         {
             name = name.Replace(character, '_');
         }
 
-        return string.IsNullOrWhiteSpace(name) ? "attachment" : name;
+        return string.IsNullOrWhiteSpace(name) || name is "." or ".." ? "attachment" : name;
     }
 
     private sealed record LoadedPart(

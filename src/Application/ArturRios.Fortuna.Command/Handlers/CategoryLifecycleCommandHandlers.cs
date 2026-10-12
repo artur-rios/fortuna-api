@@ -15,7 +15,8 @@ public sealed class DeleteCategoryCommandHandler(
     : ICommandHandlerAsync<DeleteCategoryCommand, CategoryLifecycleCommandOutput>
 {
     public async Task<DataOutput<CategoryLifecycleCommandOutput?>> HandleAsync(
-        DeleteCategoryCommand command)
+        DeleteCategoryCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -27,7 +28,7 @@ public sealed class DeleteCategoryCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return CategoryLifecycleHandler.Resolve(result, CategoryMessages.DeletedSuccessfully);
     }
@@ -40,7 +41,8 @@ public sealed class RestoreCategoryCommandHandler(
     : ICommandHandlerAsync<RestoreCategoryCommand, CategoryLifecycleCommandOutput>
 {
     public async Task<DataOutput<CategoryLifecycleCommandOutput?>> HandleAsync(
-        RestoreCategoryCommand command)
+        RestoreCategoryCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -52,7 +54,7 @@ public sealed class RestoreCategoryCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return CategoryLifecycleHandler.Resolve(result, CategoryMessages.RestoredSuccessfully);
     }
@@ -64,7 +66,8 @@ public sealed class HardDeleteCategoryCommandHandler(
     : ICommandHandlerAsync<HardDeleteCategoryCommand, CategoryLifecycleCommandOutput>
 {
     public async Task<DataOutput<CategoryLifecycleCommandOutput?>> HandleAsync(
-        HardDeleteCategoryCommand command)
+        HardDeleteCategoryCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -75,7 +78,7 @@ public sealed class HardDeleteCategoryCommandHandler(
         var result = await categories.HardDeleteAsync(
             profile.Id,
             command.Id,
-            CancellationToken.None);
+            cancellationToken);
 
         return CategoryLifecycleHandler.Resolve(result, CategoryMessages.HardDeletedSuccessfully);
     }

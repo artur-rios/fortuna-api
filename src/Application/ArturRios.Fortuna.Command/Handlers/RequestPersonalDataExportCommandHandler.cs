@@ -19,7 +19,8 @@ public sealed class RequestPersonalDataExportCommandHandler(
     : ICommandHandlerAsync<RequestPersonalDataExportCommand, RequestPersonalDataExportCommandOutput>
 {
     public async Task<DataOutput<RequestPersonalDataExportCommandOutput?>> HandleAsync(
-        RequestPersonalDataExportCommand command)
+        RequestPersonalDataExportCommand command,
+        CancellationToken cancellationToken = default)
     {
         // Any authenticated caller may export the data of the profile they own, whatever their
         // role: an administrator's own profile is personal data too.
@@ -39,8 +40,8 @@ public sealed class RequestPersonalDataExportCommandHandler(
                 command.CorrelationId,
                 now,
                 expiresAt),
-            CancellationToken.None);
-        await queue.EnqueueAsync(queued.BackgroundJobId, CancellationToken.None);
+            cancellationToken);
+        await queue.EnqueueAsync(queued.BackgroundJobId, cancellationToken);
 
         return DataOutput<RequestPersonalDataExportCommandOutput?>.New
             .WithData(new RequestPersonalDataExportCommandOutput

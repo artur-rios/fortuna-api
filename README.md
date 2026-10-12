@@ -6,7 +6,7 @@ views, drillable charts and forward projections. **This repository is the back e
 API that owns the domain, the data and the integrations. The Flutter application that runs on
 Windows, Linux, the browser and mobile is a separate repository and a separate consumer of this API.
 
-> **Status:** foundation complete; use-case implementation is in progress.
+> **Status:** version 1.0.0 is released, and every issue in the backlog below is closed.
 
 ## What it does
 
@@ -46,7 +46,7 @@ the `requirements/` documents for the normative detail.
 | [Project Overview](docs/initial/Project%20Overview.md) | What the project is, who it's for, and how success is measured. |
 | [Technology Stack](docs/initial/Technology%20Stack.md) | The informal stack decisions. |
 | [Workflow](docs/initial/Workflow.md) | How one use case is delivered, step by step. |
-| [Business Rules](docs/initial/Business%20Rules.md) | Domain entities, relationships, and the `BR-01` … `BR-45` rules. |
+| [Business Rules](docs/initial/Business%20Rules.md) | Domain entities, relationships, and the `BR-01` … `BR-46` rules. |
 | [Vision Document](docs/requirements/Vision%20Document.md) | Stakeholders, positioning, and the `F-01` … `F-20` features. |
 | [System Requirements Document](docs/requirements/System%20Requirements%20Document.md) | The `FR-<AREA>-xx` and `NFR-xx` requirements, data model, endpoint surface, authorization matrix and traceability. |
 | [Use Case Specification Document](docs/requirements/Use%20Case%20Specification%20Document.md) | The application use cases, their flows, and their `AF-xx` alternatives. |
@@ -81,12 +81,35 @@ cp docker/local.env.example docker/local.env
 
 ## Running
 
-One compose file serves all three target environments — Docker Desktop on Windows, Docker in WSL
-Ubuntu, and a Linux VPS — differing only in the environment file supplied:
+One compose file serves all four environments, differing only in the environment file supplied
+(`docker/<environment>.env.example`). `example.com` stands for the real domain:
+
+| Environment | Where | Deployed by | `ASPNETCORE_ENVIRONMENT` | Address | Database |
+|---|---|---|---|---|---|
+| `local` | The developer's Windows machine, Docker Desktop | By hand, with the command below, or with yggdrasil's `scripts/deploy.sh local fortuna-api …` | `Development` | `http://localhost:8083` | `fortuna_local`, on the PostgreSQL installed on Windows |
+| `development` | The VPS, on demand (started only when used) | Jenkins, on every push to `develop` | `Development` | `https://fortuna-api-dev.example.com` | `fortuna_development`, on the VPS's PostgreSQL |
+| `homologation` | The VPS, on demand | Jenkins, on every push of a `release/x.y.z` branch | `Production` | `https://fortuna-api-hml.example.com` | `fortuna_homologation` |
+| `production` | The VPS, always on | Jenkins, on a green `release/x.y.z → main` pull request | `Production` | `https://fortuna-api.example.com` | `fortuna` |
+
+Locally:
 
 ```bash
 docker compose --env-file docker/local.env up -d --build
 ```
+
+Local signs in with Fortuna's own local account (`FORTUNA_LOCAL_AUTH_ENABLED=true`): the local
+heimdall-api (`http://localhost:8080`) is plain HTTP, which `FORTUNA_HEIMDALL_BASE_URL` does not
+accept. The API has no CORS support, so a browser build of the web UI on another local port cannot
+call it; the UI's README describes how to work with it locally.
+
+The three VPS environments are deployed by [yggdrasil](https://github.com/artur-rios/yggdrasil),
+from a copy of the matching template at `/etc/yggdrasil/<environment>/fortuna-api.env` on the VPS:
+Traefik serves the API on its own host and under the web UI's host at `/api/`, so the browser
+reaches it on the UI's own origin. Homologation runs as `Production` because the API treats every
+other ASP.NET environment as a debugging one (Swagger UI, detailed errors). Each of them has its
+own secrets, its own Heimdall (`FORTUNA_HEIMDALL_BASE_URL`, which must be HTTPS) and a
+`FORTUNA_AUTH_TOKEN_SECRET` equal to that Heimdall's signing secret. The release process, and how to
+turn development or homologation on, are in [CONTRIBUTING.md](./CONTRIBUTING.md#releasing).
 
 The API's liveness is observable at the public `GET /healthcheck` endpoint. Instance administrators
 can inspect dependency health at `GET /healthcheck/detailed`.
@@ -95,6 +118,14 @@ Prometheus metrics are served at `GET /metrics` only on the private port `9464`
 (`FORTUNA_METRICS_PORT`; `0` disables them), never through the public port `8080`. The compose file
 does not publish that port: Prometheus scrapes the container over a private Docker network — see the
 [Operations & Infrastructure Document](docs/requirements/Operations%20%26%20Infrastructure%20Document.md#55-metrics).
+
+Logs are structured JSON, written to the console and to daily files under
+`FORTUNA_LOG_DIRECTORY/<yyyy>/<MM>/`. **Every API request is logged with its client IP address**,
+which is personal data under the GDPR and the LGPD, and the address is tagged on the request's trace
+as `client.address`. Behind a reverse proxy, list the proxy in `FORTUNA_FORWARDED_KNOWN_NETWORKS` or
+`FORTUNA_FORWARDED_KNOWN_PROXIES` so the logs and the rate limiter see the real caller rather than the
+proxy — see the
+[Operations & Infrastructure Document](docs/requirements/Operations%20%26%20Infrastructure%20Document.md#41-client-ip-addresses).
 
 For desktop offline mode, keep the same application configuration and select the local provider:
 
@@ -109,43 +140,17 @@ the domain model; changing providers requires no application-code change.
 
 The desktop client can instead embed the native core without starting the HTTP host or opening a
 listening socket. It ships `fortuna_core.dll` on Windows or `libfortuna_core.so` on Linux together
-with the generated C header. Its 113 generated offline route exports cover the local operation
-surface, while capability discovery identifies network-dependent routes that remain HTTP-only. The
+with the generated C header. It has 115 generated offline route exports. Capability discovery
+lists the ones the native core implements, the ones it exports but does not implement yet (file
+imports, data-set exports, reports, projections, transfers, installment plans, statements and a few
+computed views, which answer `501`), and the network-dependent routes that remain HTTP-only. The
 native core owns its Rust domain/persistence implementation and SQLite schema; see
 [`native/README.md`](native/README.md) for the ABI, ownership and build contract.
-
-## Testing
-
-The following commands run the complete suite described in the
-[Testing Specification Document](docs/requirements/Testing%20Specification%20Document.md):
-
-```bash
-dotnet test src/ArturRios.Fortuna.sln -m:1
-cargo test --manifest-path native/fortuna-core/Cargo.toml --locked
-```
-
-The suite covers **unit** tests over handlers, validators and domain behavior, and **functional**
-tests over every endpoint end to end against a real PostgreSQL instance provisioned by
-Testcontainers, plus file-backed SQLite migration and exact-decimal persistence tests. Run one
-category at a time:
-
-```bash
-dotnet test src/ArturRios.Fortuna.sln -m:1 --filter "Category=Unit"
-```
-
-Merged line coverage is gated at 90%, enforced in CI and reproducibly on a developer machine. That
-is a floor, not a target — the standard is to test everything that can be tested. Every use case
-ships with its tests before its pull request is opened.
-
-```bash
-dotnet tool restore  # ReportGenerator is pinned in .config/dotnet-tools.json
-python3 scripts/coverage.py
-```
 
 ## Roadmap
 
 Seven milestones, in dependency order. Every milestone after `M-01` depends on it.
-Closed counts are as of creation — the [milestones page](https://github.com/artur-rios/fortuna-api/milestones)
+Closed counts are as of the 1.0.0 release — the [milestones page](https://github.com/artur-rios/fortuna-api/milestones)
 and the [project board](https://github.com/users/artur-rios/projects/12) are the live view. The board's
 `Status` field carries the lifecycle the
 [Development Workflow Document](docs/requirements/Development%20Workflow%20Document.md) defines:
@@ -153,13 +158,13 @@ and the [project board](https://github.com/users/artur-rios/projects/12) are the
 
 | Milestone | Delivers | Depends on | Issues | Status |
 |---|---|---|---|---|
-| [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 3 | 3 / 3 closed |
-| [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, lifecycle, account erasure and the audit trail | M-01 | 15 | 15 / 15 closed |
-| [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 19 | 16 / 19 closed |
-| [M-04 — Money movement](https://github.com/artur-rios/fortuna-api/milestone/4) | Transactions, transfers, installment plans, recurring commitments and reconciliation | M-03 | 11 | 0 / 11 closed |
-| [M-05 — Organization and planning](https://github.com/artur-rios/fortuna-api/milestone/5) | Categories, tags, counterparties, budgets and goals | M-04 | 11 | 0 / 11 closed |
-| [M-06 — Ingestion](https://github.com/artur-rios/fortuna-api/milestone/6) | The source contract, Pluggy connections and synchronization, Excel and Nubank PDF imports, and job monitoring | M-04 | 10 | 0 / 10 closed |
-| [M-07 — Insight and output](https://github.com/artur-rios/fortuna-api/milestone/7) | Attachments, tables, chart aggregations with drill-down, net position, projections, export and the health check | M-05, M-06 | 12 | 0 / 12 closed |
+| [M-01 — Foundation](https://github.com/artur-rios/fortuna-api/milestone/1) | The project scaffold, data layer, job runner and CI every use case is built on | — | 6 | 6 / 6 closed |
+| [M-02 — Access and cross-cutting mechanisms](https://github.com/artur-rios/fortuna-api/milestone/2) | Token validation, profile provisioning, the desktop local account, currencies and exchange rates, lifecycle, account erasure and the audit trail | M-01 | 16 | 16 / 16 closed |
+| [M-03 — Holdings](https://github.com/artur-rios/fortuna-api/milestone/3) | Financial accounts, credit cards with billing cycles and statements, and investments | M-02 | 20 | 20 / 20 closed |
+| [M-04 — Money movement](https://github.com/artur-rios/fortuna-api/milestone/4) | Transactions, transfers, installment plans, recurring commitments and reconciliation | M-03 | 12 | 12 / 12 closed |
+| [M-05 — Organization and planning](https://github.com/artur-rios/fortuna-api/milestone/5) | Categories, tags, counterparties, budgets and goals | M-04 | 11 | 11 / 11 closed |
+| [M-06 — Ingestion](https://github.com/artur-rios/fortuna-api/milestone/6) | The source contract, Pluggy connections and synchronization, Excel and Nubank PDF imports, and job monitoring | M-04 | 11 | 11 / 11 closed |
+| [M-07 — Insight and output](https://github.com/artur-rios/fortuna-api/milestone/7) | Attachments, tables, chart aggregations with drill-down, net position, projections, export and the health check | M-05, M-06 | 15 | 15 / 15 closed |
 
 ## Backlog
 
@@ -171,6 +176,9 @@ one use case = one branch = one issue = one pull request.
 | Issue | Work | Spec |
 |---|---|---|
 | [#1](https://github.com/artur-rios/fortuna-api/issues/1) | ✅ Project scaffold and initial infrastructure | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
+| [#155](https://github.com/artur-rios/fortuna-api/issues/155) | ✅ Support SQLite as the persistence provider for desktop offline mode | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
+| [#156](https://github.com/artur-rios/fortuna-api/issues/156) | ✅ Expose the Fortuna core over a C ABI for in-process desktop use | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
+| [#157](https://github.com/artur-rios/fortuna-api/issues/157) | ✅ Export the offline operation surface over the C ABI | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
 | [#162](https://github.com/artur-rios/fortuna-api/issues/162) | ✅ Publish exact decimal values as JSON strings | [Technology Stack](docs/requirements/Technology%20Stack%20Document.md) |
 | [#163](https://github.com/artur-rios/fortuna-api/issues/163) | ✅ Publish enum member names in OpenAPI | [System Requirements](docs/requirements/System%20Requirements%20Document.md) |
 
@@ -193,6 +201,7 @@ one use case = one branch = one issue = one pull request.
 | [#153](https://github.com/artur-rios/fortuna-api/issues/153) | ✅ UC-76: Authenticate through the Fortuna API | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#154](https://github.com/artur-rios/fortuna-api/issues/154) | ✅ UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#158](https://github.com/artur-rios/fortuna-api/issues/158) | ✅ UC-78: Erase a User Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#175](https://github.com/artur-rios/fortuna-api/issues/175) | ✅ Resend an emailed second-factor code for an outstanding challenge | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ### M-03 — Holdings
 
@@ -217,6 +226,7 @@ one use case = one branch = one issue = one pull request.
 | [#28](https://github.com/artur-rios/fortuna-api/issues/28) | ✅ UC-27: View Investments and Positions | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#29](https://github.com/artur-rios/fortuna-api/issues/29) | ✅ UC-28: Update an Investment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#30](https://github.com/artur-rios/fortuna-api/issues/30) | ✅ UC-29: Delete an Investment | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#178](https://github.com/artur-rios/fortuna-api/issues/178) | ✅ Accept IncludeDeleted on the credit-card and investment list endpoints | [System Requirements](docs/requirements/System%20Requirements%20Document.md) |
 
 ### M-04 — Money movement
 
@@ -233,6 +243,7 @@ one use case = one branch = one issue = one pull request.
 | [#39](https://github.com/artur-rios/fortuna-api/issues/39) | ✅ UC-38: Materialize Recurring Occurrences | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#40](https://github.com/artur-rios/fortuna-api/issues/40) | ✅ UC-39: Update a Recurring Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#41](https://github.com/artur-rios/fortuna-api/issues/41) | ✅ UC-40: Reconcile a Transaction | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#176](https://github.com/artur-rios/fortuna-api/issues/176) | ✅ List a user's recurring transactions | [System Requirements](docs/requirements/System%20Requirements%20Document.md) |
 
 ### M-05 — Organization and planning
 
@@ -284,10 +295,19 @@ one use case = one branch = one issue = one pull request.
 | [#76](https://github.com/artur-rios/fortuna-api/issues/76) | ✅ UC-75: Check API Health | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
 | [#159](https://github.com/artur-rios/fortuna-api/issues/159) | ✅ UC-79: Export All Personal Data | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#161](https://github.com/artur-rios/fortuna-api/issues/161) | ✅ Report API contract version from liveness | [Operations & Infrastructure](docs/requirements/Operations%20%26%20Infrastructure%20Document.md) |
+| [#177](https://github.com/artur-rios/fortuna-api/issues/177) | ✅ List a transaction's attachments | [System Requirements](docs/requirements/System%20Requirements%20Document.md) |
+
+## Changelog
+
+Notable changes in each release are recorded in [CHANGELOG.md](./CHANGELOG.md).
 
 ## Contributing
 
-One use case = one branch = one issue = one pull request. The full process — branch naming, the
-issue status lifecycle, the approval gates, the testing gate, and the Definition of Done — is in the
-[Development Workflow Document](docs/requirements/Development%20Workflow%20Document.md), with its
-step-by-step operational form in [`docs/initial/Workflow.md`](docs/initial/Workflow.md).
+Building from source, running the tests, the delivery workflow, the branching model and the release
+process are described in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Legal
+
+This project is licensed under the [Artur Rios Attribution License](LICENSE). It is free and open source: you may view, use, fork, modify, and extend it, provided you credit the author, Artur Rios, with a link to [artur-rios.tech](https://artur-rios.tech) or [github.com/artur-rios](https://github.com/artur-rios).
+
+Copyright (c) 2026 Artur Rios.

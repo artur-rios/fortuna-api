@@ -630,6 +630,45 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenForeignPaymentConvertingToNothing_WhenSettled_ThenItIsRefusedWithBadRequest()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Tiny dollar account", "USD", 1000m);
+        var card = await CreateCardAsync(client, "Tiny payment", 20, 5);
+        var charge = await RecordAsync(client, card.Id, 500m, new DateOnly(2026, 9, 10));
+        (await client.PostAsync($"/api/statements/{charge.StatementId}/close", null))
+            .EnsureSuccessStatusCode();
+        await using (var context = CreateContext())
+        {
+            var usd = await context.Currencies.SingleAsync(item => item.Code == "USD");
+            var brl = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+            context.ExchangeRates.Add(new ExchangeRate(
+                usd.Id,
+                brl.Id,
+                5m,
+                new DateOnly(2026, 9, 24),
+                ExchangeRateSource.Manual));
+            await context.SaveChangesAsync();
+        }
+
+        // 0.0001 USD at 5 is 0.0005 BRL, which rounds to 0.00 at the card's minor unit.
+        var settlement = await SettleAsync(
+            client,
+            charge.StatementId,
+            account.Id,
+            0.0001m,
+            new DateOnly(2026, 9, 25));
+
+        Assert.Equal(HttpStatusCode.BadRequest, settlement.Response.StatusCode);
+        Assert.Contains(
+            CreditCardStatementMessages.ConvertedAmountTooSmall,
+            await settlement.Response.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
     public async Task GivenForeignPayingAccount_WhenSettled_ThenRateAndDateAreRecorded()
     {
         await using var factory = CreateFactory();

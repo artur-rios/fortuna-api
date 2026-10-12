@@ -19,7 +19,8 @@ public sealed class CreateLocalAccountCommandHandler(
     : ICommandHandlerAsync<CreateLocalAccountCommand, CreateLocalAccountCommandOutput>
 {
     public async Task<DataOutput<CreateLocalAccountCommandOutput?>> HandleAsync(
-        CreateLocalAccountCommand command)
+        CreateLocalAccountCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CreateLocalAccountCommandOutput?>.New;
         if (!options.Enabled)
@@ -27,7 +28,7 @@ public sealed class CreateLocalAccountCommandHandler(
             return output.WithError(LocalAccountMessages.Disabled);
         }
 
-        var validation = await validator.ValidateAsync(command);
+        var validation = await validator.ValidateAsync(command, cancellationToken);
         if (!validation.IsValid)
         {
             return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
@@ -38,7 +39,7 @@ public sealed class CreateLocalAccountCommandHandler(
             return output.WithError(LocalAccountMessages.CredentialStoreUnavailable);
         }
 
-        if (await accounts.ExistsAsync(CancellationToken.None))
+        if (await accounts.ExistsAsync(cancellationToken))
         {
             return output.WithError(LocalAccountMessages.AlreadyExists);
         }
@@ -53,7 +54,7 @@ public sealed class CreateLocalAccountCommandHandler(
                 command.StorageMode,
                 recoveryCodes.Select(code => code.Hash).ToArray(),
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         if (creation.AlreadyExists)
         {

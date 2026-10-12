@@ -14,7 +14,8 @@ public sealed class GetInstallmentPlanByIdQueryHandler(
     : IQueryHandlerAsync<GetInstallmentPlanByIdQuery, InstallmentPlanOutput>
 {
     public async Task<DataOutput<InstallmentPlanOutput?>> HandleAsync(
-        GetInstallmentPlanByIdQuery query)
+        GetInstallmentPlanByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<InstallmentPlanOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -27,7 +28,7 @@ public sealed class GetInstallmentPlanByIdQueryHandler(
             profile.Id,
             query.Id,
             query.IncludeDeleted,
-            CancellationToken.None);
+            cancellationToken);
         if (plan is null)
         {
             return output.WithError(InstallmentPlanMessages.NotFound);

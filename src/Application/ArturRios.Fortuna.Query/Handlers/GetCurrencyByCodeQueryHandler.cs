@@ -11,11 +11,13 @@ public sealed class GetCurrencyByCodeQueryHandler(
     ICurrencyReader currencies)
     : IQueryHandlerAsync<GetCurrencyByCodeQuery, CurrencyOutput>
 {
-    public async Task<DataOutput<CurrencyOutput?>> HandleAsync(GetCurrencyByCodeQuery query)
+    public async Task<DataOutput<CurrencyOutput?>> HandleAsync(
+        GetCurrencyByCodeQuery query,
+        CancellationToken cancellationToken = default)
     {
         var currency = await currencies.FindByCodeAsync(
             query.Code.Trim().ToUpperInvariant(),
-            CancellationToken.None);
+            cancellationToken);
         if (currency is null)
         {
             return DataOutput<CurrencyOutput?>.New.WithError(CurrencyMessages.CurrencyNotFound);

@@ -14,10 +14,12 @@ public sealed class LoginThroughApiCommandHandler(
     HeimdallAuthOptions options)
     : ICommandHandlerAsync<LoginThroughApiCommand, LoginThroughApiCommandOutput>
 {
-    public async Task<DataOutput<LoginThroughApiCommandOutput?>> HandleAsync(LoginThroughApiCommand command)
+    public async Task<DataOutput<LoginThroughApiCommandOutput?>> HandleAsync(
+        LoginThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.LoginAsync(
-            command.Email.Trim(), command.Password, options.ScopeId, CancellationToken.None);
+            command.Email.Trim(), command.Password, options.ScopeId, cancellationToken);
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return Failure<LoginThroughApiCommandOutput>(result.Outcome,
@@ -56,10 +58,11 @@ public sealed class GoogleSignInThroughApiCommandHandler(
     : ICommandHandlerAsync<GoogleSignInThroughApiCommand, GoogleSignInThroughApiCommandOutput>
 {
     public async Task<DataOutput<GoogleSignInThroughApiCommandOutput?>> HandleAsync(
-        GoogleSignInThroughApiCommand command)
+        GoogleSignInThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.GoogleSignInAsync(
-            command.IdToken, options.ScopeId, CancellationToken.None);
+            command.IdToken, options.ScopeId, cancellationToken);
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<GoogleSignInThroughApiCommandOutput>(
@@ -80,10 +83,11 @@ public sealed class VerifyTwoFactorThroughApiCommandHandler(
     : ICommandHandlerAsync<VerifyTwoFactorThroughApiCommand, VerifyTwoFactorThroughApiCommandOutput>
 {
     public async Task<DataOutput<VerifyTwoFactorThroughApiCommandOutput?>> HandleAsync(
-        VerifyTwoFactorThroughApiCommand command)
+        VerifyTwoFactorThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.VerifyTwoFactorAsync(
-            command.ChallengeToken, command.Code, command.RecoveryCode, CancellationToken.None);
+            command.ChallengeToken, command.Code, command.RecoveryCode, cancellationToken);
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<VerifyTwoFactorThroughApiCommandOutput>(
@@ -103,9 +107,10 @@ public sealed class GoogleSignOutThroughApiCommandHandler(IHeimdallAuthGateway g
     : ICommandHandlerAsync<GoogleSignOutThroughApiCommand, GoogleSignOutThroughApiCommandOutput>
 {
     public async Task<DataOutput<GoogleSignOutThroughApiCommandOutput?>> HandleAsync(
-        GoogleSignOutThroughApiCommand command)
+        GoogleSignOutThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
-        var result = await gateway.GoogleSignOutAsync(command.BearerToken, CancellationToken.None);
+        var result = await gateway.GoogleSignOutAsync(command.BearerToken, cancellationToken);
 
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<GoogleSignOutThroughApiCommandOutput?>.New
@@ -123,10 +128,11 @@ public sealed class RequestPasswordRecoveryThroughApiCommandHandler(
         RequestPasswordRecoveryThroughApiCommandOutput>
 {
     public async Task<DataOutput<RequestPasswordRecoveryThroughApiCommandOutput?>> HandleAsync(
-        RequestPasswordRecoveryThroughApiCommand command)
+        RequestPasswordRecoveryThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.RequestPasswordRecoveryAsync(
-            command.Email.Trim(), options.ScopeId, CancellationToken.None);
+            command.Email.Trim(), options.ScopeId, cancellationToken);
 
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<RequestPasswordRecoveryThroughApiCommandOutput?>.New
@@ -151,10 +157,11 @@ public sealed class ResendTwoFactorChallengeCodeThroughApiCommandHandler(
         ResendTwoFactorChallengeCodeThroughApiCommandOutput>
 {
     public async Task<DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>> HandleAsync(
-        ResendTwoFactorChallengeCodeThroughApiCommand command)
+        ResendTwoFactorChallengeCodeThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.ResendTwoFactorChallengeCodeAsync(
-            command.ChallengeToken, CancellationToken.None);
+            command.ChallengeToken, cancellationToken);
 
         // Every Heimdall outcome but unavailability collapses to the one answer: a rejection
         // distinguishable from a success is the oracle this endpoint must not be.
@@ -172,10 +179,11 @@ public sealed class ResetPasswordThroughApiCommandHandler(
     : ICommandHandlerAsync<ResetPasswordThroughApiCommand, ResetPasswordThroughApiCommandOutput>
 {
     public async Task<DataOutput<ResetPasswordThroughApiCommandOutput?>> HandleAsync(
-        ResetPasswordThroughApiCommand command)
+        ResetPasswordThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.ResetPasswordAsync(
-            command.Token, command.NewPassword, CancellationToken.None);
+            command.Token, command.NewPassword, cancellationToken);
 
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<ResetPasswordThroughApiCommandOutput?>.New
@@ -191,9 +199,10 @@ public sealed class VerifyEmailThroughApiCommandHandler(
     : ICommandHandlerAsync<VerifyEmailThroughApiCommand, VerifyEmailThroughApiCommandOutput>
 {
     public async Task<DataOutput<VerifyEmailThroughApiCommandOutput?>> HandleAsync(
-        VerifyEmailThroughApiCommand command)
+        VerifyEmailThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
-        var result = await gateway.VerifyEmailAsync(command.Token, CancellationToken.None);
+        var result = await gateway.VerifyEmailAsync(command.Token, cancellationToken);
 
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<VerifyEmailThroughApiCommandOutput?>.New
@@ -209,10 +218,11 @@ public sealed class ResendVerificationThroughApiCommandHandler(IHeimdallAuthGate
         ResendVerificationThroughApiCommandOutput>
 {
     public async Task<DataOutput<ResendVerificationThroughApiCommandOutput?>> HandleAsync(
-        ResendVerificationThroughApiCommand command)
+        ResendVerificationThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.ResendVerificationAsync(
-            command.BearerToken, CancellationToken.None);
+            command.BearerToken, cancellationToken);
 
         return result.Outcome == HeimdallAuthOutcome.Succeeded
             ? DataOutput<ResendVerificationThroughApiCommandOutput?>.New
@@ -228,9 +238,10 @@ public sealed class GetTwoFactorStatusThroughApiCommandHandler(IHeimdallAuthGate
         GetTwoFactorStatusThroughApiCommandOutput>
 {
     public async Task<DataOutput<GetTwoFactorStatusThroughApiCommandOutput?>> HandleAsync(
-        GetTwoFactorStatusThroughApiCommand command)
+        GetTwoFactorStatusThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
-        var result = await gateway.GetTwoFactorStatusAsync(command.BearerToken, CancellationToken.None);
+        var result = await gateway.GetTwoFactorStatusAsync(command.BearerToken, cancellationToken);
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<GetTwoFactorStatusThroughApiCommandOutput>(
@@ -253,10 +264,11 @@ public sealed class EnableTwoFactorThroughApiCommandHandler(
     : ICommandHandlerAsync<EnableTwoFactorThroughApiCommand, EnableTwoFactorThroughApiCommandOutput>
 {
     public async Task<DataOutput<EnableTwoFactorThroughApiCommandOutput?>> HandleAsync(
-        EnableTwoFactorThroughApiCommand command)
+        EnableTwoFactorThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.EnableTwoFactorAsync(
-            command.Methods, command.BearerToken, CancellationToken.None);
+            command.Methods, command.BearerToken, cancellationToken);
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<EnableTwoFactorThroughApiCommandOutput>(
@@ -276,10 +288,11 @@ public sealed class ConfirmTwoFactorThroughApiCommandHandler(
     : ICommandHandlerAsync<ConfirmTwoFactorThroughApiCommand, ConfirmTwoFactorThroughApiCommandOutput>
 {
     public async Task<DataOutput<ConfirmTwoFactorThroughApiCommandOutput?>> HandleAsync(
-        ConfirmTwoFactorThroughApiCommand command)
+        ConfirmTwoFactorThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.ConfirmTwoFactorAsync(
-            command.AppCode, command.EmailCode, command.BearerToken, CancellationToken.None);
+            command.AppCode, command.EmailCode, command.BearerToken, cancellationToken);
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<ConfirmTwoFactorThroughApiCommandOutput>(
@@ -300,11 +313,12 @@ public sealed class DisableTwoFactorThroughApiCommandHandler(
     : ICommandHandlerAsync<DisableTwoFactorThroughApiCommand, DisableTwoFactorThroughApiCommandOutput>
 {
     public async Task<DataOutput<DisableTwoFactorThroughApiCommandOutput?>> HandleAsync(
-        DisableTwoFactorThroughApiCommand command)
+        DisableTwoFactorThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.DisableTwoFactorAsync(
             command.Password, command.Code, command.RecoveryCode, command.BearerToken,
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<DisableTwoFactorThroughApiCommandOutput>(
@@ -325,10 +339,11 @@ public sealed class RegenerateRecoveryCodesThroughApiCommandHandler(
         RegenerateRecoveryCodesThroughApiCommandOutput>
 {
     public async Task<DataOutput<RegenerateRecoveryCodesThroughApiCommandOutput?>> HandleAsync(
-        RegenerateRecoveryCodesThroughApiCommand command)
+        RegenerateRecoveryCodesThroughApiCommand command,
+        CancellationToken cancellationToken = default)
     {
         var result = await gateway.RegenerateRecoveryCodesAsync(
-            command.Code, command.RecoveryCode, command.BearerToken, CancellationToken.None);
+            command.Code, command.RecoveryCode, command.BearerToken, cancellationToken);
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<RegenerateRecoveryCodesThroughApiCommandOutput>(

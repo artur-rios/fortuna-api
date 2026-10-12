@@ -47,7 +47,7 @@ are synchronized.
 | `fortuna_api_local_accounts_authenticate` | HTTP authentication body: `{"name":"...","secret":"..."}` | `200` |
 | `fortuna_api_accounts_get_by_id` | `{"token":"...","id":"uuid","includeDeleted":false}` | `200` |
 
-The header additionally contains 113 concrete route functions generated from the checked-in OpenAPI
+The header additionally contains 115 concrete route functions generated from the checked-in OpenAPI
 contract. Their deterministic names end in the lowercase HTTP method; for example,
 `fortuna_api_transactions_by_id_put` mirrors `PUT /api/transactions/{id}`. An authenticated call
 wraps transport metadata while leaving the HTTP body unchanged:
@@ -61,10 +61,51 @@ wraps transport metadata while leaving the HTTP body unchanged:
 }
 ```
 
-`fortuna_capabilities` is the machine-readable registry. It includes each function's method, path,
-area and `longRunning` flag and explains why connected identity, administrator-only user erasure,
-Pluggy, remote rate synchronization and HTTP-host health routes are absent. Imports and exports return `202` with a persisted job and
-progress; job reads do not block the caller.
+`fortuna_capabilities` is the machine-readable registry. Its `operations` list gives each implemented
+function's symbol, method, path, area and `longRunning` flag, and `unavailable` explains why
+connected identity, administrator-only user erasure, Pluggy, remote rate synchronization and
+HTTP-host health routes are not exported at all.
+
+### Exported but not implemented offline
+
+Every eligible route has an export, so the ABI stays stable, but 26 of them are not implemented by the
+native core. Each answers `FORTUNA_STATUS_NOT_IMPLEMENTED` (`501`) with a failure envelope whose
+error names the route and the reason, before and after initialization alike, and does no work: no job
+is queued, no record is stored. `fortuna_capabilities` lists them under `notImplemented` (same fields
+as `operations`, plus `reason`) and not under `operations`, so a client can show them as not
+available offline without calling them. The generated header lists them too.
+
+| Routes | Why |
+| --- | --- |
+| `POST /api/imports/excel`, `POST /api/imports/pdf`, `POST /api/import-jobs/{id}/retry` | No workbook or PDF statement parser exists natively, so an import would not be processed |
+| `POST /api/exports` | No data-set export renderer exists natively; the personal data archive is available |
+| `/api/reports/*` (4), `/api/projections/*` (2) | Reports and projections are not computed natively |
+| `/api/transfers` and `/api/transfers/{id}` (4) | Paired transaction legs, conversion and lifecycle cascade are not implemented |
+| `/api/installment-plans` and `/api/installment-plans/{id}` (4) | Splitting a purchase into installments assigned to billing cycles is not implemented |
+| `GET /api/statements/{id}`, `POST /api/statements/{id}/close`, `POST /api/statements/{id}/settle`, `GET /api/credit-cards/{id}/statements` | Charges are not assigned to billing cycles natively |
+| `POST /api/recurring-transactions/materialize` | Occurrences are not materialized natively |
+| `GET /api/budgets/{id}/consumption`, `GET /api/goals/{id}/progress` | Consumption and progress are not computed natively |
+| `POST /api/transactions/{id}/reconcile` | Needs imported records, which the native core does not create |
+
+Earlier versions answered these with a success while doing nothing: imports and exports returned
+`202` and marked their job completed without parsing or rendering anything, and the rest stored the
+request as one generic record. Schema migration 5 marks every such import and export job failed with
+the reason, so a client shows that the file was never imported. The generic records are kept and
+are part of the personal data archive.
+
+Import-job reads (`GET /api/import-jobs`, `GET /api/import-jobs/{id}`, its `records`) and
+`GET /api/exports/{id}` remain available, so those jobs can still be seen.
+
+### Classification rules ported from the HTTP API
+
+Category reassignment (`POST /api/categories/{id}/reassign`), counterparty merging
+(`POST /api/counterparties/{id}/merge`) and category suggestion
+(`GET /api/counterparties/{id}/suggested-category`) apply the HTTP API's rules, messages and statuses.
+They rely on the counterparty a transaction names: creating or updating a transaction or a
+recurring rule with a `counterparty` name links it, by `counterpartyId`, to the owner's live
+counterparty with the same trimmed, case-insensitive name, creating one when none exists. A blank
+name clears the link; a name over 200 characters is refused. Schema migration 6 links, once, the transactions and
+rules earlier versions stored with the name only, keeping their timestamps.
 
 Personal-data portability is implemented inside the native boundary rather than delegated to the
 hosted API. `POST /api/me/data-export` snapshots owner-keyed native records into an expiring ZIP,

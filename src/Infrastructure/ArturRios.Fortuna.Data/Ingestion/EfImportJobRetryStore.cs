@@ -27,6 +27,17 @@ public sealed class EfImportJobRetryStore(AppDbContext context) : IImportJobRetr
             return Result(RetryImportJobOutcome.NotFound);
         }
 
+        // A Pluggy job's connection is locked first, in the order synchronization and
+        // revocation take their locks, so a retry cannot race either of them.
+        var connectionId = await context.ImportJobs
+            .AsNoTracking()
+            .Where(item => item.PublicId == importJobId && item.UserId == ownerId.Value)
+            .Select(item => item.ConnectionId)
+            .SingleOrDefaultAsync(cancellationToken);
+        var connection = connectionId is null
+            ? null
+            : await ConnectionRowLock.FindAsync(context, connectionId.Value, cancellationToken);
+
         var importJob = context.Database.IsSqlite()
             ? await context.ImportJobs.SingleOrDefaultAsync(
                 item => item.PublicId == importJobId && item.UserId == ownerId.Value,
@@ -58,6 +69,32 @@ public sealed class EfImportJobRetryStore(AppDbContext context) : IImportJobRetr
         if (!HasRetainedSource(importJob, backgroundJob))
         {
             return Result(RetryImportJobOutcome.SourceFileNotRetained, importJob);
+        }
+
+        if (connection is not null)
+        {
+            // The same refusals a new synchronization gets (UC-57 AF-01, UC-58 AF-02). Without
+            // them a retry of a revoked connection's job is never picked up and stays pending,
+            // and a second unfinished job on one connection violates its unique index.
+            if (connection.Status == ConnectionStatus.Revoked)
+            {
+                return Result(RetryImportJobOutcome.ConnectionRevoked, importJob);
+            }
+
+            if (connection.Status == ConnectionStatus.RequiresReauthentication)
+            {
+                return Result(RetryImportJobOutcome.ConnectionRequiresReauthentication, importJob);
+            }
+
+            if (await context.ImportJobs.AnyAsync(
+                    item => item.ConnectionId == connection.Id &&
+                        item.Id != importJob.Id &&
+                        (item.Status == ImportJobStatus.Pending ||
+                         item.Status == ImportJobStatus.Running),
+                    cancellationToken))
+            {
+                return Result(RetryImportJobOutcome.SynchronizationAlreadyRunning, importJob);
+            }
         }
 
         importJob.Retry(retriedAt);

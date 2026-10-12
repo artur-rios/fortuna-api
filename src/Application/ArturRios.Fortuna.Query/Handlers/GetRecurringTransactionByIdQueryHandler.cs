@@ -14,7 +14,8 @@ public sealed class GetRecurringTransactionByIdQueryHandler(
     : IQueryHandlerAsync<GetRecurringTransactionByIdQuery, RecurringTransactionOutput>
 {
     public async Task<DataOutput<RecurringTransactionOutput?>> HandleAsync(
-        GetRecurringTransactionByIdQuery query)
+        GetRecurringTransactionByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RecurringTransactionOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -26,7 +27,7 @@ public sealed class GetRecurringTransactionByIdQueryHandler(
         var rule = await rules.FindByIdAsync(
             profile.Id,
             query.Id,
-            CancellationToken.None);
+            cancellationToken);
         if (rule is null)
         {
             return output.WithError(RecurringTransactionMessages.NotFound);

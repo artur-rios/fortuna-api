@@ -25,6 +25,7 @@ public sealed class StatementsController : FortunaController
             [CreditCardStatementMessages.StatementIdRequired] = StatusCodes.Status400BadRequest,
             [CreditCardStatementMessages.FinancialAccountIdRequired] = StatusCodes.Status400BadRequest,
             [CreditCardStatementMessages.PaymentAmountPositive] = StatusCodes.Status400BadRequest,
+            [CreditCardStatementMessages.ConvertedAmountTooSmall] = StatusCodes.Status400BadRequest,
             [CreditCardStatementMessages.PaymentAmountPrecisionInvalid] =
                 StatusCodes.Status400BadRequest,
             [CreditCardStatementMessages.PaymentDateRequired] = StatusCodes.Status400BadRequest

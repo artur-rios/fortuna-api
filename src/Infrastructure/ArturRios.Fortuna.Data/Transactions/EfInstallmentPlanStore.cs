@@ -102,16 +102,31 @@ public sealed class EfInstallmentPlanStore(
             record.Counterparty,
             record.CreatedAt,
             cancellationToken);
+        // The split brings the total to the card currency's minor unit; the plan records that
+        // total so it always equals the sum of its installments (BR-10).
         var plan = new InstallmentPlan(
             card,
-            billedTotal,
+            billedAmounts.Sum(),
             record.InstallmentCount,
             record.PurchasedOn,
             record.CreatedAt);
 
+        // FR-TX-20: each installment goes to the cycle after the previous one. The same day of
+        // the following month is not enough: AddMonths clamps a 29th–31st to a short month,
+        // which can land back in the previous installment's cycle (closing day 28, purchase on
+        // 30 Jan: 28 Feb closes the same cycle as 30 Jan), so the date is kept inside its cycle.
+        var cycle = BillingCycle.Containing(record.PurchasedOn, card.ClosingDay, card.DueDay);
         for (short index = 0; index < record.InstallmentCount; index++)
         {
-            var occurredOn = record.PurchasedOn.AddMonths(index);
+            if (index > 0)
+            {
+                cycle = cycle.Next(card.ClosingDay, card.DueDay);
+            }
+
+            var sameDay = record.PurchasedOn.AddMonths(index);
+            var occurredOn = sameDay < cycle.PeriodStart ? cycle.PeriodStart
+                : sameDay > cycle.PeriodEnd ? cycle.PeriodEnd
+                : sameDay;
             var transaction = new FinancialTransaction(
                 card.User,
                 card,

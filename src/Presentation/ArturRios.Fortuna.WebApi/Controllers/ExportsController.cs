@@ -63,7 +63,7 @@ public sealed class ExportsController : FortunaController
     {
         var result = await Queries.ExecuteQueryAsync<
             GetDataExportQuery,
-            RetrieveDataExportQueryOutput>(new GetDataExportQuery { Id = id });
+            RetrieveDataExportQueryOutput>(new GetDataExportQuery { Id = id }, HttpContext.RequestAborted);
         if (result.Success && result.Data?.Content is not null)
         {
             return File(

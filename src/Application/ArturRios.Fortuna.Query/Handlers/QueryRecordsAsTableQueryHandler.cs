@@ -20,7 +20,9 @@ public sealed class QueryRecordsAsTableQueryHandler(
     TimeProvider timeProvider)
     : IQueryHandlerAsync<QueryRecordsAsTableQuery, TableReportOutput>
 {
-    public async Task<DataOutput<TableReportOutput?>> HandleAsync(QueryRecordsAsTableQuery query)
+    public async Task<DataOutput<TableReportOutput?>> HandleAsync(
+        QueryRecordsAsTableQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<TableReportOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -30,7 +32,7 @@ public sealed class QueryRecordsAsTableQueryHandler(
         }
 
         var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
-        var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
+        var displayCurrency = await currencies.FindByCodeAsync(displayCode, cancellationToken);
         if (displayCurrency is null)
         {
             return output
@@ -51,7 +53,7 @@ public sealed class QueryRecordsAsTableQueryHandler(
                 sort.Descending)).ToArray(),
             query.PageNumber,
             Math.Min(query.PageSize, paginationOptions.MaximumPageSize)),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome != TableReportReadOutcome.Succeeded || result.Report is null)
         {
             return output.WithError(Error(result, query.RecordSet.Trim()));

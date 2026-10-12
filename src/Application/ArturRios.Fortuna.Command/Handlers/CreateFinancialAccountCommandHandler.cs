@@ -17,7 +17,8 @@ public sealed class CreateFinancialAccountCommandHandler(
     : ICommandHandlerAsync<CreateFinancialAccountCommand, CreateFinancialAccountCommandOutput>
 {
     public async Task<DataOutput<CreateFinancialAccountCommandOutput?>> HandleAsync(
-        CreateFinancialAccountCommand command)
+        CreateFinancialAccountCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CreateFinancialAccountCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -27,7 +28,7 @@ public sealed class CreateFinancialAccountCommandHandler(
         }
 
         var currencyCode = command.CurrencyCode.Trim().ToUpperInvariant();
-        if (await currencies.FindByCodeAsync(currencyCode, CancellationToken.None) is null)
+        if (await currencies.FindByCodeAsync(currencyCode, cancellationToken) is null)
         {
             return output
                 .WithError(FinancialAccountMessages.CurrencyNotSupported)
@@ -43,7 +44,7 @@ public sealed class CreateFinancialAccountCommandHandler(
                 currencyCode,
                 command.OpeningBalance,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (created.DuplicateName)
         {
             return output.WithError(FinancialAccountMessages.DuplicateName);

@@ -15,7 +15,8 @@ public sealed class RecordTransactionCommandHandler(
     : ICommandHandlerAsync<RecordTransactionCommand, RecordTransactionCommandOutput>
 {
     public async Task<DataOutput<RecordTransactionCommandOutput?>> HandleAsync(
-        RecordTransactionCommand command)
+        RecordTransactionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RecordTransactionCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -38,7 +39,7 @@ public sealed class RecordTransactionCommandHandler(
                 command.Counterparty,
                 command.Tags ?? [],
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome != TransactionRecordOutcome.Succeeded ||
             result.Transaction is null)
         {

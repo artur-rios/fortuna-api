@@ -15,7 +15,8 @@ public sealed class DefineRecurringTransactionCommandHandler(
     : ICommandHandlerAsync<DefineRecurringTransactionCommand, DefineRecurringTransactionCommandOutput>
 {
     public async Task<DataOutput<DefineRecurringTransactionCommandOutput?>> HandleAsync(
-        DefineRecurringTransactionCommand command)
+        DefineRecurringTransactionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<DefineRecurringTransactionCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -29,7 +30,7 @@ public sealed class DefineRecurringTransactionCommandHandler(
             profile.Id, command.FinancialAccountId, command.CreditCardId, command.CategoryId,
             command.Direction, command.Amount, command.Frequency, command.StartsOn, command.EndsOn,
             command.Description, command.Counterparty, DateOnly.FromDateTime(now.UtcDateTime), now),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Rule is null)
         {
             return output.WithError(result.Outcome switch

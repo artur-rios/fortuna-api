@@ -15,7 +15,8 @@ public sealed class DeleteFinancialAccountCommandHandler(
     : ICommandHandlerAsync<DeleteFinancialAccountCommand, FinancialAccountLifecycleCommandOutput>
 {
     public async Task<DataOutput<FinancialAccountLifecycleCommandOutput?>> HandleAsync(
-        DeleteFinancialAccountCommand command)
+        DeleteFinancialAccountCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -27,7 +28,7 @@ public sealed class DeleteFinancialAccountCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return FinancialAccountLifecycleHandler.Resolve(
             result,
@@ -42,7 +43,8 @@ public sealed class RestoreFinancialAccountCommandHandler(
     : ICommandHandlerAsync<RestoreFinancialAccountCommand, FinancialAccountLifecycleCommandOutput>
 {
     public async Task<DataOutput<FinancialAccountLifecycleCommandOutput?>> HandleAsync(
-        RestoreFinancialAccountCommand command)
+        RestoreFinancialAccountCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -54,7 +56,7 @@ public sealed class RestoreFinancialAccountCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return FinancialAccountLifecycleHandler.Resolve(
             result,
@@ -68,7 +70,8 @@ public sealed class HardDeleteFinancialAccountCommandHandler(
     : ICommandHandlerAsync<HardDeleteFinancialAccountCommand, FinancialAccountLifecycleCommandOutput>
 {
     public async Task<DataOutput<FinancialAccountLifecycleCommandOutput?>> HandleAsync(
-        HardDeleteFinancialAccountCommand command)
+        HardDeleteFinancialAccountCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -79,7 +82,7 @@ public sealed class HardDeleteFinancialAccountCommandHandler(
         var result = await accounts.HardDeleteAsync(
             profile.Id,
             command.Id,
-            CancellationToken.None);
+            cancellationToken);
 
         return FinancialAccountLifecycleHandler.Resolve(
             result,

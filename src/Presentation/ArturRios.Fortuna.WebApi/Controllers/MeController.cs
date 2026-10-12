@@ -81,7 +81,9 @@ public sealed class MeController : FortunaController
     {
         var result = await Queries.ExecuteQueryAsync<
             GetPersonalDataExportQuery,
-            PersonalDataExportQueryOutput>(new GetPersonalDataExportQuery { JobId = jobId });
+            PersonalDataExportQueryOutput>(
+            new GetPersonalDataExportQuery { JobId = jobId },
+            HttpContext.RequestAborted);
         if (result.Success && result.Data?.Content is not null)
         {
             return File(

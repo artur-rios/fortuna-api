@@ -13,7 +13,9 @@ public sealed class GetCategoryTreeQueryHandler(
     ICategoryReader categories)
     : IQueryHandlerAsync<GetCategoryTreeQuery, CategoryTreeOutput>
 {
-    public async Task<DataOutput<CategoryTreeOutput?>> HandleAsync(GetCategoryTreeQuery query)
+    public async Task<DataOutput<CategoryTreeOutput?>> HandleAsync(
+        GetCategoryTreeQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CategoryTreeOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -26,7 +28,7 @@ public sealed class GetCategoryTreeQueryHandler(
             profile.Id,
             query.IncludeDeleted,
             query.IncludeUsageCounts,
-            CancellationToken.None);
+            cancellationToken);
         var tree = CategoryTreeProjection.Build(records, query.IncludeUsageCounts);
         var result = output
             .WithData(new CategoryTreeOutput

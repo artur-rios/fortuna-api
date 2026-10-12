@@ -15,7 +15,8 @@ public sealed class UpdateRecurringTransactionCommandHandler(
     : ICommandHandlerAsync<UpdateRecurringTransactionCommand, UpdateRecurringTransactionCommandOutput>
 {
     public async Task<DataOutput<UpdateRecurringTransactionCommandOutput?>> HandleAsync(
-        UpdateRecurringTransactionCommand command)
+        UpdateRecurringTransactionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<UpdateRecurringTransactionCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -39,7 +40,7 @@ public sealed class UpdateRecurringTransactionCommandHandler(
             command.Description,
             command.Counterparty,
             DateOnly.FromDateTime(now.UtcDateTime),
-            now), CancellationToken.None);
+            now), cancellationToken);
         if (result.Rule is null)
         {
             return output.WithError(result.Outcome switch

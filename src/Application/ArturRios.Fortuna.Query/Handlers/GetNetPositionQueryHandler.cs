@@ -18,7 +18,9 @@ public sealed class GetNetPositionQueryHandler(
     TimeProvider timeProvider)
     : IQueryHandlerAsync<GetNetPositionQuery, NetPositionOutput>
 {
-    public async Task<DataOutput<NetPositionOutput?>> HandleAsync(GetNetPositionQuery query)
+    public async Task<DataOutput<NetPositionOutput?>> HandleAsync(
+        GetNetPositionQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<NetPositionOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -30,7 +32,7 @@ public sealed class GetNetPositionQueryHandler(
         var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
         var displayCurrency = await currencies.FindByCodeAsync(
             displayCode,
-            CancellationToken.None);
+            cancellationToken);
         if (displayCurrency is null)
         {
             return output
@@ -40,7 +42,7 @@ public sealed class GetNetPositionQueryHandler(
 
         // Point-in-time position: every currency group converts at the as-of date.
         var asOf = query.AsOf ?? DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
-        var sourceGroups = await positions.ReadAsync(profile.Id, asOf, CancellationToken.None);
+        var sourceGroups = await positions.ReadAsync(profile.Id, asOf, cancellationToken);
         var converter = new FigureConverter(rates, displayCurrency);
         var conversions = new List<FigureConversion>(sourceGroups.Count);
         var groups = new List<NetPositionCurrencyOutput>(sourceGroups.Count);

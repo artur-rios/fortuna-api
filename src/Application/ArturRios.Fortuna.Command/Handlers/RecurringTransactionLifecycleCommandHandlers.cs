@@ -15,7 +15,8 @@ public sealed class DeleteRecurringTransactionCommandHandler(
     : ICommandHandlerAsync<DeleteRecurringTransactionCommand, RecurringTransactionLifecycleCommandOutput>
 {
     public async Task<DataOutput<RecurringTransactionLifecycleCommandOutput?>> HandleAsync(
-        DeleteRecurringTransactionCommand command)
+        DeleteRecurringTransactionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RecurringTransactionLifecycleCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -25,7 +26,7 @@ public sealed class DeleteRecurringTransactionCommandHandler(
         }
 
         var result = await rules.SoftDeleteAsync(
-            profile.Id, command.Id, timeProvider.GetUtcNow(), CancellationToken.None);
+            profile.Id, command.Id, timeProvider.GetUtcNow(), cancellationToken);
 
         return result.Outcome switch
         {

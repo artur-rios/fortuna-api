@@ -5,6 +5,8 @@ using System.Text.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Cards;
+using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Ingestion;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Security;
@@ -213,6 +215,151 @@ public sealed class ExcelImportTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenRowInSettledCycle_WhenProcessed_ThenItArrivesLateOnTheNextOpenStatement()
+    {
+        var subject = Guid.NewGuid();
+        var (cardId, settledId) = await SeedCardWithSettledCycleAsync(subject, new DateOnly(2026, 9, 1));
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var workbook = Workbook(sheet =>
+        {
+            Headers(sheet);
+            Row(sheet, 2, new DateTime(2026, 9, 1), 30m, "expense", "Late", "Food", "late-1");
+            Row(sheet, 3, new DateTime(2026, 9, 20), 20m, "expense", "Current", "Food", "current-1");
+        });
+
+        var response = await ImportAsync(
+            client, cardId, workbook, targetType: ImportTargetType.CreditCard);
+        var jobId = (await response.Content.ReadFromJsonAsync<ImportEnvelope>())!.Data!.ImportJobId;
+        await ProcessNextAsync(factory);
+
+        await using var context = CreateContext();
+        var job = await context.ImportJobs.SingleAsync(item => item.PublicId == jobId);
+        Assert.Equal(ImportJobStatus.Completed, job.Status);
+        Assert.Equal((2, 0, 0), (job.ImportedCount, job.DuplicateCount, job.RejectedCount));
+        Assert.Equal(BackgroundJobState.Succeeded, (await context.BackgroundJobs.SingleAsync(
+            item => item.IdempotencyKey.EndsWith(jobId.ToString("N")))).State);
+        var settled = await context.CreditCardStatements.SingleAsync(item => item.Id == settledId);
+        Assert.Equal(CreditCardStatementStatus.Settled, settled.Status);
+        Assert.False(await context.FinancialTransactions.AnyAsync(item =>
+            item.StatementId == settledId && item.SourceType == TransactionSourceType.Excel));
+        var imported = await context.FinancialTransactions
+            .Include(item => item.Statement)
+            .Where(item => item.CreditCard!.PublicId == cardId &&
+                item.SourceType == TransactionSourceType.Excel)
+            .ToArrayAsync();
+        Assert.Equal(2, imported.Length);
+        Assert.All(imported, item =>
+        {
+            Assert.Equal(CreditCardStatementStatus.Open, item.Statement!.Status);
+            Assert.True(item.Statement.PeriodStart > settled.PeriodEnd);
+        });
+        Assert.True(imported.Single(item => item.Description == "Late").IsLateArriving);
+        Assert.False(imported.Single(item => item.Description == "Current").IsLateArriving);
+        Assert.Equal(50m, imported[0].Statement!.PurchaseTotal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenRowThatCannotBeStored_WhenProcessed_ThenNoRowIsCommittedAndBothJobsFail()
+    {
+        var subject = Guid.NewGuid();
+        var accountId = await SeedAccountAsync(subject);
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var workbook = Workbook(sheet =>
+        {
+            Headers(sheet);
+            Row(sheet, 2, new DateTime(2026, 9, 1), 10m, "expense", "Fits", "Food", "fits-1");
+            // Beyond numeric(19,4): the database refuses it when the import is saved.
+            Row(sheet, 3, new DateTime(2026, 9, 2), 1_000_000_000_000_000m, "expense", "Overflow",
+                "Food", "overflow-1");
+        });
+
+        var response = await ImportAsync(client, accountId, workbook, createCategories: true);
+        var jobId = (await response.Content.ReadFromJsonAsync<ImportEnvelope>())!.Data!.ImportJobId;
+        await ProcessNextAsync(factory);
+
+        await using var context = CreateContext();
+        var job = await context.ImportJobs.SingleAsync(item => item.PublicId == jobId);
+        Assert.Equal(ImportJobStatus.Failed, job.Status);
+        Assert.Equal(ImportJobMessages.ProcessingFailed, job.FailureReason);
+        Assert.Equal(BackgroundJobState.Failed, (await context.BackgroundJobs.SingleAsync(
+            item => item.IdempotencyKey.EndsWith(jobId.ToString("N")))).State);
+        Assert.False(await context.FinancialTransactions.AnyAsync(item =>
+            item.FinancialAccount!.PublicId == accountId));
+        Assert.False(await context.ImportedRecords.AnyAsync(item => item.ImportJob.PublicId == jobId));
+        Assert.False(await context.Categories.AnyAsync(item =>
+            item.User.ExternalSubject == subject.ToString("D") && item.Name == "Food"));
+    }
+
+    [FunctionalFact]
+    public async Task GivenRowsThatCannotBeStored_WhenProcessed_ThenOnlyThoseRowsAreRejected()
+    {
+        var subject = Guid.NewGuid();
+        var accountId = await SeedAccountAsync(subject);
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var workbook = Workbook(sheet =>
+        {
+            Headers(sheet);
+            Row(sheet, 2, new DateTime(2026, 9, 1), 10m, "expense", "Fits", "Food", "fits-1");
+            Row(sheet, 3, new DateTime(2026, 9, 2), 12m, "expense", "Long", new string('c', 201),
+                "long-1");
+            // Positive, but zero once stored at the column's four decimal places.
+            Row(sheet, 4, new DateTime(2026, 9, 3), 0.00004m, "expense", "Dust", "Food", "dust-1");
+        });
+
+        var response = await ImportAsync(client, accountId, workbook, createCategories: true);
+        var jobId = (await response.Content.ReadFromJsonAsync<ImportEnvelope>())!.Data!.ImportJobId;
+        await ProcessNextAsync(factory);
+
+        await using var context = CreateContext();
+        var job = await context.ImportJobs.SingleAsync(item => item.PublicId == jobId);
+        Assert.Equal(ImportJobStatus.Completed, job.Status);
+        Assert.Equal((1, 0, 2), (job.ImportedCount, job.DuplicateCount, job.RejectedCount));
+        var rejected = await context.ImportedRecords
+            .Where(item =>
+                item.ImportJob.PublicId == jobId && item.Outcome == ImportedRecordOutcome.Rejected)
+            .OrderBy(item => item.Id)
+            .Select(item => item.RejectionReason)
+            .ToArrayAsync();
+        Assert.Equal(
+            new string?[] { ExcelImportMessages.RowCategoryTooLong, ExcelImportMessages.RowAmountInvalid },
+            rejected.AsEnumerable());
+    }
+
+    [FunctionalFact]
+    public async Task GivenAmountFinerThanStored_WhenImportedTwice_ThenSecondImportIsDuplicate()
+    {
+        var subject = Guid.NewGuid();
+        var accountId = await SeedAccountAsync(subject);
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var workbook = Workbook(sheet =>
+        {
+            Headers(sheet);
+            Row(sheet, 2, new DateTime(2026, 9, 1), 100m / 3m, "expense", "Third", "Food", "");
+        });
+
+        await ImportAsync(client, accountId, workbook);
+        await ProcessNextAsync(factory);
+        var second = await ImportAsync(client, accountId, workbook);
+        var secondJobId = (await second.Content.ReadFromJsonAsync<ImportEnvelope>())!.Data!.ImportJobId;
+        await ProcessNextAsync(factory);
+
+        await using var context = CreateContext();
+        var secondJob = await context.ImportJobs.SingleAsync(item => item.PublicId == secondJobId);
+        Assert.Equal((0, 1, 0),
+            (secondJob.ImportedCount, secondJob.DuplicateCount, secondJob.RejectedCount));
+        Assert.Equal(33.3333m, (await context.FinancialTransactions.SingleAsync(item =>
+            item.FinancialAccount!.PublicId == accountId)).Amount);
+    }
+
     public async Task InitializeAsync()
     {
         await database.StartAsync();
@@ -260,6 +407,29 @@ public sealed class ExcelImportTests : IAsyncLifetime
         return account.PublicId;
     }
 
+    private async Task<(Guid CardId, long SettledStatementId)> SeedCardWithSettledCycleAsync(
+        Guid subject,
+        DateOnly settledDate)
+    {
+        await using var context = CreateContext();
+        var currency = await context.Currencies.SingleAsync(item => item.Code == "BRL");
+        var user = new UserProfile(subject, $"Owner {subject:N}", currency, Now);
+        var card = new CreditCard(
+            user, $"Card {subject:N}", "Bank", currency, 5000m, 12, 10, "1234", Now);
+        var category = new Category(user, "General", Now);
+        var statement = new CreditCardStatement(
+            card, BillingCycle.Containing(settledDate, card.ClosingDay, card.DueDay), Now);
+        statement.Close(Now);
+        var settlement = new FinancialTransaction(
+            user, card, category, TransactionDirection.Earning, 1m,
+            statement.DueDate, Now, "Statement payment");
+        statement.Settle(settlement, Now);
+        context.AddRange(user, card, category, statement, settlement);
+        await context.SaveChangesAsync();
+
+        return (card.PublicId, statement.Id);
+    }
+
     private AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -285,11 +455,12 @@ public sealed class ExcelImportTests : IAsyncLifetime
         HttpClient client,
         Guid targetId,
         byte[] workbook,
-        bool createCategories = false)
+        bool createCategories = false,
+        ImportTargetType targetType = ImportTargetType.Account)
     {
         using var form = new MultipartFormDataContent();
         form.Add(new StringContent(targetId.ToString("D")), "TargetId");
-        form.Add(new StringContent(ImportTargetType.Account.ToString()), "TargetType");
+        form.Add(new StringContent(targetType.ToString()), "TargetType");
         form.Add(new StringContent("Date"), "DateColumn");
         form.Add(new StringContent("Amount"), "AmountColumn");
         form.Add(new StringContent("Direction"), "DirectionColumn");

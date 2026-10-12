@@ -16,7 +16,9 @@ public sealed class ListConnectionsQueryHandler(
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListConnectionsQuery, ConnectionOutput>
 {
-    public async Task<PaginatedOutput<ConnectionOutput>> HandleAsync(ListConnectionsQuery query)
+    public async Task<PaginatedOutput<ConnectionOutput>> HandleAsync(
+        ListConnectionsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = PaginatedOutput<ConnectionOutput>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -51,7 +53,7 @@ public sealed class ListConnectionsQueryHandler(
             query.PageNumber,
             pageSize,
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         return page.WithMessage(ConnectionMessages.ListedSuccessfully);
     }

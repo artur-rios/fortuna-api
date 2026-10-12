@@ -20,7 +20,8 @@ public sealed class SynchronizeExchangeRatesCommandHandler(
     : ICommandHandlerAsync<SynchronizeExchangeRatesCommand, SynchronizeExchangeRatesCommandOutput>
 {
     public async Task<DataOutput<SynchronizeExchangeRatesCommandOutput?>> HandleAsync(
-        SynchronizeExchangeRatesCommand command)
+        SynchronizeExchangeRatesCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<SynchronizeExchangeRatesCommandOutput?>.New;
         if (!InstallationAdministration.IsAdministrator(actorAccessor.Actor))
@@ -44,7 +45,7 @@ public sealed class SynchronizeExchangeRatesCommandHandler(
         var active = await jobs.FindActiveAsync(
             ExchangeRateSyncJob.Type,
             keyPrefix,
-            CancellationToken.None);
+            cancellationToken);
         if (active is not null)
         {
             return output
@@ -62,8 +63,8 @@ public sealed class SynchronizeExchangeRatesCommandHandler(
             payload,
             $"{keyPrefix}{Guid.NewGuid():N}",
             command.CorrelationId,
-            CancellationToken.None);
-        await queue.EnqueueAsync(job.Id, CancellationToken.None);
+            cancellationToken);
+        await queue.EnqueueAsync(job.Id, cancellationToken);
 
         return output
             .WithData(new SynchronizeExchangeRatesCommandOutput

@@ -16,7 +16,8 @@ public sealed class RecordInvestmentValuationCommandHandler(
         RecordInvestmentValuationCommandOutput>
 {
     public async Task<DataOutput<RecordInvestmentValuationCommandOutput?>> HandleAsync(
-        RecordInvestmentValuationCommand command)
+        RecordInvestmentValuationCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RecordInvestmentValuationCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -32,7 +33,7 @@ public sealed class RecordInvestmentValuationCommandHandler(
                 command.Value,
                 command.ValuedOn,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome != InvestmentValuationRecordOutcome.Succeeded ||
             result.Valuation is null)
         {

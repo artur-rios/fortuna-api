@@ -22,7 +22,8 @@ public sealed class CreateConnectionCommandHandler(
     : ICommandHandlerAsync<CreateConnectionCommand, CreateConnectionCommandOutput>
 {
     public async Task<DataOutput<CreateConnectionCommandOutput?>> HandleAsync(
-        CreateConnectionCommand command)
+        CreateConnectionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -35,7 +36,7 @@ public sealed class CreateConnectionCommandHandler(
                 profile.Id,
                 ProcessingConsentPurpose.ExternalDataProcessing,
                 consentOptions.ExternalDataProcessingVersion,
-                CancellationToken.None))
+                cancellationToken))
         {
             return DataOutput<CreateConnectionCommandOutput?>.New.WithError(
                 ProcessingConsentMessages.ExternalDataProcessingRequired);
@@ -48,7 +49,7 @@ public sealed class CreateConnectionCommandHandler(
         }
 
         var externalReference = itemId.ToString();
-        var verified = await pluggy.ValidateAsync(externalReference, CancellationToken.None);
+        var verified = await pluggy.ValidateAsync(externalReference, cancellationToken);
         if (verified.Outcome != PluggyConnectionValidationOutcome.Succeeded)
         {
             return Failure(verified.Outcome);
@@ -61,7 +62,7 @@ public sealed class CreateConnectionCommandHandler(
                 externalReference,
                 protector.Protect(verified.AccessToken!),
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome == ConnectionMutationOutcome.ProfileNotFound)
         {
             return DataOutput<CreateConnectionCommandOutput?>.New

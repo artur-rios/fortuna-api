@@ -37,7 +37,8 @@ public sealed class BackgroundJobHostedServiceTests
         await handler.Executed.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await service.StopAsync(CancellationToken.None);
 
-        Assert.Equal(2, store.FindCount);
+        // The failed attempt, the attempt that runs, and its re-read before recording the outcome.
+        Assert.Equal(3, store.FindCount);
         Assert.Equal(BackgroundJobState.Succeeded, job.State);
     }
 
@@ -97,6 +98,7 @@ public sealed class BackgroundJobHostedServiceTests
     {
         private int remainingFailures = failures;
         private int remainingRecoveryFailures = recoveryFailures;
+        private readonly bool hasJobToRecover = recoveryFailures > 0;
 
         public int FindCount { get; private set; }
         public int RecoverCount { get; private set; }
@@ -136,7 +138,7 @@ public sealed class BackgroundJobHostedServiceTests
                 return Task.FromException<IReadOnlyList<BackgroundJob>>(new IOException("database unavailable"));
             }
 
-            return Task.FromResult<IReadOnlyList<BackgroundJob>>(recoveryFailures > 0 ? [job] : []);
+            return Task.FromResult<IReadOnlyList<BackgroundJob>>(hasJobToRecover ? [job] : []);
         }
 
         public Task SaveAsync(BackgroundJob changedJob, CancellationToken cancellationToken) =>

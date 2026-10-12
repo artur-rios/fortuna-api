@@ -15,7 +15,8 @@ public sealed class GrantProcessingConsentCommandHandler(
     : ICommandHandlerAsync<GrantProcessingConsentCommand, GrantProcessingConsentCommandOutput>
 {
     public async Task<DataOutput<GrantProcessingConsentCommandOutput?>> HandleAsync(
-        GrantProcessingConsentCommand command)
+        GrantProcessingConsentCommand command,
+        CancellationToken cancellationToken = default)
     {
         if (!ProcessingConsentOptions.TryParsePurpose(command.Purpose, out var purpose))
         {
@@ -34,7 +35,7 @@ public sealed class GrantProcessingConsentCommandHandler(
             purpose,
             currentVersion,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return DataOutput<GrantProcessingConsentCommandOutput?>.New
             .WithData(new GrantProcessingConsentCommandOutput
@@ -59,7 +60,8 @@ public sealed class WithdrawProcessingConsentCommandHandler(
     : ICommandHandlerAsync<WithdrawProcessingConsentCommand, WithdrawProcessingConsentCommandOutput>
 {
     public async Task<DataOutput<WithdrawProcessingConsentCommandOutput?>> HandleAsync(
-        WithdrawProcessingConsentCommand command)
+        WithdrawProcessingConsentCommand command,
+        CancellationToken cancellationToken = default)
     {
         if (!ProcessingConsentOptions.TryParsePurpose(command.Purpose, out var purpose))
         {
@@ -76,7 +78,7 @@ public sealed class WithdrawProcessingConsentCommandHandler(
             profile.Id,
             purpose,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
         if (!result.Found)
         {
             return Failure(ProcessingConsentMessages.NotFound);

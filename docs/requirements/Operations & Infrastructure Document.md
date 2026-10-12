@@ -28,7 +28,7 @@ Specification Document rather than restarting.
 - **Configuration** — how every setting reaches the process, and which of them are secrets.
 - **Logging and monitoring** — what is recorded, and what is deliberately never recorded.
 - **Health endpoints** — liveness and a detailed dependency check.
-- **Environments** — the three this project must run on, and what differs between them.
+- **Environments** — the four this project runs in, and what differs between them.
 - **Build and delivery** — the container image, the compose deployment, and continuous integration.
 
 ---
@@ -109,7 +109,7 @@ to write a row.
 ```
 fortuna-api/
 ├── .github/workflows/            tests.yml, check-openapi.yml, native-core.yml
-├── docker/                       local.env.example, development.env.example, production.env.example
+├── docker/                       local, development, homologation and production .env.example
 ├── docs/
 │   ├── initial/                  Brainstorm, Project Overview, Technology Stack, Workflow, Business Rules
 │   └── requirements/             this document and the six beside it
@@ -154,15 +154,15 @@ fortuna-api/
 | IR-14 | The API shall serve a Swagger/OpenAPI document, and the committed document shall be verified against the code in continuous integration |
 | IR-15 | A migration helper script shall be provided under `scripts/`, and shall never print a connection string containing a password |
 | IR-16 | Test projects shall mirror the `src/` layer folders one-for-one, and the functional harness shall apply migrations to a real PostgreSQL container and assert the resulting schema |
-| IR-17 | Continuous integration shall, on every pull request and every commit to `main`, restore, scan for vulnerable dependencies, build, run the unit suite, run the functional suite, enforce the coverage floor, and build the container image |
-| IR-18 | A single `docker-compose.yml` shall bring the instance up on Docker Desktop for Windows, on Docker in WSL Ubuntu, and on a Linux VPS, differing only in the environment file supplied |
+| IR-17 | Continuous integration shall, on every pull request into and every commit to `develop` and `main`, restore, scan for vulnerable dependencies, build, run the unit suite, run the functional suite, enforce the coverage floor, and build the container image |
+| IR-18 | A single `docker-compose.yml` shall bring the instance up on Docker Desktop for Windows and on a Linux VPS — in every environment of [section 6](#6-environments) — differing only in the environment file supplied |
 | IR-19 | The container shall declare a health check against the liveness endpoint |
 | IR-20 | The instance shall run without a Heimdall connection on the request path, and a desktop installation shall run with no network at all |
 | IR-21 | The in-process desktop core shall publish `fortuna_core.dll` for Windows x64 and `libfortuna_core.so` for Linux x64 together with its generated C header |
 | IR-22 | Native initialization shall take an explicit database path and configuration, create and migrate the native SQLite schema on demand, and native shutdown shall invalidate all process-local sessions |
 | IR-23 | A native operation called before initialization shall return the distinct HTTP-compatible status `503` and a JSON failure envelope rather than crash |
 | IR-24 | Every native function that returns JSON shall allocate it in the native library, document ownership in the header, and accept release through `fortuna_string_free` on success and failure alike |
-| IR-25 | Native CI shall build and test the library on Windows and Linux, reject generated-header drift, and publish both platform artifacts on every pull request and commit to `main` |
+| IR-25 | Native CI shall build and test the library on Windows and Linux, reject generated-header drift, and publish both platform artifacts on every pull request into and every commit to `develop` and `main` that changes the native core or the OpenAPI document it is generated from |
 | IR-26 | The native core shall own a namespaced SQLite schema independent from EF migrations; monetary values in it shall use SQLite `TEXT` and arbitrary-precision JSON serialization |
 | IR-27 | The hosted API shall expose Prometheus metrics only on a dedicated private listener, selected by the connection's local port and never by a request header, outside authentication and the OpenAPI document |
 
@@ -176,7 +176,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 
 | Concern | Keys | Notes |
 | --- | --- | --- |
-| Runtime | `ASPNETCORE_ENVIRONMENT` | `Development` locally and in the WSL environment; `Production` on the server. Governs Swagger, the developer exception page and EF diagnostics. |
+| Runtime | `ASPNETCORE_ENVIRONMENT` | `Development` in the local and development environments; `Production` in homologation and production. Governs Swagger, the developer exception page and EF diagnostics. |
 | Database | `FORTUNA_DATA_CONNECTIONSTRING`, `FORTUNA_DATA_DATABASETYPE` | `PostgreSql` plus a server connection string for shared deployments; `SQLite` plus either `Data Source=/path/fortuna.db` or the file path alone for desktop offline mode. PostgreSQL credentials are **secret**. |
 | Migrations | `FORTUNA_RUN_MIGRATIONS` | Whether the entrypoint applies pending migrations before starting. `false` when they are applied out of band. |
 | Token validation | `FORTUNA_AUTH_TOKEN_SECRET`, `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS`, `FORTUNA_AUTH_TOKEN_ISSUER`, `FORTUNA_AUTH_TOKEN_AUDIENCE` | The signing configuration Heimdall issues with and Fortuna validates against. The `PREVIOUS` key is set during a rotation so tokens signed with the retired key keep working. **Secret.** |
@@ -195,6 +195,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Transaction tags | `FORTUNA_TRANSACTION_MAX_TAGS` | Maximum number of live tags attached to one transaction; defaults to `50`. |
 | Reconciliation | `FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE`, `FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS` | Differences beyond these non-negative amount and day tolerances are accepted but flagged. Defaults to `0.01` and `1`. |
 | Metrics | `FORTUNA_METRICS_PORT` | Local port whose listener serves `GET /metrics` (IR-27). Defaults to `9464`; `0` disables the exporter. The container entrypoint opens this port next to `8080`; outside the container it must also be one Kestrel listens on (`ASPNETCORE_HTTP_PORTS`). |
+| Reverse proxy | `FORTUNA_FORWARDED_KNOWN_NETWORKS`, `FORTUNA_FORWARDED_KNOWN_PROXIES` | Comma-separated CIDR networks and IP addresses whose `X-Forwarded-For` / `X-Forwarded-Proto` are believed, one hop deep; loopback is always trusted. Set the proxy's network in production, or every caller is the proxy — see [4.1](#41-client-ip-addresses). |
 | CORS | `FORTUNA_CORS_ALLOWED_ORIGINS` | Empty by default, which refuses every cross-origin request; a browser client does not reach the API until its origin is listed. |
 | Logging | `FORTUNA_LOG_DIRECTORY`, `FORTUNA_LOG_LEVEL` | The log directory is a mounted volume in a container. |
 
@@ -208,9 +209,10 @@ files carry keys with empty or placeholder values only.
 | Concern | Approach |
 | --- | --- |
 | Format | Structured JSON, through Serilog, wired with `Host.UseSerilog()`. |
-| Destination | Console, plus a rolling file in the configured log directory, which is a named volume in a container. |
-| Correlation | Every request carries a correlation identifier, propagated into any job it starts, so a job's log lines can be traced back to the request that queued it. |
-| Levels | `Information` for request completion, job state transitions and startup decisions; `Warning` for a degraded external dependency; `Error` for an unhandled failure. |
+| Destination | Console, plus a JSON file rolled daily under `FORTUNA_LOG_DIRECTORY/<yyyy>/<MM>/` (`fortuna-<yyyyMMdd>.json`), which is a named volume in a container. Fortuna deletes no log file itself: how long one is kept is the operator's rotation. |
+| Correlation | Every request carries a correlation identifier — its W3C trace id, returned in the `traceparent` response header — propagated into any job it starts, so a job's log lines can be traced back to the request that queued it. |
+| Request start | `ArturRios.Util.WebApi`'s `TraceActivityMiddleware` logs `Started request with TraceId {TraceId} from {ClientIp}` for every API request and tags the request's activity with `client.address` — see [4.1](#41-client-ip-addresses). |
+| Levels | `Information` for request start and completion, job state transitions and startup decisions; `Warning` for a degraded external dependency; `Error` for an unhandled failure. |
 | Job logging | Each job logs its acceptance, its start, its per-outcome counts and its completion — never the content of a row it processed. |
 | **Never logged** | A monetary amount. An account, card or investment identifier or name. A token, a signing key, an aggregator secret, an access token, a recovery code or its hash. Attachment content. The contents of an imported file. A connection string with its password. |
 
@@ -218,6 +220,36 @@ The exclusion list is longer than most services need, and deliberately so: a log
 second copy of whatever reaches it, held under weaker controls than the database. A support engineer
 reading a log should be able to tell **that** an import processed 412 rows and rejected 3, and
 **why** those 3 were rejected in the system's own words — without learning what anybody spent.
+
+### 4.1 Client IP addresses
+
+The client IP address is the one identifying value the logs carry on purpose. Every request that
+reaches the API — anonymous, refused, rate-limited or served — is logged at `Information` with its
+trace id and the caller's address, before request logging, rate limiting and authentication run, so
+the source of a credential-stuffing run or of an account's misuse can be found afterwards. The same
+address is tagged on the request's activity as `client.address`; no trace exporter is configured
+today, so the tag leaves the process only if one is added. A Prometheus scrape on the private
+listener is answered before the middleware and is not logged. The behavior is set explicitly in
+`AddFortunaWebApi` (`TraceActivityOptions.LogClientIp` and `TagClientAddress`, both `true`), not
+inherited from the library's defaults.
+
+**An IP address is personal data under the GDPR and the LGPD.** It is written to the console and to
+the monthly JSON log files under `FORTUNA_LOG_DIRECTORY`, and kept for as long as those files are —
+whole-account erasure does not rewrite them, so the deployment's log rotation is what bounds it. It
+is never written to the database, an audit entry or an export.
+
+Which address it is depends on the reverse proxy configuration. Behind a proxy every connection
+comes from the proxy, and the caller's own address travels in `X-Forwarded-For`. Forwarded headers
+are applied first in the pipeline, and only from the networks and addresses in
+`FORTUNA_FORWARDED_KNOWN_NETWORKS` / `FORTUNA_FORWARDED_KNOWN_PROXIES` (plus loopback):
+
+| Proxy configuration | Address logged (and used by the per-client rate limiter) |
+| --- | --- |
+| The proxy is listed | The caller's — the rightmost `X-Forwarded-For` entry, the one hop the proxy vouches for; an earlier entry a caller forged is ignored |
+| The proxy is not listed | The proxy's, which identifies nobody — and every caller shares one rate-limit partition |
+| A connection from outside the listed ranges sends `X-Forwarded-For` | The connection's own address; the header is ignored |
+
+Never list a range a caller can originate from: anything trusted here can claim any address it likes.
 
 ---
 
@@ -351,8 +383,8 @@ the connection's local port equals `FORTUNA_METRICS_PORT` (IR-27). The `Host` he
 the proxy forwards the caller's, so a client could forge any value. The private port serves nothing
 but the scrape: every other path that arrives on it is answered `404` before it reaches the API.
 
-The exporter runs before request logging, rate limiting, authentication and authorization, so a
-scrape needs no token and is not logged; it is middleware rather than a controller, so it is absent
+The exporter runs before the request-start entry, request logging, rate limiting, authentication
+and authorization, so a scrape needs no token and is not logged; it is middleware rather than a controller, so it is absent
 from the OpenAPI document. On `8080`, `/metrics` falls through to the normal pipeline like any
 unknown path (`401` anonymous, `404` authenticated) and is never served. Setting
 `FORTUNA_METRICS_PORT=0` removes the exporter and its instrumentation entirely.
@@ -368,20 +400,33 @@ scrape_configs:
 
 ## 6. Environments
 
-One topology, three deployments. What differs is configuration, not shape — which is why there is one
-compose file and one environment file per environment rather than three compose files.
+One topology, four deployments. What differs is configuration, not shape — which is why there is one
+compose file and one environment file per environment (`docker/<environment>.env.example`) rather
+than four compose files. Local runs on the developer's machine; the other three share one Linux VPS,
+deployed by [yggdrasil](https://github.com/artur-rios/yggdrasil), each as its own Compose project
+(`fortuna-api-<environment>`) with its own volumes, database and secrets. `example.com` stands for the
+real domain.
 
-| Environment | Purpose | Differences |
-| --- | --- | --- |
-| **Local** | Development on Docker Desktop for Windows | Runs as `Development`: Swagger served, developer exception page on, EF logs parameter values. Reaches the host's PostgreSQL through `host.docker.internal`, which Docker Desktop defines. Attachment storage is the filesystem. External services usually unconfigured, so their sources list as unavailable. |
-| **Development** | Integration on Docker in WSL Ubuntu | Also runs as `Development`. `host.docker.internal` is **not** defined by the plain Docker engine, so the compose file maps it to the bridge gateway — which is what lets one `DB_HOST` value work on all three. |
-| **Production** | The Linux VPS | Runs as `Production`: Swagger off, developer page off, EF diagnostics off. Attachment storage is the S3-compatible store. Published to `127.0.0.1` only, behind a reverse proxy. Every secret supplied by the environment file, none defaulted. |
+| Environment | Where | Deployed by | Public host | Database | Differences |
+| --- | --- | --- | --- | --- | --- |
+| **Local** | The developer's Windows machine, Docker Desktop | By hand (`docker compose --env-file docker/local.env up -d --build`), or yggdrasil's `scripts/deploy.sh local fortuna-api …` | `http://localhost:8083` | `fortuna_local`, on the PostgreSQL installed on Windows | Runs as `Development`: Swagger served, developer exception page on, EF logs parameter values. Reaches the host's PostgreSQL through `host.docker.internal`, which Docker Desktop defines. Attachment storage is the filesystem. Signs in with the local account (`FORTUNA_LOCAL_AUTH_ENABLED`), since the local Heimdall is plain HTTP; external services unconfigured, so their sources list as unavailable. |
+| **Development** | The VPS, on demand (started only when used) | Jenkins, on every push to `develop`; a stopped development stays stopped, and `scripts/ygg.sh env start development` on the VPS turns it on | `fortuna-api-dev.example.com` | `fortuna_development`, on the VPS's PostgreSQL | Also runs as `Development`. `host.docker.internal` is **not** defined by the plain Docker engine, so the compose file maps it to the bridge gateway — which is what lets one `DB_HOST` value work on both machines. Validates tokens from development's Heimdall (`heimdall-api-dev.example.com`). |
+| **Homologation** | The VPS, on demand | Jenkins, on every push of a `release/x.y.z` branch | `fortuna-api-hml.example.com` | `fortuna_homologation` | Configured like production, with its own secrets, bucket and Heimdall (`heimdall-api-hml.example.com`). Runs as `Production`, because any other ASP.NET environment serves the OpenAPI UI and detailed errors. |
+| **Production** | The VPS, always on | Jenkins, on a green `release/x.y.z → main` pull request, which it then merges and tags | `fortuna-api.example.com` | `fortuna` | Runs as `Production`: Swagger off, developer page off, EF diagnostics off. Attachment storage is the S3-compatible store. Every secret supplied by the environment file, none defaulted. |
 
-PostgreSQL is **not** a service in the compose file. Each environment already runs an instance shared
-between services, each service owning its own database and schema — which is why `Search Path` is
-pinned (IR-05).
+On the VPS, Traefik routes each environment's public host to its container over the shared `edge`
+network, and also serves the API under its web UI's host at `/api/` (`fortuna-dev.example.com/api/`,
+`fortuna-hml.example.com/api/`, `fortuna.example.com/api/`), so the browser client reaches it on its
+own origin. No host port is published there, and the Docker networks (`172.16.0.0/12`) are the
+trusted proxies ([4.1](#41-client-ip-addresses)). `FORTUNA_HEIMDALL_BASE_URL` must be HTTPS, so each
+environment reaches its Heimdall through that Heimdall's public host, and `FORTUNA_AUTH_TOKEN_SECRET`
+equals that environment's Heimdall signing secret.
 
-A **desktop installation** is a fourth shape rather than a fourth environment. Its preferred package
+PostgreSQL is **not** a service in the compose file. Each machine already runs an instance shared
+between services and environments, each service and environment owning its own database — which is
+why `Search Path` is pinned (IR-05).
+
+A **desktop installation** is another shape rather than another environment. Its preferred package
 places the generated `fortuna_core.h` contract and `fortuna_core.dll` (Windows) or
 `libfortuna_core.so` (Linux) beside the client. The client calls initialization with a writable
 SQLite path, calls operations from a worker isolate, frees every returned string and shuts the core
@@ -402,23 +447,33 @@ implementations and are not interchangeable files.
 file and no secret. The entrypoint applies pending migrations when `FORTUNA_RUN_MIGRATIONS` is set,
 then starts the API.
 
-**Deployment.** One command per environment:
+**Deployment.** Locally, one command:
 
 ```bash
 docker compose --env-file docker/local.env up -d --build
-docker compose --env-file docker/development.env up -d --build
-docker compose --env-file docker/production.env up -d --build
 ```
 
-**Continuous integration** (IR-17). Three workflows, all on every pull request and every commit to
-`main`, with no path filters — a filter would let a change to an unlisted path merge without evidence
-that anything still passes:
+The development, homologation and production instances on the VPS are deployed by
+[yggdrasil](https://github.com/artur-rios/yggdrasil)'s Jenkins pipeline (`Jenkinsfile`), which runs
+this same `docker-compose.yml`, with `/etc/yggdrasil/<environment>/fortuna-api.env` as the
+environment file, when `develop` is pushed (development), when a `release/x.y.z` branch is pushed
+(homologation) and when its pull request into `main` passes every check (production); the release
+process is described in [CONTRIBUTING.md](../../CONTRIBUTING.md#releasing).
+
+**Continuous integration** (IR-17). The workflows run on every pull request into `develop` and
+`main` and on every commit to either branch. Those that report a required check run with no path
+filters — a filter would let a change to an unlisted path merge without evidence that anything still
+passes, and a required check whose workflow is skipped never reports, which blocks the pull request.
+Only `native-core.yml`, which reports no required check, runs only when the native core or the
+OpenAPI document it is generated from changes:
 
 | Workflow | Stages |
 | --- | --- |
-| `tests.yml` | Restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor → upload the report and the test results → build the container image in a separate job |
+| `tests.yml` | Test the helper scripts → check for a blank line above every `return`, `break` and `yield` → restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor → upload the report and the test results → build the container image in a separate job |
 | `check-openapi.yml` | Regenerate the OpenAPI document from the code and fail if the committed one differs (IR-14) |
-| `native-core.yml` | Audit Cargo dependencies → format-check, lint and test the Rust boundary on Windows and Linux → build each release dynamic library → reject generated-header drift → upload the library and header as platform artifacts (IR-21 … IR-25) |
+| `native-core.yml` | Test on the declared minimum Rust version → format-check, lint and test the Rust boundary on Windows and Linux → build each release dynamic library → reject generated-header drift → upload the library and header as platform artifacts (IR-21 … IR-25) |
+| `audit.yml` | Check the native core's Cargo dependencies against the RustSec advisory database — on every pull request, so a newly published advisory fails it without any change here |
+| `branch-policy.yml` | Enforce the branching model on pull requests into `develop` and `main`, described in [CONTRIBUTING.md](../../CONTRIBUTING.md#branching-model) |
 
 The unit suite runs before the functional one on purpose: it costs seconds, so a broken handler is
 reported before the runner spends minutes pulling and starting a database container. The vulnerability

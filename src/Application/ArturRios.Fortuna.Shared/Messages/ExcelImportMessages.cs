@@ -20,6 +20,7 @@ public static class ExcelImportMessages
     public const string RowDateInvalid = "The row date could not be parsed.";
     public const string RowAmountInvalid = "The row amount could not be parsed.";
     public const string RowDirectionInvalid = "The row direction could not be parsed.";
+    public const string RowCategoryTooLong = "The row category cannot exceed 200 characters.";
     public static string ColumnNotFound(string column) =>
         $"The mapped column '{column}' was not found in the workbook.";
 }

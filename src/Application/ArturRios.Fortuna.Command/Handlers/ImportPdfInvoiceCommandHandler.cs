@@ -17,7 +17,8 @@ public sealed class ImportPdfInvoiceCommandHandler(
     : ICommandHandlerAsync<ImportPdfInvoiceCommand, ImportPdfInvoiceCommandOutput>
 {
     public async Task<DataOutput<ImportPdfInvoiceCommandOutput?>> HandleAsync(
-        ImportPdfInvoiceCommand command)
+        ImportPdfInvoiceCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -32,10 +33,10 @@ public sealed class ImportPdfInvoiceCommandHandler(
             command.FileName.Trim(),
             command.Content,
             command.CorrelationId,
-            timeProvider.GetUtcNow()), CancellationToken.None);
+            timeProvider.GetUtcNow()), cancellationToken);
         if (result.Outcome == QueuePdfInvoiceImportOutcome.Succeeded)
         {
-            await queue.EnqueueAsync(result.BackgroundJobId!.Value, CancellationToken.None);
+            await queue.EnqueueAsync(result.BackgroundJobId!.Value, cancellationToken);
         }
 
         return Resolve(result);

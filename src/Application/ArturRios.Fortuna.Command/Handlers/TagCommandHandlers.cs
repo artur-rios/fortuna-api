@@ -14,7 +14,9 @@ public sealed class CreateTagCommandHandler(
     TimeProvider timeProvider)
     : ICommandHandlerAsync<CreateTagCommand, TagCommandOutput>
 {
-    public async Task<DataOutput<TagCommandOutput?>> HandleAsync(CreateTagCommand command)
+    public async Task<DataOutput<TagCommandOutput?>> HandleAsync(
+        CreateTagCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<TagCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -25,7 +27,7 @@ public sealed class CreateTagCommandHandler(
 
         var result = await tags.CreateAsync(
             new TagCreation(profile.Id, command.Name, timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         return TagHandler.Resolve(result.Tag, result.Outcome, TagMessages.CreatedSuccessfully);
     }
@@ -37,7 +39,9 @@ public sealed class UpdateTagCommandHandler(
     TimeProvider timeProvider)
     : ICommandHandlerAsync<UpdateTagCommand, TagCommandOutput>
 {
-    public async Task<DataOutput<TagCommandOutput?>> HandleAsync(UpdateTagCommand command)
+    public async Task<DataOutput<TagCommandOutput?>> HandleAsync(
+        UpdateTagCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<TagCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -48,7 +52,7 @@ public sealed class UpdateTagCommandHandler(
 
         var result = await tags.UpdateAsync(
             new TagUpdate(profile.Id, command.Id, command.Name, timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         return TagHandler.Resolve(result.Tag, result.Outcome, TagMessages.UpdatedSuccessfully);
     }
@@ -60,7 +64,9 @@ public sealed class DeleteTagCommandHandler(
     TimeProvider timeProvider)
     : ICommandHandlerAsync<DeleteTagCommand, TagCommandOutput>
 {
-    public async Task<DataOutput<TagCommandOutput?>> HandleAsync(DeleteTagCommand command)
+    public async Task<DataOutput<TagCommandOutput?>> HandleAsync(
+        DeleteTagCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -72,7 +78,7 @@ public sealed class DeleteTagCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return TagHandler.Resolve(
             result.Tag,
@@ -90,14 +96,16 @@ public sealed class AttachTransactionTagCommandHandler(
     : ICommandHandlerAsync<AttachTransactionTagCommand, TransactionTagCommandOutput>
 {
     public async Task<DataOutput<TransactionTagCommandOutput?>> HandleAsync(
-        AttachTransactionTagCommand command) => await TransactionTagHandler.HandleAsync(
+        AttachTransactionTagCommand command,
+        CancellationToken cancellationToken = default) => await TransactionTagHandler.HandleAsync(
         command.Id,
         command.TagId,
         profileResolver,
         tags.AttachAsync,
         options,
         timeProvider,
-        attaching: true);
+        attaching: true,
+        cancellationToken);
 }
 
 public sealed class DetachTransactionTagCommandHandler(
@@ -108,14 +116,16 @@ public sealed class DetachTransactionTagCommandHandler(
     : ICommandHandlerAsync<DetachTransactionTagCommand, TransactionTagCommandOutput>
 {
     public async Task<DataOutput<TransactionTagCommandOutput?>> HandleAsync(
-        DetachTransactionTagCommand command) => await TransactionTagHandler.HandleAsync(
+        DetachTransactionTagCommand command,
+        CancellationToken cancellationToken = default) => await TransactionTagHandler.HandleAsync(
         command.Id,
         command.TagId,
         profileResolver,
         tags.DetachAsync,
         options,
         timeProvider,
-        attaching: false);
+        attaching: false,
+        cancellationToken);
 }
 
 internal static class TransactionTagHandler
@@ -128,7 +138,8 @@ internal static class TransactionTagHandler
             Task<TransactionTagAssignmentResult>> operation,
         TagOptions options,
         TimeProvider timeProvider,
-        bool attaching)
+        bool attaching,
+        CancellationToken cancellationToken)
     {
         var output = DataOutput<TransactionTagCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -143,7 +154,7 @@ internal static class TransactionTagHandler
                 transactionId,
                 tagId,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome == TransactionTagAssignmentOutcome.NotFound)
         {
             return output.WithError(TagMessages.AssignmentNotFound);

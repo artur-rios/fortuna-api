@@ -35,6 +35,18 @@ jobs:
         run: python3 scripts/vulnerabilities.py
       - name: Build
         run: dotnet build src/ArturRios.Fortuna.sln --configuration Release --no-restore -m:1
+      - name: Check every test has a category
+        # The two test steps below select by Category trait, so a test without one would run in
+        # neither. List the tests outside both categories and fail on any.
+        run: |
+          set -euo pipefail
+          uncategorized=$(dotnet test src/ArturRios.Fortuna.sln --configuration Release --no-build -m:1 --list-tests \
+            --filter "Category!=Unit&Category!=Functional" | sed -n 's/^    //p')
+          if [ -n "$uncategorized" ]; then
+            echo "::error::These tests have no Category trait (Unit or Functional), so no test step runs them:"
+            echo "$uncategorized"
+            exit 1
+          fi
       - name: Unit tests
         run: dotnet test src/ArturRios.Fortuna.sln --configuration Release --no-build -m:1 --filter "Category=Unit" --collect:"XPlat Code Coverage"
       - name: Functional tests

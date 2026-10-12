@@ -1,13 +1,11 @@
 # syntax=docker/dockerfile:1
 # Base images are pinned by digest for reproducible builds; Dependabot (docker ecosystem) bumps them.
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:2fa828c68761b1b8c23d7662dc134421b9d3b59fe1425fdbc80804e390cdb24d AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317 AS build
 WORKDIR /source
 
-# Every step that restores or builds mounts the same NuGet cache, so packages survive layer
+# Every step that restores or builds mounts the same NuGet cache, so locally packages survive layer
 # invalidation (any source change) and later steps find what the restore step downloaded.
 COPY .config/dotnet-tools.json .config/
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet tool restore
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/Domain/ArturRios.Fortuna.Domain/ArturRios.Fortuna.Domain.csproj src/Domain/ArturRios.Fortuna.Domain/
 COPY src/Application/ArturRios.Fortuna.Command/ArturRios.Fortuna.Command.csproj src/Application/ArturRios.Fortuna.Command/
@@ -21,13 +19,19 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet restore src/Presentation/ArturRios.Fortuna.WebApi/ArturRios.Fortuna.WebApi.csproj
 
 COPY src/ src/
+# Publish restores again rather than passing --no-restore: CI keeps the restore layer in its layer
+# cache but not the cache mount, so a source-only change would otherwise publish against an empty
+# package folder. When the mount already holds the packages, this restore is a no-op.
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet publish src/Presentation/ArturRios.Fortuna.WebApi/ArturRios.Fortuna.WebApi.csproj \
-    --configuration Release --no-restore --output /app
+    --configuration Release --output /app
 RUN find /app -name '.env*' -delete
 # The placeholder connection string only satisfies the design-time factory while bundling; the
 # bundle reads the real one from FORTUNA_DATA_CONNECTIONSTRING when it runs (docker/entrypoint.sh).
+# dotnet-ef is restored in this same step: a tool restored by an earlier step lives only in the cache
+# mount, which CI does not keep, so a cached restore layer would leave this step without the tool.
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
+    dotnet tool restore && \
     FORTUNA_DATA_CONNECTIONSTRING="Host=localhost;Database=fortuna;Username=postgres;Search Path=fortuna" \
     dotnet ef migrations bundle \
     --project src/Infrastructure/ArturRios.Fortuna.Data \
@@ -36,7 +40,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --output /app/fortuna-migrate \
     --force
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:6a94333d37514e385650a3c81a55e5350b67253dbe136e9cf17e499c35606a8c AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:222759b391a1aaf241166672c8f99b2d4ada452e7b5319f3c6e8f265a37b5ad4 AS final
 WORKDIR /app
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl \

@@ -25,7 +25,8 @@ public sealed class DrillIntoAggregationQueryHandler(
     : IQueryHandlerAsync<DrillIntoAggregationQuery, TransactionDrillDownOutput>
 {
     public async Task<DataOutput<TransactionDrillDownOutput?>> HandleAsync(
-        DrillIntoAggregationQuery query)
+        DrillIntoAggregationQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<TransactionDrillDownOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -47,14 +48,14 @@ public sealed class DrillIntoAggregationQueryHandler(
             return output.WithError(TransactionDrillDownMessages.BucketNotFound);
         }
 
-        var selected = await SelectTransactionsAsync(profile.Id, key);
-        var currentCount = await selected.CountAsync(CancellationToken.None);
+        var selected = await SelectTransactionsAsync(profile.Id, key, cancellationToken);
+        var currentCount = await selected.CountAsync(cancellationToken);
         var changed = currentCount != key.RecordCount || await selected.AnyAsync(
             item => item.UpdatedAt > key.IssuedAt,
-            CancellationToken.None);
+            cancellationToken);
         if (currentCount == 1)
         {
-            var transaction = await selected.SingleAsync(CancellationToken.None);
+            var transaction = await selected.SingleAsync(cancellationToken);
             var direct = new TransactionDrillDownOutput
             {
                 Mode = TransactionDrillDownMode.Transaction.WireName(),
@@ -92,7 +93,9 @@ public sealed class DrillIntoAggregationQueryHandler(
         var target = Target(key, requestedDimension);
         if (target is not null && currentCount > 1)
         {
-            var aggregate = await aggregationHandler.HandleAsync(AggregationQuery(key, target));
+            var aggregate = await aggregationHandler.HandleAsync(
+                AggregationQuery(key, target),
+                cancellationToken);
             if (!aggregate.Success || aggregate.Data is null)
             {
                 return output.WithErrors(aggregate.Errors ?? []);
@@ -120,7 +123,7 @@ public sealed class DrillIntoAggregationQueryHandler(
                 query.PageNumber,
                 pageSize,
                 orderBy: null,
-                cancellationToken: CancellationToken.None);
+                cancellationToken: cancellationToken);
         var list = new TransactionDrillDownOutput
         {
             Mode = TransactionDrillDownMode.Transactions.WireName(),
@@ -137,7 +140,8 @@ public sealed class DrillIntoAggregationQueryHandler(
 
     private async Task<IQueryable<TransactionReadSnapshot>> SelectTransactionsAsync(
         Guid userId,
-        TransactionDrillDownKeyPayload key)
+        TransactionDrillDownKeyPayload key,
+        CancellationToken cancellationToken)
     {
         var (from, to) = NarrowedPeriod(key);
         IQueryable<TransactionReadSnapshot> selected = transactions.Query(new TransactionSearchCriteria
@@ -169,7 +173,7 @@ public sealed class DrillIntoAggregationQueryHandler(
                 userId,
                 includeDeleted: true,
                 includeUsageCounts: false,
-                CancellationToken.None);
+                cancellationToken);
             foreach (var selection in key.Selections.Where(item =>
                          item.Dimension == AggregationDimension.Category && item.RollupCategories))
             {

@@ -54,6 +54,13 @@
 #define FORTUNA_STATUS_INTERNAL_ERROR 500
 
 /**
+ * The route is exported for ABI stability but the native core does not implement it; the
+ * failure envelope states why. `fortuna_capabilities` lists every such route under
+ * `notImplemented`, so callers can present it as unavailable offline without calling it.
+ */
+#define FORTUNA_STATUS_NOT_IMPLEMENTED 501
+
+/**
  * An operation requiring initialized services was called before initialization.
  */
 #define FORTUNA_STATUS_NOT_INITIALIZED 503
@@ -63,7 +70,8 @@ extern "C" {
 #endif // __cplusplus
 
 /**
- * Describe every route available to offline callers and every deliberately absent route.
+ * Describe every route available to offline callers, every exported route that is not
+ * implemented offline, and every deliberately absent route.
  * Initialization is not required. The response is library-owned and must be released with
  * `fortuna_string_free`.
  */
@@ -144,11 +152,42 @@ extern "C" {
 /**
  * Offline route exports generated from docs/openapi/fortuna.json.
  * Request metadata uses {token, route, query, body}; body is the unchanged HTTP JSON body.
- * Deliberately unavailable: /api/auth/** (Heimdall), /api/connections/** and
+ * Deliberately unavailable: /api/auth/... (Heimdall), /api/connections/... and
  * GET /api/data-sources (Pluggy), POST /api/exchange-rates/sync (remote rate source),
- * DELETE /api/users/{id} (no offline administrator), /api/me/consents/** (hosted
+ * DELETE /api/users/{id} (no offline administrator), /api/me/consents/... (hosted
  * external processing only), POST /api/local-accounts/password-reset (use recovery
  * codes), and the HTTP-host health routes.
+ *
+ * Exported but not implemented offline: each of these always answers
+ * FORTUNA_STATUS_NOT_IMPLEMENTED (501) with a failure envelope stating the reason, and
+ * fortuna_capabilities lists it under notImplemented instead of operations:
+ *   GET /api/budgets/{id}/consumption
+ *   GET /api/credit-cards/{id}/statements
+ *   POST /api/exports
+ *   GET /api/goals/{id}/progress
+ *   POST /api/import-jobs/{id}/retry
+ *   POST /api/imports/excel
+ *   POST /api/imports/pdf
+ *   POST /api/installment-plans
+ *   DELETE /api/installment-plans/{id}
+ *   GET /api/installment-plans/{id}
+ *   POST /api/installment-plans/{id}/restore
+ *   GET /api/projections/cash-flow
+ *   GET /api/projections/commitments
+ *   POST /api/recurring-transactions/materialize
+ *   GET /api/reports/aggregate
+ *   GET /api/reports/drill-down
+ *   GET /api/reports/net-position
+ *   POST /api/reports/table
+ *   GET /api/statements/{id}
+ *   POST /api/statements/{id}/close
+ *   POST /api/statements/{id}/settle
+ *   POST /api/transactions/{id}/reconcile
+ *   POST /api/transfers
+ *   DELETE /api/transfers/{id}
+ *   GET /api/transfers/{id}
+ *   POST /api/transfers/{id}/restore
+ *
  * Call fortuna_capabilities to discover the machine-readable availability contract.
  */
 int fortuna_api_accounts_get(const char *request_json, char **response_json); /* GET /api/accounts */

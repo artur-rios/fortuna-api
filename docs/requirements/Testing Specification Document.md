@@ -201,7 +201,7 @@ injected so a test can pin them.
 
 | Collaborator | Double |
 | --- | --- |
-| `IAsyncRepository<T>` / `IAsyncReadOnlyRepository<T>` | `AsyncFakeRepository<T>` from `ArturRios.Util.Test` — a real in-memory collection, not a mock. Assert against its contents. |
+| `IAsyncRepository<T, TKey>` / `IAsyncReadOnlyRepository<T, TKey>` | `AsyncFakeRepository<T, TKey>` from `ArturRios.Util.Test` — a real in-memory collection, not a mock. Assert against its contents. |
 | A validator, a mediator, a domain service, a clock | **Moq**. One mocking library; do not introduce a second. |
 | An ingestion source, a rate client, an attachment store | A hand-written fake in the test project, plus recorded fixtures (§7.2). Never a live call. |
 | Entities, commands and DTOs used as input | **Bogus** `Faker<T>`, seeded deterministically. Not large inline literals, and not a shared mutable fixture. |
@@ -357,10 +357,17 @@ The native command is a required part of the full repository suite. It calls the
 and generated operation functions through their C-compatible signatures, including capability
 discovery, every offline area, success and failure envelopes, owner-scoped CRUD and lifecycle,
 non-blocking job progress, concurrent calls, response ownership and exact decimal serialization.
+It proves that every export the core does not implement answers `501` before and after
+initialization, queues and stores nothing, and is reported under `notImplemented` instead of
+`operations`; that jobs earlier versions marked completed without processing read as failed with the
+reason; and that category reassignment, counterparty merging and category suggestion follow the HTTP
+API's rules, messages and statuses, including the HTTP functional suite's descendant scenario,
+and that transactions stored with a counterparty name before linking are linked exactly once.
 It also confirms that local owner erasure removes the native profile, credentials, recovery hashes,
 records and jobs while retaining audit rows after their subject mapping is destroyed.
 The native archive test opens the ZIP returned through the C ABI and checks manifest/schema coverage,
 exact decimal strings, secret redaction and attachment bytes from the native SQLite implementation.
 The registry test proves that every eligible route in the checked-in HTTP contract has a native
-operation and that connected-only routes are absent. CI runs it on Windows and Linux and separately
+export, that connected-only routes are absent, and that capability discovery separates implemented
+from not-implemented exports. CI runs it on Windows and Linux and separately
 builds each release library; rebuilding must leave the generated header unchanged.

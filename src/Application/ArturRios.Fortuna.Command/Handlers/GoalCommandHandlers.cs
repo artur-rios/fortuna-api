@@ -13,7 +13,9 @@ public sealed class CreateGoalCommandHandler(
     IGoalStore goals,
     TimeProvider timeProvider) : ICommandHandlerAsync<CreateGoalCommand, GoalCommandOutput>
 {
-    public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(CreateGoalCommand command)
+    public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(
+        CreateGoalCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -29,7 +31,7 @@ public sealed class CreateGoalCommandHandler(
             command.TargetDate,
             command.AccountIds,
             command.InvestmentIds,
-            timeProvider.GetUtcNow()), CancellationToken.None);
+            timeProvider.GetUtcNow()), cancellationToken);
 
         return GoalHandler.Resolve(result, GoalMessages.CreatedSuccessfully);
     }
@@ -40,7 +42,9 @@ public sealed class UpdateGoalCommandHandler(
     IGoalUpdater goals,
     TimeProvider timeProvider) : ICommandHandlerAsync<UpdateGoalCommand, GoalCommandOutput>
 {
-    public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(UpdateGoalCommand command)
+    public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(
+        UpdateGoalCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -57,7 +61,7 @@ public sealed class UpdateGoalCommandHandler(
             command.TargetDate,
             command.AccountIds,
             command.InvestmentIds,
-            timeProvider.GetUtcNow()), CancellationToken.None);
+            timeProvider.GetUtcNow()), cancellationToken);
 
         return GoalHandler.Resolve(result, GoalMessages.UpdatedSuccessfully);
     }
@@ -68,7 +72,9 @@ public sealed class DeleteGoalCommandHandler(
     IGoalLifecycleStore goals,
     TimeProvider timeProvider) : ICommandHandlerAsync<DeleteGoalCommand, GoalCommandOutput>
 {
-    public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(DeleteGoalCommand command)
+    public async Task<DataOutput<GoalCommandOutput?>> HandleAsync(
+        DeleteGoalCommand command,
+        CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
         var profile = await profileResolver.ResolveAsync();
@@ -82,7 +88,7 @@ public sealed class DeleteGoalCommandHandler(
             command.Id,
             now,
             DateOnly.FromDateTime(now.UtcDateTime),
-            CancellationToken.None);
+            cancellationToken);
 
         return GoalHandler.Resolve(result, GoalMessages.DeletedSuccessfully);
     }

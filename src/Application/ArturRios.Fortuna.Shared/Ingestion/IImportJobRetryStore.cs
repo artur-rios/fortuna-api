@@ -17,7 +17,10 @@ public enum RetryImportJobOutcome
     Succeeded,
     NotFound,
     NotFailed,
-    SourceFileNotRetained
+    SourceFileNotRetained,
+    ConnectionRevoked,
+    ConnectionRequiresReauthentication,
+    SynchronizationAlreadyRunning
 }
 
 public sealed record RetryImportJobSnapshot(

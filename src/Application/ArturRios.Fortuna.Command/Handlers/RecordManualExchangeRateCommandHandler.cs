@@ -18,7 +18,8 @@ public sealed class RecordManualExchangeRateCommandHandler(
     : ICommandHandlerAsync<RecordManualExchangeRateCommand, RecordManualExchangeRateCommandOutput>
 {
     public async Task<DataOutput<RecordManualExchangeRateCommandOutput?>> HandleAsync(
-        RecordManualExchangeRateCommand command)
+        RecordManualExchangeRateCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RecordManualExchangeRateCommandOutput?>.New;
 
@@ -29,7 +30,7 @@ public sealed class RecordManualExchangeRateCommandHandler(
             return output.WithError(ManualExchangeRateMessages.AdministratorRequired);
         }
 
-        var validation = await validator.ValidateAsync(command);
+        var validation = await validator.ValidateAsync(command, cancellationToken);
         if (!validation.IsValid)
         {
             return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
@@ -37,14 +38,14 @@ public sealed class RecordManualExchangeRateCommandHandler(
 
         var baseCode = command.BaseCurrencyCode.Trim().ToUpperInvariant();
         var quoteCode = command.QuoteCurrencyCode.Trim().ToUpperInvariant();
-        if (await currencies.FindByCodeAsync(baseCode, CancellationToken.None) is null)
+        if (await currencies.FindByCodeAsync(baseCode, cancellationToken) is null)
         {
             return output
                 .WithError(ManualExchangeRateMessages.CurrencyNotSupported)
                 .WithMessage(ManualExchangeRateMessages.UnknownCurrency(baseCode));
         }
 
-        if (await currencies.FindByCodeAsync(quoteCode, CancellationToken.None) is null)
+        if (await currencies.FindByCodeAsync(quoteCode, cancellationToken) is null)
         {
             return output
                 .WithError(ManualExchangeRateMessages.CurrencyNotSupported)
@@ -53,7 +54,7 @@ public sealed class RecordManualExchangeRateCommandHandler(
 
         var stored = await rates.UpsertManualAsync(
             new ManualRateCandidate(baseCode, quoteCode, command.Rate, command.RateDate),
-            CancellationToken.None);
+            cancellationToken);
         if (stored.Outcome == ManualRateUpsertOutcome.CurrencyNotSupported)
         {
             return output.WithError(ManualExchangeRateMessages.CurrencyNotSupported);

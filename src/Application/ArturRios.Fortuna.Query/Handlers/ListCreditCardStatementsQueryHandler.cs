@@ -17,7 +17,8 @@ public sealed class ListCreditCardStatementsQueryHandler(
     : IPaginatedQueryHandlerAsync<ListCreditCardStatementsQuery, CreditCardStatementOutput>
 {
     public async Task<PaginatedOutput<CreditCardStatementOutput>> HandleAsync(
-        ListCreditCardStatementsQuery query)
+        ListCreditCardStatementsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = PaginatedOutput<CreditCardStatementOutput>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -29,7 +30,7 @@ public sealed class ListCreditCardStatementsQueryHandler(
         var card = await cards.FindByIdWithLimitsAsync(
             profile.Id,
             query.CreditCardId,
-            CancellationToken.None);
+            cancellationToken);
         if (card is null)
         {
             return output.WithError(CreditCardStatementMessages.CreditCardNotFound);
@@ -64,7 +65,7 @@ public sealed class ListCreditCardStatementsQueryHandler(
             query.PageNumber,
             pageSize,
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         return page.WithMessage(CreditCardStatementMessages.ListedSuccessfully);
     }

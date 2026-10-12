@@ -20,7 +20,9 @@ public sealed class ListInvestmentsQueryHandler(
     TimeProvider timeProvider)
     : IPaginatedQueryHandlerAsync<ListInvestmentsQuery, InvestmentOutput>
 {
-    public async Task<PaginatedOutput<InvestmentOutput>> HandleAsync(ListInvestmentsQuery query)
+    public async Task<PaginatedOutput<InvestmentOutput>> HandleAsync(
+        ListInvestmentsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = PaginatedOutput<InvestmentOutput>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -30,7 +32,7 @@ public sealed class ListInvestmentsQueryHandler(
         }
 
         var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
-        var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
+        var displayCurrency = await currencies.FindByCodeAsync(displayCode, cancellationToken);
         if (displayCurrency is null)
         {
             return output
@@ -81,7 +83,7 @@ public sealed class ListInvestmentsQueryHandler(
             query.PageNumber,
             pageSize,
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
         var converter = new FigureConverter(rates, displayCurrency);
         var figureDate = query.FigureDate ?? Today();
         foreach (var investment in page.Data ?? [])

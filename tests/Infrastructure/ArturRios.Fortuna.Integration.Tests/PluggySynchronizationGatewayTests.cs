@@ -48,6 +48,7 @@ public sealed class PluggySynchronizationGatewayTests
         Assert.Equal(TransactionDirection.Expense, expense.Direction);
         Assert.Equal(42.50m, expense.Amount);
         Assert.Equal("Food", expense.Category);
+        Assert.Equal(new DateOnly(2026, 8, 14), expense.OccurredOn);
         Assert.Contains("\"id\":\"transaction-1\"", expense.RawPayload, StringComparison.Ordinal);
         Assert.Equal("auth", handler.Paths[0].TrimStart('/'));
         Assert.Contains("\"clientId\":\"client\"", handler.AuthBody, StringComparison.Ordinal);
@@ -55,6 +56,43 @@ public sealed class PluggySynchronizationGatewayTests
         Assert.All(handler.ApiKeys, key => Assert.Equal("fresh-key", key));
         Assert.Contains(handler.Paths, path => path.Contains(
             "from=2026-08-01&to=2026-08-31", StringComparison.Ordinal));
+    }
+
+    [UnitFact]
+    public async Task GivenIsoDateTimes_WhenFetched_ThenCalendarDatesAndCycleDaysAreRead()
+    {
+        // Pluggy sends `date`, `balanceCloseDate` and `balanceDueDate` as ISO 8601 date-times.
+        var handler = new SequenceHandler(
+            Auth(),
+            Response(HttpStatusCode.OK, "{\"connector\":{\"name\":\"Nubank\"}}"),
+            Response(HttpStatusCode.OK, """
+                {"total":1,"results":[
+                  {"id":"card-1","type":"CREDIT","name":"Card","number":"12345678","currencyCode":"BRL","creditData":{"creditLimit":5000,"balanceCloseDate":"2026-09-10T00:00:00.000Z","balanceDueDate":"2026-09-17T03:00:00.000Z"}}
+                ]}
+                """),
+            Response(HttpStatusCode.OK, """
+                {"total":2,"results":[
+                  {"id":"transaction-1","accountId":"card-1","type":"DEBIT","amount":-42.50,"date":"2026-08-14T00:00:00.000Z","description":"Lunch"},
+                  {"id":"transaction-2","accountId":"card-1","type":"DEBIT","amount":-10,"date":"2026-08-15T03:00:00.000Z","description":"Coffee"}
+                ]}
+                """));
+
+        var result = await Gateway(handler).FetchAsync(
+            "item-1",
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 31),
+            CancellationToken.None);
+
+        Assert.Equal(PluggySynchronizationFetchOutcome.Succeeded, result.Outcome);
+        var card = result.Batch!.Resources.Single();
+        Assert.Equal((short)10, card.ClosingDay);
+        Assert.Equal((short)17, card.DueDay);
+        Assert.Equal(
+            new DateOnly(2026, 8, 14),
+            result.Batch.Transactions.Single(item => item.ExternalReference == "transaction-1").OccurredOn);
+        Assert.Equal(
+            new DateOnly(2026, 8, 15),
+            result.Batch.Transactions.Single(item => item.ExternalReference == "transaction-2").OccurredOn);
     }
 
     [UnitFact]

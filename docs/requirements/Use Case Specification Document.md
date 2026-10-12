@@ -26,6 +26,9 @@ Three conventions hold across every use case and are therefore not repeated in e
 - **Transport.** “HTTP + native” below means the same use-case request body, status family and
   camel-case output contract are available either through the ASP.NET route or its generated C ABI
   function. The C request wraps bearer, route and query metadata around that unchanged body.
+  “HTTP only (native `501`)” means the native core exports the route but does not implement it:
+  the C function answers `501` with the reason and does no work, and `fortuna_capabilities` lists
+  it under `notImplemented`, so the client shows it as not available offline.
 
 ### 1.2 Actors
 
@@ -110,18 +113,34 @@ graph LR
 | UC-01 … UC-02 | HTTP only. Heimdall token validation and first connected access belong to the server; creating a local account provisions its native profile during UC-03. |
 | UC-03 … UC-07 | HTTP + native. Native local-account creation, authentication, recovery, code regeneration, profile read and currency reference data use the generated offline exports. |
 | UC-08 | HTTP only. Synchronization requires the remote exchange-rate source; native supports manual rates and conversion through UC-09 and UC-10. |
-| UC-09 … UC-53 | HTTP + native. Holdings, money movement, organization, planning, lifecycle and audit operations retain owner scoping and publish exact decimals as invariant JSON strings in both transports. |
+| UC-09 … UC-19 | HTTP + native. Manual rates, conversion, financial accounts, balances and credit cards retain owner scoping and publish exact decimals as invariant JSON strings in both transports. |
+| UC-20 … UC-23 | HTTP only (native `501`). The native core does not assign charges to billing cycles, so a card's statements, a statement, closing and settlement are not available offline. |
+| UC-24 … UC-33 | HTTP + native. Investments and transactions. |
+| UC-34 … UC-36 | HTTP only (native `501`). The native core does not create a transfer's paired legs, conversion and cascade, or split an installment purchase across billing cycles. |
+| UC-37, UC-39 | HTTP + native. |
+| UC-38 | HTTP only (native `501`). Recurring occurrences are not materialized natively. |
+| UC-40 | HTTP only (native `501`). Reconciliation needs imported records, which the native core does not create. |
+| UC-41 … UC-48 | HTTP + native. Category reassignment (UC-44), counterparty merging and category suggestion (UC-47) apply the HTTP rules, messages and statuses; a transaction or recurring rule naming a counterparty is linked to it as over HTTP. |
+| UC-49 | HTTP only (native `501`). Budgets are defined natively (UC-48), but consumption is not computed. |
+| UC-50 | HTTP + native. |
+| UC-51 | HTTP only (native `501`). Goals are defined natively (UC-50), but progress is not computed. |
+| UC-52 … UC-53 | HTTP + native, except deleting and restoring transfers and installment plans (native `501`, see UC-34 … UC-36). |
 | UC-54 … UC-58 | HTTP only. Pluggy discovery and every connection operation require its remote service and are deliberately absent from the native header. |
-| UC-59 … UC-74 | HTTP + native. File ingestion, attachments, reports, projections and exports are native operations; their JSON decimals use the shared invariant string contract, and imports and exports return monitorable jobs instead of blocking the caller. |
+| UC-59, UC-60, UC-62 | HTTP only (native `501`). The native core has no workbook or PDF statement parser, so it queues no import and retries none. |
+| UC-61, UC-63 | HTTP + native reads. Natively they list only the import jobs earlier versions accepted without processing, reported as failed with the reason, and no imported records. |
+| UC-64 … UC-66 | HTTP + native. Attachments. |
+| UC-67 … UC-73 | HTTP only (native `501`). Tables, aggregations, drill-down, net position, projections and data-set exports are not computed natively. |
+| UC-74 | HTTP + native read. Natively it returns only the export jobs earlier versions accepted without rendering, reported as failed with the reason. |
 | UC-75 | HTTP + native through transport-specific health functions: anonymous `GET /healthcheck` identifies `Fortuna API` and its published `v1` contract without probing dependencies; `fortuna_health` reports the in-process native boundary. |
 | UC-76 … UC-77 | HTTP only. Connected authentication and credential management require Heimdall and have no offline export. |
 | UC-78 | HTTP + native owner erasure. The administrator route is HTTP-only because an offline installation has no instance administrator. |
 | UC-79 | HTTP + native. Each transport owns its persistence and archive implementation; both return an owner-scoped asynchronous job and a complete, expiring ZIP without credentials or tokens. |
-| UC-80 | HTTP only. Consent governs the hosted Pluggy processor. Native has no external processor, reports the route family unavailable, and leaves manual, Excel and PDF ingestion ungated. |
+| UC-80 | HTTP only. Consent governs the hosted Pluggy processor. Native has no external processor, reports the route family unavailable, and leaves manual entry ungated. |
 
-`fortuna_capabilities` returns the generated list of available operations and the deliberately absent
-route families. The committed C header contains the same absence note, so a client never has to probe
-an unsupported network-dependent operation.
+`fortuna_capabilities` returns the generated list of available operations, the exported operations
+the native core does not implement (`notImplemented`, each with its reason), and the deliberately
+absent route families. The committed C header contains the same notes, so a client never has to
+probe an operation that is not available offline.
 
 ---
 

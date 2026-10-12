@@ -16,7 +16,8 @@ public sealed class ListInvestmentValuationsQueryHandler(
     : IPaginatedQueryHandlerAsync<ListInvestmentValuationsQuery, InvestmentValuationOutput>
 {
     public async Task<PaginatedOutput<InvestmentValuationOutput>> HandleAsync(
-        ListInvestmentValuationsQuery query)
+        ListInvestmentValuationsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = PaginatedOutput<InvestmentValuationOutput>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -28,7 +29,7 @@ public sealed class ListInvestmentValuationsQueryHandler(
         if (!await investments.ExistsAsync(
             profile.Id,
             query.InvestmentId,
-            CancellationToken.None))
+            cancellationToken))
         {
             return output.WithError(InvestmentMessages.NotFound);
         }
@@ -62,7 +63,7 @@ public sealed class ListInvestmentValuationsQueryHandler(
             query.PageNumber,
             pageSize,
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         return page.WithMessage(InvestmentMessages.ValuationHistoryRetrievedSuccessfully);
     }

@@ -16,7 +16,9 @@ public sealed class GetImportJobByIdQueryHandler(
     IImportJobReader jobs)
     : IQueryHandlerAsync<GetImportJobByIdQuery, ImportJobOutput>
 {
-    public async Task<DataOutput<ImportJobOutput?>> HandleAsync(GetImportJobByIdQuery query)
+    public async Task<DataOutput<ImportJobOutput?>> HandleAsync(
+        GetImportJobByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<ImportJobOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -25,7 +27,7 @@ public sealed class GetImportJobByIdQueryHandler(
             return output.WithError(ImportJobMessages.ProfileNotFound);
         }
 
-        var job = await jobs.FindByIdAsync(profile.Id, query.Id, CancellationToken.None);
+        var job = await jobs.FindByIdAsync(profile.Id, query.Id, cancellationToken);
 
         return job is null
             ? output.WithError(ImportJobMessages.NotFound)
@@ -40,7 +42,9 @@ public sealed class ListImportJobsQueryHandler(
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListImportJobsQuery, ImportJobOutput>
 {
-    public async Task<PaginatedOutput<ImportJobOutput>> HandleAsync(ListImportJobsQuery query)
+    public async Task<PaginatedOutput<ImportJobOutput>> HandleAsync(
+        ListImportJobsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -66,7 +70,7 @@ public sealed class ListImportJobsQueryHandler(
             query.PageNumber,
             Math.Min(query.PageSize, paginationOptions.MaximumPageSize),
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         return result.WithMessage(ImportJobMessages.ListedSuccessfully);
     }
@@ -90,7 +94,8 @@ public sealed class ListImportedRecordsQueryHandler(
     : IPaginatedQueryHandlerAsync<ListImportedRecordsQuery, ImportedRecordOutput>
 {
     public async Task<PaginatedOutput<ImportedRecordOutput>> HandleAsync(
-        ListImportedRecordsQuery query)
+        ListImportedRecordsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -102,7 +107,7 @@ public sealed class ListImportedRecordsQueryHandler(
         var owned = await jobs.IsOwnedAsync(
             profile.Id,
             query.ImportJobId,
-            CancellationToken.None);
+            cancellationToken);
         if (!owned)
         {
             return PaginatedOutput<ImportedRecordOutput>.New.WithError(
@@ -130,7 +135,7 @@ public sealed class ListImportedRecordsQueryHandler(
             query.PageNumber,
             Math.Min(query.PageSize, paginationOptions.MaximumPageSize),
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         return result.WithMessage(ImportJobMessages.RecordsListedSuccessfully);
     }

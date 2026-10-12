@@ -15,7 +15,8 @@ public sealed class RecordInstallmentPlanCommandHandler(
     : ICommandHandlerAsync<RecordInstallmentPlanCommand, RecordInstallmentPlanCommandOutput>
 {
     public async Task<DataOutput<RecordInstallmentPlanCommandOutput?>> HandleAsync(
-        RecordInstallmentPlanCommand command)
+        RecordInstallmentPlanCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RecordInstallmentPlanCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -33,7 +34,7 @@ public sealed class RecordInstallmentPlanCommandHandler(
             command.PurchasedOn,
             command.CurrencyCode,
             command.Counterparty,
-            timeProvider.GetUtcNow()), CancellationToken.None);
+            timeProvider.GetUtcNow()), cancellationToken);
         if (result.Outcome != InstallmentPlanRecordOutcome.Succeeded || result.Plan is null)
         {
             return output.WithError(result.Outcome switch

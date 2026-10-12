@@ -17,7 +17,8 @@ public sealed class CreateCreditCardCommandHandler(
     : ICommandHandlerAsync<CreateCreditCardCommand, CreateCreditCardCommandOutput>
 {
     public async Task<DataOutput<CreateCreditCardCommandOutput?>> HandleAsync(
-        CreateCreditCardCommand command)
+        CreateCreditCardCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CreateCreditCardCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -27,7 +28,7 @@ public sealed class CreateCreditCardCommandHandler(
         }
 
         var currencyCode = command.CurrencyCode.Trim().ToUpperInvariant();
-        if (await currencies.FindByCodeAsync(currencyCode, CancellationToken.None) is null)
+        if (await currencies.FindByCodeAsync(currencyCode, cancellationToken) is null)
         {
             return output
                 .WithError(CreditCardMessages.CurrencyNotSupported)
@@ -45,7 +46,7 @@ public sealed class CreateCreditCardCommandHandler(
                 command.DueDay,
                 command.LastFourDigits,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (created.DuplicateName)
         {
             return output.WithError(CreditCardMessages.DuplicateName);

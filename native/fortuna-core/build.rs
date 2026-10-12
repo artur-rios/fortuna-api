@@ -52,6 +52,10 @@ struct Operation {
     area: String,
     long_running: bool,
     response_schema: String,
+    /// Why the native core exports this route but does not implement it. Such an export keeps
+    /// the C ABI stable, answers `FORTUNA_STATUS_NOT_IMPLEMENTED` and is not reported as an
+    /// available capability.
+    not_implemented: Option<&'static str>,
 }
 
 fn read_operations(contract: &PathBuf) -> Vec<Operation> {
@@ -102,6 +106,7 @@ fn read_operations(contract: &PathBuf) -> Vec<Operation> {
                     "/api/imports/excel" | "/api/imports/pdf" | "/api/exports"
                 ),
                 response_schema,
+                not_implemented: not_implemented_reason(method, path),
             });
         }
     }
@@ -132,6 +137,39 @@ fn exclusion_reason(_method: &str, path: &str) -> Option<&'static str> {
         "/healthcheck" | "/healthcheck/detailed" => {
             Some("host health is represented by fortuna_health")
         }
+        _ => None,
+    }
+}
+
+/// Operations the native core exports for ABI stability but does not implement. Each answers
+/// `FORTUNA_STATUS_NOT_IMPLEMENTED` (501) instead of reporting success for work it did not do,
+/// and `fortuna_capabilities` lists it under `notImplemented` rather than `operations`.
+fn not_implemented_reason(method: &str, path: &str) -> Option<&'static str> {
+    const IMPORTS: &str = "File ingestion is not implemented by the native core: it has no workbook or PDF statement parser, so an offline import would not be processed.";
+    const EXPORTS: &str = "Data-set exports are not implemented by the native core; the personal data archive (POST /api/me/data-export) is available offline.";
+    const REPORTS: &str = "Reports and projections are not computed by the native core.";
+    const TRANSFERS: &str = "Transfers are not implemented by the native core: it does not create the paired transaction legs, currency conversion and lifecycle cascade of a transfer.";
+    const INSTALLMENTS: &str = "Installment plans are not implemented by the native core: it does not split a purchase into installments assigned to billing cycles.";
+    const STATEMENTS: &str = "Credit-card statements are not implemented by the native core: it does not assign charges to billing cycles, close or settle them.";
+    const MATERIALIZATION: &str = "Recurring occurrences are not materialized by the native core.";
+    const PLANNING: &str =
+        "Budget consumption and goal progress are not computed by the native core.";
+    const RECONCILIATION: &str =
+        "Reconciliation needs imported records, which the native core does not create.";
+    match (method, path) {
+        ("post", "/api/imports/excel" | "/api/imports/pdf") => Some(IMPORTS),
+        ("post", "/api/import-jobs/{id}/retry") => Some(IMPORTS),
+        ("post", "/api/exports") => Some(EXPORTS),
+        (_, path) if path.starts_with("/api/reports/") || path.starts_with("/api/projections/") => {
+            Some(REPORTS)
+        }
+        (_, path) if path.starts_with("/api/transfers") => Some(TRANSFERS),
+        (_, path) if path.starts_with("/api/installment-plans") => Some(INSTALLMENTS),
+        (_, path) if path.starts_with("/api/statements/") => Some(STATEMENTS),
+        ("get", "/api/credit-cards/{id}/statements") => Some(STATEMENTS),
+        ("post", "/api/recurring-transactions/materialize") => Some(MATERIALIZATION),
+        ("get", "/api/budgets/{id}/consumption" | "/api/goals/{id}/progress") => Some(PLANNING),
+        ("post", "/api/transactions/{id}/reconcile") => Some(RECONCILIATION),
         _ => None,
     }
 }
@@ -171,43 +209,98 @@ fn to_snake_case(value: &str) -> String {
 }
 
 fn generate_rust(operations: &[Operation]) -> String {
-    let mut output = String::from("// Generated from docs/openapi/fortuna.json. Do not edit.\n\n");
-    output.push_str("pub(crate) static NATIVE_OPERATIONS: &[OperationSpec] = &[\n");
-    for operation in operations {
-        output.push_str(&format!(
-            "    OperationSpec {{ symbol: {:?}, method: {:?}, path: {:?}, area: {:?}, long_running: {}, response_schema: {:?} }},\n",
-            operation.symbol, operation.method, operation.path, operation.area, operation.long_running, operation.response_schema
-        ));
-    }
-    output.push_str("];\n\n");
-    for operation in operations {
-        output.push_str(&format!(
-            "#[doc = \"Mirror `{} {}` over the native C ABI.\"]\n#[unsafe(no_mangle)]\npub extern \"C\" fn {}(request_json: *const c_char, response_json: *mut *mut c_char) -> c_int {{\n    operation_call(OperationSpec {{ symbol: {:?}, method: {:?}, path: {:?}, area: {:?}, long_running: {}, response_schema: {:?} }}, request_json, response_json)\n}}\n\n",
-            operation.method,
-            operation.path,
-            operation.symbol,
+    let spec = |operation: &Operation| {
+        format!(
+            "OperationSpec {{ symbol: {:?}, method: {:?}, path: {:?}, area: {:?}, long_running: {}, response_schema: {:?} }}",
             operation.symbol,
             operation.method,
             operation.path,
             operation.area,
             operation.long_running,
             operation.response_schema
-        ));
+        )
+    };
+    let mut output = String::from("// Generated from docs/openapi/fortuna.json. Do not edit.\n\n");
+    output.push_str("pub(crate) static NATIVE_OPERATIONS: &[OperationSpec] = &[\n");
+    for operation in operations
+        .iter()
+        .filter(|operation| operation.not_implemented.is_none())
+    {
+        output.push_str(&format!("    {},\n", spec(operation)));
     }
+    output.push_str("];\n\n");
     output.push_str(
-        "#[cfg(test)]\npub(crate) static NATIVE_OPERATION_FUNCTIONS: &[NativeOperationFunction] = &[\n",
+        "pub(crate) static NOT_IMPLEMENTED_OPERATIONS: &[NotImplementedOperation] = &[\n",
     );
     for operation in operations {
-        output.push_str(&format!("    {},\n", operation.symbol));
+        if let Some(reason) = operation.not_implemented {
+            output.push_str(&format!(
+                "    NotImplementedOperation {{ operation: {}, reason: {:?} }},\n",
+                spec(operation),
+                reason
+            ));
+        }
     }
-    output.push_str("];\n");
+    output.push_str("];\n\n");
+    for operation in operations {
+        let body = match operation.not_implemented {
+            None => format!(
+                "operation_call({}, request_json, response_json)",
+                spec(operation)
+            ),
+            Some(reason) => format!(
+                "not_implemented_call(NotImplementedOperation {{ operation: {}, reason: {:?} }}, response_json)",
+                spec(operation),
+                reason
+            ),
+        };
+        // A route that is not implemented never reads its request.
+        let (note, request) = if operation.not_implemented.is_some() {
+            (
+                " Not implemented offline: always answers `FORTUNA_STATUS_NOT_IMPLEMENTED`.",
+                "_request_json",
+            )
+        } else {
+            ("", "request_json")
+        };
+        output.push_str(&format!(
+            "#[doc = \"Mirror `{} {}` over the native C ABI.{}\"]\n#[unsafe(no_mangle)]\npub extern \"C\" fn {}({}: *const c_char, response_json: *mut *mut c_char) -> c_int {{\n    {}\n}}\n\n",
+            operation.method, operation.path, note, operation.symbol, request, body
+        ));
+    }
+    for (name, implemented) in [
+        ("NATIVE_OPERATION_FUNCTIONS", true),
+        ("NOT_IMPLEMENTED_OPERATION_FUNCTIONS", false),
+    ] {
+        output.push_str(&format!(
+            "#[cfg(test)]\npub(crate) static {name}: &[NativeOperationFunction] = &[\n"
+        ));
+        for operation in operations
+            .iter()
+            .filter(|operation| operation.not_implemented.is_none() == implemented)
+        {
+            output.push_str(&format!("    {},\n", operation.symbol));
+        }
+        output.push_str("];\n");
+    }
     output
 }
 
 fn append_operation_declarations(contents: String, operations: &[Operation]) -> String {
     let marker = "#endif  /* FORTUNA_CORE_H */";
+    // Glob patterns are spelled `/api/auth/...` rather than with `**`: a slash followed by an
+    // asterisk inside a C block comment opens a nested comment, which compilers warn about.
     let mut declarations = String::from(
-        "\n#ifdef __cplusplus\nextern \"C\" {\n#endif  // __cplusplus\n\n/**\n * Offline route exports generated from docs/openapi/fortuna.json.\n * Request metadata uses {token, route, query, body}; body is the unchanged HTTP JSON body.\n * Deliberately unavailable: /api/auth/** (Heimdall), /api/connections/** and\n * GET /api/data-sources (Pluggy), POST /api/exchange-rates/sync (remote rate source),\n * DELETE /api/users/{id} (no offline administrator), /api/me/consents/** (hosted\n * external processing only), POST /api/local-accounts/password-reset (use recovery\n * codes), and the HTTP-host health routes.\n * Call fortuna_capabilities to discover the machine-readable availability contract.\n */\n",
+        "\n#ifdef __cplusplus\nextern \"C\" {\n#endif  // __cplusplus\n\n/**\n * Offline route exports generated from docs/openapi/fortuna.json.\n * Request metadata uses {token, route, query, body}; body is the unchanged HTTP JSON body.\n * Deliberately unavailable: /api/auth/... (Heimdall), /api/connections/... and\n * GET /api/data-sources (Pluggy), POST /api/exchange-rates/sync (remote rate source),\n * DELETE /api/users/{id} (no offline administrator), /api/me/consents/... (hosted\n * external processing only), POST /api/local-accounts/password-reset (use recovery\n * codes), and the HTTP-host health routes.\n *\n * Exported but not implemented offline: each of these always answers\n * FORTUNA_STATUS_NOT_IMPLEMENTED (501) with a failure envelope stating the reason, and\n * fortuna_capabilities lists it under notImplemented instead of operations:\n",
+    );
+    for operation in operations
+        .iter()
+        .filter(|operation| operation.not_implemented.is_some())
+    {
+        declarations.push_str(&format!(" *   {} {}\n", operation.method, operation.path));
+    }
+    declarations.push_str(
+        " *\n * Call fortuna_capabilities to discover the machine-readable availability contract.\n */\n",
     );
     for operation in operations {
         declarations.push_str(&format!(

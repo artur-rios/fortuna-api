@@ -15,7 +15,8 @@ public sealed class DeleteInvestmentCommandHandler(
     : ICommandHandlerAsync<DeleteInvestmentCommand, InvestmentLifecycleCommandOutput>
 {
     public async Task<DataOutput<InvestmentLifecycleCommandOutput?>> HandleAsync(
-        DeleteInvestmentCommand command)
+        DeleteInvestmentCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -27,7 +28,7 @@ public sealed class DeleteInvestmentCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return InvestmentLifecycleHandler.Resolve(result, InvestmentMessages.DeletedSuccessfully);
     }
@@ -40,7 +41,8 @@ public sealed class RestoreInvestmentCommandHandler(
     : ICommandHandlerAsync<RestoreInvestmentCommand, InvestmentLifecycleCommandOutput>
 {
     public async Task<DataOutput<InvestmentLifecycleCommandOutput?>> HandleAsync(
-        RestoreInvestmentCommand command)
+        RestoreInvestmentCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -52,7 +54,7 @@ public sealed class RestoreInvestmentCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return InvestmentLifecycleHandler.Resolve(result, InvestmentMessages.RestoredSuccessfully);
     }
@@ -64,7 +66,8 @@ public sealed class HardDeleteInvestmentCommandHandler(
     : ICommandHandlerAsync<HardDeleteInvestmentCommand, InvestmentLifecycleCommandOutput>
 {
     public async Task<DataOutput<InvestmentLifecycleCommandOutput?>> HandleAsync(
-        HardDeleteInvestmentCommand command)
+        HardDeleteInvestmentCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -75,7 +78,7 @@ public sealed class HardDeleteInvestmentCommandHandler(
         var result = await investments.HardDeleteAsync(
             profile.Id,
             command.Id,
-            CancellationToken.None);
+            cancellationToken);
 
         return InvestmentLifecycleHandler.Resolve(
             result,

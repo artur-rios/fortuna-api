@@ -17,7 +17,8 @@ public sealed class RecordTransferCommandHandler(
     : ICommandHandlerAsync<RecordTransferCommand, RecordTransferCommandOutput>
 {
     public async Task<DataOutput<RecordTransferCommandOutput?>> HandleAsync(
-        RecordTransferCommand command)
+        RecordTransferCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RecordTransferCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -29,15 +30,16 @@ public sealed class RecordTransferCommandHandler(
         var createdAt = timeProvider.GetUtcNow();
 
         return command.DestinationStatementId.HasValue
-            ? await RecordStatementSettlementAsync(command, profile.Id, createdAt, output)
-            : await RecordAccountTransferAsync(command, profile.Id, createdAt, output);
+            ? await RecordStatementSettlementAsync(command, profile.Id, createdAt, output, cancellationToken)
+            : await RecordAccountTransferAsync(command, profile.Id, createdAt, output, cancellationToken);
     }
 
     private async Task<DataOutput<RecordTransferCommandOutput?>> RecordAccountTransferAsync(
         RecordTransferCommand command,
         Guid userId,
         DateTimeOffset createdAt,
-        DataOutput<RecordTransferCommandOutput?> output)
+        DataOutput<RecordTransferCommandOutput?> output,
+        CancellationToken cancellationToken)
     {
         var result = await transfers.RecordAsync(
             new TransferRecord(
@@ -47,7 +49,7 @@ public sealed class RecordTransferCommandHandler(
                 command.Amount,
                 command.OccurredOn,
                 createdAt),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome != TransferRecordOutcome.Succeeded || result.Transfer is null)
         {
             return output.WithError(result.Outcome switch
@@ -91,7 +93,8 @@ public sealed class RecordTransferCommandHandler(
         RecordTransferCommand command,
         Guid userId,
         DateTimeOffset createdAt,
-        DataOutput<RecordTransferCommandOutput?> output)
+        DataOutput<RecordTransferCommandOutput?> output,
+        CancellationToken cancellationToken)
     {
         var result = await CreditCardStatementPayment.PayAsync(
             settlements,
@@ -101,7 +104,8 @@ public sealed class RecordTransferCommandHandler(
                 command.OriginFinancialAccountId,
                 command.Amount,
                 command.OccurredOn,
-                createdAt));
+                createdAt),
+            cancellationToken);
         if (result.Settlement is null)
         {
             return output.WithError(result.Error!);

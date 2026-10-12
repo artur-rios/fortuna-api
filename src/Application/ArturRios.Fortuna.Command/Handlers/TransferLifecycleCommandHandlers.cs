@@ -15,7 +15,8 @@ public sealed class DeleteTransferCommandHandler(
     : ICommandHandlerAsync<DeleteTransferCommand, TransferLifecycleCommandOutput>
 {
     public async Task<DataOutput<TransferLifecycleCommandOutput?>> HandleAsync(
-        DeleteTransferCommand command)
+        DeleteTransferCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -27,7 +28,7 @@ public sealed class DeleteTransferCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return TransferLifecycleHandler.Resolve(result, TransferMessages.DeletedSuccessfully);
     }
@@ -40,7 +41,8 @@ public sealed class RestoreTransferCommandHandler(
     : ICommandHandlerAsync<RestoreTransferCommand, TransferLifecycleCommandOutput>
 {
     public async Task<DataOutput<TransferLifecycleCommandOutput?>> HandleAsync(
-        RestoreTransferCommand command)
+        RestoreTransferCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -52,7 +54,7 @@ public sealed class RestoreTransferCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return TransferLifecycleHandler.Resolve(result, TransferMessages.RestoredSuccessfully);
     }

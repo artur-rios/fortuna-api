@@ -10,7 +10,9 @@ namespace ArturRios.Fortuna.Query.Handlers;
 public sealed class GetMyProfileQueryHandler(ICurrentProfileResolver profileResolver)
     : IQueryHandlerAsync<GetMyProfileQuery, UserProfileOutput>
 {
-    public async Task<DataOutput<UserProfileOutput?>> HandleAsync(GetMyProfileQuery query)
+    public async Task<DataOutput<UserProfileOutput?>> HandleAsync(
+        GetMyProfileQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)

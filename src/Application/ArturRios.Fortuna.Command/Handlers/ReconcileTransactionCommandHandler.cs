@@ -16,7 +16,8 @@ public sealed class ReconcileTransactionCommandHandler(
     : ICommandHandlerAsync<ReconcileTransactionCommand, ReconcileTransactionCommandOutput>
 {
     public async Task<DataOutput<ReconcileTransactionCommandOutput?>> HandleAsync(
-        ReconcileTransactionCommand command)
+        ReconcileTransactionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<ReconcileTransactionCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -33,7 +34,7 @@ public sealed class ReconcileTransactionCommandHandler(
                 command.ImportedRecordId,
                 command.Unreconcile,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome != TransactionReconciliationOutcome.Succeeded ||
             result.Transaction is null)
         {

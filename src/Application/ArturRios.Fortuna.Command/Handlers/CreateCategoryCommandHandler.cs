@@ -15,7 +15,8 @@ public sealed class CreateCategoryCommandHandler(
     : ICommandHandlerAsync<CreateCategoryCommand, CreateCategoryCommandOutput>
 {
     public async Task<DataOutput<CreateCategoryCommandOutput?>> HandleAsync(
-        CreateCategoryCommand command)
+        CreateCategoryCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CreateCategoryCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -30,7 +31,7 @@ public sealed class CreateCategoryCommandHandler(
                 command.Name.Trim(),
                 command.ParentId,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         if (result.Outcome != CategoryCreationOutcome.Succeeded)
         {

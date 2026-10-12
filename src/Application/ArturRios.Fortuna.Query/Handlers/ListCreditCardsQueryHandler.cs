@@ -15,7 +15,9 @@ public sealed class ListCreditCardsQueryHandler(
     PaginationOptions paginationOptions)
     : IPaginatedQueryHandlerAsync<ListCreditCardsQuery, CreditCardOutput>
 {
-    public async Task<PaginatedOutput<CreditCardOutput>> HandleAsync(ListCreditCardsQuery query)
+    public async Task<PaginatedOutput<CreditCardOutput>> HandleAsync(
+        ListCreditCardsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = PaginatedOutput<CreditCardOutput>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -55,7 +57,7 @@ public sealed class ListCreditCardsQueryHandler(
             query.PageNumber,
             pageSize,
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         return page.WithMessage(CreditCardMessages.ListedSuccessfully);
     }

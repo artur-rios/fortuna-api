@@ -296,7 +296,9 @@ public sealed class EfTransactionStore(
                 update.OccurredOn,
                 transaction.CreditCard.ClosingDay,
                 transaction.CreditCard.DueDay);
-        var requiresStatementAssignment = transaction.CreditCard is not null &&
+        // A card-side transfer leg is a statement payment: it settles its statement and is never
+        // part of one, so editing its description or category must not assign it to a cycle.
+        var requiresStatementAssignment = transaction.CreditCard is not null && !isTransfer &&
             (oldStatement is null || cycleChanged);
         if (oldStatement?.Status == CreditCardStatementStatus.Settled &&
             (signedAmountChanged || requiresStatementAssignment))

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
@@ -40,7 +40,50 @@ impl NativeStore {
     pub(crate) fn initialize(database_path: PathBuf) -> Result<Self, StoreError> {
         prepare_parent(&database_path).map_err(|_| StoreError)?;
         migrate(&database_path).map_err(|_| StoreError)?;
-        Ok(Self { database_path })
+        let store = Self { database_path };
+        store.link_named_counterparties()?;
+        Ok(store)
+    }
+
+    /// Version 6: earlier versions stored the counterparty a transaction or recurring rule names
+    /// without linking it to a counterparty record. Each owner's records are linked once, as
+    /// they would have been on creation; the records' own timestamps are kept.
+    fn link_named_counterparties(&self) -> Result<(), StoreError> {
+        let connection = self.open().map_err(|_| StoreError)?;
+        let linked: bool = connection
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM native_schema_migration WHERE version = 6)",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|_| StoreError)?;
+        if linked {
+            return Ok(());
+        }
+        let owners = {
+            let mut statement = connection
+                .prepare("SELECT public_id FROM native_user_profile ORDER BY public_id")
+                .map_err(|_| StoreError)?;
+            statement
+                .query_map([], |row| row.get::<_, String>(0))
+                .map_err(|_| StoreError)?
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .map_err(|_| StoreError)?
+        };
+        let timestamp = crate::wire_timestamp(chrono::Utc::now());
+        for owner in owners {
+            let owner = Uuid::parse_str(&owner).map_err(|_| StoreError)?;
+            self.write(owner, &timestamp, |records| {
+                crate::classification::link_named_counterparties(records)
+            })?;
+        }
+        connection
+            .execute(
+                "INSERT OR IGNORE INTO native_schema_migration(version) VALUES (6)",
+                [],
+            )
+            .map_err(|_| StoreError)?;
+        Ok(())
     }
 
     pub(crate) fn health(&self) -> Result<(), StoreError> {
@@ -77,9 +120,13 @@ impl NativeStore {
         secret_hash: &str,
         recovery_hashes: &[String],
         timestamp: &str,
-    ) -> Result<(Uuid, Uuid), StoreError> {
+    ) -> Result<(Uuid, Uuid), LocalAccountCreationError> {
         let mut connection = self.open().map_err(|_| StoreError)?;
-        let transaction = connection.transaction().map_err(|_| StoreError)?;
+        // IMMEDIATE takes the write lock up front, so two concurrent creations serialize on the
+        // existence check instead of one failing with SQLITE_BUSY when upgrading its read.
+        let transaction = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(|_| StoreError)?;
         let exists: bool = transaction
             .query_row(
                 "SELECT EXISTS(SELECT 1 FROM native_local_account)",
@@ -88,7 +135,7 @@ impl NativeStore {
             )
             .map_err(|_| StoreError)?;
         if exists {
-            return Err(StoreError);
+            return Err(LocalAccountCreationError::AlreadyExists);
         }
         let user_id = Uuid::new_v4();
         let account_id = Uuid::new_v4();
@@ -257,43 +304,52 @@ impl NativeStore {
         &self,
         user_id: Uuid,
         resource: &str,
-        mut body: Value,
+        body: Value,
         timestamp: &str,
     ) -> Result<Value, StoreError> {
-        let object = body.as_object_mut().ok_or(StoreError)?;
-        let id = object
-            .get("id")
-            .and_then(Value::as_str)
-            .and_then(|value| Uuid::parse_str(value).ok())
-            .unwrap_or_else(Uuid::new_v4);
-        object.insert("id".to_owned(), Value::String(id.to_string()));
-        object
-            .entry("createdAt")
-            .or_insert_with(|| Value::String(timestamp.to_owned()));
-        object.insert("updatedAt".to_owned(), Value::String(timestamp.to_owned()));
-        object.entry("isDeleted").or_insert(Value::Bool(false));
-        let body_json = serde_json::to_string(&body).map_err(|_| StoreError)?;
+        self.write(user_id, timestamp, |writer| writer.insert(resource, body))
+    }
+
+    /// Runs `work` in one IMMEDIATE transaction and commits it when `work` succeeds, so a
+    /// multi-record change (a reassignment, a merge, a record with the counterparty it names)
+    /// is applied completely or not at all.
+    pub(crate) fn write<T>(
+        &self,
+        user_id: Uuid,
+        timestamp: &str,
+        work: impl FnOnce(&RecordTransaction<'_>) -> Result<T, StoreError>,
+    ) -> Result<T, StoreError> {
+        self.transact(TransactionBehavior::Immediate, user_id, timestamp, work)
+    }
+
+    /// Runs read-only `work` against one consistent snapshot of the owner's records.
+    pub(crate) fn read<T>(
+        &self,
+        user_id: Uuid,
+        work: impl FnOnce(&RecordTransaction<'_>) -> Result<T, StoreError>,
+    ) -> Result<T, StoreError> {
+        self.transact(TransactionBehavior::Deferred, user_id, "", work)
+    }
+
+    fn transact<T>(
+        &self,
+        behavior: TransactionBehavior,
+        user_id: Uuid,
+        timestamp: &str,
+        work: impl FnOnce(&RecordTransaction<'_>) -> Result<T, StoreError>,
+    ) -> Result<T, StoreError> {
         let mut connection = self.open().map_err(|_| StoreError)?;
-        let transaction = connection.transaction().map_err(|_| StoreError)?;
-        transaction
-            .execute(
-                "INSERT INTO native_offline_record(user_id, resource, public_id, body_json, is_deleted, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, 0, ?5, ?5)",
-                params![user_id.to_string(), resource, id.to_string(), body_json, timestamp],
-            )
+        let transaction = connection
+            .transaction_with_behavior(behavior)
             .map_err(|_| StoreError)?;
-        append_audit(
-            &transaction,
+        let records = RecordTransaction {
+            transaction,
             user_id,
-            resource,
-            id,
-            "Create",
-            "Succeeded",
             timestamp,
-        )
-        .map_err(|_| StoreError)?;
-        transaction.commit().map_err(|_| StoreError)?;
-        Ok(body)
+        };
+        let result = work(&records)?;
+        records.transaction.commit().map_err(|_| StoreError)?;
+        Ok(result)
     }
 
     pub(crate) fn get_record(
@@ -352,55 +408,37 @@ impl NativeStore {
         .collect()
     }
 
+    /// Merges `body` into a live record. The read and the write run in one IMMEDIATE
+    /// transaction, so concurrent updates of the same record serialize instead of the later
+    /// writer silently discarding the earlier one's fields. A soft-deleted record is not
+    /// updatable, as in the HTTP host, and yields `None`.
     pub(crate) fn update_record(
         &self,
         user_id: Uuid,
         resource: &str,
         id: Uuid,
-        mut body: Value,
+        body: Value,
         timestamp: &str,
     ) -> Result<Option<Value>, StoreError> {
-        let Some(existing) = self.get_record(user_id, resource, id, true)? else {
-            return Ok(None);
-        };
-        let mut merged = existing.as_object().cloned().unwrap_or_default();
-        let updates = body.as_object_mut().ok_or(StoreError)?;
-        for (key, value) in std::mem::take(updates) {
-            if key != "id" && key != "createdAt" {
-                merged.insert(key, value);
-            }
+        if !body.is_object() {
+            return Err(StoreError);
         }
-        merged.insert("id".to_owned(), Value::String(id.to_string()));
-        merged.insert("updatedAt".to_owned(), Value::String(timestamp.to_owned()));
-        let result = Value::Object(merged);
-        let json = serde_json::to_string(&result).map_err(|_| StoreError)?;
-        let mut connection = self.open().map_err(|_| StoreError)?;
-        let transaction = connection.transaction().map_err(|_| StoreError)?;
-        transaction
-            .execute(
-                "UPDATE native_offline_record SET body_json = ?1, updated_at = ?2
-                 WHERE user_id = ?3 AND resource = ?4 AND public_id = ?5",
-                params![
-                    json,
-                    timestamp,
-                    user_id.to_string(),
-                    resource,
-                    id.to_string()
-                ],
-            )
-            .map_err(|_| StoreError)?;
-        append_audit(
-            &transaction,
-            user_id,
-            resource,
-            id,
-            "Update",
-            "Succeeded",
-            timestamp,
-        )
-        .map_err(|_| StoreError)?;
-        transaction.commit().map_err(|_| StoreError)?;
-        Ok(Some(result))
+        self.update_record_with(user_id, resource, id, timestamp, |_| body)
+    }
+
+    /// Like [`Self::update_record`], but the fields to merge are computed from the current
+    /// document inside the same transaction, for read-modify-write changes such as adding a tag.
+    pub(crate) fn update_record_with(
+        &self,
+        user_id: Uuid,
+        resource: &str,
+        id: Uuid,
+        timestamp: &str,
+        changes: impl FnOnce(&Value) -> Value,
+    ) -> Result<Option<Value>, StoreError> {
+        self.write(user_id, timestamp, |writer| {
+            writer.update_with(resource, id, changes)
+        })
     }
 
     pub(crate) fn set_deleted(
@@ -413,7 +451,9 @@ impl NativeStore {
         timestamp: &str,
     ) -> Result<bool, StoreError> {
         let mut connection = self.open().map_err(|_| StoreError)?;
-        let transaction = connection.transaction().map_err(|_| StoreError)?;
+        let transaction = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(|_| StoreError)?;
         let changed = if hard {
             transaction.execute(
                 "DELETE FROM native_offline_record WHERE user_id = ?1 AND resource = ?2 AND public_id = ?3",
@@ -499,7 +539,9 @@ impl NativeStore {
         timestamp: &str,
     ) -> Result<Option<Value>, StoreError> {
         let mut connection = self.open().map_err(|_| StoreError)?;
-        let transaction = connection.transaction().map_err(|_| StoreError)?;
+        let transaction = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(|_| StoreError)?;
         let user = user_id.to_string();
         let exists: bool = transaction
             .query_row(
@@ -543,6 +585,14 @@ impl NativeStore {
         transaction
             .execute(
                 "DELETE FROM native_offline_record WHERE user_id = ?1",
+                params![user],
+            )
+            .map_err(|_| StoreError)?;
+        // Schema-version-1 account rows were copied into native_offline_record by the version-2
+        // migration, but the legacy table keeps an ON DELETE RESTRICT reference to the profile.
+        transaction
+            .execute(
+                "DELETE FROM native_financial_account WHERE user_id = ?1",
                 params![user],
             )
             .map_err(|_| StoreError)?;
@@ -606,7 +656,14 @@ impl NativeStore {
                 Ok(())
             })
             .map_err(|_| StoreError)?;
-        Ok(job_json(id, kind, 1, 0, request, timestamp, timestamp))
+        Ok(job_json(
+            id,
+            kind,
+            (1, 0, None),
+            request,
+            timestamp,
+            timestamp,
+        ))
     }
 
     pub(crate) fn get_job(&self, user_id: Uuid, id: Uuid) -> Result<Option<Value>, StoreError> {
@@ -614,8 +671,8 @@ impl NativeStore {
             .and_then(|connection| {
                 connection
                     .query_row(
-                        "SELECT kind, status, progress, request_json, created_at, updated_at FROM native_operation_job
-                         WHERE user_id = ?1 AND public_id = ?2",
+                        "SELECT kind, status, progress, request_json, created_at, updated_at, failure_reason
+                         FROM native_operation_job WHERE user_id = ?1 AND public_id = ?2",
                         params![user_id.to_string(), id.to_string()],
                         |row| {
                             let kind: String = row.get(0)?;
@@ -625,7 +682,15 @@ impl NativeStore {
                             let request = serde_json::from_str(&request_json).unwrap_or(Value::Null);
                             let created_at: String = row.get(4)?;
                             let updated_at: String = row.get(5)?;
-                            Ok(job_json(id, &kind, status, progress, &request, &created_at, &updated_at))
+                            let failure_reason: Option<String> = row.get(6)?;
+                            Ok(job_json(
+                                id,
+                                &kind,
+                                (status, progress, failure_reason.as_deref()),
+                                &request,
+                                &created_at,
+                                &updated_at,
+                            ))
                         },
                     )
                     .optional()
@@ -637,7 +702,8 @@ impl NativeStore {
         let connection = self.open().map_err(|_| StoreError)?;
         let mut statement = connection
             .prepare(
-                "SELECT public_id, kind, status, progress, request_json, created_at, updated_at
+                "SELECT public_id, kind, status, progress, request_json, created_at, updated_at,
+                        failure_reason
                  FROM native_operation_job WHERE user_id = ?1 ORDER BY created_at DESC, public_id DESC",
             )
             .map_err(|_| StoreError)?;
@@ -647,11 +713,11 @@ impl NativeStore {
                     .map_err(|_| rusqlite::Error::InvalidQuery)?;
                 let request_json: String = row.get(4)?;
                 let request = serde_json::from_str(&request_json).unwrap_or(Value::Null);
+                let failure_reason: Option<String> = row.get(7)?;
                 Ok(job_json(
                     id,
                     &row.get::<_, String>(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
+                    (row.get(2)?, row.get(3)?, failure_reason.as_deref()),
                     &request,
                     &row.get::<_, String>(5)?,
                     &row.get::<_, String>(6)?,
@@ -659,42 +725,6 @@ impl NativeStore {
             })
             .map_err(|_| StoreError)?;
         rows.map(|row| row.map_err(|_| StoreError)).collect()
-    }
-
-    pub(crate) fn requeue_job(
-        &self,
-        user_id: Uuid,
-        id: Uuid,
-        timestamp: &str,
-    ) -> Result<bool, StoreError> {
-        self.open()
-            .and_then(|connection| {
-                connection.execute(
-                    "UPDATE native_operation_job SET status = 1, progress = 0, updated_at = ?1
-                     WHERE user_id = ?2 AND public_id = ?3",
-                    params![timestamp, user_id.to_string(), id.to_string()],
-                )
-            })
-            .map(|changed| changed > 0)
-            .map_err(|_| StoreError)
-    }
-
-    pub(crate) fn complete_job(
-        &self,
-        user_id: Uuid,
-        id: Uuid,
-        timestamp: &str,
-    ) -> Result<(), StoreError> {
-        self.open()
-            .and_then(|connection| {
-                connection.execute(
-                    "UPDATE native_operation_job SET status = 3, progress = 100, updated_at = ?1
-                     WHERE user_id = ?2 AND public_id = ?3",
-                    params![timestamp, user_id.to_string(), id.to_string()],
-                )?;
-                Ok(())
-            })
-            .map_err(|_| StoreError)
     }
 
     pub(crate) fn generate_personal_archive(
@@ -878,6 +908,212 @@ impl NativeStore {
 #[derive(Debug)]
 pub(crate) struct StoreError;
 
+/// One owner's records inside an open write transaction; see [`NativeStore::write`].
+pub(crate) struct RecordTransaction<'a> {
+    transaction: rusqlite::Transaction<'a>,
+    user_id: Uuid,
+    timestamp: &'a str,
+}
+
+impl RecordTransaction<'_> {
+    /// The owner's records of `resource` in the order they were stored.
+    pub(crate) fn records(
+        &self,
+        resource: &str,
+        include_deleted: bool,
+    ) -> Result<Vec<Value>, StoreError> {
+        let mut statement = self
+            .transaction
+            .prepare(
+                "SELECT body_json FROM native_offline_record
+                 WHERE user_id = ?1 AND resource = ?2 AND (?3 = 1 OR is_deleted = 0)
+                 ORDER BY rowid",
+            )
+            .map_err(|_| StoreError)?;
+        let rows = statement
+            .query_map(
+                params![self.user_id.to_string(), resource, include_deleted],
+                |row| row.get::<_, String>(0),
+            )
+            .map_err(|_| StoreError)?;
+        rows.map(|row| {
+            let json = row.map_err(|_| StoreError)?;
+            serde_json::from_str(&json).map_err(|_| StoreError)
+        })
+        .collect()
+    }
+
+    /// Stores a new record; the identifier may be chosen by the caller, the lifecycle fields
+    /// never are.
+    pub(crate) fn insert(&self, resource: &str, mut body: Value) -> Result<Value, StoreError> {
+        let object = body.as_object_mut().ok_or(StoreError)?;
+        let id = object
+            .get("id")
+            .and_then(Value::as_str)
+            .and_then(|value| Uuid::parse_str(value).ok())
+            .unwrap_or_else(Uuid::new_v4);
+        object.insert("id".to_owned(), Value::String(id.to_string()));
+        // Lifecycle fields are server-controlled: a client value would make the document disagree
+        // with the indexed `is_deleted`/`created_at` columns.
+        object.insert(
+            "createdAt".to_owned(),
+            Value::String(self.timestamp.to_owned()),
+        );
+        object.insert(
+            "updatedAt".to_owned(),
+            Value::String(self.timestamp.to_owned()),
+        );
+        object.insert("isDeleted".to_owned(), Value::Bool(false));
+        let body_json = serde_json::to_string(&body).map_err(|_| StoreError)?;
+        self.transaction
+            .execute(
+                "INSERT INTO native_offline_record(user_id, resource, public_id, body_json, is_deleted, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, 0, ?5, ?5)",
+                params![self.user_id.to_string(), resource, id.to_string(), body_json, self.timestamp],
+            )
+            .map_err(|_| StoreError)?;
+        self.audit(resource, id, "Create")?;
+        Ok(body)
+    }
+
+    /// Merges the fields `changes` computes from a live record into it. A soft-deleted record is
+    /// not updatable, as in the HTTP host, and yields `None`.
+    pub(crate) fn update_with(
+        &self,
+        resource: &str,
+        id: Uuid,
+        changes: impl FnOnce(&Value) -> Value,
+    ) -> Result<Option<Value>, StoreError> {
+        let Some(existing) = self
+            .transaction
+            .query_row(
+                "SELECT body_json FROM native_offline_record
+                 WHERE user_id = ?1 AND resource = ?2 AND public_id = ?3 AND is_deleted = 0",
+                params![self.user_id.to_string(), resource, id.to_string()],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|_| StoreError)?
+        else {
+            return Ok(None);
+        };
+        let existing: Value = serde_json::from_str(&existing).map_err(|_| StoreError)?;
+        let Value::Object(updates) = changes(&existing) else {
+            return Err(StoreError);
+        };
+        let mut merged = existing.as_object().cloned().unwrap_or_default();
+        for (key, value) in updates {
+            if !matches!(key.as_str(), "id" | "createdAt" | "updatedAt" | "isDeleted") {
+                merged.insert(key, value);
+            }
+        }
+        merged.insert("id".to_owned(), Value::String(id.to_string()));
+        let result = Value::Object(merged);
+        if !self.replace(resource, &result, "Update")? {
+            return Ok(None);
+        }
+        Ok(Some(self.stamped(result)))
+    }
+
+    /// Rewrites a stored record of the owner, `isDeleted` included, stamping `updatedAt` and
+    /// auditing `operation`. Returns whether the record existed.
+    pub(crate) fn replace(
+        &self,
+        resource: &str,
+        record: &Value,
+        operation: &str,
+    ) -> Result<bool, StoreError> {
+        let replaced = self.rewrite(resource, record)?;
+        if replaced {
+            let id = record_id(record).ok_or(StoreError)?;
+            self.audit(resource, id, operation)?;
+        }
+        Ok(replaced)
+    }
+
+    /// Like [`Self::replace`] without an audit entry, for the records a bulk operation changes
+    /// on behalf of the one entity it audits, as the HTTP host's set-based updates do.
+    pub(crate) fn rewrite(&self, resource: &str, record: &Value) -> Result<bool, StoreError> {
+        self.store_document(resource, &self.stamped(record.clone()))
+    }
+
+    /// Like [`Self::rewrite`], keeping the record's own `updatedAt`: for a schema migration,
+    /// which is not an edit by the owner.
+    pub(crate) fn rewrite_keeping_timestamp(
+        &self,
+        resource: &str,
+        record: &Value,
+    ) -> Result<bool, StoreError> {
+        self.store_document(resource, record)
+    }
+
+    fn store_document(&self, resource: &str, record: &Value) -> Result<bool, StoreError> {
+        let id = record_id(record).ok_or(StoreError)?;
+        let updated_at = record["updatedAt"].as_str().unwrap_or(self.timestamp);
+        let deleted = record["isDeleted"].as_bool().unwrap_or(false);
+        let json = serde_json::to_string(record).map_err(|_| StoreError)?;
+        let changed = self
+            .transaction
+            .execute(
+                "UPDATE native_offline_record SET body_json = ?1, is_deleted = ?2, updated_at = ?3
+                 WHERE user_id = ?4 AND resource = ?5 AND public_id = ?6",
+                params![
+                    json,
+                    deleted,
+                    updated_at,
+                    self.user_id.to_string(),
+                    resource,
+                    id.to_string()
+                ],
+            )
+            .map_err(|_| StoreError)?;
+        Ok(changed == 1)
+    }
+
+    /// Records a successful operation in the owner's audit trail.
+    pub(crate) fn audit(
+        &self,
+        resource: &str,
+        id: Uuid,
+        operation: &str,
+    ) -> Result<(), StoreError> {
+        append_audit(
+            &self.transaction,
+            self.user_id,
+            resource,
+            id,
+            operation,
+            "Succeeded",
+            self.timestamp,
+        )
+        .map_err(|_| StoreError)
+    }
+
+    fn stamped(&self, mut record: Value) -> Value {
+        if let Some(object) = record.as_object_mut() {
+            object.insert(
+                "updatedAt".to_owned(),
+                Value::String(self.timestamp.to_owned()),
+            );
+        }
+        record
+    }
+}
+
+/// Why a local account could not be created: only an existing account is a conflict; any other
+/// failure is a storage error.
+#[derive(Debug)]
+pub(crate) enum LocalAccountCreationError {
+    AlreadyExists,
+    Store,
+}
+
+impl From<StoreError> for LocalAccountCreationError {
+    fn from(_: StoreError) -> Self {
+        Self::Store
+    }
+}
+
 fn prepare_parent(database_path: &Path) -> std::io::Result<()> {
     if let Some(parent) = database_path
         .parent()
@@ -947,20 +1183,6 @@ fn migrate(database_path: &Path) -> rusqlite::Result<()> {
          );
          CREATE INDEX IF NOT EXISTS ix_native_offline_record_owner_resource
              ON native_offline_record(user_id, resource, is_deleted, created_at);
-         INSERT OR IGNORE INTO native_offline_record(
-             public_id, user_id, resource, body_json, is_deleted, created_at, updated_at)
-         SELECT public_id, user_id, 'accounts', json_object(
-             'id', public_id,
-             'name', name,
-             'institution', institution,
-             'accountType', account_type,
-             'currencyCode', currency_code,
-             'openingBalance', json(opening_balance),
-             'isDeleted', json(CASE is_deleted WHEN 1 THEN 'true' ELSE 'false' END),
-             'createdAt', created_at,
-             'updatedAt', updated_at),
-             is_deleted, created_at, updated_at
-         FROM native_financial_account;
          CREATE TABLE IF NOT EXISTS native_audit_entry (
              public_id TEXT PRIMARY KEY NOT NULL,
              user_id TEXT NOT NULL REFERENCES native_user_profile(public_id) ON DELETE RESTRICT,
@@ -996,10 +1218,35 @@ fn migrate(database_path: &Path) -> rusqlite::Result<()> {
             [],
         )?;
     }
-    connection.execute(
-        "INSERT OR IGNORE INTO native_schema_migration(version) VALUES (2)",
+    // Version 2 moved schema-version-1 accounts into the shared record store. The copy runs
+    // once: repeating it on every initialization would resurrect hard-deleted accounts and, for
+    // an erased owner, fail on the profile foreign key and block initialization.
+    let has_v2: bool = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM native_schema_migration WHERE version = 2)",
         [],
+        |row| row.get(0),
     )?;
+    if !has_v2 {
+        let transaction = connection.transaction()?;
+        transaction.execute_batch(
+            "INSERT OR IGNORE INTO native_offline_record(
+                 public_id, user_id, resource, body_json, is_deleted, created_at, updated_at)
+             SELECT public_id, user_id, 'accounts', json_object(
+                 'id', public_id,
+                 'name', name,
+                 'institution', institution,
+                 'accountType', account_type,
+                 'currencyCode', currency_code,
+                 'openingBalance', json(opening_balance),
+                 'isDeleted', json(CASE is_deleted WHEN 1 THEN 'true' ELSE 'false' END),
+                 'createdAt', created_at,
+                 'updatedAt', updated_at),
+                 is_deleted, created_at, updated_at
+             FROM native_financial_account;
+             INSERT INTO native_schema_migration(version) VALUES (2);",
+        )?;
+        transaction.commit()?;
+    }
     let has_v3: bool = connection.query_row(
         "SELECT EXISTS(SELECT 1 FROM native_schema_migration WHERE version = 3)",
         [],
@@ -1068,8 +1315,47 @@ fn migrate(database_path: &Path) -> rusqlite::Result<()> {
          );
          INSERT OR IGNORE INTO native_schema_migration(version) VALUES (4);",
     )?;
+    // Version 5: earlier versions queued file imports and data-set exports, then marked them
+    // completed without parsing or rendering anything. Those jobs are reported as failed with
+    // the reason, so a user can see the file was never imported instead of trusting a false
+    // "completed". Personal-data archives were really generated and are left alone.
+    let has_v5: bool = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM native_schema_migration WHERE version = 5)",
+        [],
+        |row| row.get(0),
+    )?;
+    if !has_v5 {
+        let transaction = connection.transaction()?;
+        transaction.execute(
+            "UPDATE native_operation_job SET status = 4, progress = 0, failure_reason = ?1
+             WHERE kind LIKE '/api/imports/%' AND status <> 4",
+            params![UNPROCESSED_IMPORT],
+        )?;
+        transaction.execute(
+            "UPDATE native_operation_job SET status = 4, progress = 0, failure_reason = ?1
+             WHERE kind = '/api/exports' AND status <> 4",
+            params![UNPROCESSED_EXPORT],
+        )?;
+        transaction.execute(
+            "INSERT INTO native_schema_migration(version) VALUES (5)",
+            [],
+        )?;
+        transaction.commit()?;
+    }
     Ok(())
 }
+
+/// The identifier of a stored record document.
+pub(crate) fn record_id(record: &Value) -> Option<Uuid> {
+    record
+        .get("id")
+        .and_then(Value::as_str)
+        .and_then(|value| Uuid::parse_str(value).ok())
+}
+
+const UNPROCESSED_IMPORT: &str = "This file was not processed: file imports are not available offline. Import it through the hosted API.";
+const UNPROCESSED_EXPORT: &str =
+    "No file was produced: data-set exports are not available offline.";
 
 fn table_has_column(connection: &Connection, table: &str, column: &str) -> rusqlite::Result<bool> {
     let mut statement = connection.prepare(&format!("PRAGMA table_info({table})"))?;
@@ -1133,11 +1419,13 @@ fn count(
         .map_err(|_| StoreError)
 }
 
+/// A job's `(status, progress, failure reason)`.
+type JobState<'a> = (i64, i64, Option<&'a str>);
+
 fn job_json(
     id: Uuid,
     kind: &str,
-    status: i64,
-    progress: i64,
+    (status, progress, failure_reason): JobState<'_>,
     request: &Value,
     created_at: &str,
     updated_at: &str,
@@ -1147,6 +1435,10 @@ fn job_json(
     output.insert("kind".to_owned(), Value::String(kind.to_owned()));
     output.insert("status".to_owned(), Value::Number(status.into()));
     output.insert("progress".to_owned(), Value::Number(progress.into()));
+    output.insert(
+        "failureReason".to_owned(),
+        failure_reason.map_or(Value::Null, |reason| Value::String(reason.to_owned())),
+    );
     output.insert("request".to_owned(), request.clone());
     output.insert("createdAt".to_owned(), Value::String(created_at.to_owned()));
     output.insert("updatedAt".to_owned(), Value::String(updated_at.to_owned()));

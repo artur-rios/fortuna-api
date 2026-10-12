@@ -17,7 +17,8 @@ public sealed class ListFinancialAccountsQueryHandler(
     : IPaginatedQueryHandlerAsync<ListFinancialAccountsQuery, FinancialAccountOutput>
 {
     public async Task<PaginatedOutput<FinancialAccountOutput>> HandleAsync(
-        ListFinancialAccountsQuery query)
+        ListFinancialAccountsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = PaginatedOutput<FinancialAccountOutput>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -75,7 +76,7 @@ public sealed class ListFinancialAccountsQueryHandler(
             query.PageNumber,
             pageSize,
             orderBy: null,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: cancellationToken);
 
         return page.WithMessage(FinancialAccountMessages.ListedSuccessfully);
     }

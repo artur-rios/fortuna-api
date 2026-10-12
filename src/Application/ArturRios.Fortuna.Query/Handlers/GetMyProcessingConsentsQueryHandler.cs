@@ -15,7 +15,8 @@ public sealed class GetMyProcessingConsentsQueryHandler(
     : IQueryHandlerAsync<GetMyProcessingConsentsQuery, ProcessingConsentQueryOutput>
 {
     public async Task<DataOutput<ProcessingConsentQueryOutput?>> HandleAsync(
-        GetMyProcessingConsentsQuery query)
+        GetMyProcessingConsentsQuery query,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -23,7 +24,7 @@ public sealed class GetMyProcessingConsentsQueryHandler(
             return DataOutput<ProcessingConsentQueryOutput?>.New.WithError(
                 ProcessingConsentMessages.ProfileNotFound);
         }
-        var granted = await consents.ListAsync(profile.Id, CancellationToken.None);
+        var granted = await consents.ListAsync(profile.Id, cancellationToken);
         var byPurpose = granted.ToDictionary(item => item.Purpose);
         var states = Enum.GetValues<ProcessingConsentPurpose>()
             .Select(purpose =>

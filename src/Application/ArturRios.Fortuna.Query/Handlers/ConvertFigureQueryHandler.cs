@@ -15,7 +15,9 @@ public sealed class ConvertFigureQueryHandler(
     ICurrentProfileResolver profileResolver)
     : IQueryHandlerAsync<ConvertFigureQuery, ConvertFigureQueryOutput>
 {
-    public async Task<DataOutput<ConvertFigureQueryOutput?>> HandleAsync(ConvertFigureQuery query)
+    public async Task<DataOutput<ConvertFigureQueryOutput?>> HandleAsync(
+        ConvertFigureQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<ConvertFigureQueryOutput?>.New;
         var displayCode = await ResolveDisplayCurrencyAsync(query);
@@ -24,7 +26,7 @@ public sealed class ConvertFigureQueryHandler(
             return output.WithError(FigureConversionMessages.ProfileNotFound);
         }
 
-        var supported = (await currencies.ListAsync(CancellationToken.None))
+        var supported = (await currencies.ListAsync(cancellationToken))
             .ToDictionary(currency => currency.Code, StringComparer.Ordinal);
         if (!supported.TryGetValue(displayCode, out var displayCurrency))
         {

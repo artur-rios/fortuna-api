@@ -13,7 +13,9 @@ public sealed class GetConnectionByIdQueryHandler(
     IConnectionReader connections)
     : IQueryHandlerAsync<GetConnectionByIdQuery, ConnectionOutput>
 {
-    public async Task<DataOutput<ConnectionOutput?>> HandleAsync(GetConnectionByIdQuery query)
+    public async Task<DataOutput<ConnectionOutput?>> HandleAsync(
+        GetConnectionByIdQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<ConnectionOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -23,7 +25,7 @@ public sealed class GetConnectionByIdQueryHandler(
         }
 
         var connection = await connections.FindByIdAsync(
-            profile.Id, query.Id, CancellationToken.None);
+            profile.Id, query.Id, cancellationToken);
 
         return connection is null
             ? output.WithError(ConnectionMessages.NotFound)

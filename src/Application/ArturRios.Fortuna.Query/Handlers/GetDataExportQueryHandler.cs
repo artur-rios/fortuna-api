@@ -20,7 +20,8 @@ public sealed class GetDataExportQueryHandler(
     : IQueryHandlerAsync<GetDataExportQuery, RetrieveDataExportQueryOutput>
 {
     public async Task<DataOutput<RetrieveDataExportQueryOutput?>> HandleAsync(
-        GetDataExportQuery query)
+        GetDataExportQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RetrieveDataExportQueryOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -32,7 +33,7 @@ public sealed class GetDataExportQueryHandler(
         var export = await exports.FindOwnedAsync(
             profile.Id,
             query.Id,
-            CancellationToken.None);
+            cancellationToken);
         if (export is null)
         {
             return output.WithError(DataExportMessages.NotFound);
@@ -57,14 +58,14 @@ public sealed class GetDataExportQueryHandler(
 
         try
         {
-            if (!await storage.IsHealthyAsync(CancellationToken.None))
+            if (!await storage.IsHealthyAsync(cancellationToken))
             {
                 return output.WithError(DataExportMessages.StorageUnavailable);
             }
 
             var read = await storage.OpenReadAsync(
                 export.StorageKey,
-                CancellationToken.None);
+                cancellationToken);
             if (!read.IsFound)
             {
                 return output.WithError(read.Status == AttachmentReadStatus.NotFound

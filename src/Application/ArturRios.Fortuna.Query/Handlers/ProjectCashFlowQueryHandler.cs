@@ -20,7 +20,9 @@ public sealed class ProjectCashFlowQueryHandler(
     CashFlowProjectionOptions options)
     : IQueryHandlerAsync<ProjectCashFlowQuery, CashFlowProjectionOutput>
 {
-    public async Task<DataOutput<CashFlowProjectionOutput?>> HandleAsync(ProjectCashFlowQuery query)
+    public async Task<DataOutput<CashFlowProjectionOutput?>> HandleAsync(
+        ProjectCashFlowQuery query,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<CashFlowProjectionOutput?>.New;
         if (!Enum.IsDefined(query.Periodicity))
@@ -35,7 +37,7 @@ public sealed class ProjectCashFlowQueryHandler(
         }
 
         var displayCode = DisplayCurrency.ResolveCode(query.DisplayCurrencyCode, profile);
-        var displayCurrency = await currencies.FindByCodeAsync(displayCode, CancellationToken.None);
+        var displayCurrency = await currencies.FindByCodeAsync(displayCode, cancellationToken);
         if (displayCurrency is null)
         {
             return output.WithError(CashFlowProjectionMessages.DisplayCurrencyUnsupported);
@@ -45,7 +47,7 @@ public sealed class ProjectCashFlowQueryHandler(
         var through = asOf.AddDays(query.HorizonDays);
         var historyFrom = asOf.AddDays(-(options.HistoricalLookbackDays - 1));
         var snapshot = await projections.ReadAsync(
-            profile.Id, asOf, through, historyFrom, CancellationToken.None);
+            profile.Id, asOf, through, historyFrom, cancellationToken);
         var converter = new FigureConverter(rates, displayCurrency);
 
         // Balances are a point-in-time position (as-of date); flows convert at their own

@@ -16,7 +16,8 @@ public sealed class SettleCreditCardStatementCommandHandler(
         SettleCreditCardStatementCommandOutput>
 {
     public async Task<DataOutput<SettleCreditCardStatementCommandOutput?>> HandleAsync(
-        SettleCreditCardStatementCommand command)
+        SettleCreditCardStatementCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<SettleCreditCardStatementCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -33,7 +34,8 @@ public sealed class SettleCreditCardStatementCommandHandler(
                 command.FinancialAccountId,
                 command.Amount,
                 command.PaymentDate,
-                timeProvider.GetUtcNow()));
+                timeProvider.GetUtcNow()),
+            cancellationToken);
         if (result.Settlement is null)
         {
             return output.WithError(result.Error!);

@@ -15,7 +15,8 @@ public sealed class DeleteInstallmentPlanCommandHandler(
     : ICommandHandlerAsync<DeleteInstallmentPlanCommand, InstallmentPlanLifecycleCommandOutput>
 {
     public async Task<DataOutput<InstallmentPlanLifecycleCommandOutput?>> HandleAsync(
-        DeleteInstallmentPlanCommand command)
+        DeleteInstallmentPlanCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -27,7 +28,7 @@ public sealed class DeleteInstallmentPlanCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return InstallmentPlanHandler.Resolve(
             result,
@@ -42,7 +43,8 @@ public sealed class RestoreInstallmentPlanCommandHandler(
     : ICommandHandlerAsync<RestoreInstallmentPlanCommand, InstallmentPlanLifecycleCommandOutput>
 {
     public async Task<DataOutput<InstallmentPlanLifecycleCommandOutput?>> HandleAsync(
-        RestoreInstallmentPlanCommand command)
+        RestoreInstallmentPlanCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -54,7 +56,7 @@ public sealed class RestoreInstallmentPlanCommandHandler(
             profile.Id,
             command.Id,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
 
         return InstallmentPlanHandler.Resolve(
             result,

@@ -17,7 +17,8 @@ public sealed class SynchronizeConnectionCommandHandler(
     : ICommandHandlerAsync<SynchronizeConnectionCommand, SynchronizeConnectionCommandOutput>
 {
     public async Task<DataOutput<SynchronizeConnectionCommandOutput?>> HandleAsync(
-        SynchronizeConnectionCommand command)
+        SynchronizeConnectionCommand command,
+        CancellationToken cancellationToken = default)
     {
         var profile = await profileResolver.ResolveAsync();
         if (profile is null)
@@ -33,10 +34,10 @@ public sealed class SynchronizeConnectionCommandHandler(
             command.PeriodEnd,
             command.CorrelationId,
             timeProvider.GetUtcNow(),
-            CancellationToken.None);
+            cancellationToken);
         if (result.Outcome == QueueSynchronizationOutcome.Succeeded)
         {
-            await queue.EnqueueAsync(result.BackgroundJobId!.Value, CancellationToken.None);
+            await queue.EnqueueAsync(result.BackgroundJobId!.Value, cancellationToken);
         }
 
         return Resolve(result);

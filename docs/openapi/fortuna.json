@@ -5956,9 +5956,7 @@
       "ObjectDataOutput": {
         "additionalProperties": false,
         "properties": {
-          "data": {
-            "nullable": true
-          },
+          "data": {},
           "errors": {
             "items": {
               "type": "string"

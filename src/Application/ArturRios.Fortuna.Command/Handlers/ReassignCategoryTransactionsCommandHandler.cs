@@ -17,7 +17,8 @@ public sealed class ReassignCategoryTransactionsCommandHandler(
         ReassignCategoryTransactionsCommandOutput>
 {
     public async Task<DataOutput<ReassignCategoryTransactionsCommandOutput?>> HandleAsync(
-        ReassignCategoryTransactionsCommand command)
+        ReassignCategoryTransactionsCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<ReassignCategoryTransactionsCommandOutput?>.New;
         var profile = await profileResolver.ResolveAsync();
@@ -33,7 +34,7 @@ public sealed class ReassignCategoryTransactionsCommandHandler(
                 command.TargetCategoryId,
                 command.IncludeDescendants,
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
 
         if (result.Outcome != CategoryTransactionReassignmentOutcome.Succeeded)
         {

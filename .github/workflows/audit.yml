@@ -1,0 +1,34 @@
+name: Audit
+
+# Checks the native core's dependencies against the RustSec advisory database. Unlike Native Core it
+# runs on every pull request, with no path filter: `audit` is a required check on develop and main,
+# and a required check whose workflow is skipped by a path filter never reports, which leaves the
+# pull request blocked. A new advisory also fails it without any change here, which is the point.
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: true
+
+# Third-party actions are pinned to the commit of the release named in the trailing comment;
+# Dependabot (.github/dependabot.yml) proposes the updates.
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # rustsec/audit-check reports its findings as a check run.
+      checks: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: native/fortuna-core

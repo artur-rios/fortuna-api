@@ -19,7 +19,8 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandler(
         RegenerateLocalAccountRecoveryCodesCommandOutput>
 {
     public async Task<DataOutput<RegenerateLocalAccountRecoveryCodesCommandOutput?>> HandleAsync(
-        RegenerateLocalAccountRecoveryCodesCommand command)
+        RegenerateLocalAccountRecoveryCodesCommand command,
+        CancellationToken cancellationToken = default)
     {
         var output = DataOutput<RegenerateLocalAccountRecoveryCodesCommandOutput?>.New;
         if (!options.Enabled)
@@ -35,9 +36,12 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandler(
 
         var credentials = await accounts.FindForAuthenticationByUserIdAsync(
             actor.SubjectId,
-            CancellationToken.None);
+            cancellationToken);
+        // An empty secret can never match (no secret is stored empty), and ArturRios.Util 2.x
+        // rejects one with an exception rather than a false result.
         if (credentials is null ||
-            !Hash.TextMatches(command.Secret ?? string.Empty, credentials.SecretHash, credentials.Salt))
+            string.IsNullOrEmpty(command.Secret) ||
+            !Hash.TextMatches(command.Secret, credentials.SecretHash, credentials.Salt))
         {
             return output.WithError(LocalRecoveryCodeRegenerationMessages.InvalidSecret);
         }
@@ -50,7 +54,7 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandler(
                 credentials.Salt,
                 recoveryCodes.Select(code => code.Hash).ToArray(),
                 timeProvider.GetUtcNow()),
-            CancellationToken.None);
+            cancellationToken);
         if (!regenerated)
         {
             return output.WithError(LocalRecoveryCodeRegenerationMessages.InvalidSecret);
