@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-12
+
 ### Added
 
 - Every API request is logged with its client IP address, which is also tagged on the request's trace as
@@ -123,5 +125,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/artur-rios/fortuna-api/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/artur-rios/fortuna-api/releases/tag/v1.0.0
