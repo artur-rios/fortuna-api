@@ -703,6 +703,110 @@ public sealed class HeimdallAuthProxyTests
         }
     }
 
+    [FunctionalFact]
+    public async Task GivenAnyAddress_WhenRegistering_ThenAcceptedWithTheGenericMessageAndConfiguredScope()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Succeeded, new object()) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "New Person",
+            email = "new@example.test",
+            password = "never-return-this"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Contains(HeimdallAuthMessages.RegistrationRequested, body, StringComparison.Ordinal);
+        Assert.Equal(("New Person", "new@example.test", Guid.Parse("00000000-0000-0000-0000-000000000076")),
+            gateway.RegisterRequest);
+        Assert.DoesNotContain("never-return-this", body, StringComparison.Ordinal);
+    }
+
+    [FunctionalTheory]
+    [InlineData(HeimdallAuthOutcome.Closed, HttpStatusCode.Forbidden)]
+    [InlineData(HeimdallAuthOutcome.Unavailable, HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HeimdallAuthOutcome.InvalidRequest, HttpStatusCode.BadRequest)]
+    public async Task GivenHeimdallRefuses_WhenRegistering_ThenTheMappedStatusIsReturned(
+        HeimdallAuthOutcome outcome, HttpStatusCode expected)
+    {
+        var gateway = new StubGateway { RegisterResult = new(outcome) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "New Person",
+            email = "new@example.test",
+            password = "a-long-secret"
+        });
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAClosedScope_WhenRegistering_ThenTheUnavailableMessageIsReturned()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Closed) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "New Person",
+            email = "new@example.test",
+            password = "a-long-secret"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains(HeimdallAuthMessages.RegistrationUnavailable, body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAShortPassword_WhenRegistering_ThenBadRequestAndHeimdallIsNotCalled()
+    {
+        var gateway = new StubGateway();
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "New Person",
+            email = "new@example.test",
+            password = "1234567"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, gateway.RegisterCalls);
+    }
+
+    [FunctionalFact]
+    public async Task GivenElevenRegistrationsInAMinute_WhenRegistering_ThenTheLastIsRateLimited()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Succeeded, new object()) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+        HttpResponseMessage? response = null;
+
+        for (var attempt = 0; attempt < 11; attempt++)
+        {
+            response?.Dispose();
+            response = await client.PostAsJsonAsync("/api/auth/register", new
+            {
+                name = "New Person",
+                email = "new@example.test",
+                password = "a-long-secret"
+            });
+        }
+
+        using (response)
+        {
+            Assert.Equal(HttpStatusCode.TooManyRequests, response!.StatusCode);
+        }
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(StubGateway gateway)
     {
         foreach (var setting in ValidSettings())

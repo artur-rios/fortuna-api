@@ -20,7 +20,9 @@ public sealed class AuthController : FortunaController
             [HeimdallAuthMessages.AuthenticationRejected] = StatusCodes.Status401Unauthorized,
             [HeimdallAuthMessages.TwoFactorRejected] = StatusCodes.Status401Unauthorized,
             [HeimdallAuthMessages.TwoFactorNotFound] = StatusCodes.Status404NotFound,
-            [HeimdallAuthMessages.ServiceUnavailable] = StatusCodes.Status503ServiceUnavailable
+            [HeimdallAuthMessages.ServiceUnavailable] = StatusCodes.Status503ServiceUnavailable,
+            [HeimdallAuthMessages.RegistrationRequested] = StatusCodes.Status202Accepted,
+            [HeimdallAuthMessages.RegistrationUnavailable] = StatusCodes.Status403Forbidden
         });
 
     protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
@@ -88,6 +90,20 @@ public sealed class AuthController : FortunaController
         return await SendAsync<
             RequestPasswordRecoveryThroughApiCommand,
             RequestPasswordRecoveryThroughApiCommandOutput>(command);
+    }
+
+    /// <summary>
+    ///     Registers a connected identity in Fortuna's Heimdall scope (UC-81). Answers 202 alike for a
+    ///     free and a taken address; the account exists, and can sign in, once its holder follows the
+    ///     verification email. The Fortuna profile is created on the first authenticated request.
+    /// </summary>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    [EnableRateLimiting(AnonymousRateLimitPolicy)]
+    public async Task<ActionResult<DataOutput<RegisterThroughApiCommandOutput?>>> Register(
+        [FromBody] RegisterThroughApiCommand command)
+    {
+        return await SendAsync<RegisterThroughApiCommand, RegisterThroughApiCommandOutput>(command);
     }
 
     [HttpPost("password-reset")]
