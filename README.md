@@ -202,6 +202,7 @@ one use case = one branch = one issue = one pull request.
 | [#154](https://github.com/artur-rios/fortuna-api/issues/154) | ✅ UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#158](https://github.com/artur-rios/fortuna-api/issues/158) | ✅ UC-78: Erase a User Account | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 | [#175](https://github.com/artur-rios/fortuna-api/issues/175) | ✅ Resend an emailed second-factor code for an outstanding challenge | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
+| [#208](https://github.com/artur-rios/fortuna-api/issues/208) | ✅ UC-81: Register through the Fortuna API | [Use Case Specification](docs/requirements/Use%20Case%20Specification%20Document.md) |
 
 ### M-03 — Holdings
 

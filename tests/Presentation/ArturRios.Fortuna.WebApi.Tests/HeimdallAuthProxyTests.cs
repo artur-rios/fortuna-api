@@ -391,6 +391,68 @@ public sealed class HeimdallAuthProxyTests
     }
 
     [FunctionalFact]
+    public async Task GivenConfirmationPassword_WhenVerifyingEmail_ThenGatewayReceivesItAndBodyNeverEchoesIt()
+    {
+        var gateway = new StubGateway
+        {
+            EmptyResult = new(HeimdallAuthOutcome.Succeeded, new object())
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/verify-email", new
+        {
+            token = "verification-token",
+            password = "sign-up-secret"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(("verification-token", "sign-up-secret"), gateway.VerifyEmailRequest);
+        Assert.DoesNotContain("sign-up-secret", body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenNoConfirmationPassword_WhenVerifyingEmail_ThenGatewayReceivesNull()
+    {
+        var gateway = new StubGateway
+        {
+            EmptyResult = new(HeimdallAuthOutcome.Succeeded, new object())
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync("/api/auth/verify-email", new { token = "verification-token" });
+
+        Assert.Equal(("verification-token", (string?)null), gateway.VerifyEmailRequest);
+    }
+
+    [FunctionalTheory]
+    [InlineData(HeimdallAuthOutcome.PasswordRequired, HttpStatusCode.UnprocessableEntity,
+        HeimdallAuthMessages.ConfirmationPasswordRequired)]
+    [InlineData(HeimdallAuthOutcome.Rejected, HttpStatusCode.Unauthorized,
+        HeimdallAuthMessages.ConfirmationPasswordIncorrect)]
+    public async Task GivenPasswordProblem_WhenVerifyingEmail_ThenStatusAndMessageAreReturned(
+        HeimdallAuthOutcome outcome, HttpStatusCode expected, string message)
+    {
+        var gateway = new StubGateway { EmptyResult = new(outcome) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/verify-email", new
+        {
+            token = "verification-token",
+            password = "sign-up-secret"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(expected, response.StatusCode);
+        Assert.Contains(message, body, StringComparison.Ordinal);
+        Assert.DoesNotContain("sign-up-secret", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("verification-token", body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
     public async Task GivenInvalidVerificationToken_WhenVerifyingEmail_ThenBadRequestIsReturned()
     {
         var gateway = new StubGateway
@@ -703,6 +765,113 @@ public sealed class HeimdallAuthProxyTests
         }
     }
 
+    [FunctionalFact]
+    public async Task GivenAnyAddress_WhenRegistering_ThenAcceptedWithTheGenericMessageAndConfiguredScope()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Succeeded, new object()) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "New Person",
+            email = "new@example.test",
+            password = "never-return-this"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Contains(HeimdallAuthMessages.RegistrationRequested, body, StringComparison.Ordinal);
+        Assert.Equal(("New Person", "new@example.test", Guid.Parse("00000000-0000-0000-0000-000000000076")),
+            gateway.RegisterRequest);
+        Assert.DoesNotContain("never-return-this", body, StringComparison.Ordinal);
+    }
+
+    [FunctionalTheory]
+    [InlineData(HeimdallAuthOutcome.Closed, HttpStatusCode.Forbidden)]
+    [InlineData(HeimdallAuthOutcome.Unavailable, HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HeimdallAuthOutcome.InvalidRequest, HttpStatusCode.BadRequest)]
+    public async Task GivenHeimdallRefuses_WhenRegistering_ThenTheMappedStatusIsReturned(
+        HeimdallAuthOutcome outcome, HttpStatusCode expected)
+    {
+        var gateway = new StubGateway { RegisterResult = new(outcome) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "New Person",
+            email = "new@example.test",
+            password = "a-long-secret"
+        });
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAClosedScope_WhenRegistering_ThenTheUnavailableMessageIsReturned()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Closed) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "New Person",
+            email = "new@example.test",
+            password = "a-long-secret"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains(HeimdallAuthMessages.RegistrationUnavailable, body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenAShortPassword_WhenRegistering_ThenBadRequestAndHeimdallIsNotCalled()
+    {
+        var gateway = new StubGateway();
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "New Person",
+            email = "new@example.test",
+            password = "1234567"
+        });
+
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Password must be at least 8 characters.", body, StringComparison.Ordinal);
+        Assert.Equal(0, gateway.RegisterCalls);
+    }
+
+    [FunctionalFact]
+    public async Task GivenElevenRegistrationsInAMinute_WhenRegistering_ThenTheLastIsRateLimited()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Succeeded, new object()) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+        HttpResponseMessage? response = null;
+
+        for (var attempt = 0; attempt < 11; attempt++)
+        {
+            response?.Dispose();
+            response = await client.PostAsJsonAsync("/api/auth/register", new
+            {
+                name = "New Person",
+                email = "new@example.test",
+                password = "a-long-secret"
+            });
+        }
+
+        using (response)
+        {
+            Assert.Equal(HttpStatusCode.TooManyRequests, response!.StatusCode);
+        }
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(StubGateway gateway)
     {
         foreach (var setting in ValidSettings())
@@ -781,9 +950,23 @@ public sealed class HeimdallAuthProxyTests
         public string? AuthenticatedToken { get; private set; }
         public (string Email, Guid ScopeId)? RecoveryRequest { get; private set; }
         public int RecoveryCalls { get; private set; }
+        public HeimdallAuthResult<object> RegisterResult { get; init; } =
+            new(HeimdallAuthOutcome.Rejected);
+        public (string Name, string Email, Guid ScopeId)? RegisterRequest { get; private set; }
+        public int RegisterCalls { get; private set; }
+        public (string Token, string? Password)? VerifyEmailRequest { get; private set; }
         public HeimdallAuthResult<object> ResendResult { get; init; } =
             new(HeimdallAuthOutcome.Rejected);
         public string? ResendChallengeToken { get; private set; }
+
+        public Task<HeimdallAuthResult<object>> RegisterAsync(
+            string name, string email, string password, Guid scopeId, CancellationToken cancellationToken)
+        {
+            RegisterCalls++;
+            RegisterRequest = (name, email, scopeId);
+
+            return Task.FromResult(RegisterResult);
+        }
 
         public Task<HeimdallAuthResult<object>> ResendTwoFactorChallengeCodeAsync(
             string challengeToken, CancellationToken cancellationToken)
@@ -831,8 +1014,12 @@ public sealed class HeimdallAuthProxyTests
             Task.FromResult(EmptyResult);
 
         public Task<HeimdallAuthResult<object>> VerifyEmailAsync(
-            string token, CancellationToken cancellationToken) =>
-            Task.FromResult(EmptyResult);
+            string token, string? password, CancellationToken cancellationToken)
+        {
+            VerifyEmailRequest = (token, password);
+
+            return Task.FromResult(EmptyResult);
+        }
 
         public Task<HeimdallAuthResult<object>> ResendVerificationAsync(
             string bearerToken, CancellationToken cancellationToken)

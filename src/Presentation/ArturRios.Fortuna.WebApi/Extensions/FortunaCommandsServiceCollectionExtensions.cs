@@ -44,6 +44,9 @@ public static class FortunaCommandsServiceCollectionExtensions
         services.AddAuditedCommandHandler<RequestPasswordRecoveryThroughApiCommand,
             RequestPasswordRecoveryThroughApiCommandOutput, RequestPasswordRecoveryThroughApiCommandHandler,
             RequestPasswordRecoveryThroughApiCommandValidator>();
+        services.AddAuditedCommandHandler<RegisterThroughApiCommand,
+            RegisterThroughApiCommandOutput, RegisterThroughApiCommandHandler,
+            RegisterThroughApiCommandValidator>();
         services.AddAuditedCommandHandler<ResetPasswordThroughApiCommand,
             ResetPasswordThroughApiCommandOutput, ResetPasswordThroughApiCommandHandler,
             ResetPasswordThroughApiCommandValidator>();

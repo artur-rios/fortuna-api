@@ -58,6 +58,30 @@ public sealed class RequestPasswordRecoveryThroughApiCommandValidator
             .EmailAddress().WithMessage(HeimdallAuthMessages.EmailInvalid);
 }
 
+/// <summary>
+///     Heimdall's UC-47 field rules, applied here so a malformed request costs no round trip. Heimdall
+///     stays the authority and validates again.
+/// </summary>
+public sealed class RegisterThroughApiCommandValidator : AbstractValidator<RegisterThroughApiCommand>
+{
+    public RegisterThroughApiCommandValidator()
+    {
+        RuleFor(command => command.Name)
+            .Cascade(CascadeMode.Stop)
+            .Must(name => !string.IsNullOrWhiteSpace(name)).WithMessage(HeimdallAuthMessages.NameRequired)
+            .Must(name => name.Trim().Length <= 200).WithMessage(HeimdallAuthMessages.NameTooLong);
+        RuleFor(command => command.Email)
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty().WithMessage(HeimdallAuthMessages.EmailRequired)
+            .EmailAddress().WithMessage(HeimdallAuthMessages.EmailInvalid)
+            .MaximumLength(256).WithMessage(HeimdallAuthMessages.EmailTooLong);
+        RuleFor(command => command.Password)
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty().WithMessage(HeimdallAuthMessages.PasswordRequired)
+            .MinimumLength(8).WithMessage(HeimdallAuthMessages.PasswordTooShort);
+    }
+}
+
 public sealed class ResetPasswordThroughApiCommandValidator
     : AbstractValidator<ResetPasswordThroughApiCommand>
 {

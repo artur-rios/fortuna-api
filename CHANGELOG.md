@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- UC-81: `POST /api/auth/register` forwards self-registration to Heimdall with the configured scope, answering new and taken addresses alike.
+- `POST /api/auth/verify-email` accepts the optional `password` chosen at sign-up and forwards it to Heimdall, which requires it to confirm a registration. A missing password answers `422` and a wrong one `401`, each with its own message.
+
 ## [2.0.0] - 2026-10-12
 
 ### Added

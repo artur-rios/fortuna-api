@@ -104,6 +104,54 @@ public sealed class HeimdallCredentialCommandHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenConfirmationPassword_WhenVerifyingEmail_ThenPasswordIsForwarded()
+    {
+        var gateway = new StubGateway { EmptyResult = Success() };
+        var handler = new VerifyEmailThroughApiCommandHandler(
+            gateway).Validated(new VerifyEmailThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(
+            new() { Token = "verification-token", Password = "sign-up-secret" });
+
+        Assert.NotNull(result.Data);
+        Assert.Equal("verification-token", gateway.VerificationToken);
+        Assert.Equal("sign-up-secret", gateway.VerificationPassword);
+    }
+
+    [UnitFact]
+    public async Task GivenNoConfirmationPassword_WhenVerifyingEmail_ThenNullIsForwarded()
+    {
+        var gateway = new StubGateway { EmptyResult = Success() };
+        var handler = new VerifyEmailThroughApiCommandHandler(
+            gateway).Validated(new VerifyEmailThroughApiCommandValidator());
+
+        await handler.HandleAsync(new() { Token = "verification-token" });
+
+        Assert.Equal(1, gateway.VerifyEmailCalls);
+        Assert.Null(gateway.VerificationPassword);
+    }
+
+    [UnitTheory]
+    [InlineData(HeimdallAuthOutcome.PasswordRequired, HeimdallAuthMessages.ConfirmationPasswordRequired)]
+    [InlineData(HeimdallAuthOutcome.Rejected, HeimdallAuthMessages.ConfirmationPasswordIncorrect)]
+    [InlineData(HeimdallAuthOutcome.InvalidRequest, HeimdallAuthMessages.RequestRejected)]
+    [InlineData(HeimdallAuthOutcome.Unavailable, HeimdallAuthMessages.ServiceUnavailable)]
+    public async Task GivenHeimdallRefusal_WhenVerifyingEmail_ThenTheMatchingMessageIsReturned(
+        HeimdallAuthOutcome outcome, string expected)
+    {
+        var gateway = new StubGateway { EmptyResult = new(outcome) };
+        var handler = new VerifyEmailThroughApiCommandHandler(
+            gateway).Validated(new VerifyEmailThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(
+            new() { Token = "verification-token", Password = "sign-up-secret" });
+
+        Assert.Equal([expected], result.Errors);
+        Assert.DoesNotContain("sign-up-secret", string.Join(' ', result.Errors),
+            StringComparison.Ordinal);
+    }
+
+    [UnitFact]
     public async Task GivenAuthenticatedCaller_WhenResendingVerification_ThenBearerIsForwarded()
     {
         var gateway = new StubGateway { EmptyResult = Success() };
@@ -327,6 +375,10 @@ public sealed class HeimdallCredentialCommandHandlerTests
 
     private sealed class StubGateway : IHeimdallAuthGateway
     {
+        public Task<HeimdallAuthResult<object>> RegisterAsync(
+            string name, string email, string password, Guid scopeId, CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
+
         public HeimdallAuthResult<object> EmptyResult { get; init; } =
             new(HeimdallAuthOutcome.Rejected);
         public HeimdallAuthResult<HeimdallTwoFactorStatusResult> StatusResult { get; init; } =
@@ -340,6 +392,8 @@ public sealed class HeimdallCredentialCommandHandlerTests
         public (string Email, Guid ScopeId)? RecoveryRequest { get; private set; }
         public (string Token, string Password)? ResetRequest { get; private set; }
         public string? VerificationToken { get; private set; }
+        public string? VerificationPassword { get; private set; }
+        public int VerifyEmailCalls { get; private set; }
         public string? BearerToken { get; private set; }
         public IReadOnlyCollection<string>? Methods { get; private set; }
         public (string? AppCode, string? EmailCode)? ConfirmationCodes { get; private set; }
@@ -374,9 +428,11 @@ public sealed class HeimdallCredentialCommandHandlerTests
         }
 
         public Task<HeimdallAuthResult<object>> VerifyEmailAsync(
-            string token, CancellationToken cancellationToken)
+            string token, string? password, CancellationToken cancellationToken)
         {
             VerificationToken = token;
+            VerificationPassword = password;
+            VerifyEmailCalls++;
 
             return Task.FromResult(EmptyResult);
         }

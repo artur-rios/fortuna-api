@@ -20,7 +20,11 @@ public sealed class AuthController : FortunaController
             [HeimdallAuthMessages.AuthenticationRejected] = StatusCodes.Status401Unauthorized,
             [HeimdallAuthMessages.TwoFactorRejected] = StatusCodes.Status401Unauthorized,
             [HeimdallAuthMessages.TwoFactorNotFound] = StatusCodes.Status404NotFound,
-            [HeimdallAuthMessages.ServiceUnavailable] = StatusCodes.Status503ServiceUnavailable
+            [HeimdallAuthMessages.ServiceUnavailable] = StatusCodes.Status503ServiceUnavailable,
+            [HeimdallAuthMessages.RegistrationRequested] = StatusCodes.Status202Accepted,
+            [HeimdallAuthMessages.RegistrationUnavailable] = StatusCodes.Status403Forbidden,
+            [HeimdallAuthMessages.ConfirmationPasswordRequired] = StatusCodes.Status422UnprocessableEntity,
+            [HeimdallAuthMessages.ConfirmationPasswordIncorrect] = StatusCodes.Status401Unauthorized
         });
 
     protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
@@ -90,6 +94,29 @@ public sealed class AuthController : FortunaController
             RequestPasswordRecoveryThroughApiCommandOutput>(command);
     }
 
+    /// <summary>
+    ///     Registers a connected identity in Fortuna's Heimdall scope (UC-81). Answers 202 alike for a
+    ///     free and a taken address; Heimdall holds only a pending registration, and the account exists,
+    ///     and can sign in, only after its holder follows the emailed link and confirms with the
+    ///     password chosen at sign-up. The Fortuna profile is created on the first authenticated request.
+    /// </summary>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    [EnableRateLimiting(AnonymousRateLimitPolicy)]
+    [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
+        StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
+        StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<DataOutput<RegisterThroughApiCommandOutput?>>> Register(
+        [FromBody] RegisterThroughApiCommand command)
+    {
+        return await SendAsync<RegisterThroughApiCommand, RegisterThroughApiCommandOutput>(command);
+    }
+
     [HttpPost("password-reset")]
     [AllowAnonymous]
     [EnableRateLimiting(AnonymousRateLimitPolicy)]
@@ -103,6 +130,16 @@ public sealed class AuthController : FortunaController
     [HttpPost("verify-email")]
     [AllowAnonymous]
     [EnableRateLimiting(AnonymousRateLimitPolicy)]
+    [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
+        StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
+        StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<DataOutput<VerifyEmailThroughApiCommandOutput?>>> VerifyEmail(
         [FromBody] VerifyEmailThroughApiCommand command)
     {
