@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-13
+
 ### Added
 
 - UC-81: `POST /api/auth/register` forwards self-registration to Heimdall with the configured scope, answering new and taken addresses alike.
@@ -136,6 +138,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/artur-rios/fortuna-api/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/artur-rios/fortuna-api/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/artur-rios/fortuna-api/releases/tag/v1.0.0
