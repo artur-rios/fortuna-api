@@ -2670,7 +2670,7 @@ for it.
 | **Description** | Create a connected identity in Fortuna's Heimdall scope without an administrator |
 | **Preconditions** | The Heimdall base address and Fortuna scope public identifier are configured; the scope has opened self-registration in Heimdall (Heimdall UC-47) |
 | **Postconditions** | Heimdall holds a pending registration, or has told the address's holder of the attempt; no account exists until the holder confirms with the password chosen at sign-up. Fortuna state is unchanged until the confirmed identity's first authenticated request provisions its profile |
-| **Requirements** | FR-ID-45 through FR-ID-48 |
+| **Requirements** | FR-ID-45 through FR-ID-49 |
 
 **Main Flow**
 
@@ -2694,16 +2694,18 @@ for it.
 | AF-05 | The confirmation carries no password | `422 Unprocessable Entity`: "Enter the password you chose when you signed up to finish creating your account." |
 | AF-06 | The confirmation carries a password other than the one chosen at sign-up | `401 Unauthorized`: "That password does not match the one chosen when signing up." |
 | AF-07 | The 10th wrong password is submitted for one registration | The 10th wrong password still answers `401 Unauthorized` (AF-06) and discards the registration; every later attempt with that link answers `400 Bad Request`, like any invalid token |
+| AF-08 | Heimdall's own rate limit is spent | `429 Too Many Requests`: "Too many attempts. Wait a minute and try again."; the confirmation password is not echoed |
 
 UC-81 uses the same limit of ten attempts per source address per minute as UC-76. That limit is
 Fortuna's own; Heimdall applies its `AuthAnonymous` limit of its own, partitioned by connection IP,
 and for every Fortuna user that connection is fortuna-api's address. All of an instance's anonymous
 auth calls therefore share one Heimdall budget of ten per minute (sign-in, Google, recovery, reset,
-verify-email, two-factor and register), and once it is spent users see `503` "The identity service is
-temporarily unavailable." The planned remedy, not part of this change, is for fortuna-api to forward
-the client address in `X-Forwarded-For`, for Heimdall to list fortuna-api in
-`HEIMDALL_TRUSTED_PROXIES`, for Fortuna to partition IPv6 addresses by /64, and for a Heimdall `429`
-to be answered `429`. See the Operations & Infrastructure document, section 4.1. The native core
+verify-email, two-factor and register) unless fortuna-api is given `FORTUNA_HEIMDALL_CALLER_KEY`, one of
+Heimdall's `HEIMDALL_TRUSTED_CALLER_KEYS`. With it, fortuna-api sends the key and the end user's address
+(`X-Heimdall-Caller-Key`, `X-Heimdall-Client-Address`) with each request and Heimdall counts the request
+against that user's address, IPv6 by /64, as Fortuna's own limiter does. Without it the shared budget
+remains, and once it is spent Heimdall's `429` is answered `429` "Too many attempts. Wait a minute and try
+again." (AF-08) rather than `503`. See the Operations & Infrastructure document, section 4.1. The native core
 answers `/api/auth/**` as unavailable offline, which already covers this route. The confirmation password
 is forwarded to Heimdall and is never logged, echoed or stored; a plain verification token (UC-77) ignores
 it.
@@ -2793,7 +2795,7 @@ it.
 | UC-78: Erase a User Account | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 | UC-79: Export All Personal Data | FR-EX-09 through FR-EX-15 |
 | UC-80: Record Processing Consent | FR-ID-38 through FR-ID-43 |
-| UC-81: Register through the Fortuna API | FR-ID-45 through FR-ID-48 |
+| UC-81: Register through the Fortuna API | FR-ID-45 through FR-ID-49 |
 
 Every `FR-<AREA>-xx` defined in [System Requirements §3](System%20Requirements%20Document.md)
 appears at least once above. The platform requirements `IR-xx` and the health check requirements
