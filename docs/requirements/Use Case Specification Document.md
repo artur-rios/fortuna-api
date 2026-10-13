@@ -2693,7 +2693,7 @@ for it.
 | AF-04 | Heimdall is unreachable or returns a server error | `503 Service Unavailable`; upstream details are not returned |
 | AF-05 | The confirmation carries no password | `422 Unprocessable Entity`: "Enter the password you chose when you signed up to finish creating your account." |
 | AF-06 | The confirmation carries a password other than the one chosen at sign-up | `401 Unauthorized`: "That password does not match the one chosen when signing up." |
-| AF-07 | The 10th wrong password is submitted for one registration | The registration is discarded; that attempt and every later one for it answer `400 Bad Request`, like any invalid token |
+| AF-07 | The 10th wrong password is submitted for one registration | The 10th wrong password still answers `401 Unauthorized` (AF-06) and discards the registration; every later attempt with that link answers `400 Bad Request`, like any invalid token |
 
 UC-81 uses the same limit of ten attempts per source address per minute as UC-76. The native core
 answers `/api/auth/**` as unavailable offline, which already covers this route. The confirmation password
