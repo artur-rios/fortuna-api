@@ -2695,7 +2695,15 @@ for it.
 | AF-06 | The confirmation carries a password other than the one chosen at sign-up | `401 Unauthorized`: "That password does not match the one chosen when signing up." |
 | AF-07 | The 10th wrong password is submitted for one registration | The 10th wrong password still answers `401 Unauthorized` (AF-06) and discards the registration; every later attempt with that link answers `400 Bad Request`, like any invalid token |
 
-UC-81 uses the same limit of ten attempts per source address per minute as UC-76. The native core
+UC-81 uses the same limit of ten attempts per source address per minute as UC-76. That limit is
+Fortuna's own; Heimdall applies its `AuthAnonymous` limit of its own, partitioned by connection IP,
+and for every Fortuna user that connection is fortuna-api's address. All of an instance's anonymous
+auth calls therefore share one Heimdall budget of ten per minute (sign-in, Google, recovery, reset,
+verify-email, two-factor and register), and once it is spent users see `503` "The identity service is
+temporarily unavailable." The planned remedy, not part of this change, is for fortuna-api to forward
+the client address in `X-Forwarded-For`, for Heimdall to list fortuna-api in
+`HEIMDALL_TRUSTED_PROXIES`, for Fortuna to partition IPv6 addresses by /64, and for a Heimdall `429`
+to be answered `429`. See the Operations & Infrastructure document, section 4.1. The native core
 answers `/api/auth/**` as unavailable offline, which already covers this route. The confirmation password
 is forwarded to Heimdall and is never logged, echoed or stored; a plain verification token (UC-77) ignores
 it.

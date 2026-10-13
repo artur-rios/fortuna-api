@@ -251,6 +251,16 @@ are applied first in the pipeline, and only from the networks and addresses in
 
 Never list a range a caller can originate from: anything trusted here can claim any address it likes.
 
+**Heimdall's anonymous budget is shared by every user of the instance.** Fortuna's own limiter allows
+ten requests per minute per source address. Heimdall partitions its `AuthAnonymous` limit by
+connection IP, and for every Fortuna user that connection is fortuna-api's address, so all of an
+instance's anonymous auth calls share one Heimdall budget of ten per minute: sign-in, Google,
+recovery, reset, verify-email, two-factor and register. When that budget is spent, users see `503`
+"The identity service is temporarily unavailable." The planned remedy, not yet built: fortuna-api
+forwards the client address in `X-Forwarded-For`, Heimdall lists fortuna-api in
+`HEIMDALL_TRUSTED_PROXIES`, Fortuna partitions IPv6 addresses by /64, and a Heimdall `429` is answered
+`429`.
+
 ---
 
 ## 5. Health & Monitoring Endpoints

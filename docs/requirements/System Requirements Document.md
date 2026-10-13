@@ -156,10 +156,10 @@ request validates it locally; token verification never calls Heimdall.
 | FR-ID-42 | Processing-consent reads, grants and withdrawals shall be owner-scoped; consent records shall be included in portability archives and removed during whole-account erasure rather than retained as audit entries |
 | FR-ID-43 | Processing consent shall not gate manual entry, Excel import or PDF import; the native core, which has no external processor, shall declare hosted consent routes unavailable |
 | FR-ID-44 | The system shall reissue the emailed second-factor code for an outstanding challenge, authorized by the challenge token alone, and shall answer identically whether the challenge is valid, unknown, forged, expired, or names a person without the email method |
-| FR-ID-45 | The system shall forward an anonymous registration (name, email, password) to Heimdall with the configured Fortuna scope identifier, and shall store no part of it |
+| FR-ID-45 | The system shall accept an anonymous registration (name, email, password) on an anonymous route rate-limited like FR-ID-24's routes, shall forward it to Heimdall with the configured Fortuna scope identifier, shall store no part of it, and shall never log or echo the password |
 | FR-ID-46 | The system shall answer a registration identically whether or not the address is already registered |
 | FR-ID-47 | The system shall answer `403 Forbidden` when Heimdall reports the scope closed to self-registration, and shall otherwise map failures as UC-76 does |
-| FR-ID-48 | The system shall forward the optional sign-up password on email verification and shall answer Heimdall's password-required and password-incorrect outcomes with 422 and 401 and their messages |
+| FR-ID-48 | The system shall forward the optional sign-up password on email verification, shall never log, echo or store that confirmation password, and shall answer Heimdall's password-required and password-incorrect outcomes with 422 and 401 and their messages |
 
 ### 3.2 Currency and Exchange Rates — `CU`
 
