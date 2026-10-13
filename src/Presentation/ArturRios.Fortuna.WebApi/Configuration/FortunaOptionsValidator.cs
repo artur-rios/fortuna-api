@@ -63,6 +63,13 @@ public sealed class FortunaOptionsValidator : AbstractValidator<FortunaOptions>
                 "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS",
                 FortunaOptions.MinimumAuthTokenSecretBytes));
 
+        RuleFor(options => options.HeimdallCallerKey)
+            .Must(key => key!.Length >= FortunaOptions.MinimumHeimdallCallerKeyLength)
+            .When(options => HasText(options.HeimdallCallerKey))
+            .WithMessage(ConfigurationMessages.SecretTooShortCharacters(
+                "FORTUNA_HEIMDALL_CALLER_KEY",
+                FortunaOptions.MinimumHeimdallCallerKeyLength));
+
         Required(options => options.AuthTokenIssuer, "FORTUNA_AUTH_TOKEN_ISSUER");
         Required(options => options.AuthTokenAudience, "FORTUNA_AUTH_TOKEN_AUDIENCE");
 
