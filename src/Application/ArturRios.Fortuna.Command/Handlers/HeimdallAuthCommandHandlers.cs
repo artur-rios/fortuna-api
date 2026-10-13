@@ -39,6 +39,9 @@ public sealed class LoginThroughApiCommandHandler(
         }).WithMessage(HeimdallAuthMessages.AuthenticatedSuccessfully);
     }
 
+    // An outcome this helper does not know must not become a 500: every route-specific outcome
+    // (Closed, PasswordRequired) is mapped by its own handler before the helper is called, so
+    // anything else that reaches the default arm is answered as an unavailable identity service.
     internal static DataOutput<T?> Failure<T>(
         HeimdallAuthOutcome outcome, string rejected, string? notFound = null)
         where T : class => outcome switch
@@ -48,7 +51,7 @@ public sealed class LoginThroughApiCommandHandler(
             HeimdallAuthOutcome.Unavailable => DataOutput<T?>.New.WithError(
                 HeimdallAuthMessages.ServiceUnavailable),
             HeimdallAuthOutcome.NotFound => DataOutput<T?>.New.WithError(notFound ?? rejected),
-            _ => throw new ArgumentOutOfRangeException(nameof(outcome))
+            _ => DataOutput<T?>.New.WithError(HeimdallAuthMessages.ServiceUnavailable)
         };
 }
 

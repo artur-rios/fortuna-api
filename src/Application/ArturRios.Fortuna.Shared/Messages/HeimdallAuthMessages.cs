@@ -9,6 +9,7 @@ public static class HeimdallAuthMessages
     public const string ServiceUnavailable = "The identity service is temporarily unavailable.";
     public const string EmailRequired = "Email is required.";
     public const string EmailInvalid = "Email must be a valid address.";
+    public const string EmailTooLong = "Email must be at most 256 characters.";
     public const string PasswordRequired = "Password is required.";
     public const string GoogleIdTokenRequired = "Google ID token is required.";
     public const string ChallengeTokenRequired = "Challenge token is required.";

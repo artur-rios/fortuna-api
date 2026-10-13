@@ -73,7 +73,8 @@ public sealed class RegisterThroughApiCommandValidator : AbstractValidator<Regis
         RuleFor(command => command.Email)
             .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage(HeimdallAuthMessages.EmailRequired)
-            .EmailAddress().WithMessage(HeimdallAuthMessages.EmailInvalid);
+            .EmailAddress().WithMessage(HeimdallAuthMessages.EmailInvalid)
+            .MaximumLength(256).WithMessage(HeimdallAuthMessages.EmailTooLong);
         RuleFor(command => command.Password)
             .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage(HeimdallAuthMessages.PasswordRequired)

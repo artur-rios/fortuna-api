@@ -56,6 +56,7 @@ public sealed class HeimdallAuthGateway(
         string token, string? password, CancellationToken cancellationToken) =>
         SendAsync<object, object>(HttpMethod.Post,
             "api/auth/verify-email", new { token, password }, null, cancellationToken,
+            forbidden: HeimdallAuthOutcome.Unavailable,
             unprocessable: HeimdallAuthOutcome.PasswordRequired);
 
     public Task<HeimdallAuthResult<object>> ResendVerificationAsync(
@@ -140,8 +141,10 @@ public sealed class HeimdallAuthGateway(
                 HttpStatusCode.NotFound => new(HeimdallAuthOutcome.NotFound),
                 HttpStatusCode.Unauthorized => new(HeimdallAuthOutcome.Rejected),
                 // A refusal on most routes; on registration, a scope that is closed to it (UC-81).
+                // Verify-email passes Unavailable: Heimdall never answers it 403, so one comes from
+                // something in front of Heimdall and must not read as a wrong sign-up password.
                 HttpStatusCode.Forbidden => new(forbidden),
-                // Only verify-email answers 422: a pending registration that needs its sign-up password.
+                // Mapped per route; verify-email passes PasswordRequired, every other route Unavailable.
                 HttpStatusCode.UnprocessableEntity => new(unprocessable),
                 _ => new(HeimdallAuthOutcome.Unavailable)
             };
