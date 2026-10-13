@@ -156,6 +156,7 @@ public sealed class HeimdallAuthGatewayTests
     [UnitTheory]
     [InlineData(HttpStatusCode.UnprocessableEntity, HeimdallAuthOutcome.PasswordRequired)]
     [InlineData(HttpStatusCode.Unauthorized, HeimdallAuthOutcome.Rejected)]
+    [InlineData(HttpStatusCode.Forbidden, HeimdallAuthOutcome.Unavailable)]
     [InlineData(HttpStatusCode.BadRequest, HeimdallAuthOutcome.InvalidRequest)]
     [InlineData(HttpStatusCode.InternalServerError, HeimdallAuthOutcome.Unavailable)]
     public async Task GivenHeimdallRefusesAVerification_WhenForwarded_ThenTheOutcomeIsMapped(

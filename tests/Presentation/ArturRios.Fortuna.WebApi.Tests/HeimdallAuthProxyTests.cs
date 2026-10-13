@@ -840,7 +840,10 @@ public sealed class HeimdallAuthProxyTests
             password = "1234567"
         });
 
+        var body = await response.Content.ReadAsStringAsync();
+
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Password must be at least 8 characters.", body, StringComparison.Ordinal);
         Assert.Equal(0, gateway.RegisterCalls);
     }
 
