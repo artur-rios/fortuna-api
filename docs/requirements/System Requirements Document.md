@@ -156,6 +156,10 @@ request validates it locally; token verification never calls Heimdall.
 | FR-ID-42 | Processing-consent reads, grants and withdrawals shall be owner-scoped; consent records shall be included in portability archives and removed during whole-account erasure rather than retained as audit entries |
 | FR-ID-43 | Processing consent shall not gate manual entry, Excel import or PDF import; the native core, which has no external processor, shall declare hosted consent routes unavailable |
 | FR-ID-44 | The system shall reissue the emailed second-factor code for an outstanding challenge, authorized by the challenge token alone, and shall answer identically whether the challenge is valid, unknown, forged, expired, or names a person without the email method |
+| FR-ID-45 | The system shall forward an anonymous registration (name, email, password) to Heimdall with the configured Fortuna scope identifier, and shall store no part of it |
+| FR-ID-46 | The system shall answer a registration identically whether or not the address is already registered |
+| FR-ID-47 | The system shall answer `403 Forbidden` when Heimdall reports the scope closed to self-registration, and shall otherwise map failures as UC-76 does |
+| FR-ID-48 | The system shall forward the optional sign-up password on email verification and shall answer Heimdall's password-required and password-incorrect outcomes with 422 and 401 and their messages |
 
 ### 3.2 Currency and Exchange Rates — `CU`
 
@@ -795,8 +799,9 @@ deliberately not generated. The native equivalents for health and local recovery
 | POST | `/api/auth/2fa/challenge/resend` | Reissue an outstanding challenge's emailed code without disclosing whether it exists — *anonymous* | FR-ID-44, FR-ID-35 |
 | POST | `/api/auth/google/sign-out` | End the caller's Google-authenticated session | FR-ID-20, FR-ID-23 |
 | POST | `/api/auth/password-recovery` | Request password-recovery instructions without disclosing registration — *anonymous* | FR-ID-25, FR-ID-35 |
+| POST | `/api/auth/register` | Register a connected identity without disclosing whether the address is taken — *anonymous* | FR-ID-45 through FR-ID-47 |
 | POST | `/api/auth/password-reset` | Set a new password with a reset token — *anonymous* | FR-ID-26, FR-ID-35 |
-| POST | `/api/auth/verify-email` | Verify an address with its token — *anonymous* | FR-ID-26, FR-ID-35 |
+| POST | `/api/auth/verify-email` | Verify an address with its token, or confirm a sign-up with the token and the optional `password` chosen at sign-up — *anonymous* | FR-ID-26, FR-ID-35, FR-ID-48 |
 | POST | `/api/auth/resend-verification` | Resend verification to the authenticated caller | FR-ID-27, FR-ID-33 |
 | GET | `/api/auth/2fa` | Report the caller's non-secret two-factor status | FR-ID-28, FR-ID-33 |
 | POST | `/api/auth/2fa/enable` | Begin two-factor setup and return its setup payload | FR-ID-29, FR-ID-33 |
@@ -1080,7 +1085,7 @@ outcome and time; deleting the mapping makes all retained entries unlinkable.
 | F-14 Export and data portability | FR-EX-01 through FR-EX-15 |
 | F-15 Attachments | FR-AT-01 through FR-AT-11 |
 | F-16 Budgets and goals | FR-PL-01 through FR-PL-07 |
-| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-43 |
+| F-17 Identity and isolation | FR-ID-01 through FR-ID-08, FR-ID-16 through FR-ID-48 |
 | F-18 Desktop offline account | FR-ID-09 through FR-ID-15 |
 | F-19 Asynchronous operations | FR-IM-03, FR-IM-04, FR-IM-05, FR-IM-21, FR-IM-22, FR-CU-05, FR-EX-04, FR-EX-09 |
 | F-20 Two-stage deletion, account erasure and audit | FR-RL-01 through FR-RL-13, FR-IM-23 |

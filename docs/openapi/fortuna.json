@@ -7706,6 +7706,59 @@
         },
         "type": "object"
       },
+      "RegisterThroughApiCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "password": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RegisterThroughApiCommandOutput": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "RegisterThroughApiCommandOutputDataOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RegisterThroughApiCommandOutput"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "success": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RequestDataExportCommand": {
         "additionalProperties": false,
         "properties": {
@@ -10799,6 +10852,10 @@
       "VerifyEmailThroughApiCommand": {
         "additionalProperties": false,
         "properties": {
+          "password": {
+            "nullable": true,
+            "type": "string"
+          },
           "token": {
             "nullable": true,
             "type": "string"
@@ -12105,6 +12162,54 @@
               "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ResetPasswordThroughApiCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterThroughApiCommand"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterThroughApiCommand"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterThroughApiCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
               }
             },
