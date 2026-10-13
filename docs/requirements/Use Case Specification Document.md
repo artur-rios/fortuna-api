@@ -2448,7 +2448,7 @@ probe an operation that is not available offline.
 | **Description** | Exchange credentials with Heimdall through Fortuna so clients depend on one API surface |
 | **Preconditions** | The Heimdall base address and Fortuna scope public identifier are configured |
 | **Postconditions** | The caller holds a Heimdall token or two-factor challenge; Fortuna state is unchanged |
-| **Requirements** | FR-ID-17 through FR-ID-24 |
+| **Requirements** | FR-ID-17 through FR-ID-24, FR-ID-49 |
 
 **Main Flow**
 
@@ -2487,7 +2487,7 @@ is issued, Fortuna validates it locally and does not call Heimdall to authorize 
 | **Description** | Recover a connected identity and manage its email verification and two-factor configuration through Fortuna |
 | **Preconditions** | The Heimdall base address and Fortuna scope public identifier are configured; authenticated operations carry a valid token |
 | **Postconditions** | Heimdall has applied the requested identity change; Fortuna state is unchanged |
-| **Requirements** | FR-ID-25 through FR-ID-35, FR-ID-44 |
+| **Requirements** | FR-ID-25 through FR-ID-35, FR-ID-44, FR-ID-49 |
 
 **Main Flow**
 
@@ -2790,8 +2790,8 @@ it.
 | UC-72: View Committed Obligations | FR-PJ-04 |
 | UC-73: Export a Data Set | FR-EX-01, FR-EX-02, FR-EX-03, FR-EX-05, FR-EX-06, FR-EX-07 |
 | UC-74: Retrieve a Completed Export | FR-EX-04, FR-EX-08 |
-| UC-76: Authenticate through the Fortuna API | FR-ID-17 through FR-ID-24 |
-| UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35, FR-ID-44 |
+| UC-76: Authenticate through the Fortuna API | FR-ID-17 through FR-ID-24, FR-ID-49 |
+| UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35, FR-ID-44, FR-ID-49 |
 | UC-78: Erase a User Account | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 | UC-79: Export All Personal Data | FR-EX-09 through FR-EX-15 |
 | UC-80: Record Processing Consent | FR-ID-38 through FR-ID-43 |
