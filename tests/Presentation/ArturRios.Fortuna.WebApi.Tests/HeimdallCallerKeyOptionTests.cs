@@ -47,6 +47,35 @@ public sealed class HeimdallCallerKeyOptionTests
         Assert.All(exception.Errors, error => Assert.DoesNotContain("distinct", error, StringComparison.Ordinal));
     }
 
+    [UnitTheory]
+    [InlineData("distinct-0123456789abcdef\r\nghijklmnopqrstuv")]
+    [InlineData("distinct-0123456789abcdef\nghijklmnopqrstuv")]
+    [InlineData("distinct-0123456789 abcdefghijklmnopqrstuv")]
+    [InlineData("distinct-0123456789-abcdefghij-\u00e7\u00e3o-nopqrstuv")]
+    [InlineData("distinct-0123456789abcdefghijklmnopqrstuv\t")]
+    public void GivenACallerKeyWithCharactersOutsideVisibleAscii_WhenConfigurationLoads_ThenStartupFailsWithoutTheKey(
+        string key)
+    {
+        Assert.True(key.Length >= 32);
+
+        var exception = Assert.Throws<FortunaConfigurationException>(
+            () => FortunaOptions.From(Settings(key).GetValueOrDefault));
+
+        Assert.Contains(Variable, exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("distinct", exception.Message, StringComparison.Ordinal);
+        Assert.Single(exception.Errors);
+    }
+
+    [UnitFact]
+    public void GivenACallerKeyOfEveryVisibleAsciiCharacter_WhenConfigurationLoads_ThenItIsKept()
+    {
+        var key = string.Concat(Enumerable.Range(0x21, 0x7E - 0x21 + 1).Select(code => (char)code));
+
+        var options = FortunaOptions.From(Settings(key).GetValueOrDefault);
+
+        Assert.Equal(key, options.HeimdallCallerKey);
+    }
+
     private static Dictionary<string, string?> Settings(string? callerKey) => new()
     {
         ["FORTUNA_DATA_CONNECTIONSTRING"] = "Host=localhost;Database=fortuna;Username=postgres;Password=postgres",
