@@ -244,6 +244,90 @@ public sealed class HeimdallAuthCommandHandlerTests
         Assert.Contains(HeimdallAuthMessages.SignedOutSuccessfully, result.Messages);
     }
 
+    [UnitFact]
+    public async Task GivenAnyAddress_WhenRegistering_ThenConfiguredScopeIsUsedAndAnsweredGenerically()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Succeeded, new object()) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "  New Person ", Email = " new@example.test ", Password = " keep spaces "
+        });
+
+        Assert.True(result.Success);
+        Assert.Contains(HeimdallAuthMessages.RegistrationRequested, result.Messages);
+        // Name and address are trimmed; the password is forwarded exactly as typed.
+        Assert.Equal(("New Person", "new@example.test", " keep spaces ", ScopeId), gateway.RegisterRequest);
+    }
+
+    [UnitFact]
+    public async Task GivenAClosedScope_WhenRegistering_ThenRegistrationUnavailable()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Closed) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "New Person", Email = "new@example.test", Password = "a-long-secret"
+        });
+
+        Assert.Contains(HeimdallAuthMessages.RegistrationUnavailable, result.Errors);
+    }
+
+    [UnitTheory]
+    [InlineData(HeimdallAuthOutcome.Unavailable, HeimdallAuthMessages.ServiceUnavailable)]
+    [InlineData(HeimdallAuthOutcome.InvalidRequest, HeimdallAuthMessages.RequestRejected)]
+    public async Task GivenHeimdallFails_WhenRegistering_ThenTheSafeMessageIsReturned(
+        HeimdallAuthOutcome outcome, string expected)
+    {
+        var gateway = new StubGateway { RegisterResult = new(outcome) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "New Person", Email = "new@example.test", Password = "a-long-secret"
+        });
+
+        Assert.Contains(expected, result.Errors);
+    }
+
+    [UnitTheory]
+    [InlineData("", "new@example.test", "a-long-secret", HeimdallAuthMessages.NameRequired)]
+    [InlineData("New Person", "not-an-address", "a-long-secret", HeimdallAuthMessages.EmailInvalid)]
+    [InlineData("New Person", "new@example.test", "1234567", HeimdallAuthMessages.PasswordTooShort)]
+    [InlineData("New Person", "new@example.test", "", HeimdallAuthMessages.PasswordRequired)]
+    public async Task GivenMalformedInput_WhenRegistering_ThenRejectedWithoutCallingHeimdall(
+        string name, string email, string password, string expected)
+    {
+        var gateway = new StubGateway();
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new() { Name = name, Email = email, Password = password });
+
+        Assert.Contains(expected, result.Errors);
+        Assert.Null(gateway.RegisterRequest);
+    }
+
+    [UnitFact]
+    public async Task GivenANameOf201Characters_WhenRegistering_ThenNameTooLong()
+    {
+        var gateway = new StubGateway();
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = new string('a', 201), Email = "new@example.test", Password = "a-long-secret"
+        });
+
+        Assert.Contains(HeimdallAuthMessages.NameTooLong, result.Errors);
+    }
+
     private sealed class StubGateway : IHeimdallAuthGateway
     {
         public HeimdallAuthResult<HeimdallLoginResult> LoginResult { get; init; } =

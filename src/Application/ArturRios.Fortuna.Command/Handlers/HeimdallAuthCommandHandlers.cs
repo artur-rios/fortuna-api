@@ -144,6 +144,36 @@ public sealed class RequestPasswordRecoveryThroughApiCommandHandler(
 }
 
 /// <summary>
+///     Forwards a registration to Heimdall with the configured scope (UC-81). Heimdall answers a free
+///     and a taken address alike, and so does this: the only answers that differ are a closed scope,
+///     a malformed request and an unreachable Heimdall, none of which says anything about an address.
+/// </summary>
+public sealed class RegisterThroughApiCommandHandler(
+    IHeimdallAuthGateway gateway,
+    HeimdallAuthOptions options)
+    : ICommandHandlerAsync<RegisterThroughApiCommand, RegisterThroughApiCommandOutput>
+{
+    public async Task<DataOutput<RegisterThroughApiCommandOutput?>> HandleAsync(
+        RegisterThroughApiCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await gateway.RegisterAsync(
+            command.Name.Trim(), command.Email.Trim(), command.Password, options.ScopeId, cancellationToken);
+
+        return result.Outcome switch
+        {
+            HeimdallAuthOutcome.Succeeded => DataOutput<RegisterThroughApiCommandOutput?>.New
+                .WithData(new RegisterThroughApiCommandOutput())
+                .WithMessage(HeimdallAuthMessages.RegistrationRequested),
+            HeimdallAuthOutcome.Closed => DataOutput<RegisterThroughApiCommandOutput?>.New
+                .WithError(HeimdallAuthMessages.RegistrationUnavailable),
+            _ => LoginThroughApiCommandHandler.Failure<RegisterThroughApiCommandOutput>(
+                result.Outcome, HeimdallAuthMessages.RequestRejected)
+        };
+    }
+}
+
+/// <summary>
 ///     Forwards a challenge-token-authorized resend to Heimdall (UC-77). Answers the same way on
 ///     every path Heimdall can take — a valid challenge, an unknown one, a forged one, an expired
 ///     one, one naming a person with no email method, and one whose reissues are spent — because a

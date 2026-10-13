@@ -43,6 +43,17 @@ public sealed class RequestPasswordRecoveryThroughApiCommand : BaseCommand
     public string Email { get; set; } = string.Empty;
 }
 
+/// <summary>
+///     Intent to register a connected identity through Fortuna (UC-81). Fortuna attaches its configured
+///     Heimdall scope; the caller never names one.
+/// </summary>
+public sealed class RegisterThroughApiCommand : BaseCommand
+{
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
 public sealed class ResetPasswordThroughApiCommand : BaseCommand
 {
     public string Token { get; set; } = string.Empty;

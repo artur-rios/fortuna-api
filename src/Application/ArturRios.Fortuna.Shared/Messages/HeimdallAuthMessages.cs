@@ -15,6 +15,12 @@ public static class HeimdallAuthMessages
     public const string FactorRequired = "A two-factor code or recovery code is required.";
     public const string FactorAmbiguous = "Supply either a two-factor code or a recovery code, not both.";
     public const string PasswordRecoveryRequested = "If the address is registered, recovery instructions were sent.";
+    public const string RegistrationRequested =
+        "If this address can be registered, we've sent it an email. Follow it, then sign in.";
+    public const string RegistrationUnavailable = "This instance is not accepting new accounts.";
+    public const string NameRequired = "Name is required.";
+    public const string NameTooLong = "Name must be at most 200 characters.";
+    public const string PasswordTooShort = "Password must be at least 8 characters.";
     public const string PasswordReset = "Password reset successfully.";
     public const string EmailVerified = "Email verified successfully.";
     public const string VerificationResent = "Verification message sent successfully.";
