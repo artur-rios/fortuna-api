@@ -49,8 +49,15 @@ public interface IHeimdallAuthGateway
         string newPassword,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    ///     Confirms an emailed token. <paramref name="password" /> is the one chosen at sign-up and is read
+    ///     only for a sign-up confirmation link; Heimdall ignores it for a plain email-verification token.
+    ///     <see cref="HeimdallAuthOutcome.PasswordRequired" /> when a pending registration needs it,
+    ///     <see cref="HeimdallAuthOutcome.Rejected" /> when it is wrong.
+    /// </summary>
     Task<HeimdallAuthResult<object>> VerifyEmailAsync(
         string token,
+        string? password,
         CancellationToken cancellationToken);
 
     Task<HeimdallAuthResult<object>> ResendVerificationAsync(
@@ -95,7 +102,13 @@ public enum HeimdallAuthOutcome
     NotFound = 5,
 
     /// <summary>The scope does not accept self-registration. Only <c>RegisterAsync</c> produces it.</summary>
-    Closed = 6
+    Closed = 6,
+
+    /// <summary>
+    ///     Heimdall needs the sign-up password to confirm a pending registration; only
+    ///     <c>VerifyEmailAsync</c> produces it.
+    /// </summary>
+    PasswordRequired = 7
 }
 
 public sealed record HeimdallAuthResult<T>(HeimdallAuthOutcome Outcome, T? Data = default);

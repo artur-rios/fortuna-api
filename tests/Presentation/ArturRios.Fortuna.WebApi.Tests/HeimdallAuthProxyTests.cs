@@ -391,6 +391,68 @@ public sealed class HeimdallAuthProxyTests
     }
 
     [FunctionalFact]
+    public async Task GivenConfirmationPassword_WhenVerifyingEmail_ThenGatewayReceivesItAndBodyNeverEchoesIt()
+    {
+        var gateway = new StubGateway
+        {
+            EmptyResult = new(HeimdallAuthOutcome.Succeeded, new object())
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/verify-email", new
+        {
+            token = "verification-token",
+            password = "sign-up-secret"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(("verification-token", "sign-up-secret"), gateway.VerifyEmailRequest);
+        Assert.DoesNotContain("sign-up-secret", body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenNoConfirmationPassword_WhenVerifyingEmail_ThenGatewayReceivesNull()
+    {
+        var gateway = new StubGateway
+        {
+            EmptyResult = new(HeimdallAuthOutcome.Succeeded, new object())
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync("/api/auth/verify-email", new { token = "verification-token" });
+
+        Assert.Equal(("verification-token", (string?)null), gateway.VerifyEmailRequest);
+    }
+
+    [FunctionalTheory]
+    [InlineData(HeimdallAuthOutcome.PasswordRequired, HttpStatusCode.UnprocessableEntity,
+        HeimdallAuthMessages.ConfirmationPasswordRequired)]
+    [InlineData(HeimdallAuthOutcome.Rejected, HttpStatusCode.Unauthorized,
+        HeimdallAuthMessages.ConfirmationPasswordIncorrect)]
+    public async Task GivenPasswordProblem_WhenVerifyingEmail_ThenStatusAndMessageAreReturned(
+        HeimdallAuthOutcome outcome, HttpStatusCode expected, string message)
+    {
+        var gateway = new StubGateway { EmptyResult = new(outcome) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/verify-email", new
+        {
+            token = "verification-token",
+            password = "sign-up-secret"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(expected, response.StatusCode);
+        Assert.Contains(message, body, StringComparison.Ordinal);
+        Assert.DoesNotContain("sign-up-secret", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("verification-token", body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
     public async Task GivenInvalidVerificationToken_WhenVerifyingEmail_ThenBadRequestIsReturned()
     {
         var gateway = new StubGateway
@@ -889,6 +951,7 @@ public sealed class HeimdallAuthProxyTests
             new(HeimdallAuthOutcome.Rejected);
         public (string Name, string Email, Guid ScopeId)? RegisterRequest { get; private set; }
         public int RegisterCalls { get; private set; }
+        public (string Token, string? Password)? VerifyEmailRequest { get; private set; }
         public HeimdallAuthResult<object> ResendResult { get; init; } =
             new(HeimdallAuthOutcome.Rejected);
         public string? ResendChallengeToken { get; private set; }
@@ -948,8 +1011,12 @@ public sealed class HeimdallAuthProxyTests
             Task.FromResult(EmptyResult);
 
         public Task<HeimdallAuthResult<object>> VerifyEmailAsync(
-            string token, CancellationToken cancellationToken) =>
-            Task.FromResult(EmptyResult);
+            string token, string? password, CancellationToken cancellationToken)
+        {
+            VerifyEmailRequest = (token, password);
+
+            return Task.FromResult(EmptyResult);
+        }
 
         public Task<HeimdallAuthResult<object>> ResendVerificationAsync(
             string bearerToken, CancellationToken cancellationToken)

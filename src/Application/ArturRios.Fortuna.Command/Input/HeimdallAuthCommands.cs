@@ -63,6 +63,12 @@ public sealed class ResetPasswordThroughApiCommand : BaseCommand
 public sealed class VerifyEmailThroughApiCommand : BaseCommand
 {
     public string Token { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     The password chosen at sign-up. Read only for a sign-up confirmation link; a plain
+    ///     email-verification token ignores it.
+    /// </summary>
+    public string? Password { get; set; }
 }
 
 public abstract class AuthenticatedHeimdallCommand : BaseCommand

@@ -22,7 +22,9 @@ public sealed class AuthController : FortunaController
             [HeimdallAuthMessages.TwoFactorNotFound] = StatusCodes.Status404NotFound,
             [HeimdallAuthMessages.ServiceUnavailable] = StatusCodes.Status503ServiceUnavailable,
             [HeimdallAuthMessages.RegistrationRequested] = StatusCodes.Status202Accepted,
-            [HeimdallAuthMessages.RegistrationUnavailable] = StatusCodes.Status403Forbidden
+            [HeimdallAuthMessages.RegistrationUnavailable] = StatusCodes.Status403Forbidden,
+            [HeimdallAuthMessages.ConfirmationPasswordRequired] = StatusCodes.Status422UnprocessableEntity,
+            [HeimdallAuthMessages.ConfirmationPasswordIncorrect] = StatusCodes.Status401Unauthorized
         });
 
     protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;

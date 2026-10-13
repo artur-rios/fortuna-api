@@ -53,9 +53,10 @@ public sealed class HeimdallAuthGateway(
             "api/auth/password-reset", new { token, newPassword }, null, cancellationToken);
 
     public Task<HeimdallAuthResult<object>> VerifyEmailAsync(
-        string token, CancellationToken cancellationToken) =>
+        string token, string? password, CancellationToken cancellationToken) =>
         SendAsync<object, object>(HttpMethod.Post,
-            "api/auth/verify-email", new { token }, null, cancellationToken);
+            "api/auth/verify-email", new { token, password }, null, cancellationToken,
+            unprocessable: HeimdallAuthOutcome.PasswordRequired);
 
     public Task<HeimdallAuthResult<object>> ResendVerificationAsync(
         string bearerToken, CancellationToken cancellationToken) =>
@@ -95,7 +96,8 @@ public sealed class HeimdallAuthGateway(
         TRequest? payload,
         string? bearerToken,
         CancellationToken cancellationToken,
-        HeimdallAuthOutcome forbidden = HeimdallAuthOutcome.Rejected)
+        HeimdallAuthOutcome forbidden = HeimdallAuthOutcome.Rejected,
+        HeimdallAuthOutcome unprocessable = HeimdallAuthOutcome.Unavailable)
         where TResponse : class
     {
         try
@@ -139,6 +141,8 @@ public sealed class HeimdallAuthGateway(
                 HttpStatusCode.Unauthorized => new(HeimdallAuthOutcome.Rejected),
                 // A refusal on most routes; on registration, a scope that is closed to it (UC-81).
                 HttpStatusCode.Forbidden => new(forbidden),
+                // Only verify-email answers 422: a pending registration that needs its sign-up password.
+                HttpStatusCode.UnprocessableEntity => new(unprocessable),
                 _ => new(HeimdallAuthOutcome.Unavailable)
             };
         }

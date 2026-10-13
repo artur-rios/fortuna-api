@@ -409,7 +409,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
 
         public Task<HeimdallAuthResult<object>> VerifyEmailAsync(
-            string token, CancellationToken cancellationToken) =>
+            string token, string? password, CancellationToken cancellationToken) =>
             Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
 
         public Task<HeimdallAuthResult<object>> ResendVerificationAsync(

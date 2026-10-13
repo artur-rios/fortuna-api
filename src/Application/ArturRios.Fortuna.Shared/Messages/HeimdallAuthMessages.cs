@@ -37,5 +37,9 @@ public static class HeimdallAuthMessages
     public const string NewPasswordRequired = "New password is required.";
     public const string MethodsRequired = "At least one two-factor method is required.";
     public const string MethodInvalid = "Two-factor methods must be App or Email.";
+    public const string ConfirmationPasswordRequired =
+        "Enter the password you chose when you signed up to finish creating your account.";
+    public const string ConfirmationPasswordIncorrect =
+        "That password does not match the one chosen when signing up.";
     public const string ConfirmationCodeRequired = "An app or email confirmation code is required.";
 }

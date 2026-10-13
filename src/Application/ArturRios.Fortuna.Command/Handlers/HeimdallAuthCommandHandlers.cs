@@ -232,14 +232,21 @@ public sealed class VerifyEmailThroughApiCommandHandler(
         VerifyEmailThroughApiCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await gateway.VerifyEmailAsync(command.Token, cancellationToken);
+        var result = await gateway.VerifyEmailAsync(command.Token, command.Password, cancellationToken);
 
-        return result.Outcome == HeimdallAuthOutcome.Succeeded
-            ? DataOutput<VerifyEmailThroughApiCommandOutput?>.New
+        return result.Outcome switch
+        {
+            HeimdallAuthOutcome.Succeeded => DataOutput<VerifyEmailThroughApiCommandOutput?>.New
                 .WithData(new VerifyEmailThroughApiCommandOutput())
-                .WithMessage(HeimdallAuthMessages.EmailVerified)
-            : LoginThroughApiCommandHandler.Failure<VerifyEmailThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.RequestRejected);
+                .WithMessage(HeimdallAuthMessages.EmailVerified),
+            HeimdallAuthOutcome.PasswordRequired => DataOutput<VerifyEmailThroughApiCommandOutput?>.New
+                .WithError(HeimdallAuthMessages.ConfirmationPasswordRequired),
+            // Heimdall's verify-email answers 401 only for a wrong sign-up password.
+            HeimdallAuthOutcome.Rejected => DataOutput<VerifyEmailThroughApiCommandOutput?>.New
+                .WithError(HeimdallAuthMessages.ConfirmationPasswordIncorrect),
+            _ => LoginThroughApiCommandHandler.Failure<VerifyEmailThroughApiCommandOutput>(
+                result.Outcome, HeimdallAuthMessages.RequestRejected)
+        };
     }
 }
 
