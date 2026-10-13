@@ -42,5 +42,6 @@ public static class HeimdallAuthMessages
         "Enter the password you chose when you signed up to finish creating your account.";
     public const string ConfirmationPasswordIncorrect =
         "That password does not match the one chosen when signing up.";
+    public const string TooManyAttempts = "Too many attempts. Wait a minute and try again.";
     public const string ConfirmationCodeRequired = "An app or email confirmation code is required.";
 }
