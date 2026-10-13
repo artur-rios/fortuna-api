@@ -108,7 +108,13 @@ public enum HeimdallAuthOutcome
     ///     Heimdall needs the sign-up password to confirm a pending registration; only
     ///     <c>VerifyEmailAsync</c> produces it.
     /// </summary>
-    PasswordRequired = 7
+    PasswordRequired = 7,
+
+    /// <summary>
+    ///     Heimdall's own rate limiter refused the request (HTTP 429). Heimdall answers 429 from no
+    ///     other place, so every route maps it.
+    /// </summary>
+    RateLimited = 8
 }
 
 public sealed record HeimdallAuthResult<T>(HeimdallAuthOutcome Outcome, T? Data = default);

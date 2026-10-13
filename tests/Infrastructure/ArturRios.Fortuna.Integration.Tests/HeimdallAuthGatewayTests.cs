@@ -126,7 +126,7 @@ public sealed class HeimdallAuthGatewayTests
     [UnitTheory]
     [InlineData(HttpStatusCode.Forbidden, HeimdallAuthOutcome.Closed)]
     [InlineData(HttpStatusCode.BadRequest, HeimdallAuthOutcome.InvalidRequest)]
-    [InlineData(HttpStatusCode.TooManyRequests, HeimdallAuthOutcome.Unavailable)]
+    [InlineData(HttpStatusCode.TooManyRequests, HeimdallAuthOutcome.RateLimited)]
     [InlineData(HttpStatusCode.InternalServerError, HeimdallAuthOutcome.Unavailable)]
     public async Task GivenHeimdallRefusesARegistration_WhenForwarded_ThenTheOutcomeIsMapped(
         HttpStatusCode status, HeimdallAuthOutcome expected)
@@ -137,6 +137,39 @@ public sealed class HeimdallAuthGatewayTests
             "New Person", "new@example.test", "a-long-secret", ScopeId, CancellationToken.None);
 
         Assert.Equal(expected, result.Outcome);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsALogin_WhenForwarded_ThenRateLimitedIsReturned()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.TooManyRequests, "{}"));
+
+        var result = await Gateway(handler).LoginAsync(
+            "user@example.test", "credential", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
+        Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsARegistration_WhenForwarded_ThenRateLimitedIsReturned()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.TooManyRequests, "{}"));
+
+        var result = await Gateway(handler).RegisterAsync(
+            "New Person", "new@example.test", "a-long-secret", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsAVerification_WhenForwarded_ThenRateLimitedIsReturned()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.TooManyRequests, "{}"));
+
+        var result = await Gateway(handler).VerifyEmailAsync("t", "pw", CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
     }
 
     [UnitFact]

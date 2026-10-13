@@ -108,6 +108,28 @@ public sealed class ApiPipelineTests
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
     }
 
+    [FunctionalFact]
+    public async Task GivenTenRequestsFromOneIpv6Address_WhenAnotherAddressInTheSame64Calls_ThenItIsLimited()
+    {
+        await using var factory = CreateFactory(
+            Environments.Development,
+            configureServices: services => services.AddSingleton<IStartupFilter>(
+                new RemoteAddressStartupFilter(IPAddress.Parse("10.1.2.3"))),
+            forwardedNetworks: "10.0.0.0/8");
+        using var client = factory.CreateClient();
+
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            using var _ = await SendAsFromAsync(client, "2001:db8:1:2::a");
+        }
+
+        using var sameSubnet = await SendAsFromAsync(client, "2001:db8:1:2::b");
+        using var otherSubnet = await SendAsFromAsync(client, "2001:db8:1:3::a");
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, sameSubnet.StatusCode);
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, otherSubnet.StatusCode);
+    }
+
     private static Task<HttpResponseMessage> SendAsFromAsync(HttpClient client, string forwardedFor)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, AuthenticatePath)

@@ -21,6 +21,7 @@ public sealed class AuthController : FortunaController
             [HeimdallAuthMessages.TwoFactorRejected] = StatusCodes.Status401Unauthorized,
             [HeimdallAuthMessages.TwoFactorNotFound] = StatusCodes.Status404NotFound,
             [HeimdallAuthMessages.ServiceUnavailable] = StatusCodes.Status503ServiceUnavailable,
+            [HeimdallAuthMessages.TooManyAttempts] = StatusCodes.Status429TooManyRequests,
             [HeimdallAuthMessages.RegistrationRequested] = StatusCodes.Status202Accepted,
             [HeimdallAuthMessages.RegistrationUnavailable] = StatusCodes.Status403Forbidden,
             [HeimdallAuthMessages.ConfirmationPasswordRequired] = StatusCodes.Status422UnprocessableEntity,
@@ -110,6 +111,8 @@ public sealed class AuthController : FortunaController
     [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
         StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
+        StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
         StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<DataOutput<RegisterThroughApiCommandOutput?>>> Register(
         [FromBody] RegisterThroughApiCommand command)
@@ -138,6 +141,8 @@ public sealed class AuthController : FortunaController
         StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
         StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
+        StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
         StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<DataOutput<VerifyEmailThroughApiCommandOutput?>>> VerifyEmail(

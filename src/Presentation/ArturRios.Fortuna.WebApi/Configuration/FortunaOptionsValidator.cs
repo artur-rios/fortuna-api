@@ -63,6 +63,19 @@ public sealed class FortunaOptionsValidator : AbstractValidator<FortunaOptions>
                 "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS",
                 FortunaOptions.MinimumAuthTokenSecretBytes));
 
+        // The key travels as an HTTP header value, so anything outside visible ASCII (a space, a
+        // line break, a non-ASCII letter) would make every request to Heimdall throw instead of
+        // failing once, clearly, here.
+        RuleFor(options => options.HeimdallCallerKey)
+            .Cascade(CascadeMode.Stop)
+            .Must(key => key!.Length >= FortunaOptions.MinimumHeimdallCallerKeyLength)
+            .WithMessage(ConfigurationMessages.SecretTooShortCharacters(
+                "FORTUNA_HEIMDALL_CALLER_KEY",
+                FortunaOptions.MinimumHeimdallCallerKeyLength))
+            .Must(key => key!.All(IsVisibleAscii))
+            .WithMessage(ConfigurationMessages.CallerKeyCharacters("FORTUNA_HEIMDALL_CALLER_KEY"))
+            .When(options => HasText(options.HeimdallCallerKey));
+
         Required(options => options.AuthTokenIssuer, "FORTUNA_AUTH_TOKEN_ISSUER");
         Required(options => options.AuthTokenAudience, "FORTUNA_AUTH_TOKEN_AUDIENCE");
 
@@ -98,6 +111,8 @@ public sealed class FortunaOptionsValidator : AbstractValidator<FortunaOptions>
         RuleFor(setting)
             .Must(HasText)
             .WithMessage(ConfigurationMessages.Required(key));
+
+    private static bool IsVisibleAscii(char character) => character is >= '!' and <= '~';
 
     private static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);
 

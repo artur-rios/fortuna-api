@@ -809,6 +809,61 @@ public sealed class HeimdallAuthProxyTests
     }
 
     [FunctionalFact]
+    public async Task GivenHeimdallRateLimits_WhenRegistering_ThenTooManyRequestsWithTheMessageIsReturned()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.RateLimited) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            name = "New Person",
+            email = "new@example.test",
+            password = "a-long-secret"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Contains(HeimdallAuthMessages.TooManyAttempts, body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenHeimdallRateLimits_WhenLoggingIn_ThenTooManyRequestsWithTheMessageIsReturned()
+    {
+        var gateway = new StubGateway { LoginResult = new(HeimdallAuthOutcome.RateLimited) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = "user@example.test",
+            password = "secret-in-transit"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Contains(HeimdallAuthMessages.TooManyAttempts, body, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret-in-transit", body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenHeimdallRateLimits_WhenVerifyingEmail_ThenTooManyRequestsWithTheMessageIsReturned()
+    {
+        var gateway = new StubGateway { EmptyResult = new(HeimdallAuthOutcome.RateLimited) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/verify-email", new
+        {
+            token = "verification-token"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Contains(HeimdallAuthMessages.TooManyAttempts, body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
     public async Task GivenAClosedScope_WhenRegistering_ThenTheUnavailableMessageIsReturned()
     {
         var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Closed) };
