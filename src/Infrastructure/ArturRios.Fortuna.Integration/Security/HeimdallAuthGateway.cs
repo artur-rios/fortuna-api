@@ -41,6 +41,12 @@ public sealed class HeimdallAuthGateway(
         SendAsync<object, object>(HttpMethod.Post,
             "api/auth/password-recovery", new { email, scopeId }, null, cancellationToken);
 
+    public Task<HeimdallAuthResult<object>> RegisterAsync(
+        string name, string email, string password, Guid scopeId, CancellationToken cancellationToken) =>
+        SendAsync<object, object>(HttpMethod.Post,
+            "api/auth/register", new { name, email, password, scopeId }, null, cancellationToken,
+            forbidden: HeimdallAuthOutcome.Closed);
+
     public Task<HeimdallAuthResult<object>> ResetPasswordAsync(
         string token, string newPassword, CancellationToken cancellationToken) =>
         SendAsync<object, object>(HttpMethod.Post,
@@ -88,7 +94,8 @@ public sealed class HeimdallAuthGateway(
         string path,
         TRequest? payload,
         string? bearerToken,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        HeimdallAuthOutcome forbidden = HeimdallAuthOutcome.Rejected)
         where TResponse : class
     {
         try
@@ -129,8 +136,9 @@ public sealed class HeimdallAuthGateway(
             {
                 HttpStatusCode.BadRequest => new(HeimdallAuthOutcome.InvalidRequest),
                 HttpStatusCode.NotFound => new(HeimdallAuthOutcome.NotFound),
-                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
-                    new(HeimdallAuthOutcome.Rejected),
+                HttpStatusCode.Unauthorized => new(HeimdallAuthOutcome.Rejected),
+                // A refusal on most routes; on registration, a scope that is closed to it (UC-81).
+                HttpStatusCode.Forbidden => new(forbidden),
                 _ => new(HeimdallAuthOutcome.Unavailable)
             };
         }

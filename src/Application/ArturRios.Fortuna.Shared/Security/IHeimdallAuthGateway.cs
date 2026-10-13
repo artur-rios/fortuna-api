@@ -32,6 +32,18 @@ public interface IHeimdallAuthGateway
         Guid scopeId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    ///     Asks Heimdall to register a password user in <paramref name="scopeId" /> (UC-81). Succeeds
+    ///     identically for a free and a taken address; <see cref="HeimdallAuthOutcome.Closed" /> when the
+    ///     scope does not accept registrations.
+    /// </summary>
+    Task<HeimdallAuthResult<object>> RegisterAsync(
+        string name,
+        string email,
+        string password,
+        Guid scopeId,
+        CancellationToken cancellationToken);
+
     Task<HeimdallAuthResult<object>> ResetPasswordAsync(
         string token,
         string newPassword,
@@ -80,7 +92,10 @@ public enum HeimdallAuthOutcome
     InvalidRequest = 2,
     Rejected = 3,
     Unavailable = 4,
-    NotFound = 5
+    NotFound = 5,
+
+    /// <summary>The scope does not accept self-registration. Only <c>RegisterAsync</c> produces it.</summary>
+    Closed = 6
 }
 
 public sealed record HeimdallAuthResult<T>(HeimdallAuthOutcome Outcome, T? Data = default);

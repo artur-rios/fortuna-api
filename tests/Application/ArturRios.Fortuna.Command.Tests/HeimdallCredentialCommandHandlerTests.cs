@@ -327,6 +327,10 @@ public sealed class HeimdallCredentialCommandHandlerTests
 
     private sealed class StubGateway : IHeimdallAuthGateway
     {
+        public Task<HeimdallAuthResult<object>> RegisterAsync(
+            string name, string email, string password, Guid scopeId, CancellationToken cancellationToken) =>
+            Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
+
         public HeimdallAuthResult<object> EmptyResult { get; init; } =
             new(HeimdallAuthOutcome.Rejected);
         public HeimdallAuthResult<HeimdallTwoFactorStatusResult> StatusResult { get; init; } =

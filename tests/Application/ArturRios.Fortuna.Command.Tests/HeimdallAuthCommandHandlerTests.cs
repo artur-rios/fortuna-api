@@ -262,6 +262,17 @@ public sealed class HeimdallAuthCommandHandlerTests
             new(HeimdallAuthOutcome.Rejected);
         public string? ResendChallengeToken { get; private set; }
         public int ResendCalls { get; private set; }
+        public HeimdallAuthResult<object> RegisterResult { get; init; } =
+            new(HeimdallAuthOutcome.Rejected);
+        public (string Name, string Email, string Password, Guid ScopeId)? RegisterRequest { get; private set; }
+
+        public Task<HeimdallAuthResult<object>> RegisterAsync(
+            string name, string email, string password, Guid scopeId, CancellationToken cancellationToken)
+        {
+            RegisterRequest = (name, email, password, scopeId);
+
+            return Task.FromResult(RegisterResult);
+        }
 
         public Task<HeimdallAuthResult<object>> ResendTwoFactorChallengeCodeAsync(
             string challengeToken, CancellationToken cancellationToken)
