@@ -62,6 +62,7 @@ public sealed class HeimdallAuthCommandHandlerTests
     [InlineData(HeimdallAuthOutcome.Rejected, HeimdallAuthMessages.AuthenticationRejected)]
     [InlineData(HeimdallAuthOutcome.InvalidRequest, HeimdallAuthMessages.AuthenticationRejected)]
     [InlineData(HeimdallAuthOutcome.Unavailable, HeimdallAuthMessages.ServiceUnavailable)]
+    [InlineData(HeimdallAuthOutcome.RateLimited, HeimdallAuthMessages.TooManyAttempts)]
     public async Task GivenUpstreamFailure_WhenLoggingIn_ThenSafeFailureIsReturned(
         HeimdallAuthOutcome outcome,
         string expected)
@@ -192,6 +193,43 @@ public sealed class HeimdallAuthCommandHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenHeimdallRateLimits_WhenResendingTheCode_ThenTooManyAttemptsIsReported()
+    {
+        // Given — a rate limit is about the caller's address, not about any account, so it
+        // is reported rather than collapsed into the success answer.
+        var gateway = new StubGateway
+        {
+            ResendResult = new(HeimdallAuthOutcome.RateLimited)
+        };
+        var handler = new ResendTwoFactorChallengeCodeThroughApiCommandHandler(
+            gateway).Validated(new ResendTwoFactorChallengeCodeThroughApiCommandValidator());
+
+        // When
+        var result = await handler.HandleAsync(new() { ChallengeToken = "challenge" });
+
+        // Then
+        Assert.False(result.Success);
+        Assert.Contains(HeimdallAuthMessages.TooManyAttempts, result.Errors);
+        Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimits_WhenVerifyingTwoFactor_ThenTooManyAttemptsIsReturned()
+    {
+        var gateway = new StubGateway { TwoFactorResult = new(HeimdallAuthOutcome.RateLimited) };
+        var handler = new VerifyTwoFactorThroughApiCommandHandler(
+            gateway).Validated(new VerifyTwoFactorThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            ChallengeToken = "challenge",
+            Code = "123456"
+        });
+
+        Assert.Equal([HeimdallAuthMessages.TooManyAttempts], result.Errors);
+    }
+
+    [UnitFact]
     public async Task GivenIdentityServiceIsDown_WhenResendingTheCode_ThenUnavailableIsReported()
     {
         // Given — unavailability says nothing about any account, so unlike every other
@@ -244,6 +282,200 @@ public sealed class HeimdallAuthCommandHandlerTests
         Assert.Contains(HeimdallAuthMessages.SignedOutSuccessfully, result.Messages);
     }
 
+    [UnitFact]
+    public async Task GivenAnyAddress_WhenRegistering_ThenConfiguredScopeIsUsedAndAnsweredGenerically()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Succeeded, new object()) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "  New Person ", Email = " new@example.test ", Password = " keep spaces "
+        });
+
+        Assert.True(result.Success);
+        Assert.Contains(HeimdallAuthMessages.RegistrationRequested, result.Messages);
+        // Name and address are trimmed; the password is forwarded exactly as typed.
+        Assert.Equal(("New Person", "new@example.test", " keep spaces ", ScopeId), gateway.RegisterRequest);
+    }
+
+    [UnitFact]
+    public async Task GivenAClosedScope_WhenRegistering_ThenRegistrationUnavailable()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Closed) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "New Person", Email = "new@example.test", Password = "a-long-secret"
+        });
+
+        Assert.Contains(HeimdallAuthMessages.RegistrationUnavailable, result.Errors);
+    }
+
+    [UnitTheory]
+    [InlineData(HeimdallAuthOutcome.Unavailable, HeimdallAuthMessages.ServiceUnavailable)]
+    [InlineData(HeimdallAuthOutcome.InvalidRequest, HeimdallAuthMessages.RequestRejected)]
+    [InlineData(HeimdallAuthOutcome.RateLimited, HeimdallAuthMessages.TooManyAttempts)]
+    public async Task GivenHeimdallFails_WhenRegistering_ThenTheSafeMessageIsReturned(
+        HeimdallAuthOutcome outcome, string expected)
+    {
+        var gateway = new StubGateway { RegisterResult = new(outcome) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "New Person", Email = "new@example.test", Password = "a-long-secret"
+        });
+
+        Assert.Contains(expected, result.Errors);
+    }
+
+    [UnitTheory]
+    [InlineData("", "new@example.test", "a-long-secret", HeimdallAuthMessages.NameRequired)]
+    [InlineData("New Person", "not-an-address", "a-long-secret", HeimdallAuthMessages.EmailInvalid)]
+    [InlineData("New Person", "new@example.test", "1234567", HeimdallAuthMessages.PasswordTooShort)]
+    [InlineData("New Person", "new@example.test", "", HeimdallAuthMessages.PasswordRequired)]
+    public async Task GivenMalformedInput_WhenRegistering_ThenRejectedWithoutCallingHeimdall(
+        string name, string email, string password, string expected)
+    {
+        var gateway = new StubGateway();
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new() { Name = name, Email = email, Password = password });
+
+        Assert.Contains(expected, result.Errors);
+        Assert.Null(gateway.RegisterRequest);
+    }
+
+    [UnitFact]
+    public async Task GivenANameOf201Characters_WhenRegistering_ThenNameTooLong()
+    {
+        var gateway = new StubGateway();
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = new string('a', 201), Email = "new@example.test", Password = "a-long-secret"
+        });
+
+        Assert.Contains(HeimdallAuthMessages.NameTooLong, result.Errors);
+    }
+
+    [UnitFact]
+    public async Task GivenANameOfExactly200Characters_WhenRegistering_ThenItIsForwarded()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Succeeded, new object()) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+        var name = new string('a', 200);
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = name, Email = "new@example.test", Password = "a-long-secret"
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal(name, gateway.RegisterRequest?.Name);
+    }
+
+    [UnitFact]
+    public async Task GivenA200CharacterNamePaddedWithSpaces_WhenRegistering_ThenItIsForwardedTrimmed()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Succeeded, new object()) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+        var name = new string('a', 200);
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = $"   {name}   ", Email = "new@example.test", Password = "a-long-secret"
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal(name, gateway.RegisterRequest?.Name);
+    }
+
+    [UnitFact]
+    public async Task GivenAWhitespaceOnlyName_WhenRegistering_ThenNameRequiredAndHeimdallIsNotCalled()
+    {
+        var gateway = new StubGateway();
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "     ", Email = "new@example.test", Password = "a-long-secret"
+        });
+
+        Assert.Contains(HeimdallAuthMessages.NameRequired, result.Errors);
+        Assert.Null(gateway.RegisterRequest);
+    }
+
+    [UnitFact]
+    public async Task GivenAnEmailOf256Characters_WhenRegistering_ThenItIsForwarded()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Succeeded, new object()) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+        var email = EmailOfLength(256);
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "New Person", Email = email, Password = "a-long-secret"
+        });
+
+        Assert.True(result.Success);
+        Assert.Equal(email, gateway.RegisterRequest?.Email);
+    }
+
+    [UnitFact]
+    public async Task GivenAnEmailOf257Characters_WhenRegistering_ThenEmailTooLongAndHeimdallIsNotCalled()
+    {
+        var gateway = new StubGateway();
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId))
+            .Validated(new RegisterThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "New Person", Email = EmailOfLength(257), Password = "a-long-secret"
+        });
+
+        Assert.Contains(HeimdallAuthMessages.EmailTooLong, result.Errors);
+        Assert.Null(gateway.RegisterRequest);
+    }
+
+    [UnitTheory]
+    [InlineData(HeimdallAuthOutcome.Closed)]
+    [InlineData((HeimdallAuthOutcome)99)]
+    public async Task GivenAnOutcomeTheHelperDoesNotKnow_WhenLoggingIn_ThenServiceUnavailableWithoutThrowing(
+        HeimdallAuthOutcome outcome)
+    {
+        var gateway = new StubGateway { LoginResult = new(outcome) };
+        var handler = new LoginThroughApiCommandHandler(
+            gateway, new(ScopeId)).Validated(new LoginThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Email = "user@example.test",
+            Password = "secret"
+        });
+
+        Assert.Contains(HeimdallAuthMessages.ServiceUnavailable, result.Errors);
+    }
+
+    private static string EmailOfLength(int length)
+    {
+        const string suffix = "@example.test";
+
+        return new string('a', length - suffix.Length) + suffix;
+    }
+
     private sealed class StubGateway : IHeimdallAuthGateway
     {
         public HeimdallAuthResult<HeimdallLoginResult> LoginResult { get; init; } =
@@ -262,6 +494,17 @@ public sealed class HeimdallAuthCommandHandlerTests
             new(HeimdallAuthOutcome.Rejected);
         public string? ResendChallengeToken { get; private set; }
         public int ResendCalls { get; private set; }
+        public HeimdallAuthResult<object> RegisterResult { get; init; } =
+            new(HeimdallAuthOutcome.Rejected);
+        public (string Name, string Email, string Password, Guid ScopeId)? RegisterRequest { get; private set; }
+
+        public Task<HeimdallAuthResult<object>> RegisterAsync(
+            string name, string email, string password, Guid scopeId, CancellationToken cancellationToken)
+        {
+            RegisterRequest = (name, email, password, scopeId);
+
+            return Task.FromResult(RegisterResult);
+        }
 
         public Task<HeimdallAuthResult<object>> ResendTwoFactorChallengeCodeAsync(
             string challengeToken, CancellationToken cancellationToken)
@@ -314,7 +557,7 @@ public sealed class HeimdallAuthCommandHandlerTests
             Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
 
         public Task<HeimdallAuthResult<object>> VerifyEmailAsync(
-            string token, CancellationToken cancellationToken) =>
+            string token, string? password, CancellationToken cancellationToken) =>
             Task.FromResult(new HeimdallAuthResult<object>(HeimdallAuthOutcome.Rejected));
 
         public Task<HeimdallAuthResult<object>> ResendVerificationAsync(

@@ -14,6 +14,7 @@ using ArturRios.Fortuna.Shared.Health;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.WebApi.Configuration;
+using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Services;
 
 namespace ArturRios.Fortuna.WebApi.Extensions;
@@ -32,11 +33,16 @@ public static class FortunaIntegrationsServiceCollectionExtensions
         services.AddSingleton<IExcelWorkbookParser, ExcelWorkbookParser>();
         services.AddSingleton<IPdfInvoiceParser, NubankPdfInvoiceParser>();
         services.AddSingleton<IDataExportRenderer, DataExportRenderer>();
+        services.AddHttpContextAccessor();
+        services.AddTransient(provider => new HeimdallCallerHeadersHandler(
+            provider.GetRequiredService<IHttpContextAccessor>(),
+            options.HeimdallCallerKey));
         services.AddHttpClient<IHeimdallAuthGateway, HeimdallAuthGateway>(client =>
-        {
-            client.BaseAddress = options.HeimdallBaseUri;
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
+            {
+                client.BaseAddress = options.HeimdallBaseUri;
+                client.Timeout = TimeSpan.FromSeconds(10);
+            })
+            .AddHttpMessageHandler<HeimdallCallerHeadersHandler>();
         services.AddSingleton<IRateLimitDelay, RateLimitDelay>();
         services.AddHttpClient<IPtaxRateClient, PtaxRateClient>(client =>
         {

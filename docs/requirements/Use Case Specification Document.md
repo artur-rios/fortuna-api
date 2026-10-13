@@ -16,7 +16,7 @@ Alternative flows are numbered `AF-01` upward **within** each use case, restarti
 Three conventions hold across every use case and are therefore not repeated in each one:
 
 - **Authentication.** Every use case except UC-03, UC-04, UC-05, UC-76's explicitly anonymous
-  exchanges, and UC-77's recovery, reset and verification exchanges requires a valid token
+  exchanges, UC-81's registration, and UC-77's recovery, reset and verification exchanges requires a valid token
   (`FR-ID-01`, `FR-ID-03`). A request without one is refused with `401 Unauthorized`.
 - **Isolation.** Every use case operates on the acting user's own records (`FR-ID-07`). A request
   naming a record owned by somebody else is refused with `404 Not Found` — the same response as for
@@ -38,7 +38,7 @@ Three conventions hold across every use case and are therefore not repeated in e
 | **Local Account Holder** | The same authority, on a desktop installation authenticated by a Fortuna-owned local account rather than by Heimdall. Wherever a use case says "Account Owner", a Local Account Holder may act identically — except where a network source is required. |
 | **Instance Administrator** | Operates a shared deployment. Configures the instance and reads operational status; appears in these use cases only as the actor a domain request is **refused** for. |
 | **Fortuna Client** | The Flutter application. The caller through which every human actor acts. |
-| **Heimdall API** | External. Exchanges credentials, issues tokens and manages the connected identity through UC-76 and UC-77. Tokens are then validated locally by Fortuna on domain request paths. |
+| **Heimdall API** | External. Exchanges credentials, issues tokens and manages the connected identity through UC-76, UC-77 and UC-81. Tokens are then validated locally by Fortuna on domain request paths. |
 | **Pluggy** | External. The open-banking aggregator synchronization pulls from. |
 | **Banco Central do Brasil (PTAX)** | External. Publishes the exchange rates the rate synchronization job fetches. |
 | **Job Runner** | Internal. Executes accepted jobs off the request thread; the actor of the flows that no human triggers directly. |
@@ -53,7 +53,7 @@ graph LR
     end
 
     subgraph Identity
-        UC01[UC-01 … UC-06, UC-76 … UC-80<br/>Token access, profile,<br/>credentials and data rights]
+        UC01[UC-01 … UC-06, UC-76 … UC-81<br/>Token access, profile,<br/>credentials and data rights]
     end
 
     subgraph Currency
@@ -132,7 +132,7 @@ graph LR
 | UC-67 … UC-73 | HTTP only (native `501`). Tables, aggregations, drill-down, net position, projections and data-set exports are not computed natively. |
 | UC-74 | HTTP + native read. Natively it returns only the export jobs earlier versions accepted without rendering, reported as failed with the reason. |
 | UC-75 | HTTP + native through transport-specific health functions: anonymous `GET /healthcheck` identifies `Fortuna API` and its published `v1` contract without probing dependencies; `fortuna_health` reports the in-process native boundary. |
-| UC-76 … UC-77 | HTTP only. Connected authentication and credential management require Heimdall and have no offline export. |
+| UC-76 … UC-77, UC-81 | HTTP only. Connected authentication and credential management require Heimdall and have no offline export. |
 | UC-78 | HTTP + native owner erasure. The administrator route is HTTP-only because an offline installation has no instance administrator. |
 | UC-79 | HTTP + native. Each transport owns its persistence and archive implementation; both return an owner-scoped asynchronous job and a complete, expiring ZIP without credentials or tokens. |
 | UC-80 | HTTP only. Consent governs the hosted Pluggy processor. Native has no external processor, reports the route family unavailable, and leaves manual entry ungated. |
@@ -2448,7 +2448,7 @@ probe an operation that is not available offline.
 | **Description** | Exchange credentials with Heimdall through Fortuna so clients depend on one API surface |
 | **Preconditions** | The Heimdall base address and Fortuna scope public identifier are configured |
 | **Postconditions** | The caller holds a Heimdall token or two-factor challenge; Fortuna state is unchanged |
-| **Requirements** | FR-ID-17 through FR-ID-24 |
+| **Requirements** | FR-ID-17 through FR-ID-24, FR-ID-49 |
 
 **Main Flow**
 
@@ -2487,7 +2487,7 @@ is issued, Fortuna validates it locally and does not call Heimdall to authorize 
 | **Description** | Recover a connected identity and manage its email verification and two-factor configuration through Fortuna |
 | **Preconditions** | The Heimdall base address and Fortuna scope public identifier are configured; authenticated operations carry a valid token |
 | **Postconditions** | Heimdall has applied the requested identity change; Fortuna state is unchanged |
-| **Requirements** | FR-ID-25 through FR-ID-35, FR-ID-44 |
+| **Requirements** | FR-ID-25 through FR-ID-35, FR-ID-44, FR-ID-49 |
 
 **Main Flow**
 
@@ -2660,6 +2660,58 @@ for it.
 
 ---
 
+### UC-81: Register through the Fortuna API
+
+| Field | Value |
+| --- | --- |
+| **ID** | UC-81 |
+| **Name** | Register through the Fortuna API |
+| **Actors** | Anonymous Fortuna Client, Heimdall API |
+| **Description** | Create a connected identity in Fortuna's Heimdall scope without an administrator |
+| **Preconditions** | The Heimdall base address and Fortuna scope public identifier are configured; the scope has opened self-registration in Heimdall (Heimdall UC-47) |
+| **Postconditions** | Heimdall holds a pending registration, or has told the address's holder of the attempt; no account exists until the holder confirms with the password chosen at sign-up. Fortuna state is unchanged until the confirmed identity's first authenticated request provisions its profile |
+| **Requirements** | FR-ID-45 through FR-ID-49 |
+
+**Main Flow**
+
+1. An anonymous caller sends a name, an email address and a password; Fortuna rate-limits the request.
+2. Fortuna validates the request with Heimdall's field rules and attaches the configured scope.
+3. Fortuna forwards the request to Heimdall and answers `202 Accepted` with one message. Heimdall writes a
+   pending registration and mails a link to the address; no account exists yet.
+4. The holder follows the link, and the client sends `POST /api/auth/verify-email` with the link's token and
+   the password chosen at sign-up.
+5. Fortuna forwards the token and password to Heimdall, which creates the account. The holder then signs in
+   through UC-76, and the first authenticated request provisions the Fortuna profile.
+
+**Alternative Flows**
+
+| ID | Condition | Outcome |
+| --- | --- | --- |
+| AF-01 | The address is already registered | `202 Accepted` with the same message as a free address |
+| AF-02 | The scope does not accept self-registration | `403 Forbidden` with a message that names no address |
+| AF-03 | A request is malformed | `400 Bad Request`, and Heimdall is not called |
+| AF-04 | Heimdall is unreachable or returns a server error | `503 Service Unavailable`; upstream details are not returned |
+| AF-05 | The confirmation carries no password | `422 Unprocessable Entity`: "Enter the password you chose when you signed up to finish creating your account." |
+| AF-06 | The confirmation carries a password other than the one chosen at sign-up | `401 Unauthorized`: "That password does not match the one chosen when signing up." |
+| AF-07 | The 10th wrong password is submitted for one registration | The 10th wrong password still answers `401 Unauthorized` (AF-06) and discards the registration; every later attempt with that link answers `400 Bad Request`, like any invalid token |
+| AF-08 | Heimdall's own rate limit is spent | `429 Too Many Requests`: "Too many attempts. Wait a minute and try again."; the confirmation password is not echoed |
+
+UC-81 uses the same limit of ten attempts per source address per minute as UC-76. That limit is
+Fortuna's own; Heimdall applies its `AuthAnonymous` limit of its own, partitioned by connection IP,
+and for every Fortuna user that connection is fortuna-api's address. All of an instance's anonymous
+auth calls therefore share one Heimdall budget of ten per minute (sign-in, Google, recovery, reset,
+verify-email, two-factor and register) unless fortuna-api is given `FORTUNA_HEIMDALL_CALLER_KEY`, one of
+Heimdall's `HEIMDALL_TRUSTED_CALLER_KEYS`. With it, fortuna-api sends the key and the end user's address
+(`X-Heimdall-Caller-Key`, `X-Heimdall-Client-Address`) with each request and Heimdall counts the request
+against that user's address, IPv6 by /64, as Fortuna's own limiter does. Without it the shared budget
+remains, and once it is spent Heimdall's `429` is answered `429` "Too many attempts. Wait a minute and try
+again." (AF-08) rather than `503`. See the Operations & Infrastructure document, section 4.1. The native core
+answers `/api/auth/**` as unavailable offline, which already covers this route. The confirmation password
+is forwarded to Heimdall and is never logged, echoed or stored; a plain verification token (UC-77) ignores
+it.
+
+---
+
 ## 3. Use Case — Requirements Traceability
 
 | Use Case | Requirements |
@@ -2738,11 +2790,12 @@ for it.
 | UC-72: View Committed Obligations | FR-PJ-04 |
 | UC-73: Export a Data Set | FR-EX-01, FR-EX-02, FR-EX-03, FR-EX-05, FR-EX-06, FR-EX-07 |
 | UC-74: Retrieve a Completed Export | FR-EX-04, FR-EX-08 |
-| UC-76: Authenticate through the Fortuna API | FR-ID-17 through FR-ID-24 |
-| UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35, FR-ID-44 |
+| UC-76: Authenticate through the Fortuna API | FR-ID-17 through FR-ID-24, FR-ID-49 |
+| UC-77: Manage Credentials and Two-Factor Authentication through the Fortuna API | FR-ID-25 through FR-ID-35, FR-ID-44, FR-ID-49 |
 | UC-78: Erase a User Account | FR-ID-36, FR-ID-37, FR-RL-12, FR-RL-13 |
 | UC-79: Export All Personal Data | FR-EX-09 through FR-EX-15 |
 | UC-80: Record Processing Consent | FR-ID-38 through FR-ID-43 |
+| UC-81: Register through the Fortuna API | FR-ID-45 through FR-ID-49 |
 
 Every `FR-<AREA>-xx` defined in [System Requirements §3](System%20Requirements%20Document.md)
 appears at least once above. The platform requirements `IR-xx` and the health check requirements

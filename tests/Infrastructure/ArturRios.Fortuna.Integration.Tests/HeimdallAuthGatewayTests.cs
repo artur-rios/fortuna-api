@@ -106,6 +106,161 @@ public sealed class HeimdallAuthGatewayTests
     }
 
     [UnitFact]
+    public async Task GivenRegistration_WhenForwarded_ThenExactShapeAndConfiguredScopeAreUsed()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.Accepted, "{\"data\":{}}"));
+
+        var result = await Gateway(handler).RegisterAsync(
+            "New Person", "new@example.test", "a-long-secret", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.Succeeded, result.Outcome);
+        Assert.Equal("/api/auth/register", handler.Path);
+        Assert.Equal(HttpMethod.Post, handler.Method);
+        Assert.Contains("\"name\":\"New Person\"", handler.Body, StringComparison.Ordinal);
+        Assert.Contains("\"email\":\"new@example.test\"", handler.Body, StringComparison.Ordinal);
+        Assert.Contains("\"password\":\"a-long-secret\"", handler.Body, StringComparison.Ordinal);
+        Assert.Contains($"\"scopeId\":\"{ScopeId}\"", handler.Body, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(handler.Authorization);
+    }
+
+    [UnitTheory]
+    [InlineData(HttpStatusCode.Forbidden, HeimdallAuthOutcome.Closed)]
+    [InlineData(HttpStatusCode.BadRequest, HeimdallAuthOutcome.InvalidRequest)]
+    [InlineData(HttpStatusCode.TooManyRequests, HeimdallAuthOutcome.RateLimited)]
+    [InlineData(HttpStatusCode.InternalServerError, HeimdallAuthOutcome.Unavailable)]
+    public async Task GivenHeimdallRefusesARegistration_WhenForwarded_ThenTheOutcomeIsMapped(
+        HttpStatusCode status, HeimdallAuthOutcome expected)
+    {
+        var handler = new RecordingHandler(_ => Json(status, "{\"errors\":[\"upstream\"]}"));
+
+        var result = await Gateway(handler).RegisterAsync(
+            "New Person", "new@example.test", "a-long-secret", ScopeId, CancellationToken.None);
+
+        Assert.Equal(expected, result.Outcome);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsALogin_WhenForwarded_ThenRateLimitedIsReturned()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.TooManyRequests, "{}"));
+
+        var result = await Gateway(handler).LoginAsync(
+            "user@example.test", "credential", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
+        Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsARegistration_WhenForwarded_ThenRateLimitedIsReturned()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.TooManyRequests, "{}"));
+
+        var result = await Gateway(handler).RegisterAsync(
+            "New Person", "new@example.test", "a-long-secret", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsAVerification_WhenForwarded_ThenRateLimitedIsReturned()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.TooManyRequests, "{}"));
+
+        var result = await Gateway(handler).VerifyEmailAsync("t", "pw", CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
+    }
+
+    [UnitFact]
+    public async Task GivenConfirmationPassword_WhenVerifyingEmail_ThenExactShapeIsUsed()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.OK, "{\"data\":{}}"));
+
+        var result = await Gateway(handler).VerifyEmailAsync("t", "pw", CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.Succeeded, result.Outcome);
+        Assert.Equal("/api/auth/verify-email", handler.Path);
+        Assert.Equal(HttpMethod.Post, handler.Method);
+        Assert.Equal("{\"token\":\"t\",\"password\":\"pw\"}", handler.Body);
+        Assert.Null(handler.Authorization);
+    }
+
+    [UnitTheory]
+    [InlineData(HttpStatusCode.UnprocessableEntity, HeimdallAuthOutcome.PasswordRequired)]
+    [InlineData(HttpStatusCode.Unauthorized, HeimdallAuthOutcome.Rejected)]
+    [InlineData(HttpStatusCode.Forbidden, HeimdallAuthOutcome.Unavailable)]
+    [InlineData(HttpStatusCode.BadRequest, HeimdallAuthOutcome.InvalidRequest)]
+    [InlineData(HttpStatusCode.InternalServerError, HeimdallAuthOutcome.Unavailable)]
+    public async Task GivenHeimdallRefusesAVerification_WhenForwarded_ThenTheOutcomeIsMapped(
+        HttpStatusCode status, HeimdallAuthOutcome expected)
+    {
+        var handler = new RecordingHandler(_ => Json(status, "{\"errors\":[\"upstream\"]}"));
+
+        var result = await Gateway(handler).VerifyEmailAsync("t", "pw", CancellationToken.None);
+
+        Assert.Equal(expected, result.Outcome);
+    }
+
+    [UnitFact]
+    public async Task GivenUnprocessableOnPasswordReset_WhenForwarded_ThenItIsStillUnavailable()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.UnprocessableEntity, "{}"));
+
+        var result = await Gateway(handler).ResetPasswordAsync("t", "new-password", CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.Unavailable, result.Outcome);
+    }
+
+    [UnitFact]
+    public async Task GivenAVerificationThatFails_WhenLogged_ThenThePasswordIsNotWritten()
+    {
+        var logger = new ListLogger();
+        var gateway = new HeimdallAuthGateway(
+            new HttpClient(new RecordingHandler(_ => Json(HttpStatusCode.InternalServerError, "{}")))
+            {
+                BaseAddress = new Uri("https://heimdall.example.test/")
+            },
+            logger);
+
+        await gateway.VerifyEmailAsync("verify-token", "sign-up-secret", CancellationToken.None);
+        var log = string.Join(' ', logger.Messages);
+
+        Assert.DoesNotContain("sign-up-secret", log, StringComparison.Ordinal);
+        Assert.DoesNotContain("verify-token", log, StringComparison.Ordinal);
+        Assert.Contains("500", log, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
+    public async Task GivenForbiddenOnGoogleSignIn_WhenForwarded_ThenItIsStillRejectedNotClosed()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.Forbidden, "{\"errors\":[\"off\"]}"));
+
+        var result = await Gateway(handler).GoogleSignInAsync("id-token", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.Rejected, result.Outcome);
+    }
+
+    [UnitFact]
+    public async Task GivenARegistrationThatFails_WhenLogged_ThenThePasswordIsNotWritten()
+    {
+        var logger = new ListLogger();
+        var gateway = new HeimdallAuthGateway(
+            new HttpClient(new RecordingHandler(_ => Json(HttpStatusCode.InternalServerError, "{}")))
+            {
+                BaseAddress = new Uri("https://heimdall.example.test/")
+            },
+            logger);
+
+        await gateway.RegisterAsync(
+            "New Person", "new@example.test", "a-long-secret", ScopeId, CancellationToken.None);
+        var log = string.Join(' ', logger.Messages);
+
+        Assert.DoesNotContain("a-long-secret", log, StringComparison.Ordinal);
+        Assert.DoesNotContain("new@example.test", log, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
     public async Task GivenPasswordReset_WhenForwarded_ThenExactRequestShapeIsUsed()
     {
         var handler = new RecordingHandler(_ => Json(HttpStatusCode.OK, "{\"data\":{}}"));

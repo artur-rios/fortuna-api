@@ -9,12 +9,19 @@ public static class HeimdallAuthMessages
     public const string ServiceUnavailable = "The identity service is temporarily unavailable.";
     public const string EmailRequired = "Email is required.";
     public const string EmailInvalid = "Email must be a valid address.";
+    public const string EmailTooLong = "Email must be at most 256 characters.";
     public const string PasswordRequired = "Password is required.";
     public const string GoogleIdTokenRequired = "Google ID token is required.";
     public const string ChallengeTokenRequired = "Challenge token is required.";
     public const string FactorRequired = "A two-factor code or recovery code is required.";
     public const string FactorAmbiguous = "Supply either a two-factor code or a recovery code, not both.";
     public const string PasswordRecoveryRequested = "If the address is registered, recovery instructions were sent.";
+    public const string RegistrationRequested =
+        "If this address can be registered, we've sent it an email. Follow it, then sign in.";
+    public const string RegistrationUnavailable = "This instance is not accepting new accounts.";
+    public const string NameRequired = "Name is required.";
+    public const string NameTooLong = "Name must be at most 200 characters.";
+    public const string PasswordTooShort = "Password must be at least 8 characters.";
     public const string PasswordReset = "Password reset successfully.";
     public const string EmailVerified = "Email verified successfully.";
     public const string VerificationResent = "Verification message sent successfully.";
@@ -31,5 +38,10 @@ public static class HeimdallAuthMessages
     public const string NewPasswordRequired = "New password is required.";
     public const string MethodsRequired = "At least one two-factor method is required.";
     public const string MethodInvalid = "Two-factor methods must be App or Email.";
+    public const string ConfirmationPasswordRequired =
+        "Enter the password you chose when you signed up to finish creating your account.";
+    public const string ConfirmationPasswordIncorrect =
+        "That password does not match the one chosen when signing up.";
+    public const string TooManyAttempts = "Too many attempts. Wait a minute and try again.";
     public const string ConfirmationCodeRequired = "An app or email confirmation code is required.";
 }

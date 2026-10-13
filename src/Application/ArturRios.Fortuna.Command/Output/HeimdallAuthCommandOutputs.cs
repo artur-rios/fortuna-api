@@ -37,6 +37,12 @@ public sealed class GoogleSignOutThroughApiCommandOutput : CommandOutput;
 
 public sealed class RequestPasswordRecoveryThroughApiCommandOutput : CommandOutput;
 
+/// <summary>
+///     Deliberately empty: any field describing what happened would say whether the address was
+///     already registered (UC-81 AF-01).
+/// </summary>
+public sealed class RegisterThroughApiCommandOutput : CommandOutput;
+
 public sealed class ResetPasswordThroughApiCommandOutput : CommandOutput;
 
 public sealed class VerifyEmailThroughApiCommandOutput : CommandOutput;

@@ -83,7 +83,7 @@ public static class FortunaWebApiServiceCollectionExtensions
             rateLimiting.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             rateLimiting.AddPolicy(AuthController.AnonymousRateLimitPolicy, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
-                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    RateLimitPartitionKey.For(context.Connection.RemoteIpAddress),
                     _ => new FixedWindowRateLimiterOptions
                     {
                         PermitLimit = 10,

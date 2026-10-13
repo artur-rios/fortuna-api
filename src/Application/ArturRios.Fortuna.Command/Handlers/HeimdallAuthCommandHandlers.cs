@@ -39,6 +39,10 @@ public sealed class LoginThroughApiCommandHandler(
         }).WithMessage(HeimdallAuthMessages.AuthenticatedSuccessfully);
     }
 
+    // An outcome this helper does not know must not become a 500: every route-specific outcome
+    // (Closed, PasswordRequired) is mapped by its own handler before the helper is called, so
+    // anything else that reaches the default arm is answered as an unavailable identity service.
+    // RateLimited is a known outcome on every route and is answered as too many attempts.
     internal static DataOutput<T?> Failure<T>(
         HeimdallAuthOutcome outcome, string rejected, string? notFound = null)
         where T : class => outcome switch
@@ -48,7 +52,9 @@ public sealed class LoginThroughApiCommandHandler(
             HeimdallAuthOutcome.Unavailable => DataOutput<T?>.New.WithError(
                 HeimdallAuthMessages.ServiceUnavailable),
             HeimdallAuthOutcome.NotFound => DataOutput<T?>.New.WithError(notFound ?? rejected),
-            _ => throw new ArgumentOutOfRangeException(nameof(outcome))
+            HeimdallAuthOutcome.RateLimited => DataOutput<T?>.New.WithError(
+                HeimdallAuthMessages.TooManyAttempts),
+            _ => DataOutput<T?>.New.WithError(HeimdallAuthMessages.ServiceUnavailable)
         };
 }
 
@@ -144,6 +150,36 @@ public sealed class RequestPasswordRecoveryThroughApiCommandHandler(
 }
 
 /// <summary>
+///     Forwards a registration to Heimdall with the configured scope (UC-81). Heimdall answers a free
+///     and a taken address alike, and so does this: the only answers that differ are a closed scope,
+///     a malformed request and an unreachable Heimdall, none of which says anything about an address.
+/// </summary>
+public sealed class RegisterThroughApiCommandHandler(
+    IHeimdallAuthGateway gateway,
+    HeimdallAuthOptions options)
+    : ICommandHandlerAsync<RegisterThroughApiCommand, RegisterThroughApiCommandOutput>
+{
+    public async Task<DataOutput<RegisterThroughApiCommandOutput?>> HandleAsync(
+        RegisterThroughApiCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await gateway.RegisterAsync(
+            command.Name.Trim(), command.Email.Trim(), command.Password, options.ScopeId, cancellationToken);
+
+        return result.Outcome switch
+        {
+            HeimdallAuthOutcome.Succeeded => DataOutput<RegisterThroughApiCommandOutput?>.New
+                .WithData(new RegisterThroughApiCommandOutput())
+                .WithMessage(HeimdallAuthMessages.RegistrationRequested),
+            HeimdallAuthOutcome.Closed => DataOutput<RegisterThroughApiCommandOutput?>.New
+                .WithError(HeimdallAuthMessages.RegistrationUnavailable),
+            _ => LoginThroughApiCommandHandler.Failure<RegisterThroughApiCommandOutput>(
+                result.Outcome, HeimdallAuthMessages.RequestRejected)
+        };
+    }
+}
+
+/// <summary>
 ///     Forwards a challenge-token-authorized resend to Heimdall (UC-77). Answers the same way on
 ///     every path Heimdall can take — a valid challenge, an unknown one, a forged one, an expired
 ///     one, one naming a person with no email method, and one whose reissues are spent — because a
@@ -163,14 +199,20 @@ public sealed class ResendTwoFactorChallengeCodeThroughApiCommandHandler(
         var result = await gateway.ResendTwoFactorChallengeCodeAsync(
             command.ChallengeToken, cancellationToken);
 
-        // Every Heimdall outcome but unavailability collapses to the one answer: a rejection
-        // distinguishable from a success is the oracle this endpoint must not be.
-        return result.Outcome == HeimdallAuthOutcome.Unavailable
-            ? DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New.WithError(
-                HeimdallAuthMessages.ServiceUnavailable)
-            : DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New
+        // Every Heimdall outcome but unavailability and the rate limit collapses to the one
+        // answer: a rejection distinguishable from a success is the oracle this endpoint must not
+        // be. The rate limit counts the caller's address, not an account, so it says nothing
+        // about any address and is reported like unavailability.
+        return result.Outcome switch
+        {
+            HeimdallAuthOutcome.Unavailable => DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>
+                .New.WithError(HeimdallAuthMessages.ServiceUnavailable),
+            HeimdallAuthOutcome.RateLimited => DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>
+                .New.WithError(HeimdallAuthMessages.TooManyAttempts),
+            _ => DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New
                 .WithData(new ResendTwoFactorChallengeCodeThroughApiCommandOutput())
-                .WithMessage(HeimdallAuthMessages.ChallengeCodeResent);
+                .WithMessage(HeimdallAuthMessages.ChallengeCodeResent)
+        };
     }
 }
 
@@ -202,14 +244,21 @@ public sealed class VerifyEmailThroughApiCommandHandler(
         VerifyEmailThroughApiCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await gateway.VerifyEmailAsync(command.Token, cancellationToken);
+        var result = await gateway.VerifyEmailAsync(command.Token, command.Password, cancellationToken);
 
-        return result.Outcome == HeimdallAuthOutcome.Succeeded
-            ? DataOutput<VerifyEmailThroughApiCommandOutput?>.New
+        return result.Outcome switch
+        {
+            HeimdallAuthOutcome.Succeeded => DataOutput<VerifyEmailThroughApiCommandOutput?>.New
                 .WithData(new VerifyEmailThroughApiCommandOutput())
-                .WithMessage(HeimdallAuthMessages.EmailVerified)
-            : LoginThroughApiCommandHandler.Failure<VerifyEmailThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.RequestRejected);
+                .WithMessage(HeimdallAuthMessages.EmailVerified),
+            HeimdallAuthOutcome.PasswordRequired => DataOutput<VerifyEmailThroughApiCommandOutput?>.New
+                .WithError(HeimdallAuthMessages.ConfirmationPasswordRequired),
+            // Heimdall's verify-email answers 401 only for a wrong sign-up password.
+            HeimdallAuthOutcome.Rejected => DataOutput<VerifyEmailThroughApiCommandOutput?>.New
+                .WithError(HeimdallAuthMessages.ConfirmationPasswordIncorrect),
+            _ => LoginThroughApiCommandHandler.Failure<VerifyEmailThroughApiCommandOutput>(
+                result.Outcome, HeimdallAuthMessages.RequestRejected)
+        };
     }
 }
 
