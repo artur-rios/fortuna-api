@@ -42,6 +42,7 @@ public sealed class LoginThroughApiCommandHandler(
     // An outcome this helper does not know must not become a 500: every route-specific outcome
     // (Closed, PasswordRequired) is mapped by its own handler before the helper is called, so
     // anything else that reaches the default arm is answered as an unavailable identity service.
+    // RateLimited is a known outcome on every route and is answered as too many attempts.
     internal static DataOutput<T?> Failure<T>(
         HeimdallAuthOutcome outcome, string rejected, string? notFound = null)
         where T : class => outcome switch
@@ -51,6 +52,8 @@ public sealed class LoginThroughApiCommandHandler(
             HeimdallAuthOutcome.Unavailable => DataOutput<T?>.New.WithError(
                 HeimdallAuthMessages.ServiceUnavailable),
             HeimdallAuthOutcome.NotFound => DataOutput<T?>.New.WithError(notFound ?? rejected),
+            HeimdallAuthOutcome.RateLimited => DataOutput<T?>.New.WithError(
+                HeimdallAuthMessages.TooManyAttempts),
             _ => DataOutput<T?>.New.WithError(HeimdallAuthMessages.ServiceUnavailable)
         };
 }
@@ -196,14 +199,20 @@ public sealed class ResendTwoFactorChallengeCodeThroughApiCommandHandler(
         var result = await gateway.ResendTwoFactorChallengeCodeAsync(
             command.ChallengeToken, cancellationToken);
 
-        // Every Heimdall outcome but unavailability collapses to the one answer: a rejection
-        // distinguishable from a success is the oracle this endpoint must not be.
-        return result.Outcome == HeimdallAuthOutcome.Unavailable
-            ? DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New.WithError(
-                HeimdallAuthMessages.ServiceUnavailable)
-            : DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New
+        // Every Heimdall outcome but unavailability and the rate limit collapses to the one
+        // answer: a rejection distinguishable from a success is the oracle this endpoint must not
+        // be. The rate limit counts the caller's address, not an account, so it says nothing
+        // about any address and is reported like unavailability.
+        return result.Outcome switch
+        {
+            HeimdallAuthOutcome.Unavailable => DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>
+                .New.WithError(HeimdallAuthMessages.ServiceUnavailable),
+            HeimdallAuthOutcome.RateLimited => DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>
+                .New.WithError(HeimdallAuthMessages.TooManyAttempts),
+            _ => DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New
                 .WithData(new ResendTwoFactorChallengeCodeThroughApiCommandOutput())
-                .WithMessage(HeimdallAuthMessages.ChallengeCodeResent);
+                .WithMessage(HeimdallAuthMessages.ChallengeCodeResent)
+        };
     }
 }
 

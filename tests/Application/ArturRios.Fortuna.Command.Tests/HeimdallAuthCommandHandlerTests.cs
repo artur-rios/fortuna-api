@@ -62,6 +62,7 @@ public sealed class HeimdallAuthCommandHandlerTests
     [InlineData(HeimdallAuthOutcome.Rejected, HeimdallAuthMessages.AuthenticationRejected)]
     [InlineData(HeimdallAuthOutcome.InvalidRequest, HeimdallAuthMessages.AuthenticationRejected)]
     [InlineData(HeimdallAuthOutcome.Unavailable, HeimdallAuthMessages.ServiceUnavailable)]
+    [InlineData(HeimdallAuthOutcome.RateLimited, HeimdallAuthMessages.TooManyAttempts)]
     public async Task GivenUpstreamFailure_WhenLoggingIn_ThenSafeFailureIsReturned(
         HeimdallAuthOutcome outcome,
         string expected)
@@ -192,6 +193,43 @@ public sealed class HeimdallAuthCommandHandlerTests
     }
 
     [UnitFact]
+    public async Task GivenHeimdallRateLimits_WhenResendingTheCode_ThenTooManyAttemptsIsReported()
+    {
+        // Given — a rate limit is about the caller's address, not about any account, so it
+        // is reported rather than collapsed into the success answer.
+        var gateway = new StubGateway
+        {
+            ResendResult = new(HeimdallAuthOutcome.RateLimited)
+        };
+        var handler = new ResendTwoFactorChallengeCodeThroughApiCommandHandler(
+            gateway).Validated(new ResendTwoFactorChallengeCodeThroughApiCommandValidator());
+
+        // When
+        var result = await handler.HandleAsync(new() { ChallengeToken = "challenge" });
+
+        // Then
+        Assert.False(result.Success);
+        Assert.Contains(HeimdallAuthMessages.TooManyAttempts, result.Errors);
+        Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimits_WhenVerifyingTwoFactor_ThenTooManyAttemptsIsReturned()
+    {
+        var gateway = new StubGateway { TwoFactorResult = new(HeimdallAuthOutcome.RateLimited) };
+        var handler = new VerifyTwoFactorThroughApiCommandHandler(
+            gateway).Validated(new VerifyTwoFactorThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            ChallengeToken = "challenge",
+            Code = "123456"
+        });
+
+        Assert.Equal([HeimdallAuthMessages.TooManyAttempts], result.Errors);
+    }
+
+    [UnitFact]
     public async Task GivenIdentityServiceIsDown_WhenResendingTheCode_ThenUnavailableIsReported()
     {
         // Given — unavailability says nothing about any account, so unlike every other
@@ -280,6 +318,7 @@ public sealed class HeimdallAuthCommandHandlerTests
     [UnitTheory]
     [InlineData(HeimdallAuthOutcome.Unavailable, HeimdallAuthMessages.ServiceUnavailable)]
     [InlineData(HeimdallAuthOutcome.InvalidRequest, HeimdallAuthMessages.RequestRejected)]
+    [InlineData(HeimdallAuthOutcome.RateLimited, HeimdallAuthMessages.TooManyAttempts)]
     public async Task GivenHeimdallFails_WhenRegistering_ThenTheSafeMessageIsReturned(
         HeimdallAuthOutcome outcome, string expected)
     {

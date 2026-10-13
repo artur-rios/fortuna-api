@@ -11,6 +11,9 @@ public sealed record FortunaOptions
     /// <summary>HS256 needs a key of at least 256 bits.</summary>
     public const int MinimumAuthTokenSecretBytes = 32;
 
+    /// <summary>Heimdall refuses a trusted caller key shorter than this many characters.</summary>
+    public const int MinimumHeimdallCallerKeyLength = 32;
+
     public required string DataConnectionString { get; init; }
     public required string DataDatabaseType { get; init; }
     public required string StorageProvider { get; init; }
@@ -46,6 +49,13 @@ public sealed record FortunaOptions
     public required string ConsentExternalDataProcessingVersion { get; init; }
     public required Uri HeimdallBaseUri { get; init; }
     public Guid HeimdallScopeId { get; init; }
+
+    /// <summary>
+    /// One of Heimdall's <c>HEIMDALL_TRUSTED_CALLER_KEYS</c>. When set, each request to Heimdall
+    /// names the end user's address so Heimdall rate-limits per user instead of per Fortuna
+    /// instance. Unset, the feature is off.
+    /// </summary>
+    public string? HeimdallCallerKey { get; init; }
     public string? PluggyClientId { get; init; }
     public string? PluggyClientSecret { get; init; }
     public Uri? PluggyBaseUri { get; init; }
@@ -120,6 +130,7 @@ public sealed record FortunaOptions
                 settings.OptionalTrimmed("FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION") ?? "1.0",
             HeimdallBaseUri = settings.RequiredHttpsUri("FORTUNA_HEIMDALL_BASE_URL"),
             HeimdallScopeId = settings.RequiredGuid("FORTUNA_HEIMDALL_SCOPE_ID"),
+            HeimdallCallerKey = settings.OptionalText("FORTUNA_HEIMDALL_CALLER_KEY"),
             PluggyClientId = settings.OptionalText("FORTUNA_PLUGGY_CLIENT_ID"),
             PluggyClientSecret = settings.OptionalText("FORTUNA_PLUGGY_CLIENT_SECRET"),
             PluggyBaseUri = settings.OptionalAbsoluteUri("FORTUNA_PLUGGY_BASE_URL"),

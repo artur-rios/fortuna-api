@@ -146,6 +146,8 @@ public sealed class HeimdallAuthGateway(
                 HttpStatusCode.Forbidden => new(forbidden),
                 // Mapped per route; verify-email passes PasswordRequired, every other route Unavailable.
                 HttpStatusCode.UnprocessableEntity => new(unprocessable),
+                // Heimdall answers 429 only from its own rate limiter, on every route.
+                HttpStatusCode.TooManyRequests => new(HeimdallAuthOutcome.RateLimited),
                 _ => new(HeimdallAuthOutcome.Unavailable)
             };
         }

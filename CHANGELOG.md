@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - UC-81: `POST /api/auth/register` forwards self-registration to Heimdall with the configured scope, answering new and taken addresses alike.
 - `POST /api/auth/verify-email` accepts the optional `password` chosen at sign-up and forwards it to Heimdall, which requires it to confirm a registration. A missing password answers `422` and a wrong one `401`, each with its own message.
+- Optional `FORTUNA_HEIMDALL_CALLER_KEY`: one of Heimdall's `HEIMDALL_TRUSTED_CALLER_KEYS` (at least 32 visible ASCII characters; startup rejects anything else). When set, requests to Heimdall carry the key and the end user's address, so Heimdall rate-limits anonymous auth per user instead of once for the whole instance. Unset, nothing changes.
+
+### Changed
+
+- Heimdall's `429` is answered `429` "Too many attempts. Wait a minute and try again." instead of `503` "The identity service is temporarily unavailable.", and `register` and `verify-email` document it.
+- The anonymous-auth rate limiter groups IPv6 clients by their `/64`, so a client cannot dodge the limit by rotating addresses within its prefix.
 
 ## [2.0.0] - 2026-10-12
 

@@ -136,6 +136,7 @@ public sealed class HeimdallCredentialCommandHandlerTests
     [InlineData(HeimdallAuthOutcome.Rejected, HeimdallAuthMessages.ConfirmationPasswordIncorrect)]
     [InlineData(HeimdallAuthOutcome.InvalidRequest, HeimdallAuthMessages.RequestRejected)]
     [InlineData(HeimdallAuthOutcome.Unavailable, HeimdallAuthMessages.ServiceUnavailable)]
+    [InlineData(HeimdallAuthOutcome.RateLimited, HeimdallAuthMessages.TooManyAttempts)]
     public async Task GivenHeimdallRefusal_WhenVerifyingEmail_ThenTheMatchingMessageIsReturned(
         HeimdallAuthOutcome outcome, string expected)
     {
