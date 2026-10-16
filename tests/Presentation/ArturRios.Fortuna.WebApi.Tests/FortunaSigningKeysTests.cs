@@ -4,7 +4,6 @@ using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Jwt;
 using ArturRios.Util.Test.Attributes;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
@@ -25,8 +24,6 @@ public sealed class FortunaSigningKeysTests
     {
         var heimdallPem = JwksTestSupport.NewPem();
         var heimdallKey = JwtKey.FromEcPrivateKeyPem(heimdallPem);
-        var handler = new StubJwksHandler();
-        handler.Serve(JwksTestSupport.KeySet(heimdallKey));
         var settings = JwksTestSupport.Settings(sharedSecret);
 
         if (sharedSecretValue is not null)
@@ -34,12 +31,9 @@ public sealed class FortunaSigningKeysTests
             settings["FORTUNA_AUTH_TOKEN_SECRET"] = sharedSecretValue;
         }
 
-        var options = FortunaOptions.From(settings.GetValueOrDefault);
-        var jwks = new HeimdallJwks(
-            new StubHttpClientFactory(handler), options, TimeProvider.System, NullLogger<HeimdallJwks>.Instance);
-        await jwks.EnsureKnownAsync(heimdallKey.Id, CancellationToken.None);
+        var keys = await JwksTestSupport.SigningKeysAsync(FortunaOptions.From(settings.GetValueOrDefault), heimdallKey);
 
-        return (new FortunaSigningKeys(options, jwks), heimdallKey, heimdallPem);
+        return (keys, heimdallKey, heimdallPem);
     }
 
     private static SecurityToken Naming(string issuer) =>
@@ -47,14 +41,7 @@ public sealed class FortunaSigningKeysTests
 
     /// <summary>Validates a token as Fortuna's bearer scheme does: keys by issuer, one algorithm per key.</summary>
     private static Task<TokenValidationResult> ValidateAsync(FortunaSigningKeys keys, string token) =>
-        new JsonWebTokenHandler().ValidateTokenAsync(token, new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKeyResolver = (_, securityToken, keyId, _) => keys.Resolve(securityToken, keyId),
-            AlgorithmValidator = (algorithm, key, _, _) => FortunaSigningKeys.IsAllowed(algorithm, key),
-            ValidIssuers = [JwksTestSupport.Issuer, LocalIssuer],
-            ValidAudience = JwksTestSupport.Audience
-        });
+        new JsonWebTokenHandler().ValidateTokenAsync(token, JwksTestSupport.ValidationParameters(keys));
 
     /// <summary>A token as Fortuna's own library writes it: HS256 with no kid, or ES256 under the key's kid.</summary>
     private static string Issue(string issuer, string secret, JwtKey? ecKey = null) =>

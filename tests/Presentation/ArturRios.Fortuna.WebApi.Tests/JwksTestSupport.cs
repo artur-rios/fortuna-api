@@ -2,7 +2,10 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using ArturRios.Fortuna.WebApi.Configuration;
+using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Jwt;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -66,6 +69,28 @@ internal static class JwksTestSupport
     /// <summary>The options those settings parse into.</summary>
     public static FortunaOptions Options(bool sharedSecret = true) =>
         FortunaOptions.From(Settings(sharedSecret).GetValueOrDefault);
+
+    /// <summary>Fortuna's verification keys under <paramref name="options" />, with <paramref name="heimdallKey" /> published and known.</summary>
+    public static async Task<FortunaSigningKeys> SigningKeysAsync(FortunaOptions options, JwtKey heimdallKey)
+    {
+        var handler = new StubJwksHandler();
+        handler.Serve(KeySet(heimdallKey));
+        var jwks = new HeimdallJwks(
+            new StubHttpClientFactory(handler), options, TimeProvider.System, NullLogger<HeimdallJwks>.Instance);
+        await jwks.EnsureKnownAsync(heimdallKey.Id, CancellationToken.None);
+
+        return new FortunaSigningKeys(options, jwks);
+    }
+
+    /// <summary>The parameters Fortuna's bearer scheme validates with: keys by issuer, one algorithm per key.</summary>
+    public static TokenValidationParameters ValidationParameters(FortunaSigningKeys keys) => new()
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKeyResolver = (_, securityToken, keyId, _) => keys.Resolve(securityToken, keyId),
+        AlgorithmValidator = (algorithm, key, _, _) => FortunaSigningKeys.IsAllowed(algorithm, key),
+        ValidIssuers = [Issuer, FortunaOptions.DefaultLocalTokenIssuer],
+        ValidAudience = Audience
+    };
 }
 
 /// <summary>Stands in for Heimdall's key-set endpoint, counting the requests it is sent.</summary>

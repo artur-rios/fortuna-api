@@ -69,7 +69,7 @@ public sealed class AuthenticationTests
         {
             DisplayName = "Ada Lovelace"
         };
-        var mapper = new FortunaIdentityMapper();
+        var mapper = new FortunaIdentityMapper(LocalIdentityRule.From(JwksTestSupport.Options()));
 
         var restored = mapper.FromClaims(mapper.ToClaims(identity));
 
@@ -93,7 +93,7 @@ public sealed class AuthenticationTests
             [FortunaIdentityMapper.RoleClaim] = role
         };
 
-        Assert.Null(new FortunaIdentityMapper().FromClaims(claims));
+        Assert.Null(new FortunaIdentityMapper(LocalIdentityRule.From(JwksTestSupport.Options())).FromClaims(claims));
     }
 
     [UnitTheory]

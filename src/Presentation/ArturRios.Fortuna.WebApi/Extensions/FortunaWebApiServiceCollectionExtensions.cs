@@ -93,6 +93,7 @@ public static class FortunaWebApiServiceCollectionExtensions
         });
         services.AddSingleton(jwtConfiguration);
         services.AddSingleton<JwtHandler>();
+        services.AddSingleton(LocalIdentityRule.From(options));
         services.AddSingleton<FortunaIdentityMapper>();
         services.AddSingleton<ILocalAuthTokenIssuer, LocalAuthTokenIssuer>();
         services.AddEndpointsApiExplorer();
