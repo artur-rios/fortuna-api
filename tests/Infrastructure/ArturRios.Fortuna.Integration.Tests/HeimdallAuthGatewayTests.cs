@@ -145,6 +145,29 @@ public sealed class HeimdallAuthGatewayTests
         Assert.Equal(12, result.RetryAfterSeconds);
     }
 
+    [UnitTheory]
+    [InlineData(HttpStatusCode.TooManyRequests, HeimdallAuthOutcome.RateLimited, 12)]
+    [InlineData(HttpStatusCode.Conflict, HeimdallAuthOutcome.Conflict, null)]
+    public async Task GivenARefusalWithAnUnknownCharset_WhenForwarded_ThenItIsRelayedWithNoMessage(
+        HttpStatusCode status, HeimdallAuthOutcome expected, int? retryAfterSeconds)
+    {
+        // A proxy in front of Heimdall can name a charset .NET does not know; reading the body then
+        // throws, and the refusal must still reach the caller as if it had no body.
+        var content = new ByteArrayContent("<p>Slow down</p>"u8.ToArray());
+        content.Headers.TryAddWithoutValidation("Content-Type", "text/html; charset=x-bogus");
+        var handler = new RecordingHandler(_ => WithRetryAfter(new HttpResponseMessage(status)
+        {
+            Content = content
+        }, "12"));
+
+        var result = await Gateway(handler).LoginAsync(
+            "user@example.test", "credential", ScopeId, CancellationToken.None);
+
+        Assert.Equal(expected, result.Outcome);
+        Assert.Null(result.Message);
+        Assert.Equal(retryAfterSeconds, result.RetryAfterSeconds);
+    }
+
     [UnitFact]
     public async Task GivenHeimdallAnswersConflict_WhenForwarded_ThenConflictWithItsMessageIsReturned()
     {

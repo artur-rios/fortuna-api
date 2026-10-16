@@ -182,7 +182,8 @@ public sealed class HeimdallAuthGateway(
     }
 
     // The first error of Heimdall's envelope, or null when the body is not one (a proxy in front of
-    // Heimdall can answer 429 itself, in plain text). Reading it never turns the refusal into another.
+    // Heimdall can answer 429 itself, in plain text). Reading it never turns the refusal into another:
+    // a body in a charset .NET does not know (InvalidOperationException) counts as no message too.
     private static async Task<string?> ErrorMessageAsync(
         HttpResponseMessage response, CancellationToken cancellationToken)
     {
@@ -194,7 +195,7 @@ public sealed class HeimdallAuthGateway(
             return envelope?.Errors?.FirstOrDefault(error => !string.IsNullOrWhiteSpace(error))?.Trim();
         }
         catch (Exception exception) when (exception is HttpRequestException or JsonException or
-            NotSupportedException)
+            NotSupportedException or InvalidOperationException)
         {
             return null;
         }
