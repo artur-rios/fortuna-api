@@ -21,7 +21,7 @@ public sealed class LocalAuthTokenIssuer(
             options.AuthTokenExpirationInSeconds,
             options.AuthTokenIssuer,
             options.AuthTokenAudience,
-            options.AuthTokenSecret,
+            options.AuthTokenSecret ?? string.Empty,
             mapper.ToClaims(identity)));
 
         return new LocalAuthToken(

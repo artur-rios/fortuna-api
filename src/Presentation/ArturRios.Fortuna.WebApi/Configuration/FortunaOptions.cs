@@ -14,6 +14,9 @@ public sealed record FortunaOptions
     /// <summary>Heimdall refuses a trusted caller key shorter than this many characters.</summary>
     public const int MinimumHeimdallCallerKeyLength = 32;
 
+    /// <summary>The issuer of Fortuna's local-account tokens when <c>FORTUNA_LOCAL_TOKEN_ISSUER</c> is unset.</summary>
+    public const string DefaultLocalTokenIssuer = "fortuna-local";
+
     public required string DataConnectionString { get; init; }
     public required string DataDatabaseType { get; init; }
     public required string StorageProvider { get; init; }
@@ -37,11 +40,33 @@ public sealed record FortunaOptions
     public int UploadMaximumBytes { get; init; }
     public IReadOnlyCollection<string> UploadAllowedContentTypes { get; init; } = [];
     public bool RunMigrations { get; init; }
-    public required string AuthTokenSecret { get; init; }
+
+    /// <summary>
+    /// The secret Heimdall signed its HS256 tokens with before it moved to ES256. Optional: while it is set,
+    /// those tokens, and local tokens issued under Heimdall's issuer, are still accepted (the overlap); unset,
+    /// they are refused.
+    /// </summary>
+    public string? AuthTokenSecret { get; init; }
     public string? AuthPreviousTokenSecret { get; init; }
     public required string AuthTokenIssuer { get; init; }
     public required string AuthTokenAudience { get; init; }
     public double AuthTokenExpirationInSeconds { get; init; }
+
+    /// <summary>
+    /// Whether the overlap is on: a legacy shared secret (<c>FORTUNA_AUTH_TOKEN_SECRET</c>) is set, so
+    /// Heimdall's HS256 tokens and local tokens issued under Heimdall's issuer are still accepted.
+    /// </summary>
+    public bool AcceptsLegacyTokens => !string.IsNullOrWhiteSpace(AuthTokenSecret);
+
+    /// <summary>Where Heimdall publishes its ES256 verification keys (<c>FORTUNA_HEIMDALL_JWKS_URL</c>).</summary>
+    public required Uri HeimdallJwksUri { get; init; }
+
+    /// <summary>The HS256 secret Fortuna signs its local-account tokens with. It never leaves Fortuna.</summary>
+    public required string LocalTokenSecret { get; init; }
+
+    /// <summary>The issuer of Fortuna's local-account tokens, distinct from Heimdall's.</summary>
+    public required string LocalTokenIssuer { get; init; }
+
     public string? DefaultDisplayCurrency { get; init; }
     public required string Locale { get; init; }
     public bool LocalAuthEnabled { get; init; }
@@ -117,11 +142,14 @@ public sealed record FortunaOptions
             UploadMaximumBytes = settings.PositiveInteger("FORTUNA_UPLOAD_MAX_BYTES", 10 * 1024 * 1024),
             UploadAllowedContentTypes = settings.ContentTypes("FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES"),
             RunMigrations = settings.Boolean("FORTUNA_RUN_MIGRATIONS", false),
-            AuthTokenSecret = settings.Text("FORTUNA_AUTH_TOKEN_SECRET"),
+            AuthTokenSecret = settings.OptionalText("FORTUNA_AUTH_TOKEN_SECRET"),
             AuthPreviousTokenSecret = settings.OptionalText("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),
             AuthTokenIssuer = settings.Text("FORTUNA_AUTH_TOKEN_ISSUER"),
             AuthTokenAudience = settings.Text("FORTUNA_AUTH_TOKEN_AUDIENCE"),
             AuthTokenExpirationInSeconds = settings.PositiveNumber("FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS", 3600),
+            HeimdallJwksUri = settings.RequiredHttpUri("FORTUNA_HEIMDALL_JWKS_URL"),
+            LocalTokenSecret = settings.Text("FORTUNA_LOCAL_TOKEN_SECRET"),
+            LocalTokenIssuer = settings.OptionalTrimmed("FORTUNA_LOCAL_TOKEN_ISSUER") ?? DefaultLocalTokenIssuer,
             DefaultDisplayCurrency = settings.CurrencyCode("FORTUNA_DEFAULT_DISPLAY_CURRENCY"),
             Locale = settings.SpecificLocale("FORTUNA_LOCALE"),
             LocalAuthEnabled = settings.Boolean("FORTUNA_LOCAL_AUTH_ENABLED", false),
@@ -334,6 +362,33 @@ public sealed record FortunaOptions
             }
 
             errors.Add(ConfigurationMessages.HttpsUri(key));
+
+            return fallback;
+        }
+
+        /// <summary>
+        /// An absolute HTTP or HTTPS URL taken as written. Unlike <see cref="OptionalAbsoluteUri" />, which
+        /// adds the trailing slash a base address needs, this names a document, so nothing is appended; and
+        /// unlike <see cref="RequiredHttpsUri" />, plain HTTP is accepted, for an address on the internal
+        /// network.
+        /// </summary>
+        public Uri RequiredHttpUri(string key)
+        {
+            var fallback = new Uri("http://unconfigured.invalid/");
+            var value = OptionalTrimmed(key);
+            if (value is null)
+            {
+                errors.Add(ConfigurationMessages.Required(key));
+
+                return fallback;
+            }
+
+            if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
+            {
+                return uri;
+            }
+
+            errors.Add(ConfigurationMessages.AbsoluteUri(key));
 
             return fallback;
         }

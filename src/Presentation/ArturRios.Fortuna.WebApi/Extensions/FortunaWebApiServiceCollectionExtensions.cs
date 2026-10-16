@@ -133,7 +133,7 @@ public static class FortunaWebApiServiceCollectionExtensions
 
     private static JwtConfiguration BuildJwtConfiguration(FortunaOptions options)
     {
-        List<JwtKey> keys = [new("current", options.AuthTokenSecret)];
+        List<JwtKey> keys = [new("current", options.AuthTokenSecret ?? string.Empty)];
 
         if (!string.IsNullOrWhiteSpace(options.AuthPreviousTokenSecret) &&
             options.AuthPreviousTokenSecret != options.AuthTokenSecret)
@@ -145,7 +145,7 @@ public static class FortunaWebApiServiceCollectionExtensions
             options.AuthTokenExpirationInSeconds,
             options.AuthTokenIssuer,
             options.AuthTokenAudience,
-            options.AuthTokenSecret,
+            options.AuthTokenSecret ?? string.Empty,
             [])
         {
             Keys = keys
