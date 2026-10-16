@@ -12,7 +12,8 @@ namespace ArturRios.Fortuna.WebApi.Security;
 /// <para>
 /// <b>A failure keeps what is known.</b> A fetch that fails, takes longer than <see cref="FetchTimeout" />,
 /// answers anything but 2xx, sends more than <see cref="MaximumDocumentBytes" />, or holds no usable key
-/// changes nothing: the keys already known stay in use, and the reason is logged. Before Heimdall publishes
+/// changes nothing: the keys already known stay in use, and the reason is logged as a warning (any other
+/// exception is a defect, logged as an error with its stack trace). Before Heimdall publishes
 /// keys at all, every fetch is such a failure and only the legacy HS256 tokens validate, which is the
 /// rollout order the overlap relies on.
 /// </para>
@@ -139,11 +140,26 @@ public sealed class HeimdallJwks(
                 "Heimdall's signing keys refreshed from {JwksUrl}: {KeyIds}",
                 options.HeimdallJwksUri, string.Join(", ", keys.Select(key => key.Id)));
         }
+        catch (OperationCanceledException)
+        {
+            // The fetch's own token is the only one it runs under, so a cancellation is its timeout.
+            Kept($"no answer within {FetchTimeout}");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or IOException or FormatException)
+        {
+            // What the network or Heimdall can cause: unreachable, cut off mid-body, or not a key set. None of
+            // these messages quotes the body (JwksDocument's FormatException messages are fixed text).
+            Kept(exception.Message);
+        }
         catch (Exception exception)
         {
-            // Whatever went wrong (unreachable, timed out, cut off, not a key set), the request path must not
-            // see it: the known keys stay and the cause is logged by its type, which names nothing secret.
-            Kept(exception is OperationCanceledException ? $"no answer within {FetchTimeout}" : exception.GetType().Name);
+            // Anything else is a defect (a misconfigured client, a library regression), not Heimdall being
+            // absent. The request path still must not see it, but it is logged as an error with its stack
+            // trace so that it does not hide among the warnings expected until Heimdall publishes keys.
+            logger.LogError(
+                exception,
+                "Heimdall's signing keys could not be refreshed from {JwksUrl} because of an unexpected error. The keys already known stay in use.",
+                options.HeimdallJwksUri);
         }
     }
 
