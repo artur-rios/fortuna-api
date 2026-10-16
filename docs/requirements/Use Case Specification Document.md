@@ -2470,6 +2470,8 @@ probe an operation that is not available offline.
 | AF-05 | Heimdall address or scope configuration is absent or malformed | Startup is refused |
 | AF-06 | A request is malformed | `400 Bad Request`, naming the invalid field |
 | AF-07 | Sign-out is called without a valid bearer token | `401 Unauthorized` before Heimdall is called |
+| AF-08 | Heimdall refuses the request for its rate | `429 Too Many Requests` with Heimdall's message and its `Retry-After`; the credential is not echoed |
+| AF-09 | Heimdall answers `409 Conflict`, such as for a Google sign-in whose verified address another account in the scope already holds | `409 Conflict` with Heimdall's message |
 
 The anonymous login, Google sign-in and two-factor verification endpoints are limited to ten
 attempts per source address per minute. UC-01 remains the request-path token validator: after a token
@@ -2516,6 +2518,8 @@ is issued, Fortuna validates it locally and does not call Heimdall to authorize 
 | AF-06 | Heimdall is unreachable or returns a server error | `503 Service Unavailable`; upstream details are not returned |
 | AF-07 | A request is malformed | `400 Bad Request`, and Heimdall is not called |
 | AF-08 | A challenge-code reissue is requested for a challenge that is valid, unknown, forged, expired, or names a person without the email method | `200 OK` with one message identical across all five, since a response that varied would reveal whether an address is registered and has email two-factor enabled |
+| AF-09 | Heimdall refuses the request for its rate: its anonymous-auth limit, or the per-person mail budget behind verification resends and email two-factor setup | `429 Too Many Requests` with Heimdall's message and its `Retry-After`; on a challenge-code reissue only the anonymous-auth limit can apply, which counts the caller's address and says nothing about any account |
+| AF-10 | Heimdall answers `409 Conflict`, such as for two-factor setup that is already active | `409 Conflict` with Heimdall's message, except on a challenge-code reissue, which answers it as AF-08 |
 
 The connected Heimdall identity and the desktop local account remain separate. UC-77 does not add a
 password-reset route to `api/local-accounts`. Every anonymous UC-77 endpoint uses the same limit of
@@ -2694,7 +2698,7 @@ for it.
 | AF-05 | The confirmation carries no password | `422 Unprocessable Entity`: "Enter the password you chose when you signed up to finish creating your account." |
 | AF-06 | The confirmation carries a password other than the one chosen at sign-up | `401 Unauthorized`: "That password does not match the one chosen when signing up." |
 | AF-07 | The 10th wrong password is submitted for one registration | The 10th wrong password still answers `401 Unauthorized` (AF-06) and discards the registration; every later attempt with that link answers `400 Bad Request`, like any invalid token |
-| AF-08 | Heimdall's own rate limit is spent | `429 Too Many Requests`: "Too many attempts. Wait a minute and try again."; the confirmation password is not echoed |
+| AF-08 | Heimdall's own rate limit is spent | `429 Too Many Requests` with Heimdall's message and its `Retry-After` ("Too many attempts. Wait a minute and try again." when Heimdall's answer carries no message); the confirmation password is not echoed |
 
 UC-81 uses the same limit of ten attempts per source address per minute as UC-76. That limit is
 Fortuna's own; Heimdall applies its `AuthAnonymous` limit of its own, partitioned by connection IP,
@@ -2703,9 +2707,10 @@ auth calls therefore share one Heimdall budget of ten per minute (sign-in, Googl
 verify-email, two-factor and register) unless fortuna-api is given `FORTUNA_HEIMDALL_CALLER_KEY`, one of
 Heimdall's `HEIMDALL_TRUSTED_CALLER_KEYS`. With it, fortuna-api sends the key and the end user's address
 (`X-Heimdall-Caller-Key`, `X-Heimdall-Client-Address`) with each request and Heimdall counts the request
-against that user's address, IPv6 by /64, as Fortuna's own limiter does. Without it the shared budget
-remains, and once it is spent Heimdall's `429` is answered `429` "Too many attempts. Wait a minute and try
-again." (AF-08) rather than `503`. See the Operations & Infrastructure document, section 4.1. The native core
+against that user's address, IPv6 by its /56. A key Heimdall does not hold is not refused: Heimdall
+counts the request under fortuna-api's address, as without the key. Without it the shared budget
+remains, and once it is spent Heimdall's `429` is answered `429` with Heimdall's message and
+`Retry-After` (AF-08) rather than `503`. See the Operations & Infrastructure document, section 4.1. The native core
 answers `/api/auth/**` as unavailable offline, which already covers this route. The confirmation password
 is forwarded to Heimdall and is never logged, echoed or stored; a plain verification token (UC-77) ignores
 it.
