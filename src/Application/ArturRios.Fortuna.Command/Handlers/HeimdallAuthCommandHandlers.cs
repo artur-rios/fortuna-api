@@ -22,7 +22,7 @@ public sealed class LoginThroughApiCommandHandler(
             command.Email.Trim(), command.Password, options.ScopeId, cancellationToken);
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
-            return Failure<LoginThroughApiCommandOutput>(result.Outcome,
+            return Failure<LoginThroughApiCommandOutput>(result,
                 HeimdallAuthMessages.AuthenticationRejected);
         }
 
@@ -42,20 +42,37 @@ public sealed class LoginThroughApiCommandHandler(
     // An outcome this helper does not know must not become a 500: every route-specific outcome
     // (Closed, PasswordRequired) is mapped by its own handler before the helper is called, so
     // anything else that reaches the default arm is answered as an unavailable identity service.
-    // RateLimited is a known outcome on every route and is answered as too many attempts.
+    // RateLimited and Conflict are known outcomes on every route and are relayed as Heimdall gave them.
     internal static DataOutput<T?> Failure<T>(
-        HeimdallAuthOutcome outcome, string rejected, string? notFound = null)
-        where T : class => outcome switch
+        IHeimdallAuthResult result, string rejected, string? notFound = null)
+        where T : class => result.Outcome switch
         {
             HeimdallAuthOutcome.InvalidRequest => DataOutput<T?>.New.WithError(rejected),
             HeimdallAuthOutcome.Rejected => DataOutput<T?>.New.WithError(rejected),
             HeimdallAuthOutcome.Unavailable => DataOutput<T?>.New.WithError(
                 HeimdallAuthMessages.ServiceUnavailable),
             HeimdallAuthOutcome.NotFound => DataOutput<T?>.New.WithError(notFound ?? rejected),
-            HeimdallAuthOutcome.RateLimited => DataOutput<T?>.New.WithError(
-                HeimdallAuthMessages.TooManyAttempts),
+            HeimdallAuthOutcome.RateLimited or HeimdallAuthOutcome.Conflict => Relayed<T>(result),
             _ => DataOutput<T?>.New.WithError(HeimdallAuthMessages.ServiceUnavailable)
         };
+
+    // Heimdall's own message, or Fortuna's when Heimdall named none (a proxy in front of it can
+    // answer 429 itself); the outcome and the wait travel with it for the controller.
+    internal static DataOutput<T?> Relayed<T>(IHeimdallAuthResult result)
+        where T : class
+    {
+        var fallback = result.Outcome == HeimdallAuthOutcome.Conflict
+            ? HeimdallAuthMessages.IdentityConflict
+            : HeimdallAuthMessages.TooManyAttempts;
+
+        return new HeimdallRelayedRefusal<T?>
+        {
+            Outcome = result.Outcome,
+            RetryAfterSeconds = result.Outcome == HeimdallAuthOutcome.RateLimited
+                ? result.RetryAfterSeconds
+                : null
+        }.WithError(result.Message ?? fallback);
+    }
 }
 
 public sealed class GoogleSignInThroughApiCommandHandler(
@@ -72,7 +89,7 @@ public sealed class GoogleSignInThroughApiCommandHandler(
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<GoogleSignInThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.AuthenticationRejected);
+                result, HeimdallAuthMessages.AuthenticationRejected);
         }
 
         return DataOutput<GoogleSignInThroughApiCommandOutput?>.New.WithData(new()
@@ -97,7 +114,7 @@ public sealed class VerifyTwoFactorThroughApiCommandHandler(
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<VerifyTwoFactorThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.TwoFactorRejected);
+                result, HeimdallAuthMessages.TwoFactorRejected);
         }
 
         return DataOutput<VerifyTwoFactorThroughApiCommandOutput?>.New.WithData(new()
@@ -123,7 +140,7 @@ public sealed class GoogleSignOutThroughApiCommandHandler(IHeimdallAuthGateway g
                 .WithData(new GoogleSignOutThroughApiCommandOutput())
                 .WithMessage(HeimdallAuthMessages.SignedOutSuccessfully)
             : LoginThroughApiCommandHandler.Failure<GoogleSignOutThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.AuthenticationRejected);
+                result, HeimdallAuthMessages.AuthenticationRejected);
     }
 }
 
@@ -145,7 +162,7 @@ public sealed class RequestPasswordRecoveryThroughApiCommandHandler(
                 .WithData(new RequestPasswordRecoveryThroughApiCommandOutput())
                 .WithMessage(HeimdallAuthMessages.PasswordRecoveryRequested)
             : LoginThroughApiCommandHandler.Failure<RequestPasswordRecoveryThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.RequestRejected);
+                result, HeimdallAuthMessages.RequestRejected);
     }
 }
 
@@ -174,7 +191,7 @@ public sealed class RegisterThroughApiCommandHandler(
             HeimdallAuthOutcome.Closed => DataOutput<RegisterThroughApiCommandOutput?>.New
                 .WithError(HeimdallAuthMessages.RegistrationUnavailable),
             _ => LoginThroughApiCommandHandler.Failure<RegisterThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.RequestRejected)
+                result, HeimdallAuthMessages.RequestRejected)
         };
     }
 }
@@ -184,8 +201,8 @@ public sealed class RegisterThroughApiCommandHandler(
 ///     every path Heimdall can take — a valid challenge, an unknown one, a forged one, an expired
 ///     one, one naming a person with no email method, and one whose reissues are spent — because a
 ///     response that varied would tell an anonymous caller whether an address is registered and has
-///     email two-factor enabled. Only Heimdall being unreachable is reported differently, and that
-///     says nothing about any account.
+///     email two-factor enabled. Only Heimdall being unreachable or rate-limiting the caller's address
+///     is reported differently, and neither says anything about any account.
 /// </summary>
 public sealed class ResendTwoFactorChallengeCodeThroughApiCommandHandler(
     IHeimdallAuthGateway gateway)
@@ -200,15 +217,15 @@ public sealed class ResendTwoFactorChallengeCodeThroughApiCommandHandler(
             command.ChallengeToken, cancellationToken);
 
         // Every Heimdall outcome but unavailability and the rate limit collapses to the one
-        // answer: a rejection distinguishable from a success is the oracle this endpoint must not
-        // be. The rate limit counts the caller's address, not an account, so it says nothing
-        // about any address and is reported like unavailability.
+        // answer, a conflict included: a rejection distinguishable from a success is the oracle
+        // this endpoint must not be. Heimdall rate-limits this route by the caller's address, not
+        // by an account, so its refusal says nothing about any address and is relayed as it is.
         return result.Outcome switch
         {
             HeimdallAuthOutcome.Unavailable => DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>
                 .New.WithError(HeimdallAuthMessages.ServiceUnavailable),
-            HeimdallAuthOutcome.RateLimited => DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>
-                .New.WithError(HeimdallAuthMessages.TooManyAttempts),
+            HeimdallAuthOutcome.RateLimited => LoginThroughApiCommandHandler
+                .Relayed<ResendTwoFactorChallengeCodeThroughApiCommandOutput>(result),
             _ => DataOutput<ResendTwoFactorChallengeCodeThroughApiCommandOutput?>.New
                 .WithData(new ResendTwoFactorChallengeCodeThroughApiCommandOutput())
                 .WithMessage(HeimdallAuthMessages.ChallengeCodeResent)
@@ -232,7 +249,7 @@ public sealed class ResetPasswordThroughApiCommandHandler(
                 .WithData(new ResetPasswordThroughApiCommandOutput())
                 .WithMessage(HeimdallAuthMessages.PasswordReset)
             : LoginThroughApiCommandHandler.Failure<ResetPasswordThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.RequestRejected);
+                result, HeimdallAuthMessages.RequestRejected);
     }
 }
 
@@ -257,7 +274,7 @@ public sealed class VerifyEmailThroughApiCommandHandler(
             HeimdallAuthOutcome.Rejected => DataOutput<VerifyEmailThroughApiCommandOutput?>.New
                 .WithError(HeimdallAuthMessages.ConfirmationPasswordIncorrect),
             _ => LoginThroughApiCommandHandler.Failure<VerifyEmailThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.RequestRejected)
+                result, HeimdallAuthMessages.RequestRejected)
         };
     }
 }
@@ -278,7 +295,7 @@ public sealed class ResendVerificationThroughApiCommandHandler(IHeimdallAuthGate
                 .WithData(new ResendVerificationThroughApiCommandOutput())
                 .WithMessage(HeimdallAuthMessages.VerificationResent)
             : LoginThroughApiCommandHandler.Failure<ResendVerificationThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.RequestRejected);
+                result, HeimdallAuthMessages.RequestRejected);
     }
 }
 
@@ -294,7 +311,7 @@ public sealed class GetTwoFactorStatusThroughApiCommandHandler(IHeimdallAuthGate
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<GetTwoFactorStatusThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.RequestRejected,
+                result, HeimdallAuthMessages.RequestRejected,
                 HeimdallAuthMessages.TwoFactorNotFound);
         }
 
@@ -321,7 +338,7 @@ public sealed class EnableTwoFactorThroughApiCommandHandler(
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<EnableTwoFactorThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.RequestRejected);
+                result, HeimdallAuthMessages.RequestRejected);
         }
 
         return DataOutput<EnableTwoFactorThroughApiCommandOutput?>.New.WithData(new()
@@ -345,7 +362,7 @@ public sealed class ConfirmTwoFactorThroughApiCommandHandler(
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<ConfirmTwoFactorThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.TwoFactorRejected,
+                result, HeimdallAuthMessages.TwoFactorRejected,
                 HeimdallAuthMessages.TwoFactorNotFound);
         }
 
@@ -371,7 +388,7 @@ public sealed class DisableTwoFactorThroughApiCommandHandler(
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<DisableTwoFactorThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.TwoFactorRejected,
+                result, HeimdallAuthMessages.TwoFactorRejected,
                 HeimdallAuthMessages.TwoFactorNotFound);
         }
 
@@ -396,7 +413,7 @@ public sealed class RegenerateRecoveryCodesThroughApiCommandHandler(
         if (result.Outcome != HeimdallAuthOutcome.Succeeded)
         {
             return LoginThroughApiCommandHandler.Failure<RegenerateRecoveryCodesThroughApiCommandOutput>(
-                result.Outcome, HeimdallAuthMessages.TwoFactorRejected,
+                result, HeimdallAuthMessages.TwoFactorRejected,
                 HeimdallAuthMessages.TwoFactorNotFound);
         }
 

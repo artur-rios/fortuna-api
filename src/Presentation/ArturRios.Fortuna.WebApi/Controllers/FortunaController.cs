@@ -48,8 +48,11 @@ public abstract class FortunaController : Controller
             query,
             HttpContext.RequestAborted));
 
-    /// <summary>Resolves an envelope with <paramref name="statusMap" />, or the controller's map.</summary>
-    protected ActionResult<DataOutput<T?>> Respond<T>(
+    /// <summary>
+    ///     Resolves an envelope with <paramref name="statusMap" />, or the controller's map. A
+    ///     controller whose envelopes can carry their status some other way overrides it.
+    /// </summary>
+    protected virtual ActionResult<DataOutput<T?>> Respond<T>(
         DataOutput<T?> result,
         IReadOnlyDictionary<string, int>? statusMap = null) =>
         result.ToActionResult(statusMap: statusMap ?? StatusMap);

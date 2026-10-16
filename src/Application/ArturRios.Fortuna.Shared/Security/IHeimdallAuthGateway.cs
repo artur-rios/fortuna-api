@@ -111,13 +111,46 @@ public enum HeimdallAuthOutcome
     PasswordRequired = 7,
 
     /// <summary>
-    ///     Heimdall's own rate limiter refused the request (HTTP 429). Heimdall answers 429 from no
-    ///     other place, so every route maps it.
+    ///     Heimdall refused the request for its rate (HTTP 429): its anonymous-auth limiter, or a
+    ///     per-person mail budget. Every route maps it, with Heimdall's
+    ///     <see cref="HeimdallAuthResult{T}.Message" /> and <see cref="HeimdallAuthResult{T}.RetryAfterSeconds" />.
     /// </summary>
-    RateLimited = 8
+    RateLimited = 8,
+
+    /// <summary>
+    ///     Heimdall refused the request because of the state it is in (HTTP 409), for example
+    ///     two-factor authentication that is already active. Every route maps it, with Heimdall's
+    ///     <see cref="HeimdallAuthResult{T}.Message" />.
+    /// </summary>
+    Conflict = 9
 }
 
-public sealed record HeimdallAuthResult<T>(HeimdallAuthOutcome Outcome, T? Data = default);
+/// <summary>The parts of a <see cref="HeimdallAuthResult{T}" /> that do not depend on its data.</summary>
+public interface IHeimdallAuthResult
+{
+    HeimdallAuthOutcome Outcome { get; }
+
+    string? Message { get; }
+
+    int? RetryAfterSeconds { get; }
+}
+
+public sealed record HeimdallAuthResult<T>(HeimdallAuthOutcome Outcome, T? Data = default) : IHeimdallAuthResult
+{
+    /// <summary>
+    ///     Heimdall's own message, carried only for <see cref="HeimdallAuthOutcome.RateLimited" /> and
+    ///     <see cref="HeimdallAuthOutcome.Conflict" />, whose answers are passed on as Heimdall gave them.
+    ///     <c>null</c> when Heimdall's body named none.
+    /// </summary>
+    public string? Message { get; init; }
+
+    /// <summary>
+    ///     The seconds Heimdall asked the caller to wait (its <c>Retry-After</c> delta), carried only for
+    ///     <see cref="HeimdallAuthOutcome.RateLimited" />. <c>null</c> when the header was absent, a
+    ///     date, or not a valid number of seconds.
+    /// </summary>
+    public int? RetryAfterSeconds { get; init; }
+}
 
 public sealed record HeimdallLoginResult(
     string? Token,

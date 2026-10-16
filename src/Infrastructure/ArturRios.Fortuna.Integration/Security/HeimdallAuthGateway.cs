@@ -11,6 +11,8 @@ public sealed class HeimdallAuthGateway(
     HttpClient httpClient,
     ILogger<HeimdallAuthGateway>? logger = null) : IHeimdallAuthGateway
 {
+    private static readonly JsonSerializerOptions ErrorJsonOptions = new(JsonSerializerDefaults.Web);
+
     public Task<HeimdallAuthResult<HeimdallLoginResult>> LoginAsync(
         string email, string password, Guid scopeId, CancellationToken cancellationToken) =>
         SendAsync<object, HeimdallLoginResult>(HttpMethod.Post,
@@ -135,6 +137,24 @@ public sealed class HeimdallAuthGateway(
                 path,
                 (int)response.StatusCode);
 
+            // Heimdall's 429 and 409 are answers for the caller, not failures to hide: their message is
+            // passed on, and a 429's Retry-After with it. Every other refusal keeps its upstream text out.
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                return new(HeimdallAuthOutcome.RateLimited)
+                {
+                    Message = await ErrorMessageAsync(response, cancellationToken),
+                    RetryAfterSeconds = RetryAfterSeconds(response)
+                };
+            }
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                return new(HeimdallAuthOutcome.Conflict)
+                {
+                    Message = await ErrorMessageAsync(response, cancellationToken)
+                };
+            }
+
             return response.StatusCode switch
             {
                 HttpStatusCode.BadRequest => new(HeimdallAuthOutcome.InvalidRequest),
@@ -146,8 +166,6 @@ public sealed class HeimdallAuthGateway(
                 HttpStatusCode.Forbidden => new(forbidden),
                 // Mapped per route; verify-email passes PasswordRequired, every other route Unavailable.
                 HttpStatusCode.UnprocessableEntity => new(unprocessable),
-                // Heimdall answers 429 only from its own rate limiter, on every route.
-                HttpStatusCode.TooManyRequests => new(HeimdallAuthOutcome.RateLimited),
                 _ => new(HeimdallAuthOutcome.Unavailable)
             };
         }
@@ -163,8 +181,39 @@ public sealed class HeimdallAuthGateway(
         }
     }
 
+    // The first error of Heimdall's envelope, or null when the body is not one (a proxy in front of
+    // Heimdall can answer 429 itself, in plain text). Reading it never turns the refusal into another.
+    private static async Task<string?> ErrorMessageAsync(
+        HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            var envelope = JsonSerializer.Deserialize<HeimdallErrorEnvelope>(body, ErrorJsonOptions);
+
+            return envelope?.Errors?.FirstOrDefault(error => !string.IsNullOrWhiteSpace(error))?.Trim();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or
+            NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    // Only the delta-seconds form is relayed; an HTTP date, or anything that does not parse, is dropped.
+    private static int? RetryAfterSeconds(HttpResponseMessage response) =>
+        response.Headers.RetryAfter?.Delta is { } delta && delta >= TimeSpan.Zero &&
+        delta.TotalSeconds <= int.MaxValue
+            ? (int)delta.TotalSeconds
+            : null;
+
     private sealed class HeimdallEnvelope<T>
     {
         public T? Data { get; init; }
+    }
+
+    private sealed class HeimdallErrorEnvelope
+    {
+        public IReadOnlyList<string?>? Errors { get; init; }
     }
 }
