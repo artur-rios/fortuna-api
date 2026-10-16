@@ -143,6 +143,8 @@ public sealed class AuthController : FortunaController
     [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
         StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
+        StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
         StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
         StatusCodes.Status503ServiceUnavailable)]
@@ -171,6 +173,8 @@ public sealed class AuthController : FortunaController
         StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
         StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
+        StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
         StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),

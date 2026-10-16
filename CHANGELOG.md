@@ -24,7 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A Heimdall `409 Conflict`, such as for two-factor authentication that is already active, is answered `409` with
   Heimdall's message instead of `503` "The identity service is temporarily unavailable.". When Heimdall's answer
   carries no message, the message is "The identity request conflicts with the account's current state.".
-  `POST /api/auth/2fa/challenge/resend` still answers it like a success (#213).
+  `register` and `verify-email` document it. `POST /api/auth/2fa/challenge/resend` still answers it like a
+  success (#213).
 
 ## [2.1.0] - 2026-10-13
 
