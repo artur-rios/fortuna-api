@@ -12255,6 +12255,26 @@
             },
             "description": "Forbidden"
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
           "429": {
             "content": {
               "application/json": {
@@ -12411,6 +12431,26 @@
               }
             },
             "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "422": {
             "content": {

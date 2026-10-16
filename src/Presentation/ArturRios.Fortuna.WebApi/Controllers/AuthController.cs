@@ -1,7 +1,10 @@
+using System.Globalization;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Output;
+using ArturRios.Util.WebApi.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -22,13 +25,42 @@ public sealed class AuthController : FortunaController
             [HeimdallAuthMessages.TwoFactorNotFound] = StatusCodes.Status404NotFound,
             [HeimdallAuthMessages.ServiceUnavailable] = StatusCodes.Status503ServiceUnavailable,
             [HeimdallAuthMessages.TooManyAttempts] = StatusCodes.Status429TooManyRequests,
+            [HeimdallAuthMessages.IdentityConflict] = StatusCodes.Status409Conflict,
             [HeimdallAuthMessages.RegistrationRequested] = StatusCodes.Status202Accepted,
             [HeimdallAuthMessages.RegistrationUnavailable] = StatusCodes.Status403Forbidden,
             [HeimdallAuthMessages.ConfirmationPasswordRequired] = StatusCodes.Status422UnprocessableEntity,
             [HeimdallAuthMessages.ConfirmationPasswordIncorrect] = StatusCodes.Status401Unauthorized
         });
 
+    // Heimdall's own answers, relayed with Heimdall's message: the status comes from the outcome,
+    // since the message is not one of Fortuna's.
+    private static readonly IReadOnlyDictionary<HeimdallAuthOutcome, int> RelayedStatuses =
+        new Dictionary<HeimdallAuthOutcome, int>
+        {
+            [HeimdallAuthOutcome.RateLimited] = StatusCodes.Status429TooManyRequests,
+            [HeimdallAuthOutcome.Conflict] = StatusCodes.Status409Conflict
+        };
+
     protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
+
+    protected override ActionResult<DataOutput<T?>> Respond<T>(
+        DataOutput<T?> result,
+        IReadOnlyDictionary<string, int>? statusMap = null)
+        where T : default
+    {
+        if (result is not IHeimdallRelayedRefusal relayed ||
+            !RelayedStatuses.TryGetValue(relayed.Outcome, out var status))
+        {
+            return base.Respond(result, statusMap);
+        }
+
+        if (relayed.RetryAfterSeconds is { } seconds)
+        {
+            Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
+        }
+
+        return result.ToActionResult(statusCode: status);
+    }
 
     [HttpPost("login")]
     [AllowAnonymous]
@@ -111,6 +143,8 @@ public sealed class AuthController : FortunaController
     [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
         StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
+        StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
         StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(DataOutput<RegisterThroughApiCommandOutput?>),
         StatusCodes.Status503ServiceUnavailable)]
@@ -139,6 +173,8 @@ public sealed class AuthController : FortunaController
         StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
         StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
+        StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),
         StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(DataOutput<VerifyEmailThroughApiCommandOutput?>),

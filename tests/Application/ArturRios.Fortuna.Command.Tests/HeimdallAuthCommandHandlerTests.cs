@@ -1,6 +1,7 @@
 using ArturRios.Fortuna.Command.Handlers;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
+using ArturRios.Fortuna.Command.Output;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Util.Test.Attributes;
@@ -168,6 +169,7 @@ public sealed class HeimdallAuthCommandHandlerTests
     [InlineData(HeimdallAuthOutcome.Rejected)]
     [InlineData(HeimdallAuthOutcome.NotFound)]
     [InlineData(HeimdallAuthOutcome.InvalidRequest)]
+    [InlineData(HeimdallAuthOutcome.Conflict)]
     public async Task GivenAnyChallengeOutcome_WhenResendingTheCode_ThenTheAnswerIsAlwaysTheSame(
         HeimdallAuthOutcome outcome)
     {
@@ -211,6 +213,114 @@ public sealed class HeimdallAuthCommandHandlerTests
         Assert.False(result.Success);
         Assert.Contains(HeimdallAuthMessages.TooManyAttempts, result.Errors);
         Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsWithItsMessage_WhenResendingTheCode_ThenItIsRelayedWithTheWait()
+    {
+        var gateway = new StubGateway
+        {
+            ResendResult = new(HeimdallAuthOutcome.RateLimited)
+            {
+                Message = "Too many requests.",
+                RetryAfterSeconds = 41
+            }
+        };
+        var handler = new ResendTwoFactorChallengeCodeThroughApiCommandHandler(
+            gateway).Validated(new ResendTwoFactorChallengeCodeThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new() { ChallengeToken = "challenge" });
+
+        var relayed = Assert.IsAssignableFrom<IHeimdallRelayedRefusal>(result);
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, relayed.Outcome);
+        Assert.Equal(41, relayed.RetryAfterSeconds);
+        Assert.Equal(["Too many requests."], result.Errors);
+        Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsWithItsMessage_WhenLoggingIn_ThenTheMessageAndWaitAreRelayed()
+    {
+        var gateway = new StubGateway
+        {
+            LoginResult = new(HeimdallAuthOutcome.RateLimited)
+            {
+                Message = "Too many requests.",
+                RetryAfterSeconds = 37
+            }
+        };
+        var handler = new LoginThroughApiCommandHandler(
+            gateway, new(ScopeId)).Validated(new LoginThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Email = "user@example.test",
+            Password = "secret"
+        });
+
+        var relayed = Assert.IsAssignableFrom<IHeimdallRelayedRefusal>(result);
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, relayed.Outcome);
+        Assert.Equal(37, relayed.RetryAfterSeconds);
+        Assert.Equal(["Too many requests."], result.Errors);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsWithoutAMessage_WhenLoggingIn_ThenFortunasMessageIsRelayed()
+    {
+        var gateway = new StubGateway { LoginResult = new(HeimdallAuthOutcome.RateLimited) };
+        var handler = new LoginThroughApiCommandHandler(
+            gateway, new(ScopeId)).Validated(new LoginThroughApiCommandValidator());
+
+        var result = await handler.HandleAsync(new()
+        {
+            Email = "user@example.test",
+            Password = "secret"
+        });
+
+        var relayed = Assert.IsAssignableFrom<IHeimdallRelayedRefusal>(result);
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, relayed.Outcome);
+        Assert.Null(relayed.RetryAfterSeconds);
+        Assert.Equal([HeimdallAuthMessages.TooManyAttempts], result.Errors);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallAnswersConflict_WhenSigningInWithGoogle_ThenItsMessageIsRelayedWithoutAWait()
+    {
+        var gateway = new StubGateway
+        {
+            GoogleResult = new(HeimdallAuthOutcome.Conflict)
+            {
+                Message = "An account with this email already exists.",
+                RetryAfterSeconds = 30
+            }
+        };
+        var handler = new GoogleSignInThroughApiCommandHandler(gateway, new(ScopeId));
+
+        var result = await handler.HandleAsync(new() { IdToken = "id-token" });
+
+        var relayed = Assert.IsAssignableFrom<IHeimdallRelayedRefusal>(result);
+        Assert.Equal(HeimdallAuthOutcome.Conflict, relayed.Outcome);
+        Assert.Null(relayed.RetryAfterSeconds);
+        Assert.Equal(["An account with this email already exists."], result.Errors);
+        Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallAnswersConflictWithoutAMessage_WhenRegistering_ThenFortunasMessageIsRelayed()
+    {
+        var gateway = new StubGateway { RegisterResult = new(HeimdallAuthOutcome.Conflict) };
+        var handler = new RegisterThroughApiCommandHandler(gateway, new(ScopeId));
+
+        var result = await handler.HandleAsync(new()
+        {
+            Name = "New Person",
+            Email = "new@example.test",
+            Password = "a-long-secret"
+        });
+
+        var relayed = Assert.IsAssignableFrom<IHeimdallRelayedRefusal>(result);
+        Assert.Equal(HeimdallAuthOutcome.Conflict, relayed.Outcome);
+        Assert.Equal([HeimdallAuthMessages.IdentityConflict], result.Errors);
     }
 
     [UnitFact]

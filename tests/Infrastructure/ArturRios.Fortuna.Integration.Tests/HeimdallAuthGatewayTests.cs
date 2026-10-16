@@ -52,7 +52,10 @@ public sealed class HeimdallAuthGatewayTests
     [InlineData(HttpStatusCode.Unauthorized, HeimdallAuthOutcome.Rejected)]
     [InlineData(HttpStatusCode.Forbidden, HeimdallAuthOutcome.Rejected)]
     [InlineData(HttpStatusCode.NotFound, HeimdallAuthOutcome.NotFound)]
+    [InlineData(HttpStatusCode.UnprocessableEntity, HeimdallAuthOutcome.Unavailable)]
     [InlineData(HttpStatusCode.InternalServerError, HeimdallAuthOutcome.Unavailable)]
+    [InlineData(HttpStatusCode.BadGateway, HeimdallAuthOutcome.Unavailable)]
+    [InlineData(HttpStatusCode.ServiceUnavailable, HeimdallAuthOutcome.Unavailable)]
     public async Task GivenUpstreamFailure_WhenForwarded_ThenOnlySafeOutcomeIsReturned(
         HttpStatusCode status,
         HeimdallAuthOutcome expected)
@@ -65,6 +68,151 @@ public sealed class HeimdallAuthGatewayTests
 
         Assert.Equal(expected, result.Outcome);
         Assert.Null(result.Data);
+        Assert.Null(result.Message);
+        Assert.Null(result.RetryAfterSeconds);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsWithRetryAfter_WhenForwarded_ThenItsMessageAndWaitAreCarried()
+    {
+        var handler = new RecordingHandler(_ => WithRetryAfter(
+            Json(HttpStatusCode.TooManyRequests, "{\"errors\":[\"Too many requests.\"]}"), "37"));
+
+        var result = await Gateway(handler).LoginAsync(
+            "user@example.test", "credential", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
+        Assert.Equal("Too many requests.", result.Message);
+        Assert.Equal(37, result.RetryAfterSeconds);
+        Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallRateLimitsWithoutRetryAfter_WhenForwarded_ThenOnlyItsMessageIsCarried()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.TooManyRequests,
+            "{\"errors\":[\"An email of this kind was sent to you recently. Try again in a few minutes.\"]}"));
+
+        var result = await Gateway(handler).ResendVerificationAsync("bearer-token", CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
+        Assert.Equal(
+            "An email of this kind was sent to you recently. Try again in a few minutes.",
+            result.Message);
+        Assert.Null(result.RetryAfterSeconds);
+    }
+
+    [UnitTheory]
+    [InlineData("0", 0)]
+    [InlineData("86400", 86400)]
+    [InlineData("soon", null)]
+    [InlineData("-5", null)]
+    [InlineData("1.5", null)]
+    [InlineData("Wed, 21 Oct 2026 07:28:00 GMT", null)]
+    [InlineData("99999999999", null)]
+    public async Task GivenARetryAfterValue_WhenHeimdallRateLimits_ThenOnlyValidDeltaSecondsAreCarried(
+        string value, int? expected)
+    {
+        var handler = new RecordingHandler(_ => WithRetryAfter(
+            Json(HttpStatusCode.TooManyRequests, "{\"errors\":[\"Too many requests.\"]}"), value));
+
+        var result = await Gateway(handler).RegisterAsync(
+            "New Person", "new@example.test", "a-long-secret", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
+        Assert.Equal(expected, result.RetryAfterSeconds);
+    }
+
+    [UnitTheory]
+    [InlineData("Too Many Requests", "text/plain")]
+    [InlineData("{}", "application/json")]
+    [InlineData("{\"errors\":[]}", "application/json")]
+    [InlineData("{\"errors\":[\"  \"]}", "application/json")]
+    [InlineData("{\"errors\":", "application/json")]
+    public async Task GivenARateLimitWithoutHeimdallsMessage_WhenForwarded_ThenItIsStillRateLimitedWithNoMessage(
+        string body, string mediaType)
+    {
+        var handler = new RecordingHandler(_ => WithRetryAfter(new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+        {
+            Content = new StringContent(body, Encoding.UTF8, mediaType)
+        }, "12"));
+
+        var result = await Gateway(handler).LoginAsync(
+            "user@example.test", "credential", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.RateLimited, result.Outcome);
+        Assert.Null(result.Message);
+        Assert.Equal(12, result.RetryAfterSeconds);
+    }
+
+    [UnitTheory]
+    [InlineData(HttpStatusCode.TooManyRequests, HeimdallAuthOutcome.RateLimited, 12)]
+    [InlineData(HttpStatusCode.Conflict, HeimdallAuthOutcome.Conflict, null)]
+    public async Task GivenARefusalWithAnUnknownCharset_WhenForwarded_ThenItIsRelayedWithNoMessage(
+        HttpStatusCode status, HeimdallAuthOutcome expected, int? retryAfterSeconds)
+    {
+        // A proxy in front of Heimdall can name a charset .NET does not know; reading the body then
+        // throws, and the refusal must still reach the caller as if it had no body.
+        var content = new ByteArrayContent("<p>Slow down</p>"u8.ToArray());
+        content.Headers.TryAddWithoutValidation("Content-Type", "text/html; charset=x-bogus");
+        var handler = new RecordingHandler(_ => WithRetryAfter(new HttpResponseMessage(status)
+        {
+            Content = content
+        }, "12"));
+
+        var result = await Gateway(handler).LoginAsync(
+            "user@example.test", "credential", ScopeId, CancellationToken.None);
+
+        Assert.Equal(expected, result.Outcome);
+        Assert.Null(result.Message);
+        Assert.Equal(retryAfterSeconds, result.RetryAfterSeconds);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallAnswersConflict_WhenForwarded_ThenConflictWithItsMessageIsReturned()
+    {
+        var handler = new RecordingHandler(_ => WithRetryAfter(Json(HttpStatusCode.Conflict,
+            "{\"data\":null,\"messages\":[],\"errors\":[\"Two-factor authentication is already active.\"]}"),
+            "30"));
+
+        var result = await Gateway(handler).EnableTwoFactorAsync(
+            ["App"], "bearer-token", CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.Conflict, result.Outcome);
+        Assert.Equal("Two-factor authentication is already active.", result.Message);
+        Assert.Null(result.RetryAfterSeconds);
+        Assert.Null(result.Data);
+    }
+
+    [UnitFact]
+    public async Task GivenHeimdallAnswersConflictWithoutAMessage_WhenForwarded_ThenConflictIsReturned()
+    {
+        var handler = new RecordingHandler(_ => Json(HttpStatusCode.Conflict, "{}"));
+
+        var result = await Gateway(handler).GoogleSignInAsync("id-token", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.Conflict, result.Outcome);
+        Assert.Null(result.Message);
+    }
+
+    [UnitFact]
+    public async Task GivenARelayedRefusal_WhenLogged_ThenHeimdallsMessageIsNotWritten()
+    {
+        var logger = new ListLogger();
+        var gateway = new HeimdallAuthGateway(
+            new HttpClient(new RecordingHandler(_ => Json(HttpStatusCode.TooManyRequests,
+                "{\"errors\":[\"relayed-upstream-message\"]}")))
+            {
+                BaseAddress = new Uri("https://heimdall.example.test/")
+            },
+            logger);
+
+        await gateway.LoginAsync("user@example.test", "credential", ScopeId, CancellationToken.None);
+        var log = string.Join(' ', logger.Messages);
+
+        Assert.DoesNotContain("relayed-upstream-message", log, StringComparison.Ordinal);
+        Assert.DoesNotContain("credential", log, StringComparison.Ordinal);
+        Assert.Contains("429", log, StringComparison.Ordinal);
     }
 
     [UnitFact]
@@ -372,6 +520,13 @@ public sealed class HeimdallAuthGatewayTests
     {
         Content = new StringContent(body, Encoding.UTF8, "application/json")
     };
+
+    private static HttpResponseMessage WithRetryAfter(HttpResponseMessage response, string value)
+    {
+        response.Headers.TryAddWithoutValidation("Retry-After", value);
+
+        return response;
+    }
 
     private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> response)
         : HttpMessageHandler

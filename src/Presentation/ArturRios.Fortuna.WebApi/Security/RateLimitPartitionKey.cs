@@ -5,8 +5,8 @@ namespace ArturRios.Fortuna.WebApi.Security;
 
 /// <summary>
 /// The partition a client's requests are counted in by Fortuna's own anonymous-auth rate limiter:
-/// the whole address for IPv4 and the <c>/64</c> it belongs to for IPv6. It is the same rule Heimdall
-/// applies, so the two limiters agree on who one caller is.
+/// the whole address for IPv4 and the <c>/64</c> it belongs to for IPv6. Heimdall's own limiter
+/// groups IPv6 by the wider <c>/56</c>, so it can count as one caller what Fortuna counts as several.
 /// </summary>
 /// <remarks>
 /// A /64 is what one IPv6 subscriber is routinely handed and every address inside it is theirs to

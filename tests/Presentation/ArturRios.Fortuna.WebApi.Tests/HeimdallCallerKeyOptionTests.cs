@@ -53,7 +53,8 @@ public sealed class HeimdallCallerKeyOptionTests
     [InlineData("distinct-0123456789 abcdefghijklmnopqrstuv")]
     [InlineData("distinct-0123456789-abcdefghij-\u00e7\u00e3o-nopqrstuv")]
     [InlineData("distinct-0123456789abcdefghijklmnopqrstuv\t")]
-    public void GivenACallerKeyWithCharactersOutsideVisibleAscii_WhenConfigurationLoads_ThenStartupFailsWithoutTheKey(
+    [InlineData("distinct-0123456789abcdef,ghijklmnopqrstuv")]
+    public void GivenACallerKeyWithACharacterHeimdallCannotMatch_WhenConfigurationLoads_ThenStartupFailsWithoutTheKey(
         string key)
     {
         Assert.True(key.Length >= 32);
@@ -67,9 +68,11 @@ public sealed class HeimdallCallerKeyOptionTests
     }
 
     [UnitFact]
-    public void GivenACallerKeyOfEveryVisibleAsciiCharacter_WhenConfigurationLoads_ThenItIsKept()
+    public void GivenACallerKeyOfEveryVisibleAsciiCharacterButAComma_WhenConfigurationLoads_ThenItIsKept()
     {
-        var key = string.Concat(Enumerable.Range(0x21, 0x7E - 0x21 + 1).Select(code => (char)code));
+        var key = string.Concat(Enumerable.Range(0x21, 0x7E - 0x21 + 1)
+            .Select(code => (char)code)
+            .Where(character => character != ','));
 
         var options = FortunaOptions.From(Settings(key).GetValueOrDefault);
 
