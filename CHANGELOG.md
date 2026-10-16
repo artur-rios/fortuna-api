@@ -7,6 +7,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- A Heimdall `429` is answered `429` with Heimdall's message and, when Heimdall gives it in seconds, its
+  `Retry-After` header, instead of always "Too many attempts. Wait a minute and try again." with no `Retry-After`.
+  This covers Heimdall's per-person mail budgets on `resend-verification` and the email method of `2fa/enable`.
+  "Too many attempts. Wait a minute and try again." remains the message when Heimdall's answer carries none (#213).
+- `FORTUNA_HEIMDALL_CALLER_KEY` may not contain a comma, since Heimdall splits `HEIMDALL_TRUSTED_CALLER_KEYS` on
+  commas and could never match such a key. Startup rejects it, naming the variable and not its value (#213).
+- Microsoft packages upgraded to 10.0.13, which brings patched `System.Security.Cryptography.Pkcs` and
+  `System.Security.Cryptography.Xml` (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-r955-8q5j-3h83,
+  GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj).
+
+### Fixed
+
+- A Heimdall `409 Conflict`, such as for two-factor authentication that is already active, is answered `409` with
+  Heimdall's message instead of `503` "The identity service is temporarily unavailable.". When Heimdall's answer
+  carries no message, the message is "The identity request conflicts with the account's current state.".
+  `POST /api/auth/2fa/challenge/resend` still answers it like a success (#213).
+
 ## [2.1.0] - 2026-10-13
 
 ### Added
