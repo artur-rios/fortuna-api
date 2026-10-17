@@ -157,7 +157,7 @@ fortuna-api/
 | IR-17 | Continuous integration shall, on every pull request into and every commit to `develop` and `main`, restore, scan for vulnerable dependencies, build, run the unit suite, run the functional suite, enforce the coverage floor, and build the container image |
 | IR-18 | A single `docker-compose.yml` shall bring the instance up on Docker Desktop for Windows and on a Linux VPS — in every environment of [section 6](#6-environments) — differing only in the environment file supplied |
 | IR-19 | The container shall declare a health check against the liveness endpoint |
-| IR-20 | The instance shall run without a Heimdall connection on the request path, and a desktop installation shall run with no network at all |
+| IR-20 | The instance shall make no Heimdall call on the request path except fetching Heimdall's published key set, cached and refetched at most once a minute when a token names a key it does not know, so a token whose key is known is verified without Heimdall; a desktop installation shall run with no network at all |
 | IR-21 | The in-process desktop core shall publish `fortuna_core.dll` for Windows x64 and `libfortuna_core.so` for Linux x64 together with its generated C header |
 | IR-22 | Native initialization shall take an explicit database path and configuration, create and migrate the native SQLite schema on demand, and native shutdown shall invalidate all process-local sessions |
 | IR-23 | A native operation called before initialization shall return the distinct HTTP-compatible status `503` and a JSON failure envelope rather than crash |
@@ -179,7 +179,9 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Runtime | `ASPNETCORE_ENVIRONMENT` | `Development` in the local and development environments; `Production` in homologation and production. Governs Swagger, the developer exception page and EF diagnostics. |
 | Database | `FORTUNA_DATA_CONNECTIONSTRING`, `FORTUNA_DATA_DATABASETYPE` | `PostgreSql` plus a server connection string for shared deployments; `SQLite` plus either `Data Source=/path/fortuna.db` or the file path alone for desktop offline mode. PostgreSQL credentials are **secret**. |
 | Migrations | `FORTUNA_RUN_MIGRATIONS` | Whether the entrypoint applies pending migrations before starting. `false` when they are applied out of band. |
-| Token validation | `FORTUNA_AUTH_TOKEN_SECRET`, `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS`, `FORTUNA_AUTH_TOKEN_ISSUER`, `FORTUNA_AUTH_TOKEN_AUDIENCE` | The signing configuration Heimdall issues with and Fortuna validates against. The `PREVIOUS` key is set during a rotation so tokens signed with the retired key keep working. **Secret.** |
+| Token validation | `FORTUNA_HEIMDALL_JWKS_URL`, `FORTUNA_AUTH_TOKEN_ISSUER`, `FORTUNA_AUTH_TOKEN_AUDIENCE` | Heimdall's tokens are ES256, verified with the public keys Heimdall publishes at the required `FORTUNA_HEIMDALL_JWKS_URL` (HTTP or HTTPS; inside yggdrasil `http://heimdall-api.<environment>:8080/.well-known/jwks.json`, over the internal network). The key set is fetched when a token under Heimdall's issuer names a key Fortuna does not know, at most once a minute; that request waits for the fetch (at most five seconds), and a failed fetch keeps the keys already known. Each key verifies its own algorithm only. |
+| Legacy shared secret | `FORTUNA_AUTH_TOKEN_SECRET`, `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS` | Optional. While set (at least 32 characters each), Heimdall's HS256 tokens from before its move to ES256, and the local tokens Fortuna issued under Heimdall's issuer, are still accepted. Removing both ends the overlap; `_PREVIOUS` without the secret stops startup. **Secret.** |
+| Local tokens | `FORTUNA_LOCAL_TOKEN_SECRET`, `FORTUNA_LOCAL_TOKEN_ISSUER` | Fortuna's own HS256 key (required, at least 32 characters, never shared, different from both legacy secrets) and issuer (default `fortuna-local`, different from `FORTUNA_AUTH_TOKEN_ISSUER`) for local-account tokens. A token is a local-account token when it names this issuer. **Secret.** |
 | Token lifetime | `FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS` | Bounds the window in which a token revoked at Heimdall is still accepted here (NFR-14). |
 | Heimdall exchange | `FORTUNA_HEIMDALL_BASE_URL`, `FORTUNA_HEIMDALL_SCOPE_ID` | Required base URL and non-empty public scope identifier used only by the explicit `api/auth` credential exchanges. |
 | Heimdall caller key | `FORTUNA_HEIMDALL_CALLER_KEY` | Optional. One of Heimdall's `HEIMDALL_TRUSTED_CALLER_KEYS`, at least 32 visible ASCII characters with no spaces or commas (Heimdall splits its list on commas); startup rejects anything else. When set, each `api/auth` request names the end user's address so Heimdall rate-limits per user rather than per instance ([4.1](#41-client-ip-addresses)). Unset, no address is sent. **Secret.** |
@@ -462,8 +464,9 @@ network, and also serves the API under its web UI's host at `/api/` (`fortuna-de
 `fortuna-hml.example.com/api/`, `fortuna.example.com/api/`), so the browser client reaches it on its
 own origin. No host port is published there, and the Docker networks (`172.16.0.0/12`) are the
 trusted proxies ([4.1](#41-client-ip-addresses)). `FORTUNA_HEIMDALL_BASE_URL` must be HTTPS, so each
-environment reaches its Heimdall through that Heimdall's public host, and `FORTUNA_AUTH_TOKEN_SECRET`
-equals that environment's Heimdall signing secret.
+environment reaches its Heimdall through that Heimdall's public host, while
+`FORTUNA_HEIMDALL_JWKS_URL` reads that Heimdall's public signing keys over the `edge` network
+(`http://heimdall-api.<environment>:8080/.well-known/jwks.json`).
 
 PostgreSQL is **not** a service in the compose file. Each machine already runs an instance shared
 between services and environments, each service and environment owning its own database — which is

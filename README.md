@@ -107,9 +107,10 @@ from a copy of the matching template at `/etc/yggdrasil/<environment>/fortuna-ap
 Traefik serves the API on its own host and under the web UI's host at `/api/`, so the browser
 reaches it on the UI's own origin. Homologation runs as `Production` because the API treats every
 other ASP.NET environment as a debugging one (Swagger UI, detailed errors). Each of them has its
-own secrets, its own Heimdall (`FORTUNA_HEIMDALL_BASE_URL`, which must be HTTPS) and a
-`FORTUNA_AUTH_TOKEN_SECRET` equal to that Heimdall's signing secret. The release process, and how to
-turn development or homologation on, are in [CONTRIBUTING.md](./CONTRIBUTING.md#releasing).
+own secrets, its own Heimdall (`FORTUNA_HEIMDALL_BASE_URL`, which must be HTTPS) whose public signing
+keys it reads from `FORTUNA_HEIMDALL_JWKS_URL`, and its own `FORTUNA_LOCAL_TOKEN_SECRET` for
+local-account tokens. The release process, and how to turn development or homologation on, are in
+[CONTRIBUTING.md](./CONTRIBUTING.md#releasing).
 
 The API's liveness is observable at the public `GET /healthcheck` endpoint. Instance administrators
 can inspect dependency health at `GET /healthcheck/detailed`.

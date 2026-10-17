@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Breaking (configuration):** Heimdall's ES256 tokens are verified with the public keys Heimdall publishes. The
+  new, required `FORTUNA_HEIMDALL_JWKS_URL` names its key set; inside yggdrasil that is
+  `http://heimdall-api.<environment>:8080/.well-known/jwks.json`. The set is fetched when a token names a key
+  Fortuna does not know, at most once a minute, and a failed fetch keeps the keys already known.
+- **Breaking (configuration):** `FORTUNA_LOCAL_TOKEN_SECRET` (required) and `FORTUNA_LOCAL_TOKEN_ISSUER` (default
+  `fortuna-local`). The secret must be at least 32 characters and differ from `FORTUNA_AUTH_TOKEN_SECRET` and
+  `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS`, and the issuer must differ from `FORTUNA_AUTH_TOKEN_ISSUER`. Local-account
+  tokens are signed with Fortuna's own key under Fortuna's own issuer, so Heimdall never accepts them and no other
+  service can mint them.
+
 ### Changed
 
 - A Heimdall `429` is answered `429` with Heimdall's message and, when Heimdall gives it in seconds, its
@@ -18,6 +30,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Microsoft packages upgraded to 10.0.13, which brings patched `System.Security.Cryptography.Pkcs` and
   `System.Security.Cryptography.Xml` (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-r955-8q5j-3h83,
   GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj).
+- `FORTUNA_AUTH_TOKEN_SECRET` is optional. While it is set (with `_PREVIOUS`), Heimdall's HS256 tokens and the local
+  tokens Fortuna issued under Heimdall's issuer are still accepted, and each secret must still be at least 32
+  characters. Remove both once Heimdall no longer issues HS256 tokens and a token lifetime has passed. `_PREVIOUS`
+  without the secret stops startup.
+- A token is a local-account token when it names the local issuer. The `fortuna_local` claim counts only on an
+  HS256 token under Heimdall's issuer, verified with the legacy shared secret while it is configured; it is removed
+  from every other token, so an ES256 token from Heimdall is never local by claim.
 
 ### Fixed
 
@@ -26,6 +45,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   carries no message, the message is "The identity request conflicts with the account's current state.".
   `register` and `verify-email` document it. `POST /api/auth/2fa/challenge/resend` still answers it like a
   success (#213).
+
+### Security
+
+- Each key verifies its own algorithm only (an EC key ES256, a secret HS256), and the token's issuer chooses the
+  keys, so a token's `alg` header never selects the kind of key. Fortuna previously accepted any HMAC algorithm.
+  `ArturRios.Jwt` 1.4.0 is referenced directly, replacing the 1.2.0 that `ArturRios.Util.WebApi` brought in.
+
+**Operators:** set `FORTUNA_HEIMDALL_JWKS_URL` and `FORTUNA_LOCAL_TOKEN_SECRET` before deploying; startup refuses
+to run without them. While `FORTUNA_AUTH_TOKEN_SECRET` is set, local-account users stay signed in with their
+current token until it expires; their next sign-in issues a token under the local issuer.
 
 ## [2.1.0] - 2026-10-13
 

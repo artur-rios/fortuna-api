@@ -102,7 +102,9 @@ graph LR
 
 The dashed edges are the ones worth reading twice: clients exchange credentials with Heimdall
 through Fortuna, which adds its configured scope identifier. Once a token is issued, every domain
-request validates it locally; token verification never calls Heimdall.
+request validates it locally, with the public keys Heimdall publishes. Fortuna caches them, so
+verification calls Heimdall only to fetch its key set when a token names a key Fortuna does not
+know, at most once a minute.
 
 ---
 
@@ -113,7 +115,7 @@ request validates it locally; token verification never calls Heimdall.
 | ID | Requirement |
 | --- | --- |
 | FR-ID-01 | The system shall validate an incoming bearer token's signature, issuer, audience and expiration before any claim it carries is trusted |
-| FR-ID-02 | The system shall validate tokens locally, without calling the issuing identity provider on the request path |
+| FR-ID-02 | The system shall validate tokens locally; the only call to the issuing identity provider on the request path shall be the fetch of its published key set, cached and made at most once a minute when a token names a key the system does not know, and a failed fetch shall keep the keys already known |
 | FR-ID-03 | The system shall reject a request bearing a missing, malformed, expired or unverifiable token with `401 Unauthorized` |
 | FR-ID-04 | The system shall resolve the acting user from the token's subject claim on every authenticated request |
 | FR-ID-05 | The system shall create a local user profile, keyed by the token's subject, on that subject's first authenticated request, without administrator involvement |
