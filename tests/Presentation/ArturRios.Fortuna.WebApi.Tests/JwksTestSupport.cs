@@ -96,9 +96,23 @@ internal static class JwksTestSupport
 /// <summary>Stands in for Heimdall's key-set endpoint, counting the requests it is sent.</summary>
 internal sealed class StubJwksHandler : HttpMessageHandler
 {
+    private readonly Lock _gate = new();
+    private readonly List<IReadOnlyList<string>> _requestHeaders = [];
     private int _requests;
 
     public int Requests => Volatile.Read(ref _requests);
+
+    /// <summary>The names of the headers each request carried, in the order the requests arrived.</summary>
+    public IReadOnlyList<IReadOnlyList<string>> RequestHeaders
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _requestHeaders];
+            }
+        }
+    }
 
     public Func<CancellationToken, Task<HttpResponseMessage>> Respond { get; set; } =
         _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
@@ -111,6 +125,11 @@ internal sealed class StubJwksHandler : HttpMessageHandler
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Interlocked.Increment(ref _requests);
+
+        lock (_gate)
+        {
+            _requestHeaders.Add([.. request.Headers.Select(header => header.Key)]);
+        }
 
         return Respond(cancellationToken);
     }

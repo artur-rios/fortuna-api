@@ -70,15 +70,22 @@ public sealed record LocalIdentityRule(string LocalIssuer, bool AcceptsLegacyLoc
     }
 
     /// <summary>
-    /// Removes every <c>fortuna_local</c> claim from every identity of <paramref name="principal" />.
-    /// <see cref="ClaimsIdentity.RemoveClaim" /> throws when it cannot remove a claim, which fails the
-    /// authentication rather than letting the claim through.
+    /// Removes every <c>fortuna_local</c> claim, in any letter case, from every identity of
+    /// <paramref name="principal" />. The case is ignored here rather than left to
+    /// <see cref="ClaimsIdentity.FindAll(string)" />, because the identity a JSON web token yields compares claim
+    /// types ordinally. <see cref="ClaimsIdentity.RemoveClaim" /> throws when it cannot remove a claim, which
+    /// fails the authentication rather than letting the claim through.
     /// </summary>
     public static void RemoveLegacyLocalClaims(ClaimsPrincipal principal)
     {
         foreach (var identity in principal.Identities)
         {
-            foreach (var claim in identity.FindAll(FortunaIdentityMapper.LocalIdentityClaim).ToList())
+            var legacyClaims = identity.Claims
+                .Where(claim => string.Equals(
+                    claim.Type, FortunaIdentityMapper.LocalIdentityClaim, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var claim in legacyClaims)
             {
                 identity.RemoveClaim(claim);
             }

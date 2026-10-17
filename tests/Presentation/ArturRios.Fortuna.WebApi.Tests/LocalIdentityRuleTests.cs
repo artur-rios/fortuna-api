@@ -191,4 +191,43 @@ public sealed class LocalIdentityRuleTests
         LocalIdentityRule.RemoveLegacyLocalClaims(principal);
         Assert.DoesNotContain(principal.Claims, claim => claim.Type == FortunaIdentityMapper.LocalIdentityClaim);
     }
+
+    /// <summary>
+    /// The identity a validated JSON web token yields compares claim types ordinally, so a claim spelled in
+    /// another case is not found by an exact lookup. The step removes every spelling of the claim.
+    /// </summary>
+    [UnitFact]
+    public async Task GivenAnEs256TokenWithTheLocalClaimInSeveralCases_WhenTheStepRuns_ThenNoSpellingRemains()
+    {
+        var options = JwksTestSupport.Options();
+        var keys = await JwksTestSupport.SigningKeysAsync(options, HeimdallKey);
+        var claims = IdentityClaims(localClaim: true);
+        claims["FORTUNA_LOCAL"] = bool.TrueString;
+        claims["Fortuna_Local"] = bool.TrueString;
+        var token = new JwtHandler().CreateToken(new JwtConfiguration(
+            3600, JwksTestSupport.Issuer, JwksTestSupport.Audience, string.Empty, claims)
+        {
+            Algorithm = JwtAlgorithms.ES256,
+            Keys = [HeimdallKey],
+            SigningKeyId = HeimdallKey.Id
+        });
+        var result = await new JsonWebTokenHandler().ValidateTokenAsync(token, JwksTestSupport.ValidationParameters(keys));
+        var context = new TokenValidatedContext(
+            new DefaultHttpContext(),
+            new AuthenticationScheme(JwtBearerDefaults.AuthenticationScheme, null, typeof(JwtBearerHandler)),
+            new JwtBearerOptions())
+        {
+            Principal = new ClaimsPrincipal(result.ClaimsIdentity),
+            SecurityToken = result.SecurityToken
+        };
+
+        Assert.True(result.IsValid);
+        Assert.Equal(3, context.Principal.Claims.Count(claim =>
+            string.Equals(claim.Type, FortunaIdentityMapper.LocalIdentityClaim, StringComparison.OrdinalIgnoreCase)));
+
+        await LocalIdentityRule.OnTokenValidatedAsync(context, options);
+
+        Assert.DoesNotContain(context.Principal!.Claims, claim =>
+            string.Equals(claim.Type, FortunaIdentityMapper.LocalIdentityClaim, StringComparison.OrdinalIgnoreCase));
+    }
 }

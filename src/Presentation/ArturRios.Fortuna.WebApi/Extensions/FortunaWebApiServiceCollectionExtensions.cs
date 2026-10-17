@@ -1,4 +1,3 @@
-using System.Text;
 using System.Threading.RateLimiting;
 using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Shared.Reporting;
@@ -20,6 +19,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Serilog;
 
 namespace ArturRios.Fortuna.WebApi.Extensions;
 
@@ -56,24 +56,7 @@ public static class FortunaWebApiServiceCollectionExtensions
             trace.LogClientIp = true;
             trace.TagClientAddress = true;
         });
-        var jwtConfiguration = BuildJwtConfiguration(options);
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(authentication =>
-            {
-                authentication.MapInboundClaims = false;
-                authentication.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKeys = jwtConfiguration.Keys.Select(key =>
-                        new SymmetricSecurityKey(Encoding.ASCII.GetBytes(key.Secret))),
-                    ValidateIssuer = true,
-                    ValidIssuer = options.AuthTokenIssuer,
-                    ValidateAudience = true,
-                    ValidAudience = options.AuthTokenAudience,
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero
-                };
-            });
+        AddBearerScheme(services, options);
         services.AddAuthorization(authorization =>
             authorization.FallbackPolicy = new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
@@ -91,7 +74,6 @@ public static class FortunaWebApiServiceCollectionExtensions
                         QueueLimit = 0
                     }));
         });
-        services.AddSingleton(jwtConfiguration);
         services.AddSingleton<JwtHandler>();
         services.AddSingleton(LocalIdentityRule.From(options));
         services.AddSingleton<FortunaIdentityMapper>();
@@ -132,24 +114,56 @@ public static class FortunaWebApiServiceCollectionExtensions
         return services;
     }
 
-    private static JwtConfiguration BuildJwtConfiguration(FortunaOptions options)
+    /// <summary>
+    ///     The bearer scheme. A token's issuer picks the keys that may verify it and each key verifies its
+    ///     own algorithm only (<see cref="FortunaSigningKeys" />), so a token's <c>alg</c> header never
+    ///     decides what kind of key checks it. Heimdall's ES256 keys come from its published key set
+    ///     (<see cref="HeimdallJwks" />), fetched before validation when a token names one Fortuna does not
+    ///     know (<see cref="HeimdallKeyRefresh" />); after validation the legacy <c>fortuna_local</c> claim
+    ///     is removed from every token but a legacy one (<see cref="LocalIdentityRule" />).
+    /// </summary>
+    /// <remarks>
+    ///     No static signing key, authority or configuration manager is set: IdentityModel falls back to
+    ///     static keys when the resolver returns none, and the resolver must be the only source of keys.
+    ///     The key set's named client has no message handler of its own, so its fetch carries no caller
+    ///     headers and no user's token.
+    /// </remarks>
+    private static void AddBearerScheme(IServiceCollection services, FortunaOptions options)
     {
-        List<JwtKey> keys = [new("current", options.AuthTokenSecret ?? string.Empty)];
-
-        if (!string.IsNullOrWhiteSpace(options.AuthPreviousTokenSecret) &&
-            options.AuthPreviousTokenSecret != options.AuthTokenSecret)
-        {
-            keys.Add(new JwtKey("previous", options.AuthPreviousTokenSecret));
-        }
-
-        return new JwtConfiguration(
-            options.AuthTokenExpirationInSeconds,
-            options.AuthTokenIssuer,
-            options.AuthTokenAudience,
-            options.AuthTokenSecret ?? string.Empty,
-            [])
-        {
-            Keys = keys
-        };
+        services.AddHttpClient(HeimdallJwks.HttpClientName);
+        services.AddSingleton<HeimdallJwks>();
+        services.AddSingleton<FortunaSigningKeys>();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<FortunaSigningKeys, HeimdallJwks>((authentication, signingKeys, jwks) =>
+            {
+                authentication.MapInboundClaims = false;
+                authentication.TokenValidationParameters = new TokenValidationParameters
+                {
+                    RequireSignedTokens = true,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKeyResolver = (_, securityToken, keyId, _) =>
+                        signingKeys.Resolve(securityToken, keyId),
+                    AlgorithmValidator = (algorithm, key, _, _) => FortunaSigningKeys.IsAllowed(algorithm, key),
+                    ValidateIssuer = true,
+                    ValidIssuers = [options.AuthTokenIssuer, options.LocalTokenIssuer],
+                    ValidateAudience = true,
+                    ValidAudience = options.AuthTokenAudience,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+                authentication.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                        HeimdallKeyRefresh.BeforeValidationAsync(context, options.AuthTokenIssuer, jwks),
+                    OnTokenValidated = context => LocalIdentityRule.OnTokenValidatedAsync(context, options)
+                };
+            });
+        // The address and the issuers are not secrets; logging them makes a misconfigured consumer diagnosable.
+        Log.Information(
+            "Bearer tokens: Heimdall's ES256 keys from {JwksUrl}; Heimdall's HS256 tokens {LegacyState}; local tokens under issuer {LocalIssuer}",
+            options.HeimdallJwksUri,
+            options.AcceptsLegacyTokens ? "accepted until FORTUNA_AUTH_TOKEN_SECRET is removed" : "refused",
+            options.LocalTokenIssuer);
     }
 }

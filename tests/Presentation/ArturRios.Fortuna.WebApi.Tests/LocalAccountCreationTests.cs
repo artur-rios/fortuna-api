@@ -10,6 +10,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Users;
+using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Util.Hashing;
 using ArturRios.Util.Test.Attributes;
@@ -156,7 +157,7 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
         Assert.NotEmpty(authenticated.Data.Token);
         Assert.True(authenticated.Data.ExpiresAt > DateTimeOffset.UtcNow);
         var token = new JwtSecurityTokenHandler().ReadJwtToken(authenticated.Data.Token);
-        Assert.Equal("heimdall-tests", token.Issuer);
+        Assert.Equal(FortunaOptions.DefaultLocalTokenIssuer, token.Issuer);
         Assert.Contains("fortuna-tests", token.Audiences);
         Assert.Equal(
             created!.Data!.UserId.ToString(),

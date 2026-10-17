@@ -19,9 +19,9 @@ public sealed class LocalAuthTokenIssuer(
         };
         var token = jwtHandler.CreateToken(new JwtConfiguration(
             options.AuthTokenExpirationInSeconds,
-            options.AuthTokenIssuer,
+            options.LocalTokenIssuer,
             options.AuthTokenAudience,
-            options.AuthTokenSecret ?? string.Empty,
+            options.LocalTokenSecret,
             mapper.ToClaims(identity)));
 
         return new LocalAuthToken(
