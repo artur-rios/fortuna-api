@@ -30,10 +30,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Microsoft packages upgraded to 10.0.13, which brings patched `System.Security.Cryptography.Pkcs` and
   `System.Security.Cryptography.Xml` (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-r955-8q5j-3h83,
   GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj).
-- `FORTUNA_AUTH_TOKEN_SECRET` is optional. While it is set (with `_PREVIOUS`), Heimdall's HS256 tokens and the local
-  tokens Fortuna issued under Heimdall's issuer are still accepted, and each secret must still be at least 32
-  characters. Remove both once Heimdall no longer issues HS256 tokens and a token lifetime has passed. `_PREVIOUS`
-  without the secret stops startup.
+- `FORTUNA_AUTH_TOKEN_SECRET` is optional. While it is set (and optionally `_PREVIOUS`), Heimdall's HS256 tokens
+  and the local tokens Fortuna issued under Heimdall's issuer are still accepted, and each secret must still be at
+  least 32 characters. Remove both once Heimdall no longer issues HS256 tokens and a token lifetime has passed.
+  `_PREVIOUS` without the secret stops startup.
 - A token is a local-account token when it names the local issuer. The `fortuna_local` claim counts only on an
   HS256 token under Heimdall's issuer, verified with the legacy shared secret while it is configured; it is removed
   from every other token, so an ES256 token from Heimdall is never local by claim.
@@ -53,8 +53,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `ArturRios.Jwt` 1.4.0 is referenced directly, replacing the 1.2.0 that `ArturRios.Util.WebApi` brought in.
 
 **Operators:** set `FORTUNA_HEIMDALL_JWKS_URL` and `FORTUNA_LOCAL_TOKEN_SECRET` before deploying; startup refuses
-to run without them. While `FORTUNA_AUTH_TOKEN_SECRET` is set, local-account users stay signed in with their
-current token until it expires; their next sign-in issues a token under the local issuer.
+to run without them. Leave `FORTUNA_AUTH_TOKEN_SECRET` and `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS` as they are when
+deploying: Heimdall issues HS256 tokens until its own move to ES256. While the secret is set, local-account users
+stay signed in with their current token until it expires; their next sign-in issues a token under the local
+issuer. Remove both only once Heimdall no longer issues HS256 tokens and a token lifetime has passed. From then on,
+Heimdall's HS256 tokens and the local-account tokens issued under Heimdall's issuer are answered `401`, and their
+holders sign in again.
 
 ## [2.1.0] - 2026-10-13
 

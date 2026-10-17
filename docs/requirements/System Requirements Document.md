@@ -960,7 +960,7 @@ receiving deployment detail that it cannot act on.
 | NFR-11 | Security | An operation targeting a record owned by another user shall be indistinguishable, in status code, body and timing class, from the same operation against a record that does not exist |
 | NFR-12 | Security | Internal `bigint` keys shall never appear in an API path, an API response, an export or a job payload; only `PublicId` values shall be exposed |
 | NFR-13 | Security | A recovery code shall be stored only as a hash, and an external access token only encrypted at rest; neither shall be returned to a caller after the response that first produces it |
-| NFR-14 | Security | Because tokens are validated locally without an issuer round trip (FR-ID-02), a token revoked at Heimdall remains acceptable to Fortuna until it expires. Token lifetime shall therefore be configurable, and shall default to a value short enough to bound that window |
+| NFR-14 | Security | Because tokens are validated locally without asking the issuer about the token (FR-ID-02), a token revoked at Heimdall remains acceptable to Fortuna until it expires. Token lifetime shall therefore be configurable, and shall default to a value short enough to bound that window |
 | NFR-15 | Security | Logs shall contain no monetary amount, no account or card identifier, no attachment content and no token |
 | NFR-16 | Validation | Every input shall be validated before any processing, and a rejection shall name the failing field |
 | NFR-17 | Auditability | Every attempted write shall produce exactly one audit entry, successful or refused, and audit entries shall be append-only |
