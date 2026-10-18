@@ -128,7 +128,8 @@ public static class FortunaWebApiServiceCollectionExtensions
     ///     The scheme binds <c>Authentication:Schemes:Bearer</c> from configuration, which the environment
     ///     can set, so the authority and metadata address are cleared after that binding: either one would
     ///     make IdentityModel fetch a second key set and try its keys whenever the resolver finds none. That
-    ///     fallback to every key is turned off as well.
+    ///     fallback to every key is turned off as well. The forward settings are cleared too: one would hand
+    ///     authentication to another scheme.
     ///     The key set's named client has no message handler of its own, so its fetch carries no caller
     ///     headers and no user's token.
     /// </remarks>
@@ -146,6 +147,13 @@ public static class FortunaWebApiServiceCollectionExtensions
                 authentication.MetadataAddress = null!;
                 authentication.Configuration = null;
                 authentication.ConfigurationManager = null;
+                authentication.ForwardDefault = null;
+                authentication.ForwardAuthenticate = null;
+                authentication.ForwardChallenge = null;
+                authentication.ForwardForbid = null;
+                authentication.ForwardSignIn = null;
+                authentication.ForwardSignOut = null;
+                authentication.ForwardDefaultSelector = null;
                 authentication.TokenValidationParameters = new TokenValidationParameters
                 {
                     RequireSignedTokens = true,

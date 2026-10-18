@@ -432,13 +432,16 @@ public sealed class TokenSchemesTests : IDisposable
     /// <summary>
     /// The bearer scheme binds <c>Authentication:Schemes:Bearer</c> from configuration, which the process
     /// environment can set. An authority or metadata address there would make IdentityModel fetch a second
-    /// key set and try its keys whenever Fortuna's resolver finds none; the scheme clears both, so Heimdall's
-    /// key set stays the only source of keys.
+    /// key set and try its keys whenever Fortuna's resolver finds none, and a forward setting would hand
+    /// authentication to another scheme; the scheme clears them all, so Heimdall's key set stays the only
+    /// source of keys and the bearer scheme the only one that authenticates.
     /// </summary>
     [FunctionalTheory]
     [InlineData("Authority")]
     [InlineData("MetadataAddress")]
     [InlineData("Authority,MetadataAddress")]
+    [InlineData("ForwardDefault")]
+    [InlineData("ForwardAuthenticate")]
     public async Task GivenAnotherKeySourceInConfiguration_WhenTokensArrive_ThenOnlyHeimdallsKeySetIsFetched(string settings)
     {
         var jwks = new StubJwksHandler();
@@ -446,7 +449,12 @@ public sealed class TokenSchemesTests : IDisposable
         var secondSource = new SecondKeySource();
         var configuration = settings.Split(',').ToDictionary(
             setting => $"Authentication:Schemes:{JwtBearerDefaults.AuthenticationScheme}:{setting}",
-            setting => (string?)(setting == "Authority" ? SecondKeySource.Authority : SecondKeySource.MetadataAddress));
+            setting => (string?)(setting switch
+            {
+                "Authority" => SecondKeySource.Authority,
+                "MetadataAddress" => SecondKeySource.MetadataAddress,
+                _ => "Elsewhere"
+            }));
         await using var factory = CreateFactory(jwks, configuration: configuration, backchannel: secondSource);
         using var client = factory.CreateClient();
         var bearer = factory.Services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
@@ -470,6 +478,13 @@ public sealed class TokenSchemesTests : IDisposable
         Assert.Null(bearer.Configuration);
         Assert.Null(bearer.ConfigurationManager);
         Assert.Null(bearer.TokenValidationParameters.ConfigurationManager);
+        Assert.Null(bearer.ForwardDefault);
+        Assert.Null(bearer.ForwardAuthenticate);
+        Assert.Null(bearer.ForwardChallenge);
+        Assert.Null(bearer.ForwardForbid);
+        Assert.Null(bearer.ForwardSignIn);
+        Assert.Null(bearer.ForwardSignOut);
+        Assert.Null(bearer.ForwardDefaultSelector);
     }
 
     [FunctionalFact]
