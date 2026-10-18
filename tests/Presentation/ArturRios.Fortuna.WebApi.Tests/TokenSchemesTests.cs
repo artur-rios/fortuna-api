@@ -183,6 +183,10 @@ public sealed class TokenSchemesTests : IDisposable
 
         Assert.Equal(new ActorProbe(subject, false), await ActorAsync(client, legacy));
         Assert.Equal(1, jwks.Requests);
+
+        // The minute's fetch was there to spend: an ES256 token whose kid is still unknown spends it.
+        Assert.Equal(HttpStatusCode.Unauthorized, await StatusAsync(client, Es256(HeimdallKey, Guid.NewGuid())));
+        Assert.Equal(2, jwks.Requests);
     }
 
     [FunctionalFact]
@@ -444,6 +448,7 @@ public sealed class TokenSchemesTests : IDisposable
     [InlineData("ForwardAuthenticate")]
     public async Task GivenAnotherKeySourceInConfiguration_WhenTokensArrive_ThenOnlyHeimdallsKeySetIsFetched(string settings)
     {
+        var clock = new ManualClock(new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero));
         var jwks = new StubJwksHandler();
         jwks.Serve(JwksTestSupport.KeySet(HeimdallKey));
         var secondSource = new SecondKeySource();
@@ -455,7 +460,7 @@ public sealed class TokenSchemesTests : IDisposable
                 "MetadataAddress" => SecondKeySource.MetadataAddress,
                 _ => "Elsewhere"
             }));
-        await using var factory = CreateFactory(jwks, configuration: configuration, backchannel: secondSource);
+        await using var factory = CreateFactory(jwks, clock: clock, configuration: configuration, backchannel: secondSource);
         using var client = factory.CreateClient();
         var bearer = factory.Services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
             .Get(JwtBearerDefaults.AuthenticationScheme);
@@ -468,8 +473,14 @@ public sealed class TokenSchemesTests : IDisposable
             HttpStatusCode.Unauthorized,
             await StatusAsync(client, Es256(SecondKeySource.Key, Guid.NewGuid(), issuer: SecondKeySource.Authority)));
         Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            await StatusAsync(client, Es256(SecondKeySource.Key, Guid.NewGuid(), issuer: LocalIssuer)));
+        Assert.Equal(
             HttpStatusCode.OK,
             await StatusAsync(client, Hs256(JwksTestSupport.SharedSecret, Guid.NewGuid(), JwksTestSupport.Issuer)));
+        Assert.Equal(
+            HttpStatusCode.OK,
+            await StatusAsync(client, Hs256(JwksTestSupport.LocalSecret, Guid.NewGuid(), LocalIssuer)));
 
         Assert.Equal(0, secondSource.Requests);
         Assert.Equal(1, jwks.Requests);
@@ -477,7 +488,7 @@ public sealed class TokenSchemesTests : IDisposable
         Assert.Null(bearer.MetadataAddress);
         Assert.Null(bearer.Configuration);
         Assert.Null(bearer.ConfigurationManager);
-        Assert.Null(bearer.TokenValidationParameters.ConfigurationManager);
+        Assert.False(bearer.TokenValidationParameters.TryAllIssuerSigningKeys);
         Assert.Null(bearer.ForwardDefault);
         Assert.Null(bearer.ForwardAuthenticate);
         Assert.Null(bearer.ForwardChallenge);
