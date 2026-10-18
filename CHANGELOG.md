@@ -34,6 +34,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Each key verifies its own algorithm only (an EC key ES256, a secret HS256), and the token's issuer chooses the
   keys, so a token's `alg` header never selects the kind of key. Fortuna previously accepted any HMAC algorithm.
   `ArturRios.Jwt` 1.4.0 is referenced directly, replacing the 1.2.0 that `ArturRios.Util.WebApi` brought in.
+- The key-source and forwarding settings under `Authentication:Schemes:Bearer` (for example the
+  `Authentication__Schemes__Bearer__Authority`, `__MetadataAddress` or `__ForwardDefault` environment variables) are
+  now ignored. Before, `Authority` or `MetadataAddress` made Fortuna fetch that address's key set and accept tokens
+  signed with its keys; exploiting it needed write access to the environment. Now only Heimdall's published key set,
+  the legacy shared secret and Fortuna's local secret verify a token.
 
 **Operators:** set `FORTUNA_HEIMDALL_JWKS_URL` and `FORTUNA_LOCAL_TOKEN_SECRET` before deploying; startup refuses
 to run without them. Leave `FORTUNA_AUTH_TOKEN_SECRET` and `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS` as they are when
