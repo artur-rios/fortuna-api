@@ -9,13 +9,16 @@ using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Jwt;
 using ArturRios.Util.Test.Attributes;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
@@ -416,6 +419,49 @@ public sealed class TokenSchemesTests : IDisposable
         Assert.All(chain, type => Assert.Equal(typeof(IHttpMessageHandlerFactory).Assembly, type.Assembly));
     }
 
+    /// <summary>
+    /// The bearer scheme binds <c>Authentication:Schemes:Bearer</c> from configuration, which the process
+    /// environment can set. An authority or metadata address there would make IdentityModel fetch a second
+    /// key set and try its keys whenever Fortuna's resolver finds none; the scheme clears both, so Heimdall's
+    /// key set stays the only source of keys.
+    /// </summary>
+    [FunctionalTheory]
+    [InlineData("Authority")]
+    [InlineData("MetadataAddress")]
+    [InlineData("Authority,MetadataAddress")]
+    public async Task GivenAnotherKeySourceInConfiguration_WhenTokensArrive_ThenOnlyHeimdallsKeySetIsFetched(string settings)
+    {
+        var jwks = new StubJwksHandler();
+        jwks.Serve(JwksTestSupport.KeySet(HeimdallKey));
+        var secondSource = new SecondKeySource();
+        var configuration = settings.Split(',').ToDictionary(
+            setting => $"Authentication:Schemes:{JwtBearerDefaults.AuthenticationScheme}:{setting}",
+            setting => (string?)(setting == "Authority" ? SecondKeySource.Authority : SecondKeySource.MetadataAddress));
+        await using var factory = CreateFactory(jwks, configuration: configuration, backchannel: secondSource);
+        using var client = factory.CreateClient();
+        var bearer = factory.Services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
+            .Get(JwtBearerDefaults.AuthenticationScheme);
+
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, Es256(HeimdallKey, Guid.NewGuid())));
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            await StatusAsync(client, Es256(SecondKeySource.Key, Guid.NewGuid())));
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            await StatusAsync(client, Es256(SecondKeySource.Key, Guid.NewGuid(), issuer: SecondKeySource.Authority)));
+        Assert.Equal(
+            HttpStatusCode.OK,
+            await StatusAsync(client, Hs256(JwksTestSupport.SharedSecret, Guid.NewGuid(), JwksTestSupport.Issuer)));
+
+        Assert.Equal(0, secondSource.Requests);
+        Assert.Equal(1, jwks.Requests);
+        Assert.Null(bearer.Authority);
+        Assert.Null(bearer.MetadataAddress);
+        Assert.Null(bearer.Configuration);
+        Assert.Null(bearer.ConfigurationManager);
+        Assert.Null(bearer.TokenValidationParameters.ConfigurationManager);
+    }
+
     [FunctionalFact]
     public async Task GivenTheRunningApp_WhenHeimdallsKeySetIsResolved_ThenOneInstanceServesEveryRequest()
     {
@@ -435,7 +481,9 @@ public sealed class TokenSchemesTests : IDisposable
         string? sharedSecret = JwksTestSupport.SharedSecret,
         TimeProvider? clock = null,
         string? callerKey = null,
-        IPAddress? clientAddress = null)
+        IPAddress? clientAddress = null,
+        IReadOnlyDictionary<string, string?>? configuration = null,
+        HttpMessageHandler? backchannel = null)
     {
         var settings = JwksTestSupport.Settings(sharedSecret is not null);
         settings[SharedSecretSetting] = sharedSecret;
@@ -450,6 +498,12 @@ public sealed class TokenSchemesTests : IDisposable
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment(Environments.Development);
+
+            if (configuration is not null)
+            {
+                builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(configuration));
+            }
+
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IHostedService>();
@@ -466,6 +520,14 @@ public sealed class TokenSchemesTests : IDisposable
                 if (clientAddress is not null)
                 {
                     services.AddSingleton<IStartupFilter>(new ClientAddressStartupFilter(clientAddress));
+                }
+
+                if (backchannel is not null)
+                {
+                    // Where IdentityModel would send its metadata and key-set requests, were it given an address.
+                    services.Configure<JwtBearerOptions>(
+                        JwtBearerDefaults.AuthenticationScheme,
+                        bearer => bearer.BackchannelHttpHandler = backchannel);
                 }
 
                 services.AddControllers().AddApplicationPart(typeof(TokenSchemesProbeController).Assembly);
@@ -581,6 +643,35 @@ public sealed class TokenSchemesTests : IDisposable
             });
             next(app);
         };
+    }
+
+    /// <summary>
+    /// A second issuer's metadata and key set, publishing a key Heimdall never had, and counting every request.
+    /// </summary>
+    private sealed class SecondKeySource : HttpMessageHandler
+    {
+        public const string Authority = "https://second-source.example.test/";
+        public const string MetadataAddress = Authority + ".well-known/openid-configuration";
+        private const string KeySetAddress = Authority + "keys";
+
+        private int _requests;
+
+        public static JwtKey Key { get; } = JwksTestSupport.NewKey();
+
+        public int Requests => Volatile.Read(ref _requests);
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _requests);
+
+            return Task.FromResult(request.RequestUri?.AbsoluteUri switch
+            {
+                MetadataAddress => StubJwksHandler.Json(
+                    $$"""{"issuer":"{{Authority}}","jwks_uri":"{{KeySetAddress}}"}"""),
+                KeySetAddress => StubJwksHandler.Json(JwksTestSupport.KeySet(Key)),
+                _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+            });
+        }
     }
 
     private sealed class StubUserProfileProvisioner : IUserProfileProvisioner

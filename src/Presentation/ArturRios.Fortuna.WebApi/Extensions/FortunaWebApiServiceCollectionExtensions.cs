@@ -125,6 +125,10 @@ public static class FortunaWebApiServiceCollectionExtensions
     /// <remarks>
     ///     No static signing key, authority or configuration manager is set: IdentityModel falls back to
     ///     static keys when the resolver returns none, and the resolver must be the only source of keys.
+    ///     The scheme binds <c>Authentication:Schemes:Bearer</c> from configuration, which the environment
+    ///     can set, so the authority and metadata address are cleared after that binding: either one would
+    ///     make IdentityModel fetch a second key set and try its keys whenever the resolver finds none. That
+    ///     fallback to every key is turned off as well.
     ///     The key set's named client has no message handler of its own, so its fetch carries no caller
     ///     headers and no user's token.
     /// </remarks>
@@ -138,12 +142,17 @@ public static class FortunaWebApiServiceCollectionExtensions
             .Configure<FortunaSigningKeys, HeimdallJwks>((authentication, signingKeys, jwks) =>
             {
                 authentication.MapInboundClaims = false;
+                authentication.Authority = null;
+                authentication.MetadataAddress = null!;
+                authentication.Configuration = null;
+                authentication.ConfigurationManager = null;
                 authentication.TokenValidationParameters = new TokenValidationParameters
                 {
                     RequireSignedTokens = true,
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKeyResolver = (_, securityToken, keyId, _) =>
                         signingKeys.Resolve(securityToken, keyId),
+                    TryAllIssuerSigningKeys = false,
                     AlgorithmValidator = (algorithm, key, _, _) => FortunaSigningKeys.IsAllowed(algorithm, key),
                     ValidateIssuer = true,
                     ValidIssuers = [options.AuthTokenIssuer, options.LocalTokenIssuer],
