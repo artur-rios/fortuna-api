@@ -68,7 +68,10 @@ public sealed class FortunaLoggingTests
             AuthTokenAudience = "fortuna-tests",
             Locale = "pt-BR",
             ConsentExternalDataProcessingVersion = "1.0",
-            HeimdallBaseUri = new Uri("https://heimdall.example.test/")
+            HeimdallBaseUri = new Uri("https://heimdall.example.test/"),
+            HeimdallJwksUri = new Uri("http://heimdall.example.test/.well-known/jwks.json"),
+            LocalTokenSecret = "fortuna-tests-local-token-secret-with-enough-entropy",
+            LocalTokenIssuer = FortunaOptions.DefaultLocalTokenIssuer
         };
 
         return FortunaLogging.Configure(new LoggerConfiguration(), configuration, options).CreateLogger();

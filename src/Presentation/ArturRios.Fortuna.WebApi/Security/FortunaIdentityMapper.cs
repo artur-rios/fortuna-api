@@ -6,17 +6,28 @@ using ArturRios.Util.WebApi.Security.Interfaces;
 namespace ArturRios.Fortuna.WebApi.Security;
 
 /// <summary>
-/// Reads the claim vocabulary Heimdall writes. Invalid identity claims produce no caller,
-/// allowing the authentication middleware to return 401 rather than leaking parser details.
+/// Reads the claim vocabulary Heimdall writes. A token names Fortuna's local issuer when it is a
+/// local-account token; invalid identity claims produce no caller, allowing the authentication middleware
+/// to return 401 rather than leaking parser details.
 /// </summary>
-public sealed class FortunaIdentityMapper : IAuthenticatedUserMapper
+public sealed class FortunaIdentityMapper(LocalIdentityRule rule) : IAuthenticatedUserMapper
 {
+    /// <summary>
+    /// A mapper under the fail-closed <see cref="LocalIdentityRule.Default" />, for code that writes claims
+    /// (<see cref="ToClaims" />) outside the request pipeline. The request pipeline gets the configured rule
+    /// (<see cref="LocalIdentityRule.From" />) from DI.
+    /// </summary>
+    public FortunaIdentityMapper() : this(LocalIdentityRule.Default)
+    {
+    }
+
     public const string SubjectClaim = TokenClaimKeys.Id;
     public const string RoleClaim = TokenClaimKeys.RoleId;
     public const string DisplayNameClaim = "name";
     public const string LocalIdentityClaim = "fortuna_local";
     public const string ScopeClaim = "scopeId";
     public const string PermissionsClaim = "scopePermissions";
+    public const string IssuerClaim = "iss";
 
     public Dictionary<string, string> ToClaims(IAuthenticatedUser user)
     {
@@ -73,11 +84,22 @@ public sealed class FortunaIdentityMapper : IAuthenticatedUserMapper
         return new FortunaIdentity(subjectId, roleId, scopeId, ReadPermissions(claims))
         {
             DisplayName = claims.GetValueOrDefault(DisplayNameClaim),
-            IsLocal = claims.TryGetValue(LocalIdentityClaim, out var local) &&
-                      bool.TryParse(local, out var isLocal) &&
-                      isLocal
+            IsLocal = IsLocalToken(claims)
         };
     }
+
+    /// <summary>
+    /// Local when the token names Fortuna's local issuer. Otherwise local only while
+    /// <see cref="LocalIdentityRule.AcceptsLegacyLocalClaim" /> holds and the token still carries the
+    /// <c>fortuna_local</c> claim. Validation (<see cref="LocalIdentityRule.OnTokenValidatedAsync" />) leaves that
+    /// claim only on an HS256 token under Heimdall's issuer, verified by the legacy secret.
+    /// </summary>
+    private bool IsLocalToken(IReadOnlyDictionary<string, string> claims) =>
+        string.Equals(claims.GetValueOrDefault(IssuerClaim), rule.LocalIssuer, StringComparison.Ordinal) ||
+        (rule.AcceptsLegacyLocalClaim &&
+         claims.TryGetValue(LocalIdentityClaim, out var local) &&
+         bool.TryParse(local, out var isLocal) &&
+         isLocal);
 
     private static IReadOnlyCollection<string> ReadPermissions(
         IReadOnlyDictionary<string, string> claims)

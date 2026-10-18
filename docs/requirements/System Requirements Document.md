@@ -102,7 +102,9 @@ graph LR
 
 The dashed edges are the ones worth reading twice: clients exchange credentials with Heimdall
 through Fortuna, which adds its configured scope identifier. Once a token is issued, every domain
-request validates it locally; token verification never calls Heimdall.
+request validates it locally, with the public keys Heimdall publishes. Fortuna caches them, so
+verification calls Heimdall only to fetch its key set when a token names a key Fortuna does not
+know, at most once a minute.
 
 ---
 
@@ -113,7 +115,7 @@ request validates it locally; token verification never calls Heimdall.
 | ID | Requirement |
 | --- | --- |
 | FR-ID-01 | The system shall validate an incoming bearer token's signature, issuer, audience and expiration before any claim it carries is trusted |
-| FR-ID-02 | The system shall validate tokens locally, without calling the issuing identity provider on the request path |
+| FR-ID-02 | The system shall validate tokens locally; the only call to the issuing identity provider on the request path shall be the fetch of its published key set, cached and made at most once a minute when a token names a key the system does not know, and a failed fetch shall keep the keys already known |
 | FR-ID-03 | The system shall reject a request bearing a missing, malformed, expired or unverifiable token with `401 Unauthorized` |
 | FR-ID-04 | The system shall resolve the acting user from the token's subject claim on every authenticated request |
 | FR-ID-05 | The system shall create a local user profile, keyed by the token's subject, on that subject's first authenticated request, without administrator involvement |
@@ -958,7 +960,7 @@ receiving deployment detail that it cannot act on.
 | NFR-11 | Security | An operation targeting a record owned by another user shall be indistinguishable, in status code, body and timing class, from the same operation against a record that does not exist |
 | NFR-12 | Security | Internal `bigint` keys shall never appear in an API path, an API response, an export or a job payload; only `PublicId` values shall be exposed |
 | NFR-13 | Security | A recovery code shall be stored only as a hash, and an external access token only encrypted at rest; neither shall be returned to a caller after the response that first produces it |
-| NFR-14 | Security | Because tokens are validated locally without an issuer round trip (FR-ID-02), a token revoked at Heimdall remains acceptable to Fortuna until it expires. Token lifetime shall therefore be configurable, and shall default to a value short enough to bound that window |
+| NFR-14 | Security | Because tokens are validated locally without asking the issuer about the token (FR-ID-02), a token revoked at Heimdall remains acceptable to Fortuna until it expires. Token lifetime shall therefore be configurable, and shall default to a value short enough to bound that window |
 | NFR-15 | Security | Logs shall contain no monetary amount, no account or card identifier, no attachment content and no token |
 | NFR-16 | Validation | Every input shall be validated before any processing, and a rejection shall name the failing field |
 | NFR-17 | Auditability | Every attempted write shall produce exactly one audit entry, successful or refused, and audit entries shall be append-only |

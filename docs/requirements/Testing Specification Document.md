@@ -253,7 +253,7 @@ A functional test that asserts only the status code has verified almost nothing.
 | Dependency | In tests |
 | --- | --- |
 | **PostgreSQL** | Real, in a throwaway container per run, provisioned by Testcontainers. Migrations are applied and the resulting schema is asserted. Never an in-memory provider. |
-| **Heimdall** | Never called. Tests mint tokens locally with the same signing configuration the API validates against, so the whole authentication path is exercised without a second service. |
+| **Heimdall** | Never called. Tests mint their tokens locally: most sign HS256 with the legacy shared secret their settings configure, which the API accepts during the overlap; the bearer-scheme tests sign ES256 with a key generated for the test, whose public half an in-process stub key set (`StubJwksHandler`) serves at `FORTUNA_HEIMDALL_JWKS_URL`, and local-account tokens HS256 with Fortuna's own local secret. The whole authentication path, the key-set fetch included, is exercised without a second service. |
 | **Pluggy** | Never called. A fake source implementation serves **recorded payloads** captured once from the real API and committed under `tests/Fixtures/`. |
 | **BCB PTAX** | Never called. A fake rate client serves recorded responses, including a weekend with no publication and an unreachable-source case. |
 | **Statement PDFs** | Real files, committed under `tests/Fixtures/Statements/`, with every personal detail replaced by synthetic values and every amount rewritten to a set that still reconciles. The structure is what is under test, never the data. |

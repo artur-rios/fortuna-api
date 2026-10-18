@@ -55,6 +55,12 @@ public static class ConfigurationMessages
     public static string CallerKeyCharacters(string key) =>
         $"Environment variable '{key}' must contain only visible ASCII characters other than a comma, with no spaces or line breaks.";
 
+    public static string MustDiffer(string key, string otherKey) =>
+        $"Environment variable '{key}' must differ from '{otherKey}'.";
+
+    public static string PreviousWithoutCurrent(string previousKey, string key) =>
+        $"Environment variable '{previousKey}' is set but '{key}' is not; set both, or remove both to stop accepting the tokens they signed.";
+
     public static string CronInvalid(string key, string reason) =>
         $"{key} must be a valid five-field UTC cron expression: {reason}";
 
