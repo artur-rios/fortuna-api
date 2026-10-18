@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-18
+
 ### Changed
 
 - A Heimdall `429` is answered `429` with Heimdall's message and, when Heimdall gives it in seconds, its
@@ -158,7 +160,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/artur-rios/fortuna-api/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/artur-rios/fortuna-api/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/artur-rios/fortuna-api/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/artur-rios/fortuna-api/releases/tag/v1.0.0
