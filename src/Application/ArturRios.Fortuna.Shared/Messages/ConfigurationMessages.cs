@@ -53,7 +53,7 @@ public static class ConfigurationMessages
         $"Environment variable '{key}' must be at least {minimumCharacters} characters long.";
 
     public static string CallerKeyCharacters(string key) =>
-        $"Environment variable '{key}' must contain only visible ASCII characters, with no spaces or line breaks.";
+        $"Environment variable '{key}' must contain only visible ASCII characters other than a comma, with no spaces or line breaks.";
 
     public static string CronInvalid(string key, string reason) =>
         $"{key} must be a valid five-field UTC cron expression: {reason}";

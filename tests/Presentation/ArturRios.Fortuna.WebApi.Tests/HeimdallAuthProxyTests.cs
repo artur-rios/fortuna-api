@@ -170,7 +170,8 @@ public sealed class HeimdallAuthProxyTests
             HeimdallAuthOutcome.Succeeded,
             HeimdallAuthOutcome.Rejected,
             HeimdallAuthOutcome.NotFound,
-            HeimdallAuthOutcome.InvalidRequest
+            HeimdallAuthOutcome.InvalidRequest,
+            HeimdallAuthOutcome.Conflict
         ];
         var answers = new List<(HttpStatusCode Status, string Body)>();
 
@@ -861,6 +862,137 @@ public sealed class HeimdallAuthProxyTests
 
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
         Assert.Contains(HeimdallAuthMessages.TooManyAttempts, body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenHeimdallRateLimitsWithAWait_WhenLoggingIn_ThenItsMessageAndRetryAfterAreReturned()
+    {
+        // Given
+        var gateway = new StubGateway
+        {
+            LoginResult = new(HeimdallAuthOutcome.RateLimited)
+            {
+                Message = "Too many requests.",
+                RetryAfterSeconds = 37
+            }
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        // When
+        var response = await client.PostAsJsonAsync("/api/auth/login", new
+        {
+            email = "user@example.test",
+            password = "secret-in-transit"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+        var envelope = await response.Content.ReadFromJsonAsync<LoginEnvelope>();
+
+        // Then — Heimdall's answer, as Heimdall gave it, and nothing of the relay's own state.
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(37), response.Headers.RetryAfter?.Delta);
+        Assert.Equal(["Too many requests."], envelope?.Errors);
+        Assert.DoesNotContain("secret-in-transit", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("outcome", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("retryAfter", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [FunctionalFact]
+    public async Task GivenHeimdallRateLimitsWithoutAWait_WhenResendingVerification_ThenNoRetryAfterIsReturned()
+    {
+        // Given — Heimdall's account-email budget names its own refusal.
+        const string message = "An email of this kind was sent to you recently. Try again in a few minutes.";
+        var gateway = new StubGateway
+        {
+            EmptyResult = new(HeimdallAuthOutcome.RateLimited) { Message = message }
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", Token());
+
+        // When
+        var response = await client.PostAsync("/api/auth/resend-verification", null);
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Then
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.False(response.Headers.Contains("Retry-After"));
+        Assert.Contains(message, body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenHeimdallRateLimitsAChallengeResend_WhenResendingTheCode_ThenTheRefusalIsRelayed()
+    {
+        // Given — counted by the caller's address, so relaying it says nothing about any account.
+        var gateway = new StubGateway
+        {
+            ResendResult = new(HeimdallAuthOutcome.RateLimited)
+            {
+                Message = "Too many requests.",
+                RetryAfterSeconds = 12
+            }
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        // When
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/challenge/resend", new
+        {
+            challengeToken = "challenge"
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Then
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(12), response.Headers.RetryAfter?.Delta);
+        Assert.Contains("Too many requests.", body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenHeimdallAnswersConflict_WhenEnablingTwoFactor_ThenConflictWithItsMessageIsReturned()
+    {
+        // Given
+        var gateway = new StubGateway
+        {
+            SetupResult = new(HeimdallAuthOutcome.Conflict)
+            {
+                Message = "Two-factor authentication is already active."
+            }
+        };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", Token());
+
+        // When
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/enable", new
+        {
+            methods = new[] { "App" }
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Then
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.False(response.Headers.Contains("Retry-After"));
+        Assert.Contains("Two-factor authentication is already active.", body, StringComparison.Ordinal);
+    }
+
+    [FunctionalFact]
+    public async Task GivenHeimdallAnswersConflictWithoutAMessage_WhenSigningInWithGoogle_ThenFortunasMessageIsReturned()
+    {
+        // Given
+        var gateway = new StubGateway { GoogleResult = new(HeimdallAuthOutcome.Conflict) };
+        await using var factory = CreateFactory(gateway);
+        using var client = factory.CreateClient();
+
+        // When
+        var response = await client.PostAsJsonAsync("/api/auth/google", new { idToken = "id-token" });
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Then
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains(HeimdallAuthMessages.IdentityConflict, body, StringComparison.Ordinal);
     }
 
     [FunctionalFact]

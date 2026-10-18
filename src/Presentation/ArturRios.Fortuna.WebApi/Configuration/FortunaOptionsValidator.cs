@@ -65,14 +65,16 @@ public sealed class FortunaOptionsValidator : AbstractValidator<FortunaOptions>
 
         // The key travels as an HTTP header value, so anything outside visible ASCII (a space, a
         // line break, a non-ASCII letter) would make every request to Heimdall throw instead of
-        // failing once, clearly, here.
+        // failing once, clearly, here. A comma is refused too: Heimdall splits
+        // HEIMDALL_TRUSTED_CALLER_KEYS on commas, so such a key can never be one of its keys, and
+        // Heimdall answers a wrong key by silently counting the request under Fortuna's address.
         RuleFor(options => options.HeimdallCallerKey)
             .Cascade(CascadeMode.Stop)
             .Must(key => key!.Length >= FortunaOptions.MinimumHeimdallCallerKeyLength)
             .WithMessage(ConfigurationMessages.SecretTooShortCharacters(
                 "FORTUNA_HEIMDALL_CALLER_KEY",
                 FortunaOptions.MinimumHeimdallCallerKeyLength))
-            .Must(key => key!.All(IsVisibleAscii))
+            .Must(key => key!.All(character => IsVisibleAscii(character) && character != ','))
             .WithMessage(ConfigurationMessages.CallerKeyCharacters("FORTUNA_HEIMDALL_CALLER_KEY"))
             .When(options => HasText(options.HeimdallCallerKey));
 
