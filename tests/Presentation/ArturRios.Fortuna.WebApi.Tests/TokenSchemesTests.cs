@@ -152,6 +152,11 @@ public sealed class TokenSchemesTests : IDisposable
     }
 
     /// <summary>Review Focus 1: Heimdall's key set is missing, failing, unreachable or garbled.</summary>
+    /// <remarks>
+    /// Only one fetch is allowed each minute, so the HS256 token is sent while that fetch is still unspent:
+    /// first before any fetch, then again once the minute has passed. Were HS256 tokens to fetch, the stub
+    /// would count it either time.
+    /// </remarks>
     [FunctionalTheory]
     [InlineData("404")]
     [InlineData("500")]
@@ -160,18 +165,23 @@ public sealed class TokenSchemesTests : IDisposable
     [InlineData("no usable key")]
     public async Task GivenTheKeySetIsUnavailable_WhenAnHs256HeimdallTokenArrives_ThenItIsAcceptedDuringTheOverlap(string failure)
     {
+        var clock = new ManualClock(new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero));
         var jwks = new StubJwksHandler { Respond = Failing(failure) };
-        await using var factory = CreateFactory(jwks);
+        await using var factory = CreateFactory(jwks, clock: clock);
         using var client = factory.CreateClient();
         var subject = Guid.NewGuid();
+        var legacy = Hs256(JwksTestSupport.SharedSecret, subject, JwksTestSupport.Issuer);
+
+        Assert.Equal(new ActorProbe(subject, false), await ActorAsync(client, legacy));
+        Assert.Equal(0, jwks.Requests);
 
         // An ES256 token cannot be verified without the key set: refused, never a server error.
         Assert.Equal(HttpStatusCode.Unauthorized, await StatusAsync(client, Es256(HeimdallKey, Guid.NewGuid())));
         Assert.Equal(1, jwks.Requests);
 
-        var actor = await ActorAsync(client, Hs256(JwksTestSupport.SharedSecret, subject, JwksTestSupport.Issuer));
+        clock.Now += HeimdallJwks.MinimumRefreshInterval;
 
-        Assert.Equal(new ActorProbe(subject, false), actor);
+        Assert.Equal(new ActorProbe(subject, false), await ActorAsync(client, legacy));
         Assert.Equal(1, jwks.Requests);
     }
 
