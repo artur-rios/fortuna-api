@@ -21,15 +21,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- A Heimdall `429` is answered `429` with Heimdall's message and, when Heimdall gives it in seconds, its
-  `Retry-After` header, instead of always "Too many attempts. Wait a minute and try again." with no `Retry-After`.
-  This covers Heimdall's per-person mail budgets on `resend-verification` and the email method of `2fa/enable`.
-  "Too many attempts. Wait a minute and try again." remains the message when Heimdall's answer carries none (#213).
-- `FORTUNA_HEIMDALL_CALLER_KEY` may not contain a comma, since Heimdall splits `HEIMDALL_TRUSTED_CALLER_KEYS` on
-  commas and could never match such a key. Startup rejects it, naming the variable and not its value (#213).
-- Microsoft packages upgraded to 10.0.13, which brings patched `System.Security.Cryptography.Pkcs` and
-  `System.Security.Cryptography.Xml` (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-r955-8q5j-3h83,
-  GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj).
 - `FORTUNA_AUTH_TOKEN_SECRET` is optional. While it is set (and optionally `_PREVIOUS`), Heimdall's HS256 tokens
   and the local tokens Fortuna issued under Heimdall's issuer are still accepted, and each secret must still be at
   least 32 characters. Remove both once Heimdall no longer issues HS256 tokens and a token lifetime has passed.
@@ -37,14 +28,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A token is a local-account token when it names the local issuer. The `fortuna_local` claim counts only on an
   HS256 token under Heimdall's issuer, verified with the legacy shared secret while it is configured; it is removed
   from every other token, so an ES256 token from Heimdall is never local by claim.
-
-### Fixed
-
-- A Heimdall `409 Conflict`, such as for two-factor authentication that is already active, is answered `409` with
-  Heimdall's message instead of `503` "The identity service is temporarily unavailable.". When Heimdall's answer
-  carries no message, the message is "The identity request conflicts with the account's current state.".
-  `register` and `verify-email` document it. `POST /api/auth/2fa/challenge/resend` still answers it like a
-  success (#213).
 
 ### Security
 
@@ -59,6 +42,35 @@ stay signed in with their current token until it expires; their next sign-in iss
 issuer. Remove both only once Heimdall no longer issues HS256 tokens and a token lifetime has passed. From then on,
 Heimdall's HS256 tokens and the local-account tokens issued under Heimdall's issuer are answered `401`, and their
 holders sign in again.
+
+## [2.2.0] - 2026-10-18
+
+### Changed
+
+- A Heimdall `429` is answered `429` with Heimdall's message and, when Heimdall gives it in seconds, its
+  `Retry-After` header, instead of always "Too many attempts. Wait a minute and try again." with no `Retry-After`.
+  This covers Heimdall's per-person mail budgets on `resend-verification` and the email method of `2fa/enable`.
+  "Too many attempts. Wait a minute and try again." remains the message when Heimdall's answer carries none (#213).
+- `FORTUNA_HEIMDALL_CALLER_KEY` may not contain a comma, since Heimdall splits `HEIMDALL_TRUSTED_CALLER_KEYS` on
+  commas and could never match such a key. Startup rejects it, naming the variable and not its value (#213).
+- Microsoft packages upgraded to 10.0.13, which brings patched `System.Security.Cryptography.Pkcs` and
+  `System.Security.Cryptography.Xml` (GHSA-846f-f764-76mx, GHSA-2fmv-rv2c-59x7, GHSA-r955-8q5j-3h83,
+  GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj).
+
+### Fixed
+
+- A Heimdall `409 Conflict`, such as for two-factor authentication that is already active, is answered `409` with
+  Heimdall's message instead of `503` "The identity service is temporarily unavailable.". When Heimdall's answer
+  carries no message, the message is "The identity request conflicts with the account's current state.".
+  `register` and `verify-email` document it. `POST /api/auth/2fa/challenge/resend` still answers it like a
+  success (#213).
+
+### Security
+
+- The native core's `zip` dependency is upgraded to 9.0.5, which patches RUSTSEC-2026-0367, RUSTSEC-2026-0368 and
+  RUSTSEC-2026-0369 (GHSA-vv5m-jxxh-4627, GHSA-4v9h-p7m9-rh26, GHSA-4684-h2q9-2vcp) and clears the `audit` check.
+  Fortuna only writes archives, so the affected extraction functions were never called. The native core now needs
+  Rust 1.88.
 
 ## [2.1.0] - 2026-10-13
 
@@ -191,7 +203,8 @@ holders sign in again.
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/artur-rios/fortuna-api/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/artur-rios/fortuna-api/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/artur-rios/fortuna-api/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/artur-rios/fortuna-api/releases/tag/v1.0.0

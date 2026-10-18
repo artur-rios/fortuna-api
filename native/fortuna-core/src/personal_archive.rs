@@ -83,12 +83,12 @@ pub(crate) fn build(
     for (name, records) in &mut parts {
         for record in records.iter_mut() {
             sanitize(record, None);
-            if name == "attachments" {
-                if let Some(file) = attachment_file(record) {
-                    zip.start_file(&file.0, options).map_err(|_| ())?;
-                    zip.write_all(&file.1).map_err(|_| ())?;
-                    attachments.push(file.0);
-                }
+            if name == "attachments"
+                && let Some(file) = attachment_file(record)
+            {
+                zip.start_file(&file.0, options).map_err(|_| ())?;
+                zip.write_all(&file.1).map_err(|_| ())?;
+                attachments.push(file.0);
             }
         }
         let data_path = format!("data/{name}.json");
