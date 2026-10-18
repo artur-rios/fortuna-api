@@ -1572,15 +1572,15 @@ fn project_schema(schema: &Value, value: &Value, schemas: &Value) -> Value {
         let name = reference.rsplit('/').next().unwrap_or_default();
         return project_schema(&schemas[name], value, schemas);
     }
-    if let Some(items) = schema.get("items") {
-        if let Some(values) = value.as_array() {
-            return Value::Array(
-                values
-                    .iter()
-                    .map(|value| project_schema(items, value, schemas))
-                    .collect(),
-            );
-        }
+    if let Some(items) = schema.get("items")
+        && let Some(values) = value.as_array()
+    {
+        return Value::Array(
+            values
+                .iter()
+                .map(|value| project_schema(items, value, schemas))
+                .collect(),
+        );
     }
     if let Some(properties) = schema.get("properties").and_then(Value::as_object) {
         let input = value.as_object();
