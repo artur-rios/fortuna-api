@@ -1666,7 +1666,7 @@ mod tests {
         assert!(imported.contains("[redacted]"));
         let attachment_path = (0..zip.len())
             .find_map(|index| {
-                let name = zip.by_index(index).ok()?.name().to_owned();
+                let name = zip.by_index(index).ok()?.name().ok()?.into_owned();
                 name.starts_with("attachments/").then_some(name)
             })
             .expect("attachment file missing");

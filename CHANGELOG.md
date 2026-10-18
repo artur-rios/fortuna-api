@@ -27,6 +27,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `register` and `verify-email` document it. `POST /api/auth/2fa/challenge/resend` still answers it like a
   success (#213).
 
+### Security
+
+- The native core's `zip` dependency is upgraded to 9.0.5, which patches RUSTSEC-2026-0367, RUSTSEC-2026-0368 and
+  RUSTSEC-2026-0369 (GHSA-vv5m-jxxh-4627, GHSA-4v9h-p7m9-rh26, GHSA-4684-h2q9-2vcp) and clears the `audit` check.
+  Fortuna only writes archives, so the affected extraction functions were never called. The native core now needs
+  Rust 1.88.
+
 ## [2.1.0] - 2026-10-13
 
 ### Added

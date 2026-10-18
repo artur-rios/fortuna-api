@@ -50,7 +50,7 @@ at implementation time" is the rule for *choosing* the number, not a licence to 
 | --- | --- | --- |
 | Runtime / framework | **.NET 10** (`net10.0`) | Every project targets `net10.0`. The Web API uses the `Microsoft.NET.Sdk.Web` SDK; libraries use `Microsoft.NET.Sdk`. |
 | Language | **C# 14** | The default language version for `net10.0`, used implicitly. No explicit `<LangVersion>` is set, which keeps the language tracking the target framework's default. |
-| Native desktop core | **Rust 2024 edition**, minimum Rust `1.85` | Builds a C-compatible dynamic library for Windows and Linux. It is a separate implementation used only for in-process offline desktop mode; the HTTP host remains .NET. |
+| Native desktop core | **Rust 2024 edition**, minimum Rust `1.88` | Builds a C-compatible dynamic library for Windows and Linux. It is a separate implementation used only for in-process offline desktop mode; the HTTP host remains .NET. |
 | Language features | `Nullable` **enabled**, `ImplicitUsings` **enabled** | Applied uniformly to every production and test project. |
 | Package management | **Central**, via `Directory.Packages.props`, with `CentralPackageTransitivePinningEnabled` | A `PackageReference` names a package; that one file decides its version. |
 
