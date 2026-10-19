@@ -7,6 +7,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Upgrading from 3.x to 4.0
+
+- **Operators:** remove `FORTUNA_AUTH_TOKEN_SECRET` and `_PREVIOUS` from the environment after this release; they
+  are no longer read, and a warning names them while set (never their value). Deploy only after heimdall-api 3.0.0
+  has run for 24 hours. Heimdall's HS256 tokens are refused with `401`, whether or not the secret is still set.
+  Local-account tokens are unaffected: they are signed with `FORTUNA_LOCAL_TOKEN_SECRET` under the local issuer,
+  and still carry the `fortuna_local` claim fortuna-ui reads.
+
+### Removed
+
+- **Breaking (configuration):** the legacy HS256 secret; Heimdall-issuer HS256 tokens and the `fortuna_local` claim
+  on them are refused. `FORTUNA_AUTH_TOKEN_SECRET` and `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS` are no longer read or
+  checked, and the compose file and the environment templates no longer pass them. The start-up line now always
+  reports Heimdall's HS256 tokens as `refused`.
+
+### Security
+
+- Only Heimdall's published keys verify a Heimdall token. A token under Heimdall's issuer that names no key gets
+  none, and the `fortuna_local` claim is removed from every token not under the local issuer.
+
 ## [3.0.0] - 2026-10-18
 
 ### Added
