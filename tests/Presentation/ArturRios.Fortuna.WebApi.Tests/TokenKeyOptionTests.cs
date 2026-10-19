@@ -4,8 +4,8 @@ using ArturRios.Util.Test.Attributes;
 namespace ArturRios.Fortuna.WebApi.Tests;
 
 /// <summary>
-/// The token settings: Heimdall's key set address, Fortuna's own key and issuer for local tokens, and the
-/// legacy shared secret that is optional now. Every refusal names the variable and never its value.
+/// The token settings: Heimdall's key set address and Fortuna's own key and issuer for local tokens. The
+/// retired shared secret is no longer read. Every refusal names the variable and never its value.
 /// </summary>
 public sealed class TokenKeyOptionTests
 {
@@ -22,8 +22,7 @@ public sealed class TokenKeyOptionTests
         Assert.Equal(JwksTestSupport.JwksUrl, options.HeimdallJwksUri.AbsoluteUri);
         Assert.Equal(LocalSecret, options.LocalTokenSecret);
         Assert.Equal(FortunaOptions.DefaultLocalTokenIssuer, options.LocalTokenIssuer);
-        Assert.Equal(JwksTestSupport.SharedSecret, options.AuthTokenSecret);
-        Assert.True(options.AcceptsLegacyTokens);
+        Assert.Empty(options.RetiredVariablesSet);
     }
 
     [UnitFact]
@@ -73,25 +72,6 @@ public sealed class TokenKeyOptionTests
         Assert.DoesNotContain(shortSecret, message, StringComparison.Ordinal);
     }
 
-    [UnitTheory]
-    [InlineData("FORTUNA_AUTH_TOKEN_SECRET")]
-    [InlineData("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS")]
-    public void GivenALocalSecretEqualToTheSharedSecret_WhenConfigurationLoads_ThenStartupIsRejected(string sharedKey)
-    {
-        // The shared secret is in other services' hands; a local key equal to it would let them mint
-        // Fortuna's local tokens.
-        var values = JwksTestSupport.Settings();
-        values[sharedKey] = LocalSecret;
-
-        var message = Rejected(values).Message;
-
-        Assert.Contains(
-            $"'FORTUNA_LOCAL_TOKEN_SECRET' must differ from '{sharedKey}'",
-            message,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain(LocalSecret, message, StringComparison.Ordinal);
-    }
-
     [UnitFact]
     public void GivenALocalIssuerEqualToHeimdalls_WhenConfigurationLoads_ThenStartupIsRejected()
     {
@@ -111,25 +91,35 @@ public sealed class TokenKeyOptionTests
         Assert.Equal("fortuna-desktop", FortunaOptions.From(values.GetValueOrDefault).LocalTokenIssuer);
     }
 
-    [UnitFact]
-    public void GivenNoSharedSecret_WhenConfigurationLoads_ThenTheOverlapIsOverAndStartupProceeds()
+    /// <summary>
+    /// The retired secrets are no longer read, so no rule holds them any more: short, equal to the local
+    /// secret, or the previous one alone, start-up proceeds and keeps only the name of what is still set.
+    /// </summary>
+    [UnitTheory]
+    [InlineData("FORTUNA_AUTH_TOKEN_SECRET", "too-short")]
+    [InlineData("FORTUNA_AUTH_TOKEN_SECRET", LocalSecret)]
+    [InlineData("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS", "too-short-previous")]
+    [InlineData("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS", LocalSecret)]
+    public void GivenARetiredSecretIsSet_WhenConfigurationLoads_ThenItIsNotReadAndStartupProceeds(string key, string value)
     {
-        var options = FortunaOptions.From(JwksTestSupport.Settings(sharedSecret: false).GetValueOrDefault);
+        var values = JwksTestSupport.Settings();
+        values[key] = value;
 
-        Assert.Null(options.AuthTokenSecret);
-        Assert.False(options.AcceptsLegacyTokens);
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal([key], options.RetiredVariablesSet);
     }
 
-    [UnitFact]
-    public void GivenAPreviousSharedSecretWithoutTheSecret_WhenConfigurationLoads_ThenStartupIsRejected()
+    [UnitTheory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GivenARetiredSecretIsBlank_WhenConfigurationLoads_ThenItCountsAsUnset(string? value)
     {
-        const string previous = "fortuna-tests-previous-signing-key-with-entropy";
-        var values = JwksTestSupport.Settings(sharedSecret: false);
-        values["FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"] = previous;
+        var values = JwksTestSupport.Settings();
+        values["FORTUNA_AUTH_TOKEN_SECRET"] = value;
+        values["FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"] = value;
 
-        var message = Rejected(values).Message;
-
-        Assert.Contains("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS", message, StringComparison.Ordinal);
-        Assert.DoesNotContain(previous, message, StringComparison.Ordinal);
+        Assert.Empty(FortunaOptions.From(values.GetValueOrDefault).RetiredVariablesSet);
     }
 }

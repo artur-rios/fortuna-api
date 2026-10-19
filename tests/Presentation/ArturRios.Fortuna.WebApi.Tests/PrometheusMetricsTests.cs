@@ -191,7 +191,7 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            new JwtHandler().CreateToken(configuration));
+            TestHeimdallKeySet.Sign(configuration));
     }
 
     private Dictionary<string, string?> ValidSettings(string? metricsPort) => new()
@@ -204,7 +204,6 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(
             Path.GetTempPath(), "fortuna-api-metrics-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
@@ -213,7 +212,7 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
         ["FORTUNA_LOCAL_AUTH_ENABLED"] = "false",
         ["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = "10",
         ["FORTUNA_HEIMDALL_BASE_URL"] = "https://heimdall.example.test",
-        ["FORTUNA_HEIMDALL_JWKS_URL"] = "http://heimdall.example.test/.well-known/jwks.json",
+        ["FORTUNA_HEIMDALL_JWKS_URL"] = TestHeimdallKeySet.Url,
         ["FORTUNA_LOCAL_TOKEN_SECRET"] = "fortuna-tests-local-token-secret-with-enough-entropy",
         ["FORTUNA_HEIMDALL_SCOPE_ID"] = "00000000-0000-0000-0000-000000000076",
         ["FORTUNA_METRICS_PORT"] = metricsPort,

@@ -41,22 +41,22 @@ public sealed record FortunaOptions
     public IReadOnlyCollection<string> UploadAllowedContentTypes { get; init; } = [];
     public bool RunMigrations { get; init; }
 
-    /// <summary>
-    /// The secret Heimdall signed its HS256 tokens with before it moved to ES256. Optional: while it is set,
-    /// those tokens, and local tokens issued under Heimdall's issuer, are still accepted (the overlap); unset,
-    /// they are refused.
-    /// </summary>
-    public string? AuthTokenSecret { get; init; }
-    public string? AuthPreviousTokenSecret { get; init; }
     public required string AuthTokenIssuer { get; init; }
     public required string AuthTokenAudience { get; init; }
     public double AuthTokenExpirationInSeconds { get; init; }
 
     /// <summary>
-    /// Whether the overlap is on: a legacy shared secret (<c>FORTUNA_AUTH_TOKEN_SECRET</c>) is set, so
-    /// Heimdall's HS256 tokens and local tokens issued under Heimdall's issuer are still accepted.
+    /// The variables that held the secret Heimdall signed its HS256 tokens with before it moved to ES256.
+    /// Fortuna no longer reads them, and Heimdall's HS256 tokens are refused.
     /// </summary>
-    public bool AcceptsLegacyTokens => !string.IsNullOrWhiteSpace(AuthTokenSecret);
+    public static readonly IReadOnlyList<string> RetiredVariables =
+        ["FORTUNA_AUTH_TOKEN_SECRET", "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"];
+
+    /// <summary>
+    /// The <see cref="RetiredVariables" /> still set, so that start-up can say they can go. Only their names
+    /// are kept, never their values.
+    /// </summary>
+    public IReadOnlyCollection<string> RetiredVariablesSet { get; init; } = [];
 
     /// <summary>Where Heimdall publishes its ES256 verification keys (<c>FORTUNA_HEIMDALL_JWKS_URL</c>).</summary>
     public required Uri HeimdallJwksUri { get; init; }
@@ -142,8 +142,7 @@ public sealed record FortunaOptions
             UploadMaximumBytes = settings.PositiveInteger("FORTUNA_UPLOAD_MAX_BYTES", 10 * 1024 * 1024),
             UploadAllowedContentTypes = settings.ContentTypes("FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES"),
             RunMigrations = settings.Boolean("FORTUNA_RUN_MIGRATIONS", false),
-            AuthTokenSecret = settings.OptionalText("FORTUNA_AUTH_TOKEN_SECRET"),
-            AuthPreviousTokenSecret = settings.OptionalText("FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"),
+            RetiredVariablesSet = RetiredVariables.Where(settings.IsSet).ToList(),
             AuthTokenIssuer = settings.Text("FORTUNA_AUTH_TOKEN_ISSUER"),
             AuthTokenAudience = settings.Text("FORTUNA_AUTH_TOKEN_AUDIENCE"),
             AuthTokenExpirationInSeconds = settings.PositiveNumber("FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS", 3600),
@@ -218,6 +217,8 @@ public sealed record FortunaOptions
         }
 
         public string? OptionalTrimmed(string key) => OptionalText(key)?.Trim();
+
+        public bool IsSet(string key) => OptionalText(key) is not null;
 
         public int PositiveInteger(string key, int fallback) =>
             Convert(key, fallback, value =>

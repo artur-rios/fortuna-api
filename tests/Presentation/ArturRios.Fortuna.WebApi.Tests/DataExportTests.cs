@@ -437,7 +437,7 @@ public sealed class DataExportTests : IAsyncLifetime
             3600, Issuer, Audience, Secret,
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer", new JwtHandler().CreateToken(configuration));
+            "Bearer", TestHeimdallKeySet.Sign(configuration));
     }
 
     private Dictionary<string, string?> ValidSettings() => new()
@@ -451,7 +451,6 @@ public sealed class DataExportTests : IAsyncLifetime
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
         ["FORTUNA_EXPORT_SYNC_THRESHOLD_ROWS"] = "100",
         ["FORTUNA_EXPORT_RETENTION_HOURS"] = "24",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",

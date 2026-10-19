@@ -19,7 +19,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class HeimdallAuthProxyTests
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateTimeOffset ExpiresAt = DateTimeOffset.Parse("2026-09-09T13:00:00Z");
@@ -1087,8 +1086,8 @@ public sealed class HeimdallAuthProxyTests
             DisplayName = "Test User"
         };
 
-        return new JwtHandler().CreateToken(new JwtConfiguration(
-            3600, Issuer, Audience, Secret, new FortunaIdentityMapper().ToClaims(identity)));
+        return TestHeimdallKeySet.Sign(new JwtConfiguration(
+            3600, Issuer, Audience, string.Empty, new FortunaIdentityMapper().ToClaims(identity)));
     }
 
     private static Dictionary<string, string?> ValidSettings() => new()
@@ -1098,7 +1097,6 @@ public sealed class HeimdallAuthProxyTests
         ["FORTUNA_STORAGE_PROVIDER"] = "Filesystem",
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
@@ -1106,7 +1104,7 @@ public sealed class HeimdallAuthProxyTests
         ["FORTUNA_LOCALE"] = "pt-BR",
         ["FORTUNA_LOCAL_AUTH_ENABLED"] = "false",
         ["FORTUNA_HEIMDALL_BASE_URL"] = "https://heimdall.example.test",
-        ["FORTUNA_HEIMDALL_JWKS_URL"] = "http://heimdall.example.test/.well-known/jwks.json",
+        ["FORTUNA_HEIMDALL_JWKS_URL"] = TestHeimdallKeySet.Url,
         ["FORTUNA_LOCAL_TOKEN_SECRET"] = "fortuna-tests-local-token-secret-with-enough-entropy",
         ["FORTUNA_HEIMDALL_SCOPE_ID"] = "00000000-0000-0000-0000-000000000076"
     };

@@ -8,6 +8,8 @@
   <RunConfiguration>
     <EnvironmentVariables>
       <FORTUNA_HEIMDALL_BASE_URL>https://heimdall.example.test/</FORTUNA_HEIMDALL_BASE_URL>
+      <!-- A placeholder only: in the WebApi tests TestHeimdallKeySet's [ModuleInitializer] overrides it with its
+           in-process key set (http://127.0.0.1:<port>/.well-known/jwks.json) before any test host is built. -->
       <FORTUNA_HEIMDALL_JWKS_URL>http://heimdall.example.test/.well-known/jwks.json</FORTUNA_HEIMDALL_JWKS_URL>
       <FORTUNA_LOCAL_TOKEN_SECRET>fortuna-tests-local-token-secret-with-enough-entropy</FORTUNA_LOCAL_TOKEN_SECRET>
       <FORTUNA_HEIMDALL_SCOPE_ID>00000000-0000-0000-0000-000000000076</FORTUNA_HEIMDALL_SCOPE_ID>

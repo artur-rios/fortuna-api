@@ -308,7 +308,7 @@ public sealed class NetPositionTests : IAsyncLifetime
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            new JwtHandler().CreateToken(configuration));
+            TestHeimdallKeySet.Sign(configuration));
     }
 
     private static Dictionary<string, string?> ValidSettings() => new()
@@ -322,7 +322,6 @@ public sealed class NetPositionTests : IAsyncLifetime
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
         ["FORTUNA_REPORT_MAX_RANGE_DAYS"] = "366",
         ["FORTUNA_REPORT_KEY_TTL_MINUTES"] = "15",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",

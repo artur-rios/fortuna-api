@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.Shared.Users;
@@ -17,13 +16,13 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class AuthenticationTests
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
 
@@ -146,16 +145,17 @@ public sealed class AuthenticationTests
     }
 
     [FunctionalTheory]
-    [InlineData("wrong-secret-with-enough-entropy", Issuer, Audience, 3600)]
-    [InlineData(Secret, "wrong-issuer", Audience, 3600)]
-    [InlineData(Secret, Issuer, "wrong-audience", 3600)]
-    [InlineData(Secret, Issuer, Audience, -60)]
+    [InlineData(false, Issuer, Audience, 3600)]
+    [InlineData(true, "wrong-issuer", Audience, 3600)]
+    [InlineData(true, Issuer, "wrong-audience", 3600)]
+    [InlineData(true, Issuer, Audience, -60)]
     public async Task GivenUntrustedToken_WhenProtectedEndpointIsRequested_ThenUnauthorizedIsReturned(
-        string secret, string issuer, string audience, double lifetimeSeconds)
+        bool signedByHeimdall, string issuer, string audience, double lifetimeSeconds)
     {
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        Authorize(client, TokenFor(Guid.NewGuid(), HeimdallRoles.User, secret, issuer, audience, lifetimeSeconds));
+        var key = signedByHeimdall ? TestHeimdallKeySet.Key : JwksTestSupport.NewKey();
+        Authorize(client, TokenFor(Guid.NewGuid(), HeimdallRoles.User, key, issuer, audience, lifetimeSeconds));
 
         var response = await client.GetAsync("/__tests/authentication/actor", CancellationToken.None);
 
@@ -180,6 +180,23 @@ public sealed class AuthenticationTests
         Assert.Equal((int)HeimdallRoles.User, actor.RoleId);
         Assert.Equal(scope, actor.ScopeId);
         Assert.Equal(["fortuna.read", "fortuna.write"], actor.Permissions);
+    }
+
+    /// <summary>
+    /// fortuna-ui reads the <c>fortuna_local</c> claim, so a local sign-in still writes it: only a Heimdall
+    /// token may no longer make its holder local by carrying it.
+    /// </summary>
+    [FunctionalFact]
+    public async Task GivenALocalSignIn_WhenTheTokenIsIssued_ThenItStillCarriesTheFortunaLocalClaim()
+    {
+        await using var factory = CreateFactory();
+
+        var issued = factory.Services.GetRequiredService<ILocalAuthTokenIssuer>().Issue(Guid.NewGuid(), "Local User");
+        var token = new JsonWebToken(issued.Token);
+
+        Assert.Equal(FortunaOptions.DefaultLocalTokenIssuer, token.Issuer);
+        Assert.True(token.TryGetPayloadValue<string>(FortunaIdentityMapper.LocalIdentityClaim, out var local));
+        Assert.Equal(bool.TrueString, local);
     }
 
     [FunctionalFact]
@@ -243,7 +260,7 @@ public sealed class AuthenticationTests
     private static string TokenFor(
         Guid subject,
         HeimdallRoles role,
-        string secret = Secret,
+        JwtKey? key = null,
         string issuer = Issuer,
         string audience = Audience,
         double lifetimeSeconds = 3600,
@@ -269,8 +286,8 @@ public sealed class AuthenticationTests
                 IssuedAt = now.AddMinutes(-2),
                 Expires = now.AddMinutes(-1),
                 SigningCredentials = new SigningCredentials(
-                    new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secret)),
-                    SecurityAlgorithms.HmacSha256)
+                    (key ?? TestHeimdallKeySet.Key).ToSecurityKey(),
+                    SecurityAlgorithms.EcdsaSha256)
             };
 
             return new JwtSecurityTokenHandler().WriteToken(
@@ -281,10 +298,17 @@ public sealed class AuthenticationTests
             lifetimeSeconds,
             issuer,
             audience,
-            secret,
+            string.Empty,
             new FortunaIdentityMapper().ToClaims(identity));
 
-        return new JwtHandler().CreateToken(configuration);
+        return key is null
+            ? TestHeimdallKeySet.Sign(configuration)
+            : new JwtHandler().CreateToken(configuration with
+            {
+                Algorithm = JwtAlgorithms.ES256,
+                Keys = [key],
+                SigningKeyId = key.Id
+            });
     }
 
     private static Dictionary<string, string?> ValidSettings() => new()
@@ -295,7 +319,6 @@ public sealed class AuthenticationTests
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
@@ -306,7 +329,7 @@ public sealed class AuthenticationTests
         ,
         ["FORTUNA_HEIMDALL_BASE_URL"] = "https://heimdall.example.test"
         ,
-        ["FORTUNA_HEIMDALL_JWKS_URL"] = "http://heimdall.example.test/.well-known/jwks.json",
+        ["FORTUNA_HEIMDALL_JWKS_URL"] = TestHeimdallKeySet.Url,
         ["FORTUNA_LOCAL_TOKEN_SECRET"] = "fortuna-tests-local-token-secret-with-enough-entropy",
         ["FORTUNA_HEIMDALL_SCOPE_ID"] = "00000000-0000-0000-0000-000000000076"
     };

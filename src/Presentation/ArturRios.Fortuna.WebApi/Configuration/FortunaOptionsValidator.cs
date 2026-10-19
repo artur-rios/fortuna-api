@@ -47,23 +47,7 @@ public sealed class FortunaOptionsValidator : AbstractValidator<FortunaOptions>
 
         Required(options => options.LogDirectory, "FORTUNA_LOG_DIRECTORY");
 
-        // Optional since Heimdall signs ES256: while it is set, Heimdall's HS256 tokens from before that are
-        // still accepted (the overlap), so it is held to the strength it always had.
-        RuleFor(options => options.AuthTokenSecret)
-            .Must(secret => IsStrongSecret(secret!))
-            .When(options => options.AcceptsLegacyTokens)
-            .WithMessage(ConfigurationMessages.SecretTooShort(
-                "FORTUNA_AUTH_TOKEN_SECRET",
-                FortunaOptions.MinimumAuthTokenSecretBytes));
-
-        RuleFor(options => options.AuthPreviousTokenSecret)
-            .Must((options, _) => options.AcceptsLegacyTokens)
-            .When(options => HasText(options.AuthPreviousTokenSecret))
-            .WithMessage(ConfigurationMessages.PreviousWithoutCurrent(
-                "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS",
-                "FORTUNA_AUTH_TOKEN_SECRET"));
-
-        // Fortuna's own key: never shared, so never equal to a secret other services hold.
+        // Fortuna's own key, which never leaves Fortuna: held to the strength HS256 needs.
         RuleFor(options => options.LocalTokenSecret)
             .Cascade(CascadeMode.Stop)
             .Must(HasText)
@@ -71,25 +55,12 @@ public sealed class FortunaOptionsValidator : AbstractValidator<FortunaOptions>
             .Must(IsStrongSecret)
             .WithMessage(ConfigurationMessages.SecretTooShort(
                 "FORTUNA_LOCAL_TOKEN_SECRET",
-                FortunaOptions.MinimumAuthTokenSecretBytes))
-            .Must((options, secret) => secret != options.AuthTokenSecret)
-            .WithMessage(ConfigurationMessages.MustDiffer("FORTUNA_LOCAL_TOKEN_SECRET", "FORTUNA_AUTH_TOKEN_SECRET"))
-            .Must((options, secret) => secret != options.AuthPreviousTokenSecret)
-            .WithMessage(ConfigurationMessages.MustDiffer(
-                "FORTUNA_LOCAL_TOKEN_SECRET",
-                "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"));
+                FortunaOptions.MinimumAuthTokenSecretBytes));
 
         // The issuer is what tells a local token from a Heimdall one.
         RuleFor(options => options.LocalTokenIssuer)
             .Must((options, issuer) => !string.Equals(issuer, options.AuthTokenIssuer?.Trim(), StringComparison.Ordinal))
             .WithMessage(ConfigurationMessages.MustDiffer("FORTUNA_LOCAL_TOKEN_ISSUER", "FORTUNA_AUTH_TOKEN_ISSUER"));
-
-        RuleFor(options => options.AuthPreviousTokenSecret)
-            .Must(secret => IsStrongSecret(secret!))
-            .When(options => HasText(options.AuthPreviousTokenSecret))
-            .WithMessage(ConfigurationMessages.SecretTooShort(
-                "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS",
-                FortunaOptions.MinimumAuthTokenSecretBytes));
 
         // The key travels as an HTTP header value, so anything outside visible ASCII (a space, a
         // line break, a non-ASCII letter) would make every request to Heimdall throw instead of

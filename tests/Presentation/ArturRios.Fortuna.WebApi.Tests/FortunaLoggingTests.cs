@@ -1,4 +1,5 @@
 using ArturRios.Fortuna.WebApi.Configuration;
+using ArturRios.Fortuna.WebApi.Extensions;
 using ArturRios.Fortuna.WebApi.Observability;
 using ArturRios.Util.Test.Attributes;
 using ArturRios.Util.WebApi.Middleware;
@@ -54,6 +55,45 @@ public sealed class FortunaLoggingTests
             .IsEnabled(LogEventLevel.Debug));
     }
 
+    /// <summary>
+    /// The retired secrets are no longer read, so nothing checks them any more: an operator learns they can
+    /// go from one warning each, which names the variable and never carries its value.
+    /// </summary>
+    [UnitFact]
+    public void GivenTheRetiredSecretIsSet_WhenStarting_ThenAWarningNamesItAndNeverItsValue()
+    {
+        const string previous = "fortuna-tests-retired-previous-signing-key";
+        var settings = JwksTestSupport.Settings(retiredSecret: true);
+        settings["FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"] = previous;
+        var sink = new CollectingSink();
+
+        using (var logger = new LoggerConfiguration().MinimumLevel.Verbose().WriteTo.Sink(sink).CreateLogger())
+        {
+            FortunaWebApiServiceCollectionExtensions.LogBearerTokenSettings(
+                logger, FortunaOptions.From(settings.GetValueOrDefault));
+        }
+
+        var warnings = sink.Events.Where(logEvent => logEvent.Level == LogEventLevel.Warning).ToList();
+        var startup = Assert.Single(sink.Events, logEvent => logEvent.Level == LogEventLevel.Information);
+
+        Assert.Equal(
+            new object?[] { "FORTUNA_AUTH_TOKEN_SECRET", "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS" },
+            warnings.Select(warning => Scalar(warning, "Variable")));
+        Assert.All(warnings, warning =>
+            Assert.Equal("{Variable} is set but no longer read; remove it", warning.MessageTemplate.Text));
+        Assert.Equal("refused", Scalar(startup, "LegacyState"));
+        Assert.All(sink.Events, logEvent =>
+        {
+            var written = logEvent.RenderMessage() + string.Join('|', logEvent.Properties.Values);
+
+            Assert.DoesNotContain(JwksTestSupport.SharedSecret, written, StringComparison.Ordinal);
+            Assert.DoesNotContain(previous, written, StringComparison.Ordinal);
+        });
+    }
+
+    private static object? Scalar(LogEvent logEvent, string property) =>
+        Assert.IsType<ScalarValue>(logEvent.Properties[property]).Value;
+
     private static Logger CreateLogger(Dictionary<string, string?> settings)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
@@ -63,7 +103,6 @@ public sealed class FortunaLoggingTests
             DataDatabaseType = "PostgreSql",
             StorageProvider = "Filesystem",
             LogDirectory = Path.Combine(Path.GetTempPath(), "fortuna-api-logging-tests"),
-            AuthTokenSecret = "fortuna-tests-signing-key-with-enough-entropy",
             AuthTokenIssuer = "heimdall-tests",
             AuthTokenAudience = "fortuna-tests",
             Locale = "pt-BR",
@@ -75,5 +114,14 @@ public sealed class FortunaLoggingTests
         };
 
         return FortunaLogging.Configure(new LoggerConfiguration(), configuration, options).CreateLogger();
+    }
+
+    private sealed class CollectingSink : ILogEventSink
+    {
+        private readonly List<LogEvent> _events = [];
+
+        public IReadOnlyList<LogEvent> Events => _events;
+
+        public void Emit(LogEvent logEvent) => _events.Add(logEvent);
     }
 }

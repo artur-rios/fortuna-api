@@ -119,8 +119,9 @@ public static class FortunaWebApiServiceCollectionExtensions
     ///     own algorithm only (<see cref="FortunaSigningKeys" />), so a token's <c>alg</c> header never
     ///     decides what kind of key checks it. Heimdall's ES256 keys come from its published key set
     ///     (<see cref="HeimdallJwks" />), fetched before validation when a token names one Fortuna does not
-    ///     know (<see cref="HeimdallKeyRefresh" />); after validation the legacy <c>fortuna_local</c> claim
-    ///     is removed from every token but a legacy one (<see cref="LocalIdentityRule" />).
+    ///     know (<see cref="HeimdallKeyRefresh" />); a Heimdall token naming no key gets none, so Heimdall's
+    ///     retired HS256 tokens are refused. After validation the <c>fortuna_local</c> claim is removed from
+    ///     every token not under the local issuer (<see cref="LocalIdentityRule" />).
     /// </summary>
     /// <remarks>
     ///     No static signing key, authority or configuration manager is set: IdentityModel falls back to
@@ -176,11 +177,29 @@ public static class FortunaWebApiServiceCollectionExtensions
                     OnTokenValidated = context => LocalIdentityRule.OnTokenValidatedAsync(context, options)
                 };
             });
+        LogBearerTokenSettings(Log.Logger, options);
+    }
+
+    /// <summary>
+    ///     The start-up line naming where bearer-token keys come from, then one warning for each retired
+    ///     variable still set (<see cref="FortunaOptions.RetiredVariables" />).
+    /// </summary>
+    /// <remarks>
+    ///     <c>{LegacyState}</c> stays in the line, always <c>refused</c>, so a search written for the overlap
+    ///     still finds it. A warning names the variable and never its value, which Fortuna no longer reads.
+    /// </remarks>
+    public static void LogBearerTokenSettings(Serilog.ILogger logger, FortunaOptions options)
+    {
         // The address and the issuers are not secrets; logging them makes a misconfigured consumer diagnosable.
-        Log.Information(
+        logger.Information(
             "Bearer tokens: Heimdall's ES256 keys from {JwksUrl}; Heimdall's HS256 tokens {LegacyState}; local tokens under issuer {LocalIssuer}",
             options.HeimdallJwksUri,
-            options.AcceptsLegacyTokens ? "accepted until FORTUNA_AUTH_TOKEN_SECRET is removed" : "refused",
+            "refused",
             options.LocalTokenIssuer);
+
+        foreach (var variable in options.RetiredVariablesSet)
+        {
+            logger.Warning("{Variable} is set but no longer read; remove it", variable);
+        }
     }
 }

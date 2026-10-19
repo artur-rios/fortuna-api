@@ -164,7 +164,7 @@ public sealed class UserProfileProvisioningTests : IAsyncLifetime
         var configuration = new JwtConfiguration(
             3600, Issuer, Audience, Secret, new FortunaIdentityMapper().ToClaims(identity));
 
-        return new JwtHandler().CreateToken(configuration);
+        return TestHeimdallKeySet.Sign(configuration);
     }
 
     private static string TokenWithoutSubject(string displayName)
@@ -175,8 +175,7 @@ public sealed class UserProfileProvisioningTests : IAsyncLifetime
             [FortunaIdentityMapper.DisplayNameClaim] = displayName
         };
 
-        return new JwtHandler().CreateToken(
-            new JwtConfiguration(3600, Issuer, Audience, Secret, claims));
+        return TestHeimdallKeySet.Sign(new JwtConfiguration(3600, Issuer, Audience, Secret, claims));
     }
 
     private static Dictionary<string, string?> ValidSettings(string? defaultCurrency) => new()
@@ -187,7 +186,6 @@ public sealed class UserProfileProvisioningTests : IAsyncLifetime
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
