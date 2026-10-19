@@ -26,7 +26,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class NetPositionTests : IAsyncLifetime
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateOnly AsOf = new(2026, 9, 8);
@@ -304,7 +303,7 @@ public sealed class NetPositionTests : IAsyncLifetime
             3600,
             Issuer,
             Audience,
-            Secret,
+            string.Empty,
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",

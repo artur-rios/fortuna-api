@@ -19,7 +19,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class UserProfileProvisioningTests : IAsyncLifetime
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private readonly PostgreSqlContainer database =
@@ -162,7 +161,7 @@ public sealed class UserProfileProvisioningTests : IAsyncLifetime
             DisplayName = displayName
         };
         var configuration = new JwtConfiguration(
-            3600, Issuer, Audience, Secret, new FortunaIdentityMapper().ToClaims(identity));
+            3600, Issuer, Audience, string.Empty, new FortunaIdentityMapper().ToClaims(identity));
 
         return TestHeimdallKeySet.Sign(configuration);
     }
@@ -175,7 +174,7 @@ public sealed class UserProfileProvisioningTests : IAsyncLifetime
             [FortunaIdentityMapper.DisplayNameClaim] = displayName
         };
 
-        return TestHeimdallKeySet.Sign(new JwtConfiguration(3600, Issuer, Audience, Secret, claims));
+        return TestHeimdallKeySet.Sign(new JwtConfiguration(3600, Issuer, Audience, string.Empty, claims));
     }
 
     private static Dictionary<string, string?> ValidSettings(string? defaultCurrency) => new()

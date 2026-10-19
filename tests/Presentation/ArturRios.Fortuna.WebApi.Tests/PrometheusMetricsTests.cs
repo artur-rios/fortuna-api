@@ -23,7 +23,6 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
     private const int MetricsPort = 9464;
     private const int PublicPort = 8080;
     private const string LocalPortHeader = "X-Test-Local-Port";
-    private const string Secret = "fortuna-metrics-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-metrics-tests";
     private const string Audience = "fortuna-metrics-tests";
     private readonly PostgreSqlContainer database =
@@ -187,7 +186,7 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
             3600,
             Issuer,
             Audience,
-            Secret,
+            string.Empty,
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",

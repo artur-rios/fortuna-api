@@ -23,7 +23,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class CounterpartyManagementTests : IAsyncLifetime
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private readonly PostgreSqlContainer database = new PostgreSqlBuilder("postgres:18-alpine")
@@ -319,7 +318,7 @@ public sealed class CounterpartyManagementTests : IAsyncLifetime
             3600,
             Issuer,
             Audience,
-            Secret,
+            string.Empty,
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",

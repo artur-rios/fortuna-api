@@ -26,7 +26,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateTimeOffset Now = DateTimeOffset.UtcNow;
@@ -266,7 +265,7 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
             DisplayName = "Portable Owner"
         };
         var configuration = new JwtConfiguration(
-            3600, Issuer, Audience, Secret, new FortunaIdentityMapper().ToClaims(identity));
+            3600, Issuer, Audience, string.Empty, new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer", TestHeimdallKeySet.Sign(configuration));
     }

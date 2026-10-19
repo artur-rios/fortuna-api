@@ -269,7 +269,7 @@ public sealed class HealthCheckTests : IAsyncLifetime
             3600,
             Issuer,
             Audience,
-            Secret,
+            string.Empty,
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",

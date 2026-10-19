@@ -169,6 +169,37 @@ public sealed class FortunaSigningKeysTests
         Assert.True(result.IsValid, result.Exception?.Message);
     }
 
+    /// <summary>
+    /// An ES256 token that names Heimdall's published kid but is signed by another P-256 key. Every check but
+    /// the signature passes: the kid resolves to Heimdall's EC key, ES256 is that key's algorithm, and the same
+    /// token signed by Heimdall's own key is accepted. Only the signature can refuse it.
+    /// </summary>
+    [UnitFact]
+    public async Task GivenAnEs256TokenNamingHeimdallsKidSignedByAnotherKey_WhenValidated_ThenItIsRefused()
+    {
+        var (keys, heimdallKey, heimdallPem) = await CreateAsync();
+        using var heimdallEcdsa = ECDsa.Create();
+        heimdallEcdsa.ImportFromPem(heimdallPem);
+        using var impostorEcdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var genuine = Forge(new SigningCredentials(
+            new ECDsaSecurityKey(heimdallEcdsa) { KeyId = heimdallKey.Id }, SecurityAlgorithms.EcdsaSha256));
+        var forged = Forge(new SigningCredentials(
+            new ECDsaSecurityKey(impostorEcdsa) { KeyId = heimdallKey.Id }, SecurityAlgorithms.EcdsaSha256));
+        var read = new JsonWebToken(forged);
+
+        var accepted = await ValidateAsync(keys, genuine);
+        var result = await ValidateAsync(keys, forged);
+        var resolved = Assert.Single(keys.Resolve(read, read.Kid));
+
+        Assert.True(accepted.IsValid, accepted.Exception?.Message);
+        Assert.Equal(SecurityAlgorithms.EcdsaSha256, read.Alg);
+        Assert.Equal(heimdallKey.Id, read.Kid);
+        Assert.Equal(heimdallKey.Id, resolved.KeyId);
+        Assert.True(FortunaSigningKeys.IsAllowed(read.Alg, resolved));
+        Assert.False(result.IsValid);
+        Assert.IsAssignableFrom<SecurityTokenInvalidSignatureException>(result.Exception);
+    }
+
     [UnitTheory]
     [InlineData(true)]
     [InlineData(false)]

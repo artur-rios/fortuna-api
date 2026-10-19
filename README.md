@@ -111,8 +111,8 @@ own secrets, its own Heimdall (`FORTUNA_HEIMDALL_BASE_URL`, which must be HTTPS)
 keys it reads from `FORTUNA_HEIMDALL_JWKS_URL`, and its own `FORTUNA_LOCAL_TOKEN_SECRET` for
 local-account tokens. Only those published keys verify a Heimdall token: the shared secret Fortuna
 once held for Heimdall's HS256 tokens (`FORTUNA_AUTH_TOKEN_SECRET`, `_PREVIOUS`) is no longer read
-since 4.0.0, and a start-up warning names it while it is still set. The release process, and how to turn development or homologation on, are in
-[CONTRIBUTING.md](./CONTRIBUTING.md#releasing).
+since 4.0.0, and a start-up warning names it while it is still set. The release process, and how
+to turn development or homologation on, are in [CONTRIBUTING.md](./CONTRIBUTING.md#releasing).
 
 The API's liveness is observable at the public `GET /healthcheck` endpoint. Instance administrators
 can inspect dependency health at `GET /healthcheck/detailed`.
