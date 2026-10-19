@@ -44,7 +44,7 @@ internal static class JwksTestSupport
     /// <summary>Every setting Fortuna needs to start, with or without the legacy shared secret.</summary>
     public static Dictionary<string, string?> Settings(bool sharedSecret = true) => new()
     {
-        ["FORTUNA_DATA_CONNECTIONSTRING"] = "Host=localhost;Database=fortuna;Username=postgres;Password=postgres;Search Path=fortuna",
+        ["FORTUNA_DATA_CONNECTIONSTRING"] = TestDatabase.Unreachable,
         ["FORTUNA_DATA_DATABASETYPE"] = "PostgreSql",
         ["FORTUNA_STORAGE_PROVIDER"] = "Filesystem",
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
