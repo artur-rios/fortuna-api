@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- The tests no longer try to reach a PostgreSQL on localhost. Suites that start no test database configure an
+  unreachable placeholder instead, so a run never logs in to a server that happens to listen on the default port.
+
 ## [3.0.0] - 2026-10-18
 
 ### Added
