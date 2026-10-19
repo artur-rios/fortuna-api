@@ -47,10 +47,6 @@ public sealed class TokenSchemesTests : IDisposable
     private const string LongLocalSecret =
         "fortuna-tests-local-key-long-enough-for-hs384-and-hs512-0123456789abcdef";
 
-    /// <summary>No database answers here: nothing on these routes may reach one.</summary>
-    private const string UnreachableDatabase =
-        "Host=127.0.0.1;Port=1;Database=fortuna;Username=fortuna-tests;Password=unused;Search Path=fortuna";
-
     private static readonly string HeimdallPem = JwksTestSupport.NewPem();
     private static readonly JwtKey HeimdallKey = JwtKey.FromEcPrivateKeyPem(HeimdallPem);
 
@@ -526,7 +522,7 @@ public sealed class TokenSchemesTests : IDisposable
         var settings = JwksTestSupport.Settings();
         settings[SharedSecretSetting] = retiredSecret;
         settings["FORTUNA_LOCAL_TOKEN_SECRET"] = localSecret ?? JwksTestSupport.LocalSecret;
-        settings["FORTUNA_DATA_CONNECTIONSTRING"] = UnreachableDatabase;
+        settings["FORTUNA_DATA_CONNECTIONSTRING"] = TestDatabase.Unreachable;
         settings[CallerKeySetting] = callerKey;
 
         foreach (var (key, value) in settings)

@@ -195,8 +195,7 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
 
     private Dictionary<string, string?> ValidSettings(string? metricsPort) => new()
     {
-        ["FORTUNA_DATA_CONNECTIONSTRING"] =
-            "Host=localhost;Database=fortuna;Username=postgres;Password=postgres;Search Path=fortuna",
+        ["FORTUNA_DATA_CONNECTIONSTRING"] = TestDatabase.Unreachable,
         ["FORTUNA_DATA_DATABASETYPE"] = "PostgreSql",
         ["FORTUNA_STORAGE_PROVIDER"] = "Filesystem",
         ["FORTUNA_STORAGE_PATH"] = storageRoot,

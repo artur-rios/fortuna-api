@@ -36,6 +36,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   checked, and the compose file and the environment templates no longer pass them. The start-up line now always
   reports Heimdall's HS256 tokens as `refused`.
 
+### Fixed
+
+- The tests no longer try to reach a PostgreSQL on localhost. Suites that start no test database configure an
+  unreachable placeholder instead, so a run never logs in to a server that happens to listen on the default port.
+
 ### Security
 
 - Only Heimdall's published keys verify a Heimdall token. A token under Heimdall's issuer that names no key gets
