@@ -7,6 +7,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-18
+
+### Added
+
+- **Breaking (configuration):** Heimdall's ES256 tokens are verified with the public keys Heimdall publishes. The
+  new, required `FORTUNA_HEIMDALL_JWKS_URL` names its key set; inside yggdrasil that is
+  `http://heimdall-api.<environment>:8080/.well-known/jwks.json`. The set is fetched when a token names a key
+  Fortuna does not know, at most once a minute, and a failed fetch keeps the keys already known.
+- **Breaking (configuration):** `FORTUNA_LOCAL_TOKEN_SECRET` (required) and `FORTUNA_LOCAL_TOKEN_ISSUER` (default
+  `fortuna-local`). The secret must be at least 32 characters and differ from `FORTUNA_AUTH_TOKEN_SECRET` and
+  `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS`, and the issuer must differ from `FORTUNA_AUTH_TOKEN_ISSUER`. Local-account
+  tokens are signed with Fortuna's own key under Fortuna's own issuer, so Heimdall never accepts them and no other
+  service can mint them.
+
+### Changed
+
+- `FORTUNA_AUTH_TOKEN_SECRET` is optional. While it is set (and optionally `_PREVIOUS`), Heimdall's HS256 tokens
+  and the local tokens Fortuna issued under Heimdall's issuer are still accepted, and each secret must still be at
+  least 32 characters. Remove both once Heimdall no longer issues HS256 tokens and a token lifetime has passed.
+  `_PREVIOUS` without the secret stops startup.
+- A token is a local-account token when it names the local issuer. The `fortuna_local` claim counts only on an
+  HS256 token under Heimdall's issuer, verified with the legacy shared secret while it is configured; it is removed
+  from every other token, so an ES256 token from Heimdall is never local by claim.
+
+### Security
+
+- Each key verifies its own algorithm only (an EC key ES256, a secret HS256), and the token's issuer chooses the
+  keys, so a token's `alg` header never selects the kind of key. Fortuna previously accepted any HMAC algorithm.
+  `ArturRios.Jwt` 1.4.0 is referenced directly, replacing the 1.2.0 that `ArturRios.Util.WebApi` brought in.
+- The key-source and forwarding settings under `Authentication:Schemes:Bearer` (for example the
+  `Authentication__Schemes__Bearer__Authority`, `__MetadataAddress` or `__ForwardDefault` environment variables) are
+  now ignored. Before, `Authority` or `MetadataAddress` made Fortuna fetch that address's key set and accept tokens
+  signed with its keys; exploiting it needed write access to the environment. Now only Heimdall's published key set,
+  the legacy shared secret and Fortuna's local secret verify a token.
+
+**Operators:** set `FORTUNA_HEIMDALL_JWKS_URL` and `FORTUNA_LOCAL_TOKEN_SECRET` before deploying; startup refuses
+to run without them. Leave `FORTUNA_AUTH_TOKEN_SECRET` and `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS` as they are when
+deploying: Heimdall issues HS256 tokens until its own move to ES256. While the secret is set, local-account users
+stay signed in with their current token until it expires; their next sign-in issues a token under the local
+issuer. Remove both only once Heimdall no longer issues HS256 tokens and a token lifetime has passed. From then on,
+Heimdall's HS256 tokens and the local-account tokens issued under Heimdall's issuer are answered `401`, and their
+holders sign in again.
+
 ## [2.2.0] - 2026-10-18
 
 ### Changed
@@ -167,7 +210,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/artur-rios/fortuna-api/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/artur-rios/fortuna-api/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/artur-rios/fortuna-api/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/artur-rios/fortuna-api/compare/v1.0.0...v2.0.0

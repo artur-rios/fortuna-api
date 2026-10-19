@@ -193,6 +193,8 @@ public sealed class HeimdallCallerHeadersHandlerTests
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = "fortuna-tests",
         ["FORTUNA_LOCALE"] = "pt-BR",
         ["FORTUNA_HEIMDALL_BASE_URL"] = "https://heimdall.example.test",
+        ["FORTUNA_HEIMDALL_JWKS_URL"] = "http://heimdall.example.test/.well-known/jwks.json",
+        ["FORTUNA_LOCAL_TOKEN_SECRET"] = "fortuna-tests-local-token-secret-with-enough-entropy",
         ["FORTUNA_HEIMDALL_SCOPE_ID"] = "00000000-0000-0000-0000-000000000076",
         ["FORTUNA_HEIMDALL_CALLER_KEY"] = callerKey
     };

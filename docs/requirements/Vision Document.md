@@ -170,7 +170,7 @@ C4Context
     Rel(admin, client, "Administers through")
     Rel(client, heimdall, "Authenticates against, obtaining a token")
     Rel(client, fortuna, "Calls with the Heimdall token")
-    Rel(fortuna, heimdall, "Validates the token locally against shared signing configuration")
+    Rel(fortuna, heimdall, "Validates the token locally with the public keys Heimdall publishes")
     Rel(fortuna, pluggy, "Pulls accounts, cards and transactions from")
     Rel(fortuna, ptax, "Fetches published exchange rates from")
     Rel(fortuna, storage, "Stores and retrieves attachments in")
@@ -178,9 +178,12 @@ C4Context
 
 Two properties of this picture matter more than the boxes:
 
-- **Fortuna never calls Heimdall on a request path.** The client authenticates against Heimdall and
-  presents the resulting token to Fortuna, which validates it locally. Heimdall being unreachable
-  does not make Fortuna unreachable to a caller who already holds a valid token.
+- **Fortuna calls Heimdall on a request path for one thing only: its key set.** The client
+  authenticates against Heimdall and presents the resulting token to Fortuna, which validates it
+  locally with the public keys Heimdall publishes. Fortuna caches those keys and fetches the set again
+  only when a token names a key it does not know, at most once a minute. Heimdall being unreachable
+  does not make Fortuna unreachable to a caller who already holds a valid token whose key Fortuna
+  knows, and a failed fetch keeps the keys already known.
 - **A desktop installation can be an island.** In offline mode the client talks to a local Fortuna
   instance authenticated by a Local Account, and none of Heimdall, Pluggy or PTAX is in the picture
   at all.

@@ -180,6 +180,8 @@ public sealed class ApiPipelineTests
         ["FORTUNA_LOCAL_AUTH_ENABLED"] = localAuthenticationEnabled.ToString(),
         ["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = "10",
         ["FORTUNA_HEIMDALL_BASE_URL"] = "https://heimdall.example.test",
+        ["FORTUNA_HEIMDALL_JWKS_URL"] = "http://heimdall.example.test/.well-known/jwks.json",
+        ["FORTUNA_LOCAL_TOKEN_SECRET"] = "fortuna-tests-local-token-secret-with-enough-entropy",
         ["FORTUNA_HEIMDALL_SCOPE_ID"] = "00000000-0000-0000-0000-000000000076",
         ["FORTUNA_RATES_SOURCE_BASE_URL"] = null,
         ["FORTUNA_RATES_SYNC_CRON"] = null,
