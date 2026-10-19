@@ -183,7 +183,7 @@ public sealed class HeimdallCallerHeadersHandlerTests
 
     private static Dictionary<string, string?> Settings(string? callerKey) => new()
     {
-        ["FORTUNA_DATA_CONNECTIONSTRING"] = "Host=localhost;Database=fortuna;Username=postgres;Password=postgres",
+        ["FORTUNA_DATA_CONNECTIONSTRING"] = TestDatabase.Unreachable,
         ["FORTUNA_DATA_DATABASETYPE"] = "PostgreSql",
         ["FORTUNA_STORAGE_PROVIDER"] = "Filesystem",
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
