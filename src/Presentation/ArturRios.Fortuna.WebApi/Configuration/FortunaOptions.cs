@@ -345,7 +345,7 @@ public sealed record FortunaOptions
         /// Heimdall's base address: HTTPS, or plain HTTP to a private network. A host name is accepted here
         /// and judged by the addresses it resolves to each time a connection is opened
         /// (<see cref="PrivateNetworkConnector" />); an IP address is judged now, so a public one stops
-        /// startup.
+        /// startup. A user name or password in the URL stops startup too: the address is logged at startup.
         /// </summary>
         public Uri RequiredHeimdallBaseUri(string key)
         {
@@ -360,6 +360,13 @@ public sealed record FortunaOptions
             var uri = OptionalAbsoluteUri(key);
             if (uri is null)
             {
+                return fallback;
+            }
+
+            if (!string.IsNullOrEmpty(uri.UserInfo))
+            {
+                errors.Add(ConfigurationMessages.HeimdallBaseUriUserInfo(key));
+
                 return fallback;
             }
 

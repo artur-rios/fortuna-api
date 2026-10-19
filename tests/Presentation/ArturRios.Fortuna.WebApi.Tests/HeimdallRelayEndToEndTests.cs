@@ -25,7 +25,7 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
     private const string CallerKey = "caller-key-with-at-least-32-characters-0123";
     private const string Proxy = "10.1.2.3";
     private const string EndUser = "203.0.113.50";
-    private const string DefaultHeimdallBaseUrl = "https://heimdall.example.test";
+    private const string DefaultHeimdallBaseUrl = "https://heimdall.example.test/";
 
     private static readonly string[] OverriddenSettings =
     [
@@ -165,6 +165,28 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
         Assert.Empty(heimdall.Values("X-Real-IP"));
     }
 
+    [Ipv6LoopbackFact]
+    public async Task GivenPlainHttpHeimdallOnIpv6Loopback_WhenTheAppsClientSends_ThenTheServerAnswers()
+    {
+        // Given — Heimdall on [::1]: the app's handler hands the connector the bracketed literal.
+        using var heimdall = new LoopbackHttpServer(
+            _ => "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            IPAddress.IPv6Loopback);
+        await using var factory = CreateFactory(
+            heimdall: null,
+            CallerKey,
+            heimdallBaseUrl: $"http://[::1]:{heimdall.Port}/");
+        var client = factory.Services.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(IHeimdallAuthGateway));
+
+        // When — the typed client the app registered, with its own primary handler and connector.
+        using var response = await client.GetAsync(client.BaseAddress);
+
+        // Then
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(1, heimdall.Connections);
+    }
+
     public void Dispose()
     {
         foreach (var setting in OverriddenSettings)
@@ -255,12 +277,13 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
     /// </summary>
     private sealed class LoopbackHttpServer : IDisposable
     {
-        private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
+        private readonly TcpListener _listener;
         private readonly CancellationTokenSource _stopping = new();
         private int _connections;
 
-        public LoopbackHttpServer(Func<string, string> answer)
+        public LoopbackHttpServer(Func<string, string> answer, IPAddress? address = null)
         {
+            _listener = new TcpListener(address ?? IPAddress.Loopback, 0);
             _listener.Start();
             Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
             _ = ServeAsync(answer);
@@ -341,6 +364,39 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
             }
 
             return received.ToString();
+        }
+    }
+
+    /// <summary>A functional fact, skipped with its reason where the host has no IPv6 loopback.</summary>
+    private sealed class Ipv6LoopbackFactAttribute : FunctionalFactAttribute
+    {
+        public Ipv6LoopbackFactAttribute()
+        {
+            if (Skip is null && !HasIpv6Loopback())
+            {
+                Skip = "This host has no IPv6 loopback address (::1) to listen on.";
+            }
+        }
+
+        private static bool HasIpv6Loopback()
+        {
+            if (!Socket.OSSupportsIPv6)
+            {
+                return false;
+            }
+
+            try
+            {
+                var probe = new TcpListener(IPAddress.IPv6Loopback, 0);
+                probe.Start();
+                probe.Stop();
+
+                return true;
+            }
+            catch (SocketException)
+            {
+                return false;
+            }
         }
     }
 

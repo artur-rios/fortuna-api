@@ -13,8 +13,9 @@ using Serilog.Events;
 namespace ArturRios.Fortuna.WebApi.Tests;
 
 /// <summary>
-///     Runs alone: the start-up lines go through Serilog's static logger, which these tests replace
-///     and which every host a factory starts replaces too.
+///     Groups the tests that replace Serilog's static logger, which every host a factory starts
+///     replaces too. The assembly already runs its tests one at a time (<c>TestAssembly.cs</c>); this
+///     collection keeps these apart from the rest only should that ever change.
 /// </summary>
 [CollectionDefinition(Name, DisableParallelization = true)]
 public sealed class StaticLoggerCollection
@@ -29,6 +30,7 @@ public sealed class FortunaLoggingTests
         "Heimdall credential exchange: {HeimdallBaseUrl} over {Transport}; caller key {CallerKeyState}";
 
     private const string CallerKey = "caller-key-with-at-least-32-characters-0123";
+
     [UnitTheory]
     [InlineData("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Information, false)]
     [InlineData("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning, true)]

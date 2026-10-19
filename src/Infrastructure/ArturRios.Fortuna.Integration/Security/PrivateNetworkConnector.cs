@@ -53,9 +53,18 @@ public static class PrivateNetworkConnector
         return ConnectAsync(context.DnsEndPoint, Dns.GetHostAddressesAsync, cancellationToken);
     }
 
+    internal static ValueTask<Stream> ConnectAsync(
+        DnsEndPoint endPoint,
+        Func<string, CancellationToken, Task<IPAddress[]>> resolve,
+        CancellationToken cancellationToken) =>
+        ConnectAsync(endPoint, resolve, ConnectSocketAsync, cancellationToken);
+
+    // The resolver and the dialer are seams: tests choose the addresses a host resolves to, and see
+    // which endpoints are actually dialed.
     internal static async ValueTask<Stream> ConnectAsync(
         DnsEndPoint endPoint,
         Func<string, CancellationToken, Task<IPAddress[]>> resolve,
+        Func<IPEndPoint, CancellationToken, ValueTask<Stream>> connect,
         CancellationToken cancellationToken)
     {
         // An IP literal is its own address; brackets around an IPv6 literal are dropped first.
@@ -72,29 +81,38 @@ public static class PrivateNetworkConnector
         Exception? lastFailure = null;
         foreach (var address in candidates)
         {
-            var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
             try
             {
-                await socket.ConnectAsync(new IPEndPoint(address, endPoint.Port), cancellationToken)
+                return await connect(new IPEndPoint(address, endPoint.Port), cancellationToken)
                     .ConfigureAwait(false);
-
-                return new NetworkStream(socket, ownsSocket: true);
             }
             catch (SocketException exception)
             {
-                socket.Dispose();
                 lastFailure = exception;
-            }
-            catch
-            {
-                socket.Dispose();
-                throw;
             }
         }
 
         ExceptionDispatchInfo.Throw(lastFailure!);
 
         return null!;
+    }
+
+    private static async ValueTask<Stream> ConnectSocketAsync(
+        IPEndPoint endPoint,
+        CancellationToken cancellationToken)
+    {
+        var socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+        try
+        {
+            await socket.ConnectAsync(endPoint, cancellationToken).ConfigureAwait(false);
+
+            return new NetworkStream(socket, ownsSocket: true);
+        }
+        catch
+        {
+            socket.Dispose();
+            throw;
+        }
     }
 
     private static IPAddress Normalize(IPAddress address) =>

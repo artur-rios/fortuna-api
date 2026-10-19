@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   proxy from the environment is used.
 - A start-up line names the transport: `Heimdall credential exchange: <url> over TLS` or
   `over plain HTTP to private addresses only`, and whether the caller key is configured, never the key.
+- Upgrading: deploy 3.1.0 before switching `FORTUNA_HEIMDALL_BASE_URL` to `http`; 3.0.0 refuses it at startup.
 
 ### Fixed
 

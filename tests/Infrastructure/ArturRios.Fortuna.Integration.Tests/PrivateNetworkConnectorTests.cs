@@ -62,20 +62,22 @@ public sealed class PrivateNetworkConnectorTests
     [UnitFact]
     public async Task GivenHostResolvingToPublicAndPrivateAddresses_WhenConnecting_ThenOnlyThePrivateOneIsUsed()
     {
-        // The public address comes first and is unroutable: trying it would hang past the deadline.
-        using var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        var accepted = listener.AcceptTcpClientAsync();
-        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        // The public address comes first; the connect seam records every endpoint actually dialed.
+        const int port = 8080;
+        var dialed = new List<IPEndPoint>();
 
         await using var stream = await PrivateNetworkConnector.ConnectAsync(
             new DnsEndPoint("heimdall-api.production", port),
             (_, _) => Task.FromResult(new[] { IPAddress.Parse("203.0.113.10"), IPAddress.Loopback }),
-            deadline.Token);
-        using var connection = await accepted;
+            (address, _) =>
+            {
+                dialed.Add(address);
 
-        Assert.Equal(IPAddress.Loopback, ((IPEndPoint)connection.Client.RemoteEndPoint!).Address);
+                return ValueTask.FromResult<Stream>(new MemoryStream());
+            },
+            CancellationToken.None);
+
+        Assert.Equal([new IPEndPoint(IPAddress.Loopback, port)], dialed);
     }
 
     [UnitFact]

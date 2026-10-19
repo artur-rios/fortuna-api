@@ -99,8 +99,9 @@ docker compose --env-file docker/local.env up -d --build
 
 Local signs in with Fortuna's own local account (`FORTUNA_LOCAL_AUTH_ENABLED=true`). To sign in
 through the local heimdall-api instead, it is `http://host.docker.internal:8080/`: plain HTTP is
-accepted because that host resolves to a private address. The API has no CORS support, so a browser build of the web UI on another local port cannot
-call it; the UI's README describes how to work with it locally.
+accepted because that host resolves to a private address. The API has no CORS support, so a
+browser build of the web UI on another local port cannot call it; the UI's README describes how to
+work with it locally.
 
 The three VPS environments are deployed by [yggdrasil](https://github.com/artur-rios/yggdrasil),
 from a copy of the matching template at `/etc/yggdrasil/<environment>/fortuna-api.env` on the VPS:

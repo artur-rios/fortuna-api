@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Hosting;
@@ -296,6 +297,25 @@ public sealed class FoundationApiTests
 
         Assert.Contains("FORTUNA_HEIMDALL_BASE_URL", exception.Message, StringComparison.Ordinal);
         Assert.Contains("private network", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("http://user:userinfo-secret@10.0.0.1/")]
+    [InlineData("https://user:userinfo-secret@heimdall.example.test/")]
+    [InlineData("http://userinfo-secret@heimdall-api.production:8080/")]
+    public void GivenHeimdallUrlWithUserInfo_WhenConfigurationLoads_ThenStartupIsRejected(string url)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_HEIMDALL_BASE_URL"] = url;
+
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains(
+            ConfigurationMessages.HeimdallBaseUriUserInfo("FORTUNA_HEIMDALL_BASE_URL"),
+            exception.Message,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("userinfo-secret", exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]
