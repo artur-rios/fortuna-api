@@ -39,7 +39,8 @@ public static class ConfigurationMessages
     public static string AbsoluteUri(string key) =>
         $"Environment variable '{key}' must be an absolute HTTP or HTTPS URL.";
 
-    public static string HttpsUri(string key) => $"Environment variable '{key}' must be an absolute HTTPS URL.";
+    public static string HeimdallBaseUri(string key) =>
+        $"Environment variable '{key}' must be an HTTPS URL, or an HTTP URL whose host is on a private network.";
 
     public static string NonEmptyGuid(string key) => $"Required environment variable '{key}' must be a non-empty GUID.";
 

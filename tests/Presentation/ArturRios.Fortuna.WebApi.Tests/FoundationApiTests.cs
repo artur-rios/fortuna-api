@@ -269,16 +269,45 @@ public sealed class FoundationApiTests
         Assert.Contains("SQLite", exception.Message, StringComparison.Ordinal);
     }
 
-    [UnitFact]
-    public void GivenInsecureHeimdallUrl_WhenConfigurationLoads_ThenStartupIsRejected()
+    [UnitTheory]
+    [InlineData("http://heimdall-api.production:8080/")]
+    [InlineData("http://172.18.0.7:8080/")]
+    [InlineData("http://localhost:8080/")]
+    public void GivenPlainHttpHeimdallUrlOnPrivateHost_WhenConfigurationLoads_ThenItIsAccepted(string url)
     {
         var values = ValidSettings();
-        values["FORTUNA_HEIMDALL_BASE_URL"] = "http://heimdall.example.test";
+        values["FORTUNA_HEIMDALL_BASE_URL"] = url;
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal(new Uri(url), options.HeimdallBaseUri);
+    }
+
+    [UnitTheory]
+    [InlineData("http://203.0.113.10/")]
+    [InlineData("http://[2001:db8::1]/")]
+    public void GivenPlainHttpHeimdallUrlOnPublicAddress_WhenConfigurationLoads_ThenStartupIsRejected(string url)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_HEIMDALL_BASE_URL"] = url;
 
         var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
-        Assert.Contains("HTTPS", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("FORTUNA_HEIMDALL_BASE_URL", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("private network", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
+    public void GivenHeimdallUrlWithUnsupportedScheme_WhenConfigurationLoads_ThenStartupIsRejected()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_HEIMDALL_BASE_URL"] = "ftp://heimdall.example.test/";
+
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_HEIMDALL_BASE_URL", exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]

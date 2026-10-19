@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `FORTUNA_HEIMDALL_BASE_URL` may be plain HTTP to a private host, so Fortuna reaches Heimdall over the internal
+  network; inside yggdrasil that is `http://heimdall-api.<environment>:8080/`. HTTPS URLs work as before.
+  Startup refuses a plain-HTTP URL that names a public IP address.
+- A private-address guard on that plain-HTTP transport: each connection is opened only to a private address
+  (10/8, 172.16/12, 192.168/16, loopback, `fc00::/7`; an IPv4-mapped IPv6 address counts as its IPv4 address),
+  checked when the connection is made rather than at startup, so a name that resolves to a public address, then
+  or later, is refused before any credential or caller key is sent. Link-local addresses are not private.
+- In plain-HTTP mode no redirect is followed, so a redirect never carries a request to another host, and no
+  proxy from the environment is used.
+- A start-up line names the transport: `Heimdall credential exchange: <url> over TLS` or
+  `over plain HTTP to private addresses only`, and whether the caller key is configured, never the key.
+
 ## [3.0.0] - 2026-10-18
 
 ### Added

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using ArturRios.Fortuna.Integration.Security;
 using ArturRios.Fortuna.Shared.Messages;
 
 namespace ArturRios.Fortuna.WebApi.Configuration;
@@ -156,7 +157,7 @@ public sealed record FortunaOptions
             LocalAuthRecoveryCodeCount = settings.PositiveInteger("FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT", 10),
             ConsentExternalDataProcessingVersion =
                 settings.OptionalTrimmed("FORTUNA_CONSENT_EXTERNAL_PROCESSING_VERSION") ?? "1.0",
-            HeimdallBaseUri = settings.RequiredHttpsUri("FORTUNA_HEIMDALL_BASE_URL"),
+            HeimdallBaseUri = settings.RequiredHeimdallBaseUri("FORTUNA_HEIMDALL_BASE_URL"),
             HeimdallScopeId = settings.RequiredGuid("FORTUNA_HEIMDALL_SCOPE_ID"),
             HeimdallCallerKey = settings.OptionalText("FORTUNA_HEIMDALL_CALLER_KEY"),
             PluggyClientId = settings.OptionalText("FORTUNA_PLUGGY_CLIENT_ID"),
@@ -340,7 +341,13 @@ public sealed record FortunaOptions
             return null;
         }
 
-        public Uri RequiredHttpsUri(string key)
+        /// <summary>
+        /// Heimdall's base address: HTTPS, or plain HTTP to a private network. A host name is accepted here
+        /// and judged by the addresses it resolves to each time a connection is opened
+        /// (<see cref="PrivateNetworkConnector" />); an IP address is judged now, so a public one stops
+        /// startup.
+        /// </summary>
+        public Uri RequiredHeimdallBaseUri(string key)
         {
             var fallback = new Uri("https://unconfigured.invalid/");
             if (OptionalTrimmed(key) is null)
@@ -361,7 +368,14 @@ public sealed record FortunaOptions
                 return uri;
             }
 
-            errors.Add(ConfigurationMessages.HttpsUri(key));
+            if (uri.Scheme == Uri.UriSchemeHttp &&
+                (uri.HostNameType is not (UriHostNameType.IPv4 or UriHostNameType.IPv6) ||
+                 (IPAddress.TryParse(uri.DnsSafeHost, out var address) && PrivateNetworkConnector.IsPrivate(address))))
+            {
+                return uri;
+            }
+
+            errors.Add(ConfigurationMessages.HeimdallBaseUri(key));
 
             return fallback;
         }
@@ -369,8 +383,8 @@ public sealed record FortunaOptions
         /// <summary>
         /// An absolute HTTP or HTTPS URL taken as written. Unlike <see cref="OptionalAbsoluteUri" />, which
         /// adds the trailing slash a base address needs, this names a document, so nothing is appended; and
-        /// unlike <see cref="RequiredHttpsUri" />, plain HTTP is accepted, for an address on the internal
-        /// network.
+        /// unlike <see cref="RequiredHeimdallBaseUri" />, plain HTTP is accepted to any host: the document is
+        /// public.
         /// </summary>
         public Uri RequiredHttpUri(string key)
         {
