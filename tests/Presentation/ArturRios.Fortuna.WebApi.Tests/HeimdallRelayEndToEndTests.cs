@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Sockets;
 using System.Text;
 using ArturRios.Fortuna.Integration.Security;
 using ArturRios.Fortuna.Shared.Security;
@@ -24,6 +25,7 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
     private const string CallerKey = "caller-key-with-at-least-32-characters-0123";
     private const string Proxy = "10.1.2.3";
     private const string EndUser = "203.0.113.50";
+    private const string DefaultHeimdallBaseUrl = "https://heimdall.example.test/";
 
     private static readonly string[] OverriddenSettings =
     [
@@ -103,17 +105,105 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
         Assert.Contains("A conflicting account exists.", body, StringComparison.Ordinal);
     }
 
+    [FunctionalFact]
+    public async Task GivenPlainHttpHeimdall_WhenItRedirects_ThenTheRedirectIsNotFollowed()
+    {
+        // Given — Heimdall on plain HTTP redirects to a second server, which would sign the user in.
+        const string signedIn =
+            "{\"data\":{\"token\":\"issued\",\"expiresAt\":\"2026-09-09T13:00:00Z\",\"emailVerified\":true,\"requiresTwoFactor\":false}}";
+        using var redirected = new LoopbackHttpServer(_ =>
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n" +
+            $"Content-Length: {Encoding.UTF8.GetByteCount(signedIn)}\r\nConnection: close\r\n\r\n{signedIn}");
+        using var heimdall = new LoopbackHttpServer(_ =>
+            "HTTP/1.1 307 Temporary Redirect\r\n" +
+            $"Location: http://127.0.0.1:{redirected.Port}/api/auth/login\r\n" +
+            "Content-Length: 0\r\nConnection: close\r\n\r\n");
+        await using var factory = CreateFactory(
+            heimdall: null,
+            CallerKey,
+            heimdallBaseUrl: $"http://127.0.0.1:{heimdall.Port}/");
+        using var client = factory.CreateClient();
+
+        // When
+        using var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "user@example.test", password = "secret-in-transit" });
+
+        // Then — Heimdall was reached over the app's own transport, and its redirect went nowhere.
+        Assert.Equal(1, heimdall.Connections);
+        Assert.False(response.IsSuccessStatusCode, $"Fortuna answered {(int)response.StatusCode}.");
+        Assert.Equal(0, redirected.Connections);
+    }
+
+    [FunctionalFact]
+    public async Task GivenClientForwardedFor_WhenRelayedToHeimdall_ThenNoForwardingHeaderReachesHeimdall()
+    {
+        // Given
+        var heimdall = new FakeHeimdall(() => new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent(
+                "{\"data\":null,\"messages\":[],\"errors\":[\"Invalid credentials.\"],\"success\":false}",
+                Encoding.UTF8,
+                "application/json")
+        });
+        await using var factory = CreateFactory(heimdall, CallerKey);
+        using var client = factory.CreateClient();
+
+        // When — the client names an address of its own choosing, in both forwarding headers.
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+        {
+            Content = JsonContent.Create(new { email = "user@example.test", password = "secret-in-transit" })
+        };
+        request.Headers.Add("X-Forwarded-For", "198.51.100.7");
+        request.Headers.Add("Forwarded", "for=198.51.100.7");
+        using var response = await client.SendAsync(request);
+
+        // Then — Heimdall hears of the user only through the caller headers, never a forwarding header.
+        Assert.Equal(1, heimdall.Calls);
+        Assert.Empty(heimdall.Values("X-Forwarded-For"));
+        Assert.Empty(heimdall.Values("Forwarded"));
+        Assert.Empty(heimdall.Values("X-Real-IP"));
+    }
+
+    [Ipv6LoopbackFact]
+    public async Task GivenPlainHttpHeimdallOnIpv6Loopback_WhenTheAppsClientSends_ThenTheServerAnswers()
+    {
+        // Given — Heimdall on [::1]: the app's handler hands the connector the bracketed literal.
+        using var heimdall = new LoopbackHttpServer(
+            _ => "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            IPAddress.IPv6Loopback);
+        await using var factory = CreateFactory(
+            heimdall: null,
+            CallerKey,
+            heimdallBaseUrl: $"http://[::1]:{heimdall.Port}/");
+        var client = factory.Services.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(IHeimdallAuthGateway));
+
+        // When — the typed client the app registered, with its own primary handler and connector.
+        using var response = await client.GetAsync(client.BaseAddress);
+
+        // Then
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(1, heimdall.Connections);
+    }
+
     public void Dispose()
     {
         foreach (var setting in OverriddenSettings)
         {
             Environment.SetEnvironmentVariable(setting, null);
         }
+
+        // The test run's settings name this default; other classes read it from the environment.
+        Environment.SetEnvironmentVariable("FORTUNA_HEIMDALL_BASE_URL", DefaultHeimdallBaseUrl);
     }
 
-    private static WebApplicationFactory<Program> CreateFactory(FakeHeimdall heimdall, string? callerKey)
+    private static WebApplicationFactory<Program> CreateFactory(
+        FakeHeimdall? heimdall,
+        string? callerKey,
+        string heimdallBaseUrl = DefaultHeimdallBaseUrl)
     {
-        foreach (var setting in ValidSettings(callerKey))
+        foreach (var setting in ValidSettings(callerKey, heimdallBaseUrl))
         {
             Environment.SetEnvironmentVariable(setting.Key, setting.Value);
         }
@@ -125,14 +215,17 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
             {
                 services.RemoveAll<IHostedService>();
                 services.AddSingleton<IStartupFilter>(new ConnectionStartupFilter(IPAddress.Parse(Proxy)));
-                // Replaces only the network under the typed client the app registered.
-                services.AddHttpClient<IHeimdallAuthGateway, HeimdallAuthGateway>()
-                    .ConfigurePrimaryHttpMessageHandler(() => heimdall);
+                if (heimdall is not null)
+                {
+                    // Replaces only the network under the typed client the app registered.
+                    services.AddHttpClient<IHeimdallAuthGateway, HeimdallAuthGateway>()
+                        .ConfigurePrimaryHttpMessageHandler(() => heimdall);
+                }
             });
         });
     }
 
-    private static Dictionary<string, string?> ValidSettings(string? callerKey) => new()
+    private static Dictionary<string, string?> ValidSettings(string? callerKey, string heimdallBaseUrl) => new()
     {
         ["FORTUNA_DATA_CONNECTIONSTRING"] = TestDatabase.Unreachable,
         ["FORTUNA_DATA_DATABASETYPE"] = "PostgreSql",
@@ -146,7 +239,7 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
         ["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = "BRL",
         ["FORTUNA_LOCALE"] = "pt-BR",
         ["FORTUNA_LOCAL_AUTH_ENABLED"] = "false",
-        ["FORTUNA_HEIMDALL_BASE_URL"] = "https://heimdall.example.test",
+        ["FORTUNA_HEIMDALL_BASE_URL"] = heimdallBaseUrl,
         ["FORTUNA_HEIMDALL_JWKS_URL"] = "http://heimdall.example.test/.well-known/jwks.json",
         ["FORTUNA_LOCAL_TOKEN_SECRET"] = "fortuna-tests-local-token-secret-with-enough-entropy",
         ["FORTUNA_HEIMDALL_SCOPE_ID"] = "00000000-0000-0000-0000-000000000076",
@@ -175,6 +268,135 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
                 header => header.Value.Select(value => (header.Key, value))));
 
             return Task.FromResult(answer());
+        }
+    }
+
+    /// <summary>
+    ///     A server on a loopback port that reads each request's head, answers it with a fixed raw
+    ///     response and closes the connection, counting the connections it accepted.
+    /// </summary>
+    private sealed class LoopbackHttpServer : IDisposable
+    {
+        private readonly TcpListener _listener;
+        private readonly CancellationTokenSource _stopping = new();
+        private int _connections;
+
+        public LoopbackHttpServer(Func<string, string> answer, IPAddress? address = null)
+        {
+            _listener = new TcpListener(address ?? IPAddress.Loopback, 0);
+            _listener.Start();
+            Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
+            _ = ServeAsync(answer);
+        }
+
+        public int Port { get; }
+
+        public int Connections => Volatile.Read(ref _connections);
+
+        public void Dispose()
+        {
+            // The source is cancelled, not disposed: the serving loop may still be reading its token.
+            _stopping.Cancel();
+            _listener.Stop();
+        }
+
+        private async Task ServeAsync(Func<string, string> answer)
+        {
+            while (!_stopping.IsCancellationRequested)
+            {
+                TcpClient connection;
+                try
+                {
+                    connection = await _listener.AcceptTcpClientAsync(_stopping.Token);
+                }
+                catch (Exception exception) when (exception is OperationCanceledException or
+                                                      ObjectDisposedException or SocketException)
+                {
+                    // The test is over: the listener stopped.
+                    return;
+                }
+
+                Interlocked.Increment(ref _connections);
+                using (connection)
+                {
+                    try
+                    {
+                        var stream = connection.GetStream();
+                        var head = await ReadHeadAsync(stream, _stopping.Token);
+                        await stream.WriteAsync(Encoding.UTF8.GetBytes(answer(head)), _stopping.Token);
+                        // Ends the answer cleanly, then drains what the client still sends, so closing
+                        // never resets the connection under a response the client has yet to read.
+                        connection.Client.Shutdown(SocketShutdown.Send);
+                        await DrainAsync(stream, _stopping.Token);
+                    }
+                    catch (Exception exception) when (exception is OperationCanceledException or
+                                                          IOException or SocketException)
+                    {
+                        // The client went away, or the test is over; the next connection is served.
+                    }
+                }
+            }
+        }
+
+        private static async Task DrainAsync(NetworkStream stream, CancellationToken cancellationToken)
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            var buffer = new byte[4096];
+            while (await stream.ReadAsync(buffer, timeout.Token) > 0)
+            {
+            }
+        }
+
+        private static async Task<string> ReadHeadAsync(NetworkStream stream, CancellationToken cancellationToken)
+        {
+            var buffer = new byte[4096];
+            var received = new StringBuilder();
+            while (!received.ToString().Contains("\r\n\r\n", StringComparison.Ordinal))
+            {
+                var read = await stream.ReadAsync(buffer, cancellationToken);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                received.Append(Encoding.ASCII.GetString(buffer, 0, read));
+            }
+
+            return received.ToString();
+        }
+    }
+
+    /// <summary>A functional fact, skipped with its reason where the host has no IPv6 loopback.</summary>
+    private sealed class Ipv6LoopbackFactAttribute : FunctionalFactAttribute
+    {
+        public Ipv6LoopbackFactAttribute()
+        {
+            if (Skip is null && !HasIpv6Loopback())
+            {
+                Skip = "This host has no IPv6 loopback address (::1) to listen on.";
+            }
+        }
+
+        private static bool HasIpv6Loopback()
+        {
+            if (!Socket.OSSupportsIPv6)
+            {
+                return false;
+            }
+
+            try
+            {
+                var probe = new TcpListener(IPAddress.IPv6Loopback, 0);
+                probe.Start();
+                probe.Stop();
+
+                return true;
+            }
+            catch (SocketException)
+            {
+                return false;
+            }
         }
     }
 

@@ -2454,7 +2454,8 @@ probe an operation that is not available offline.
 
 1. The client submits email/password credentials or a Google ID token to Fortuna.
 2. Fortuna attaches its configured Heimdall scope identifier; the caller cannot select another scope.
-3. Fortuna forwards the exchange to Heimdall over TLS without storing or logging the credential.
+3. Fortuna forwards the exchange to Heimdall over TLS, or plain HTTP to a private address, without
+   storing or logging the credential.
 4. Fortuna returns the issued token, or the two-factor challenge in place of a token.
 5. A caller with a challenge submits an authenticator, email or recovery code to obtain the full token.
 6. A Google-authenticated caller may forward their authenticated sign-out through Fortuna.
@@ -2500,7 +2501,7 @@ is issued, Fortuna validates it locally and does not call Heimdall to authorize 
 2. An authenticated caller may resend verification, inspect two-factor status, begin setup, confirm
    it, disable it, or regenerate recovery codes.
 3. Fortuna forwards authenticated bearer tokens only as authorization headers and credentials only
-   in the explicit TLS request body.
+   in the explicit request body, over TLS, or plain HTTP to a private address.
 4. Setup returns an authenticator URI or email-code indication. Confirmation and regeneration return
    recovery codes exactly once; status never returns a secret.
 5. Fortuna returns Heimdall's data in its normal `DataOutput<T>` response shape without persisting any

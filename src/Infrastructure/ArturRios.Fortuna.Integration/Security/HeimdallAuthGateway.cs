@@ -172,10 +172,22 @@ public sealed class HeimdallAuthGateway(
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or
             JsonException or NotSupportedException)
         {
-            logger?.LogWarning(
-                "Heimdall request to {Path} could not be completed ({FailureType}).",
-                path,
-                exception.GetType().Name);
+            // A refusal by the plain-HTTP guard is a configuration problem, not Heimdall being down, so
+            // it is named. Only the fixed refusal is logged: the handler's own message adds the address.
+            if (IsPrivateNetworkRefusal(exception))
+            {
+                logger?.LogWarning(
+                    "Heimdall request to {Path} was refused by the private-network guard: {Refusal}",
+                    path,
+                    PrivateNetworkConnector.RefusedMessage);
+            }
+            else
+            {
+                logger?.LogWarning(
+                    "Heimdall request to {Path} could not be completed ({FailureType}).",
+                    path,
+                    exception.GetType().Name);
+            }
 
             return new(HeimdallAuthOutcome.Unavailable);
         }
@@ -200,6 +212,12 @@ public sealed class HeimdallAuthGateway(
             return null;
         }
     }
+
+    // SocketsHttpHandler wraps what its connect callback throws, so the refusal may be the inner exception.
+    private static bool IsPrivateNetworkRefusal(Exception exception) =>
+        exception.Message.Contains(PrivateNetworkConnector.RefusedMessage, StringComparison.Ordinal) ||
+        exception.InnerException?.Message.Contains(PrivateNetworkConnector.RefusedMessage,
+            StringComparison.Ordinal) == true;
 
     // Only the delta-seconds form is relayed; an HTTP date, or anything that does not parse, is dropped.
     private static int? RetryAfterSeconds(HttpResponseMessage response) =>
