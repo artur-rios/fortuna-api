@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-20
+
 ### Upgrading from 3.x to 4.0
 
 - **Operators:** remove `FORTUNA_AUTH_TOKEN_SECRET` and `_PREVIOUS` from the environment once both 4.0.0 releases
@@ -270,7 +272,8 @@ holders sign in again.
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...v4.0.0
 [3.1.0]: https://github.com/artur-rios/fortuna-api/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/artur-rios/fortuna-api/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/artur-rios/fortuna-api/compare/v2.1.0...v2.2.0
