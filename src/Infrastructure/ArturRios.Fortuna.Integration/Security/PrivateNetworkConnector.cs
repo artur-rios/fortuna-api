@@ -15,6 +15,13 @@ public static class PrivateNetworkConnector
     public const string RefusedMessage =
         "Plain HTTP to Heimdall goes only to a private address; the host resolved to none.";
 
+    /// <summary>
+    ///     How long one connection attempt may take before the next private address is tried. A third of
+    ///     the Heimdall client's ten-second request timeout, so an address that never answers leaves time
+    ///     for the next; inside a Docker network a connection takes milliseconds.
+    /// </summary>
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromSeconds(3);
+
     // RFC 1918, IPv4 loopback, and the IPv6 unique-local range (fc00::/7).
     private static readonly IPNetwork[] PrivateNetworks =
     [
@@ -42,7 +49,8 @@ public static class PrivateNetworkConnector
 
     /// <summary>
     ///     A <see cref="SocketsHttpHandler.ConnectCallback" />: resolves the host, keeps its private
-    ///     addresses and connects to the first that accepts; with none, refuses before any byte is sent.
+    ///     addresses and tries each in turn, for at most <see cref="AttemptTimeout" />, connecting to the
+    ///     first that accepts; with none, refuses before any byte is sent. A public address is never dialed.
     /// </summary>
     public static ValueTask<Stream> ConnectAsync(
         SocketsHttpConnectionContext context,
@@ -59,12 +67,20 @@ public static class PrivateNetworkConnector
         CancellationToken cancellationToken) =>
         ConnectAsync(endPoint, resolve, ConnectSocketAsync, cancellationToken);
 
-    // The resolver and the dialer are seams: tests choose the addresses a host resolves to, and see
-    // which endpoints are actually dialed.
+    internal static ValueTask<Stream> ConnectAsync(
+        DnsEndPoint endPoint,
+        Func<string, CancellationToken, Task<IPAddress[]>> resolve,
+        Func<IPEndPoint, CancellationToken, ValueTask<Stream>> connect,
+        CancellationToken cancellationToken) =>
+        ConnectAsync(endPoint, resolve, connect, AttemptTimeout, cancellationToken);
+
+    // The resolver, the dialer and the attempt timeout are seams: tests choose the addresses a host
+    // resolves to, see which endpoints are actually dialed, and wait milliseconds for a silent one.
     internal static async ValueTask<Stream> ConnectAsync(
         DnsEndPoint endPoint,
         Func<string, CancellationToken, Task<IPAddress[]>> resolve,
         Func<IPEndPoint, CancellationToken, ValueTask<Stream>> connect,
+        TimeSpan attemptTimeout,
         CancellationToken cancellationToken)
     {
         // An IP literal is its own address; brackets around an IPv6 literal are dropped first.
@@ -81,14 +97,21 @@ public static class PrivateNetworkConnector
         Exception? lastFailure = null;
         foreach (var address in candidates)
         {
+            using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            attempt.CancelAfter(attemptTimeout);
             try
             {
-                return await connect(new IPEndPoint(address, endPoint.Port), cancellationToken)
+                return await connect(new IPEndPoint(address, endPoint.Port), attempt.Token)
                     .ConfigureAwait(false);
             }
             catch (SocketException exception)
             {
                 lastFailure = exception;
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                // The attempt ran out of time, not the request: the next address is tried.
+                lastFailure = new SocketException((int)SocketError.TimedOut);
             }
         }
 
