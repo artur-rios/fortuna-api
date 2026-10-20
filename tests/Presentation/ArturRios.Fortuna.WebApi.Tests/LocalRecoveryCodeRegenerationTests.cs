@@ -24,7 +24,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
 {
     private const string Secret = "correct-horse-battery-staple";
-    private const string SigningSecret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private readonly PostgreSqlContainer database =
@@ -224,11 +223,11 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
             DisplayName = "Heimdall User"
         };
 
-        return new JwtHandler().CreateToken(new JwtConfiguration(
+        return TestHeimdallKeySet.Sign(new JwtConfiguration(
             3600,
             Issuer,
             Audience,
-            SigningSecret,
+            string.Empty,
             new FortunaIdentityMapper().ToClaims(identity)));
     }
 
@@ -295,7 +294,6 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = SigningSecret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",

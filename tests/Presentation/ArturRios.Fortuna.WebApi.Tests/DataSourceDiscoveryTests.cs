@@ -5,6 +5,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Jwt;
 using ArturRios.Util.Test.Attributes;
@@ -18,7 +19,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class DataSourceDiscoveryTests
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
 
@@ -122,6 +122,10 @@ public sealed class DataSourceDiscoveryTests
         });
     }
 
+    /// <summary>
+    /// A local-account actor, signed as Fortuna signs one: under the local issuer with the local secret. A local
+    /// actor is never provisioned, so no request here reaches a database.
+    /// </summary>
     private static void Authorize(HttpClient client, HeimdallRoles role)
     {
         var identity = new FortunaIdentity(Guid.NewGuid(), (int)role, Guid.NewGuid(), [])
@@ -130,7 +134,11 @@ public sealed class DataSourceDiscoveryTests
             IsLocal = true
         };
         var configuration = new JwtConfiguration(
-            3600, Issuer, Audience, Secret, new FortunaIdentityMapper().ToClaims(identity));
+            3600,
+            FortunaOptions.DefaultLocalTokenIssuer,
+            Audience,
+            JwksTestSupport.LocalSecret,
+            new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer", new JwtHandler().CreateToken(configuration));
     }
@@ -139,13 +147,13 @@ public sealed class DataSourceDiscoveryTests
         bool localAuthEnabled,
         bool configurePluggy) => new()
         {
+            // No database answers here: nothing on these routes may reach one.
             ["FORTUNA_DATA_CONNECTIONSTRING"] = TestDatabase.Unreachable,
             ["FORTUNA_DATA_DATABASETYPE"] = "PostgreSql",
             ["FORTUNA_STORAGE_PROVIDER"] = "Filesystem",
             ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
             ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
             ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
-            ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
             ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
             ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
             ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
@@ -153,6 +161,7 @@ public sealed class DataSourceDiscoveryTests
             ["FORTUNA_LOCALE"] = "pt-BR",
             ["FORTUNA_LOCAL_AUTH_ENABLED"] = localAuthEnabled.ToString(),
             ["FORTUNA_LOCAL_AUTH_RECOVERY_CODE_COUNT"] = "10",
+            ["FORTUNA_LOCAL_TOKEN_SECRET"] = JwksTestSupport.LocalSecret,
             ["FORTUNA_PLUGGY_CLIENT_ID"] = configurePluggy ? "client" : null,
             ["FORTUNA_PLUGGY_CLIENT_SECRET"] = configurePluggy ? "secret" : null,
             ["FORTUNA_PLUGGY_BASE_URL"] = configurePluggy ? "https://pluggy.example" : null

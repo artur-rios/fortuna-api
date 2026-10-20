@@ -62,9 +62,6 @@ public static class ConfigurationMessages
     public static string MustDiffer(string key, string otherKey) =>
         $"Environment variable '{key}' must differ from '{otherKey}'.";
 
-    public static string PreviousWithoutCurrent(string previousKey, string key) =>
-        $"Environment variable '{previousKey}' is set but '{key}' is not; set both, or remove both to stop accepting the tokens they signed.";
-
     public static string CronInvalid(string key, string reason) =>
         $"{key} must be a valid five-field UTC cron expression: {reason}";
 

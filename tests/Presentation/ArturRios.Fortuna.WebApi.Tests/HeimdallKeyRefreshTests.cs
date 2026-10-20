@@ -17,6 +17,9 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 /// </summary>
 public sealed class HeimdallKeyRefreshTests
 {
+    /// <summary>A secret like the one Heimdall signed its retired HS256 tokens with.</summary>
+    private const string RetiredSecret = "fortuna-tests-retired-heimdall-signing-key";
+
     private static readonly JwtKey HeimdallKey = JwksTestSupport.NewKey();
 
     private static string Es256(string issuer, JwtKey? key = null)
@@ -45,7 +48,7 @@ public sealed class HeimdallKeyRefreshTests
             Claims = new Dictionary<string, object> { ["id"] = "42" },
             Expires = DateTime.UtcNow.AddHours(1),
             SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(Encoding.ASCII.GetBytes(JwksTestSupport.SharedSecret)) { KeyId = "invented" },
+                new SymmetricSecurityKey(Encoding.ASCII.GetBytes(RetiredSecret)) { KeyId = "invented" },
                 SecurityAlgorithms.HmacSha256)
         });
 
@@ -88,7 +91,7 @@ public sealed class HeimdallKeyRefreshTests
     [UnitFact]
     public void GivenAnHs256HeimdallTokenWithoutAKid_WhenInspected_ThenThereIsNothingToFetch()
     {
-        var token = Hs256(JwksTestSupport.Issuer, JwksTestSupport.SharedSecret);
+        var token = Hs256(JwksTestSupport.Issuer, RetiredSecret);
 
         Assert.Null(HeimdallKeyRefresh.KeyIdToKnow("Bearer " + token, JwksTestSupport.Issuer));
     }
@@ -134,8 +137,9 @@ public sealed class HeimdallKeyRefreshTests
     }
 
     /// <summary>
-    /// Legacy and local tokens are verified with secrets Fortuna already holds: looking them up would spend the
-    /// minute's one fetch, and log a warning, on every such request.
+    /// Heimdall's retired HS256 tokens are refused without a key, and local tokens are verified with the secret
+    /// Fortuna holds: looking either up would spend the minute's one fetch, and log a warning, on every such
+    /// request.
     /// </summary>
     [UnitTheory]
     [InlineData("legacy")]
@@ -147,7 +151,7 @@ public sealed class HeimdallKeyRefreshTests
         var (jwks, handler, _) = CreateJwks();
         var token = kind switch
         {
-            "legacy" => Hs256(JwksTestSupport.Issuer, JwksTestSupport.SharedSecret),
+            "legacy" => Hs256(JwksTestSupport.Issuer, RetiredSecret),
             "legacy naming a kid" => Hs256WithKid(),
             "local" => Hs256("fortuna-local", JwksTestSupport.LocalSecret),
             _ => Es256("fortuna-local", JwksTestSupport.NewKey())

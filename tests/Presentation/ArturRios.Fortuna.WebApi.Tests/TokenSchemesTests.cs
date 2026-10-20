@@ -26,8 +26,8 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 /// <summary>
 /// The bearer scheme end to end, through the running app and a stub of Heimdall's key set: Heimdall's ES256
-/// tokens verified through its published keys, its HS256 tokens during the overlap only, Fortuna's local
-/// tokens under their own issuer and key, and every mix of issuer, key and algorithm refused.
+/// tokens verified through its published keys, its retired HS256 tokens refused, Fortuna's local tokens under
+/// their own issuer and key, and every mix of issuer, key and algorithm refused.
 /// </summary>
 /// <remarks>
 /// The app reads its settings from the process environment when it starts. Each test sets them and puts
@@ -41,11 +41,11 @@ public sealed class TokenSchemesTests : IDisposable
     private const string SharedSecretSetting = "FORTUNA_AUTH_TOKEN_SECRET";
 
     /// <summary>
-    /// A shared secret long enough for HS384 and HS512, so that IdentityModel's key-size check cannot be what
+    /// A local secret long enough for HS384 and HS512, so that IdentityModel's key-size check cannot be what
     /// refuses them: only the one-algorithm-per-key pin can.
     /// </summary>
-    private const string LongSharedSecret =
-        "fortuna-tests-signing-key-long-enough-for-hs384-and-hs512-0123456789abcdef";
+    private const string LongLocalSecret =
+        "fortuna-tests-local-key-long-enough-for-hs384-and-hs512-0123456789abcdef";
 
     private static readonly string HeimdallPem = JwksTestSupport.NewPem();
     private static readonly JwtKey HeimdallKey = JwtKey.FromEcPrivateKeyPem(HeimdallPem);
@@ -151,7 +151,7 @@ public sealed class TokenSchemesTests : IDisposable
     /// <remarks>
     /// Only one fetch is allowed each minute, so the HS256 token is sent while that fetch is still unspent:
     /// first before any fetch, then again once the minute has passed. Were HS256 tokens to fetch, the stub
-    /// would count it either time.
+    /// would count it either time. With the retired secret still set, nothing falls back to it.
     /// </remarks>
     [FunctionalTheory]
     [InlineData("404")]
@@ -159,16 +159,15 @@ public sealed class TokenSchemesTests : IDisposable
     [InlineData("unreachable")]
     [InlineData("garbage")]
     [InlineData("no usable key")]
-    public async Task GivenTheKeySetIsUnavailable_WhenAnHs256HeimdallTokenArrives_ThenItIsAcceptedDuringTheOverlap(string failure)
+    public async Task GivenTheKeySetIsUnavailable_WhenAnHs256HeimdallTokenArrives_ThenItIsRefusedWithoutAFetch(string failure)
     {
         var clock = new ManualClock(new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero));
         var jwks = new StubJwksHandler { Respond = Failing(failure) };
-        await using var factory = CreateFactory(jwks, clock: clock);
+        await using var factory = CreateFactory(jwks, retiredSecret: JwksTestSupport.SharedSecret, clock: clock);
         using var client = factory.CreateClient();
-        var subject = Guid.NewGuid();
-        var legacy = Hs256(JwksTestSupport.SharedSecret, subject, JwksTestSupport.Issuer);
+        var legacy = Hs256(JwksTestSupport.SharedSecret, Guid.NewGuid(), JwksTestSupport.Issuer);
 
-        Assert.Equal(new ActorProbe(subject, false), await ActorAsync(client, legacy));
+        Assert.Equal(HttpStatusCode.Unauthorized, await StatusAsync(client, legacy));
         Assert.Equal(0, jwks.Requests);
 
         // An ES256 token cannot be verified without the key set: refused, never a server error.
@@ -177,7 +176,7 @@ public sealed class TokenSchemesTests : IDisposable
 
         clock.Now += HeimdallJwks.MinimumRefreshInterval;
 
-        Assert.Equal(new ActorProbe(subject, false), await ActorAsync(client, legacy));
+        Assert.Equal(HttpStatusCode.Unauthorized, await StatusAsync(client, legacy));
         Assert.Equal(1, jwks.Requests);
 
         // The minute's fetch was there to spend: an ES256 token whose kid is still unknown spends it.
@@ -185,24 +184,35 @@ public sealed class TokenSchemesTests : IDisposable
         Assert.Equal(2, jwks.Requests);
     }
 
+    /// <summary>
+    /// The secret Heimdall once signed with may still be set in an environment nobody has cleaned yet. It is
+    /// no longer read: the HS256 token it signs is refused, while Heimdall's ES256 tokens and Fortuna's local
+    /// tokens are served.
+    /// </summary>
     [FunctionalFact]
-    public async Task GivenTheOverlapHasEnded_WhenAnHs256HeimdallTokenArrives_ThenItIsRefused()
-    {
-        await using var factory = CreateFactory(new StubJwksHandler(), sharedSecret: null);
-        using var client = factory.CreateClient();
-
-        var status = await StatusAsync(client, Hs256(JwksTestSupport.SharedSecret, Guid.NewGuid(), JwksTestSupport.Issuer));
-
-        Assert.Equal(HttpStatusCode.Unauthorized, status);
-    }
-
-    /// <summary>After the overlap no shared secret is configured at all: the app still starts and serves.</summary>
-    [FunctionalFact]
-    public async Task GivenNoSharedSecret_WhenTheAppStarts_ThenHeimdallAndLocalTokensAreServedAndLegacyTokensRefused()
+    public async Task GivenTheRetiredSecretIsStillSet_WhenAnHs256HeimdallTokenSignedWithItArrives_ThenItIs401()
     {
         var jwks = new StubJwksHandler();
         jwks.Serve(JwksTestSupport.KeySet(HeimdallKey));
-        await using var factory = CreateFactory(jwks, sharedSecret: null);
+        await using var factory = CreateFactory(jwks, retiredSecret: JwksTestSupport.SharedSecret);
+        using var client = factory.CreateClient();
+        var local = factory.Services.GetRequiredService<ILocalAuthTokenIssuer>().Issue(Guid.NewGuid(), "Local User");
+
+        Assert.Equal(JwksTestSupport.SharedSecret, Environment.GetEnvironmentVariable(SharedSecretSetting));
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            await StatusAsync(client, Hs256(JwksTestSupport.SharedSecret, Guid.NewGuid(), JwksTestSupport.Issuer)));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, Es256(HeimdallKey, Guid.NewGuid())));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(client, local.Token));
+    }
+
+    /// <summary>Once the retired secret is removed, as it should be: the app starts and serves.</summary>
+    [FunctionalFact]
+    public async Task GivenNoRetiredSecret_WhenTheAppStarts_ThenHeimdallAndLocalTokensAreServedAndHs256TokensRefused()
+    {
+        var jwks = new StubJwksHandler();
+        jwks.Serve(JwksTestSupport.KeySet(HeimdallKey));
+        await using var factory = CreateFactory(jwks);
         using var client = factory.CreateClient();
         var heimdallSubject = Guid.NewGuid();
         var localSubject = Guid.NewGuid();
@@ -237,9 +247,9 @@ public sealed class TokenSchemesTests : IDisposable
     /// none matches there is no key at all: the scheme holds no static keys for IdentityModel to fall back to.
     /// </summary>
     [FunctionalFact]
-    public async Task GivenAnHs256TokenOverTheSharedSecretNamingAKid_WhenRequested_ThenItIsRefused()
+    public async Task GivenAnHs256TokenOverTheRetiredSecretNamingAKid_WhenRequested_ThenItIsRefused()
     {
-        await using var factory = CreateFactory(new StubJwksHandler());
+        await using var factory = CreateFactory(new StubJwksHandler(), retiredSecret: JwksTestSupport.SharedSecret);
         using var client = factory.CreateClient();
         var sharedSecret = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(JwksTestSupport.SharedSecret))
         {
@@ -303,39 +313,25 @@ public sealed class TokenSchemesTests : IDisposable
     }
 
     [FunctionalFact]
-    public async Task GivenALegacyLocalTokenUnderHeimdallsIssuer_WhenRequestedDuringTheOverlap_ThenItStaysLocal()
+    public async Task GivenALegacyLocalTokenUnderHeimdallsIssuer_WhenRequested_ThenItIsRefused()
     {
         // Fortuna used to sign local tokens with the shared secret, under Heimdall's issuer, with fortuna_local set.
-        await using var factory = CreateFactory(new StubJwksHandler());
+        await using var factory = CreateFactory(new StubJwksHandler(), retiredSecret: JwksTestSupport.SharedSecret);
         using var client = factory.CreateClient();
-        var subject = Guid.NewGuid();
 
-        var actor = await ActorAsync(client, Hs256(JwksTestSupport.SharedSecret, subject, JwksTestSupport.Issuer, localClaim: true));
+        var status = await StatusAsync(
+            client, Hs256(JwksTestSupport.SharedSecret, Guid.NewGuid(), JwksTestSupport.Issuer, localClaim: true));
 
-        Assert.Equal(new ActorProbe(subject, true), actor);
-    }
-
-    [FunctionalFact]
-    public async Task GivenAnEs256HeimdallTokenClaimingLocal_WhenTheOverlapLasts_ThenTheActorIsNotLocal()
-    {
-        var jwks = new StubJwksHandler();
-        jwks.Serve(JwksTestSupport.KeySet(HeimdallKey));
-        await using var factory = CreateFactory(jwks);
-        using var client = factory.CreateClient();
-        var subject = Guid.NewGuid();
-
-        var actor = await ActorAsync(client, Es256(HeimdallKey, subject, localClaim: true));
-
-        Assert.Equal(new ActorProbe(subject, false), actor);
+        Assert.Equal(HttpStatusCode.Unauthorized, status);
     }
 
     /// <summary>Review Focus 5.</summary>
     [FunctionalFact]
-    public async Task GivenAHeimdallTokenClaimingLocal_WhenTheOverlapHasEnded_ThenTheActorIsNotLocal()
+    public async Task GivenAnEs256HeimdallTokenClaimingLocal_WhenRequested_ThenTheActorIsNotLocal()
     {
         var jwks = new StubJwksHandler();
         jwks.Serve(JwksTestSupport.KeySet(HeimdallKey));
-        await using var factory = CreateFactory(jwks, sharedSecret: null);
+        await using var factory = CreateFactory(jwks, retiredSecret: JwksTestSupport.SharedSecret);
         using var client = factory.CreateClient();
         var subject = Guid.NewGuid();
 
@@ -358,27 +354,27 @@ public sealed class TokenSchemesTests : IDisposable
     }
 
     /// <summary>
-    /// The shared secret verifies HS256 alone. The secret here is long enough for HS384 and HS512, so the key
+    /// The local secret verifies HS256 alone. The secret here is long enough for HS384 and HS512, so the key
     /// size cannot be what refuses them, and the HS256 token over the same secret shows it is accepted.
     /// </summary>
     [FunctionalTheory]
     [InlineData(SecurityAlgorithms.HmacSha384)]
     [InlineData(SecurityAlgorithms.HmacSha512)]
-    public async Task GivenAnotherHmacAlgorithmOverTheSharedSecret_WhenRequested_ThenItIsRefused(string algorithm)
+    public async Task GivenAnotherHmacAlgorithmOverTheLocalSecret_WhenRequested_ThenItIsRefused(string algorithm)
     {
-        await using var factory = CreateFactory(new StubJwksHandler(), sharedSecret: LongSharedSecret);
+        await using var factory = CreateFactory(new StubJwksHandler(), localSecret: LongLocalSecret);
         using var client = factory.CreateClient();
-        var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(LongSharedSecret));
+        var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(LongLocalSecret));
         var handler = new JsonWebTokenHandler();
 
         Assert.Equal(
             HttpStatusCode.OK,
             await StatusAsync(client, handler.CreateToken(Descriptor(
-                Guid.NewGuid(), JwksTestSupport.Issuer, new SigningCredentials(key, SecurityAlgorithms.HmacSha256)))));
+                Guid.NewGuid(), LocalIssuer, new SigningCredentials(key, SecurityAlgorithms.HmacSha256)))));
         Assert.Equal(
             HttpStatusCode.Unauthorized,
             await StatusAsync(client, handler.CreateToken(Descriptor(
-                Guid.NewGuid(), JwksTestSupport.Issuer, new SigningCredentials(key, algorithm)))));
+                Guid.NewGuid(), LocalIssuer, new SigningCredentials(key, algorithm)))));
     }
 
     /// <summary>
@@ -456,7 +452,12 @@ public sealed class TokenSchemesTests : IDisposable
                 "MetadataAddress" => SecondKeySource.MetadataAddress,
                 _ => "Elsewhere"
             }));
-        await using var factory = CreateFactory(jwks, clock: clock, configuration: configuration, backchannel: secondSource);
+        await using var factory = CreateFactory(
+            jwks,
+            retiredSecret: JwksTestSupport.SharedSecret,
+            clock: clock,
+            configuration: configuration,
+            backchannel: secondSource);
         using var client = factory.CreateClient();
         var bearer = factory.Services.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
             .Get(JwtBearerDefaults.AuthenticationScheme);
@@ -472,7 +473,7 @@ public sealed class TokenSchemesTests : IDisposable
             HttpStatusCode.Unauthorized,
             await StatusAsync(client, Es256(SecondKeySource.Key, Guid.NewGuid(), issuer: LocalIssuer)));
         Assert.Equal(
-            HttpStatusCode.OK,
+            HttpStatusCode.Unauthorized,
             await StatusAsync(client, Hs256(JwksTestSupport.SharedSecret, Guid.NewGuid(), JwksTestSupport.Issuer)));
         Assert.Equal(
             HttpStatusCode.OK,
@@ -510,15 +511,17 @@ public sealed class TokenSchemesTests : IDisposable
 
     private static WebApplicationFactory<Program> CreateFactory(
         StubJwksHandler jwks,
-        string? sharedSecret = JwksTestSupport.SharedSecret,
+        string? retiredSecret = null,
+        string? localSecret = null,
         TimeProvider? clock = null,
         string? callerKey = null,
         IPAddress? clientAddress = null,
         IReadOnlyDictionary<string, string?>? configuration = null,
         HttpMessageHandler? backchannel = null)
     {
-        var settings = JwksTestSupport.Settings(sharedSecret is not null);
-        settings[SharedSecretSetting] = sharedSecret;
+        var settings = JwksTestSupport.Settings();
+        settings[SharedSecretSetting] = retiredSecret;
+        settings["FORTUNA_LOCAL_TOKEN_SECRET"] = localSecret ?? JwksTestSupport.LocalSecret;
         settings["FORTUNA_DATA_CONNECTIONSTRING"] = TestDatabase.Unreachable;
         settings[CallerKeySetting] = callerKey;
 

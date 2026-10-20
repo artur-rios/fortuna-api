@@ -11,9 +11,9 @@ namespace ArturRios.Fortuna.WebApi.Security;
 /// <remarks>
 /// <para>
 /// Only an ES256 token under Heimdall's issuer that names a <c>kid</c> Fortuna does not know leads to a
-/// fetch. Legacy HS256 tokens carry no <c>kid</c> and local tokens are verified with Fortuna's own secret, so
-/// neither ever spends the minute's fetch or logs its warning; a non-ES256 token naming a <c>kid</c> could
-/// not be verified by a published key anyway.
+/// fetch. Heimdall's retired HS256 tokens carry no <c>kid</c> and are refused, and local tokens are verified
+/// with Fortuna's own secret, so neither ever spends the minute's fetch or logs its warning; a non-ES256
+/// token naming a <c>kid</c> could not be verified by a published key anyway.
 /// </para>
 /// <para>
 /// The token is read unverified, and only to decide whether to fetch: validation that follows checks the

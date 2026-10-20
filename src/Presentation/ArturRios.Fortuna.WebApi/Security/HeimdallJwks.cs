@@ -13,9 +13,8 @@ namespace ArturRios.Fortuna.WebApi.Security;
 /// <b>A failure keeps what is known.</b> A fetch that fails, takes longer than <see cref="FetchTimeout" />,
 /// answers anything but 2xx, sends more than <see cref="MaximumDocumentBytes" />, or holds no usable key
 /// changes nothing: the keys already known stay in use, and the reason is logged as a warning (any other
-/// exception is a defect, logged as an error with its stack trace). Before Heimdall publishes
-/// keys at all, every fetch is such a failure and only the legacy HS256 tokens validate, which is the
-/// rollout order the overlap relies on.
+/// exception is a defect, logged as an error with its stack trace). While no key is known, no Heimdall
+/// token validates: Heimdall's retired HS256 tokens are refused whatever the key set holds.
 /// </para>
 /// <para>
 /// <b>Once a minute.</b> A token naming an unknown key triggers a fetch only when none was attempted in the
