@@ -10,6 +10,9 @@ namespace ArturRios.Fortuna.Integration.Tests;
 
 public sealed class HeimdallAuthGatewayTests
 {
+    private const string PrivateNetworkRefusedTemplate =
+        "Heimdall request to {Path} was refused by the private-network guard: {Refusal}";
+
     private static readonly Guid ScopeId = Guid.Parse("00000000-0000-0000-0000-000000000076");
 
     [UnitFact]
@@ -513,6 +516,59 @@ public sealed class HeimdallAuthGatewayTests
         Assert.Contains("500", log, StringComparison.Ordinal);
     }
 
+    [UnitFact]
+    public async Task GivenThePrivateNetworkGuardRefuses_WhenLogged_ThenTheRefusalIsNamedWithoutTheAddress()
+    {
+        // The app's plain-HTTP transport to a public address: the connector refuses, and the handler
+        // wraps that refusal in its own exception, with the host and port in the outer message.
+        var logger = new ListLogger();
+        using var handler = new SocketsHttpHandler { ConnectCallback = PrivateNetworkConnector.ConnectAsync };
+        var gateway = new HeimdallAuthGateway(
+            new HttpClient(handler) { BaseAddress = new Uri("http://203.0.113.10/") },
+            logger);
+
+        var result = await gateway.LoginAsync("user@example.test", "password", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.Unavailable, result.Outcome);
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(PrivateNetworkRefusedTemplate, entry.Template);
+        Assert.Contains(PrivateNetworkConnector.RefusedMessage, entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("203.0.113.10", entry.Message, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
+    public async Task GivenTheRefusalIsTheExceptionItself_WhenLogged_ThenTheRefusalIsNamed()
+    {
+        var logger = new ListLogger();
+        var gateway = new HeimdallAuthGateway(
+            new HttpClient(new ThrowingHandler(PrivateNetworkConnector.RefusedMessage))
+            {
+                BaseAddress = new Uri("http://heimdall-api.production:8080/")
+            },
+            logger);
+
+        await gateway.LoginAsync("user@example.test", "password", ScopeId, CancellationToken.None);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(PrivateNetworkRefusedTemplate, entry.Template);
+        Assert.Contains(PrivateNetworkConnector.RefusedMessage, entry.Message, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
+    public async Task GivenAnyOtherTransportFailure_WhenLogged_ThenOnlyItsTypeIsNamed()
+    {
+        var logger = new ListLogger();
+        var gateway = new HeimdallAuthGateway(
+            new HttpClient(new ThrowingHandler()) { BaseAddress = new Uri("https://heimdall.example.test/") },
+            logger);
+
+        await gateway.LoginAsync("user@example.test", "password", ScopeId, CancellationToken.None);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal("Heimdall request to {Path} could not be completed ({FailureType}).", entry.Template);
+        Assert.DoesNotContain("offline", entry.Message, StringComparison.Ordinal);
+    }
+
     private static HeimdallAuthGateway Gateway(HttpMessageHandler handler) =>
         new(new HttpClient(handler) { BaseAddress = new Uri("https://heimdall.example.test/") });
 
@@ -551,17 +607,19 @@ public sealed class HeimdallAuthGatewayTests
         }
     }
 
-    private sealed class ThrowingHandler : HttpMessageHandler
+    private sealed class ThrowingHandler(string message = "offline") : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken) =>
-            throw new HttpRequestException("offline");
+            throw new HttpRequestException(message);
     }
 
     private sealed class ListLogger : ILogger<HeimdallAuthGateway>
     {
-        public List<string> Messages { get; } = [];
+        public List<(string? Template, string Message)> Entries { get; } = [];
+
+        public IEnumerable<string> Messages => Entries.Select(entry => entry.Message);
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -572,6 +630,12 @@ public sealed class HeimdallAuthGatewayTests
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
+            Func<TState, Exception?, string> formatter)
+        {
+            var template = state is IEnumerable<KeyValuePair<string, object?>> values
+                ? values.FirstOrDefault(value => value.Key == "{OriginalFormat}").Value as string
+                : null;
+            Entries.Add((template, formatter(state, exception)));
+        }
     }
 }

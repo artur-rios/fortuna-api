@@ -7,6 +7,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-20
+
+### Added
+
+- `FORTUNA_HEIMDALL_BASE_URL` may be plain HTTP to a private host, so Fortuna reaches Heimdall over the internal
+  network; inside yggdrasil that is `http://heimdall-api.<environment>:8080/`. HTTPS URLs work as before.
+  Startup refuses a plain-HTTP URL that names a public IP address, and any URL that carries a user name or
+  password.
+- A private-address guard on that plain-HTTP transport: each connection is opened only to a private address
+  (10/8, 172.16/12, 192.168/16, loopback, `fc00::/7`; an IPv4-mapped IPv6 address counts as its IPv4 address),
+  checked when the connection is made rather than at startup, so a name that resolves to a public address, then
+  or later, is refused before any credential or caller key is sent. Link-local addresses are not private.
+- In plain-HTTP mode no redirect is followed, so a redirect never carries a request to another host, and no
+  proxy from the environment is used.
+- A start-up line names the transport: `Heimdall credential exchange: <url> over TLS` or
+  `over plain HTTP to private addresses only`, and whether the caller key is configured, never the key.
+- When the guard refuses a connection, the warning that reports Heimdall unavailable says so, instead of naming
+  only the exception type.
+- Upgrading: deploy 3.1.0 before switching `FORTUNA_HEIMDALL_BASE_URL` to `http`; 3.0.0 refuses it at startup.
+
+### Fixed
+
+- The tests no longer try to reach a PostgreSQL on localhost. Suites that start no test database configure an
+  unreachable placeholder instead, so a run never logs in to a server that happens to listen on the default port.
+
 ## [3.0.0] - 2026-10-18
 
 ### Added
@@ -210,7 +235,8 @@ holders sign in again.
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/artur-rios/fortuna-api/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/artur-rios/fortuna-api/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/artur-rios/fortuna-api/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/artur-rios/fortuna-api/compare/v2.0.0...v2.1.0

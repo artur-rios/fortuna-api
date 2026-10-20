@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Hosting;
@@ -269,16 +270,64 @@ public sealed class FoundationApiTests
         Assert.Contains("SQLite", exception.Message, StringComparison.Ordinal);
     }
 
-    [UnitFact]
-    public void GivenInsecureHeimdallUrl_WhenConfigurationLoads_ThenStartupIsRejected()
+    [UnitTheory]
+    [InlineData("http://heimdall-api.production:8080/")]
+    [InlineData("http://172.18.0.7:8080/")]
+    [InlineData("http://localhost:8080/")]
+    public void GivenPlainHttpHeimdallUrlOnPrivateHost_WhenConfigurationLoads_ThenItIsAccepted(string url)
     {
         var values = ValidSettings();
-        values["FORTUNA_HEIMDALL_BASE_URL"] = "http://heimdall.example.test";
+        values["FORTUNA_HEIMDALL_BASE_URL"] = url;
+
+        var options = FortunaOptions.From(values.GetValueOrDefault);
+
+        Assert.Equal(new Uri(url), options.HeimdallBaseUri);
+    }
+
+    [UnitTheory]
+    [InlineData("http://203.0.113.10/")]
+    [InlineData("http://[2001:db8::1]/")]
+    public void GivenPlainHttpHeimdallUrlOnPublicAddress_WhenConfigurationLoads_ThenStartupIsRejected(string url)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_HEIMDALL_BASE_URL"] = url;
 
         var exception = Assert.Throws<FortunaConfigurationException>(() =>
             FortunaOptions.From(values.GetValueOrDefault));
 
-        Assert.Contains("HTTPS", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("FORTUNA_HEIMDALL_BASE_URL", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("private network", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitTheory]
+    [InlineData("http://user:userinfo-secret@10.0.0.1/")]
+    [InlineData("https://user:userinfo-secret@heimdall.example.test/")]
+    [InlineData("http://userinfo-secret@heimdall-api.production:8080/")]
+    public void GivenHeimdallUrlWithUserInfo_WhenConfigurationLoads_ThenStartupIsRejected(string url)
+    {
+        var values = ValidSettings();
+        values["FORTUNA_HEIMDALL_BASE_URL"] = url;
+
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains(
+            ConfigurationMessages.HeimdallBaseUriUserInfo("FORTUNA_HEIMDALL_BASE_URL"),
+            exception.Message,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("userinfo-secret", exception.Message, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
+    public void GivenHeimdallUrlWithUnsupportedScheme_WhenConfigurationLoads_ThenStartupIsRejected()
+    {
+        var values = ValidSettings();
+        values["FORTUNA_HEIMDALL_BASE_URL"] = "ftp://heimdall.example.test/";
+
+        var exception = Assert.Throws<FortunaConfigurationException>(() =>
+            FortunaOptions.From(values.GetValueOrDefault));
+
+        Assert.Contains("FORTUNA_HEIMDALL_BASE_URL", exception.Message, StringComparison.Ordinal);
     }
 
     [UnitFact]
@@ -687,7 +736,7 @@ public sealed class FoundationApiTests
 
     private static Dictionary<string, string?> ValidSettings() => new()
     {
-        ["FORTUNA_DATA_CONNECTIONSTRING"] = "Host=localhost;Database=fortuna;Username=postgres;Password=postgres;Search Path=fortuna",
+        ["FORTUNA_DATA_CONNECTIONSTRING"] = TestDatabase.Unreachable,
         ["FORTUNA_DATA_DATABASETYPE"] = "PostgreSql",
         ["FORTUNA_STORAGE_PROVIDER"] = "Filesystem",
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
