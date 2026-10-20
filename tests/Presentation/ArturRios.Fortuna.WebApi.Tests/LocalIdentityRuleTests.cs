@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
@@ -8,12 +9,13 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
 /// <summary>
-/// What makes a token a local-account token: Fortuna's own issuer, and the fortuna_local claim of a token
-/// under Heimdall's issuer only when the legacy shared secret verified it during the overlap.
+/// What makes a token a local-account token: Fortuna's own issuer alone. The fortuna_local claim never does,
+/// and validation removes it from every token under another issuer.
 /// </summary>
 public sealed class LocalIdentityRuleTests
 {
@@ -85,111 +87,128 @@ public sealed class LocalIdentityRuleTests
     [UnitFact]
     public void GivenTheLocalIssuer_WhenMapped_ThenTheActorIsLocal()
     {
-        Assert.True(IsLocal(new LocalIdentityRule(LocalIssuer, AcceptsLegacyLocalClaim: false), Claims(LocalIssuer, localClaim: false)));
+        Assert.True(IsLocal(new LocalIdentityRule(LocalIssuer), Claims(LocalIssuer, localClaim: false)));
     }
 
     [UnitFact]
-    public void GivenHeimdallsIssuerWithTheLegacyClaim_WhenTheOverlapLasts_ThenTheActorIsLocal()
+    public void GivenHeimdallsIssuerWithTheLegacyClaim_WhenMapped_ThenTheActorIsNotLocal()
     {
-        Assert.True(IsLocal(new LocalIdentityRule(LocalIssuer, AcceptsLegacyLocalClaim: true), Claims("heimdall-tests", localClaim: true)));
-    }
-
-    [UnitFact]
-    public void GivenHeimdallsIssuerWithTheLegacyClaim_WhenTheOverlapHasEnded_ThenTheActorIsNotLocal()
-    {
-        Assert.False(IsLocal(new LocalIdentityRule(LocalIssuer, AcceptsLegacyLocalClaim: false), Claims("heimdall-tests", localClaim: true)));
+        Assert.False(IsLocal(new LocalIdentityRule(LocalIssuer), Claims("heimdall-tests", localClaim: true)));
     }
 
     [UnitFact]
     public void GivenHeimdallsIssuerWithoutTheClaim_WhenMapped_ThenTheActorIsNotLocal()
     {
-        Assert.False(IsLocal(new LocalIdentityRule(LocalIssuer, AcceptsLegacyLocalClaim: true), Claims("heimdall-tests", localClaim: false)));
+        Assert.False(IsLocal(new LocalIdentityRule(LocalIssuer), Claims("heimdall-tests", localClaim: false)));
     }
 
     [UnitFact]
     public void GivenAnIssuerDifferingFromTheLocalOneOnlyInCase_WhenMapped_ThenTheActorIsNotLocal()
     {
-        Assert.False(IsLocal(new LocalIdentityRule(LocalIssuer, AcceptsLegacyLocalClaim: false), Claims("Fortuna-Local", localClaim: false)));
+        Assert.False(IsLocal(new LocalIdentityRule(LocalIssuer), Claims("Fortuna-Local", localClaim: false)));
     }
 
     [UnitFact]
     public void GivenTheDefaultRule_WhenATokenUnderHeimdallsIssuerClaimsLocal_ThenTheActorIsNotLocal()
     {
-        Assert.False(LocalIdentityRule.Default.AcceptsLegacyLocalClaim);
         Assert.False(IsLocal(LocalIdentityRule.Default, Claims("heimdall-tests", localClaim: true)));
         Assert.False(new FortunaIdentityMapper().FromClaims(Claims("heimdall-tests", localClaim: true)) is FortunaIdentity { IsLocal: true });
+    }
+
+    [UnitFact]
+    public void GivenTheConfiguration_WhenTheRuleIsBuilt_ThenItNamesTheConfiguredLocalIssuer()
+    {
+        var settings = JwksTestSupport.Settings(retiredSecret: true);
+        settings["FORTUNA_LOCAL_TOKEN_ISSUER"] = "fortuna-desktop";
+
+        Assert.Equal(new LocalIdentityRule("fortuna-desktop"), LocalIdentityRule.From(FortunaOptions.From(settings.GetValueOrDefault)));
+        Assert.Equal(FortunaOptions.DefaultLocalTokenIssuer, LocalIdentityRule.From(JwksTestSupport.Options()).LocalIssuer);
+    }
+
+    [UnitFact]
+    public async Task GivenAnEs256HeimdallTokenClaimingLocal_WhenValidated_ThenTheActorIsNotLocal()
+    {
+        Assert.False(await IsLocalOnTheRequestPathAsync(Es256(), JwksTestSupport.Options(retiredSecret: true)));
     }
 
     [UnitTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public void GivenTheConfiguration_WhenTheRuleIsBuilt_ThenItHonoursTheLegacyClaimOnlyDuringTheOverlap(bool sharedSecret)
-    {
-        var rule = LocalIdentityRule.From(JwksTestSupport.Options(sharedSecret));
-
-        Assert.Equal(FortunaOptions.DefaultLocalTokenIssuer, rule.LocalIssuer);
-        Assert.Equal(sharedSecret, rule.AcceptsLegacyLocalClaim);
-    }
-
-    [UnitFact]
-    public async Task GivenAnEs256HeimdallTokenClaimingLocal_WhenTheOverlapLasts_ThenTheActorIsNotLocal()
-    {
-        Assert.False(await IsLocalOnTheRequestPathAsync(Es256(), JwksTestSupport.Options()));
-    }
-
-    [UnitFact]
-    public async Task GivenAnHs256LegacyTokenClaimingLocal_WhenTheOverlapLasts_ThenTheActorIsLocal()
+    public async Task GivenAnHs256LegacyTokenClaimingLocal_WhenValidated_ThenItIsRefused(bool retiredSecret)
     {
         var token = Hs256(JwksTestSupport.Issuer, JwksTestSupport.SharedSecret);
+
+        Assert.Null(await IsLocalOnTheRequestPathAsync(token, JwksTestSupport.Options(retiredSecret)));
+    }
+
+    [UnitFact]
+    public async Task GivenALocalIssuerToken_WhenValidated_ThenTheActorIsLocal()
+    {
+        var token = Hs256(LocalIssuer, JwksTestSupport.LocalSecret);
 
         Assert.True(await IsLocalOnTheRequestPathAsync(token, JwksTestSupport.Options()));
     }
 
+    /// <summary>
+    /// A local token keeps the claim fortuna-ui reads: the step removes it only from tokens under another
+    /// issuer.
+    /// </summary>
     [UnitFact]
-    public async Task GivenAnHs256LegacyTokenClaimingLocal_WhenTheOverlapHasEnded_ThenItIsRefused()
+    public async Task GivenAValidatedLocalIssuerToken_WhenTheStepRuns_ThenItKeepsItsClaim()
     {
-        var token = Hs256(JwksTestSupport.Issuer, JwksTestSupport.SharedSecret);
-
-        Assert.Null(await IsLocalOnTheRequestPathAsync(token, JwksTestSupport.Options(sharedSecret: false)));
-    }
-
-    [UnitFact]
-    public async Task GivenALocalIssuerToken_WhenTheOverlapHasEnded_ThenTheActorIsLocal()
-    {
-        var token = Hs256(LocalIssuer, JwksTestSupport.LocalSecret);
-
-        Assert.True(await IsLocalOnTheRequestPathAsync(token, JwksTestSupport.Options(sharedSecret: false)));
-    }
-
-    /// <summary>A validated HS256 token under any issuer but Heimdall's keeps no claim: only Heimdall's legacy tokens may.</summary>
-    [UnitFact]
-    public async Task GivenAValidatedLocalIssuerToken_WhenChecked_ThenItDoesNotKeepTheLegacyClaim()
-    {
-        var keys = await JwksTestSupport.SigningKeysAsync(JwksTestSupport.Options(), HeimdallKey);
+        var options = JwksTestSupport.Options();
+        var keys = await JwksTestSupport.SigningKeysAsync(options, HeimdallKey);
         var result = await new JsonWebTokenHandler().ValidateTokenAsync(
             Hs256(LocalIssuer, JwksTestSupport.LocalSecret), JwksTestSupport.ValidationParameters(keys));
+        var context = new TokenValidatedContext(
+            new DefaultHttpContext(),
+            new AuthenticationScheme(JwtBearerDefaults.AuthenticationScheme, null, typeof(JwtBearerHandler)),
+            new JwtBearerOptions())
+        {
+            Principal = new ClaimsPrincipal(result.ClaimsIdentity),
+            SecurityToken = result.SecurityToken
+        };
 
         Assert.True(result.IsValid);
-        Assert.False(LocalIdentityRule.KeepsLegacyLocalClaim(result.SecurityToken, JwksTestSupport.Options()));
+
+        await LocalIdentityRule.OnTokenValidatedAsync(context, options);
+
+        Assert.Contains(context.Principal!.Claims, claim => claim.Type == FortunaIdentityMapper.LocalIdentityClaim);
     }
 
     /// <summary>
-    /// The validation step on its own: an HS256 token under Heimdall's issuer validated during the overlap
-    /// loses the claim when the step runs under the configuration without the shared secret.
+    /// The validation step on its own, as if a validator had accepted Heimdall's HS256 token with the retired
+    /// secret still set: the <c>fortuna_local</c> claim it carries is removed, so it could never make the
+    /// actor local.
     /// </summary>
     [UnitFact]
-    public async Task GivenAValidatedLegacyToken_WhenTheStepRunsWithoutTheSharedSecret_ThenTheClaimIsRemoved()
+    public async Task GivenAnHs256HeimdallTokenClaimingFortunaLocal_WhenValidated_ThenTheClaimIsRemoved()
     {
-        var keys = await JwksTestSupport.SigningKeysAsync(JwksTestSupport.Options(), HeimdallKey);
+        var options = JwksTestSupport.Options(retiredSecret: true);
         var result = await new JsonWebTokenHandler().ValidateTokenAsync(
-            Hs256(JwksTestSupport.Issuer, JwksTestSupport.SharedSecret), JwksTestSupport.ValidationParameters(keys));
-        var principal = new ClaimsPrincipal(result.ClaimsIdentity);
+            Hs256(JwksTestSupport.Issuer, JwksTestSupport.SharedSecret),
+            new TokenValidationParameters
+            {
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(JwksTestSupport.SharedSecret)),
+                ValidIssuer = JwksTestSupport.Issuer,
+                ValidAudience = JwksTestSupport.Audience
+            });
+        var context = new TokenValidatedContext(
+            new DefaultHttpContext(),
+            new AuthenticationScheme(JwtBearerDefaults.AuthenticationScheme, null, typeof(JwtBearerHandler)),
+            new JwtBearerOptions())
+        {
+            Principal = new ClaimsPrincipal(result.ClaimsIdentity),
+            SecurityToken = result.SecurityToken
+        };
 
-        Assert.True(result.IsValid);
-        Assert.True(LocalIdentityRule.KeepsLegacyLocalClaim(result.SecurityToken, JwksTestSupport.Options()));
-        Assert.False(LocalIdentityRule.KeepsLegacyLocalClaim(result.SecurityToken, JwksTestSupport.Options(sharedSecret: false)));
-        LocalIdentityRule.RemoveLegacyLocalClaims(principal);
-        Assert.DoesNotContain(principal.Claims, claim => claim.Type == FortunaIdentityMapper.LocalIdentityClaim);
+        Assert.True(result.IsValid, result.Exception?.Message);
+        Assert.Contains(context.Principal.Claims, claim => claim.Type == FortunaIdentityMapper.LocalIdentityClaim);
+
+        await LocalIdentityRule.OnTokenValidatedAsync(context, options);
+
+        Assert.DoesNotContain(context.Principal!.Claims, claim =>
+            string.Equals(claim.Type, FortunaIdentityMapper.LocalIdentityClaim, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

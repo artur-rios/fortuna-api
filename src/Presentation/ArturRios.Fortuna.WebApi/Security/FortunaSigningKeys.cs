@@ -11,9 +11,8 @@ namespace ArturRios.Fortuna.WebApi.Security;
 /// <remarks>
 /// <para>
 /// <b>By issuer.</b> A token naming Heimdall's issuer (<c>FORTUNA_AUTH_TOKEN_ISSUER</c>) is verified with the
-/// key it names among Heimdall's published ES256 keys, or, when it names none, with the legacy HS256 secret,
-/// and only while the overlap is on (<see cref="FortunaOptions.AcceptsLegacyTokens" />). Heimdall's HS256
-/// tokens, and the local tokens Fortuna issued under Heimdall's issuer, never carried a <c>kid</c>. A token
+/// key it names among Heimdall's published ES256 keys alone. One that names no key gets none: those are
+/// Heimdall's retired HS256 tokens, and the local tokens Fortuna once issued under Heimdall's issuer. A token
 /// naming Fortuna's local issuer is verified with Fortuna's local secret alone. Any other issuer gets no key.
 /// </para>
 /// <para>
@@ -27,19 +26,14 @@ public sealed class FortunaSigningKeys
 {
     private readonly FortunaOptions _options;
     private readonly HeimdallJwks _jwks;
-    private readonly IReadOnlyList<SecurityKey> _legacyHeimdallKeys;
     private readonly SecurityKey _localKey;
 
     public FortunaSigningKeys(FortunaOptions options, HeimdallJwks jwks)
     {
         _options = options;
         _jwks = jwks;
-        _legacyHeimdallKeys = LegacyHeimdallSecrets(options).Select(key => key.ToSecurityKey()).ToList();
         _localKey = new JwtKey("local", options.LocalTokenSecret).ToSecurityKey();
     }
-
-    /// <summary>Whether Heimdall's HS256 tokens are still accepted: the overlap is on.</summary>
-    public bool AcceptsLegacyHeimdallTokens => _options.AcceptsLegacyTokens;
 
     /// <summary>The keys that may verify <paramref name="token" />, by the issuer it names.</summary>
     public IEnumerable<SecurityKey> Resolve(SecurityToken token, string? keyId)
@@ -49,14 +43,13 @@ public sealed class FortunaSigningKeys
             return [_localKey];
         }
 
-        if (!string.Equals(token.Issuer, _options.AuthTokenIssuer, StringComparison.Ordinal))
+        if (!string.Equals(token.Issuer, _options.AuthTokenIssuer, StringComparison.Ordinal) ||
+            string.IsNullOrEmpty(keyId))
         {
             return [];
         }
 
-        return string.IsNullOrEmpty(keyId)
-            ? _legacyHeimdallKeys
-            : _jwks.Keys.Where(key => key.Id == keyId).Select(key => key.ToSecurityKey()).ToList();
+        return _jwks.Keys.Where(key => key.Id == keyId).Select(key => key.ToSecurityKey()).ToList();
     }
 
     /// <summary>Whether <paramref name="key" /> may verify <paramref name="algorithm" />: only its own.</summary>
@@ -66,20 +59,4 @@ public sealed class FortunaSigningKeys
         SymmetricSecurityKey => algorithm == SecurityAlgorithms.HmacSha256,
         _ => false
     };
-
-    private static IEnumerable<JwtKey> LegacyHeimdallSecrets(FortunaOptions options)
-    {
-        if (!options.AcceptsLegacyTokens)
-        {
-            yield break;
-        }
-
-        yield return new JwtKey("legacy-current", options.AuthTokenSecret!);
-
-        if (!string.IsNullOrWhiteSpace(options.AuthPreviousTokenSecret) &&
-            options.AuthPreviousTokenSecret != options.AuthTokenSecret)
-        {
-            yield return new JwtKey("legacy-previous", options.AuthPreviousTokenSecret);
-        }
-    }
 }

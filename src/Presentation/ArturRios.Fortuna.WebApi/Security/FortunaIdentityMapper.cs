@@ -13,7 +13,7 @@ namespace ArturRios.Fortuna.WebApi.Security;
 public sealed class FortunaIdentityMapper(LocalIdentityRule rule) : IAuthenticatedUserMapper
 {
     /// <summary>
-    /// A mapper under the fail-closed <see cref="LocalIdentityRule.Default" />, for code that writes claims
+    /// A mapper under the default <see cref="LocalIdentityRule.Default" />, for code that writes claims
     /// (<see cref="ToClaims" />) outside the request pipeline. The request pipeline gets the configured rule
     /// (<see cref="LocalIdentityRule.From" />) from DI.
     /// </summary>
@@ -89,17 +89,11 @@ public sealed class FortunaIdentityMapper(LocalIdentityRule rule) : IAuthenticat
     }
 
     /// <summary>
-    /// Local when the token names Fortuna's local issuer. Otherwise local only while
-    /// <see cref="LocalIdentityRule.AcceptsLegacyLocalClaim" /> holds and the token still carries the
-    /// <c>fortuna_local</c> claim. Validation (<see cref="LocalIdentityRule.OnTokenValidatedAsync" />) leaves that
-    /// claim only on an HS256 token under Heimdall's issuer, verified by the legacy secret.
+    /// Local when the token names Fortuna's local issuer, and only then: the <c>fortuna_local</c> claim
+    /// <see cref="ToClaims" /> writes for fortuna-ui never decides it.
     /// </summary>
     private bool IsLocalToken(IReadOnlyDictionary<string, string> claims) =>
-        string.Equals(claims.GetValueOrDefault(IssuerClaim), rule.LocalIssuer, StringComparison.Ordinal) ||
-        (rule.AcceptsLegacyLocalClaim &&
-         claims.TryGetValue(LocalIdentityClaim, out var local) &&
-         bool.TryParse(local, out var isLocal) &&
-         isLocal);
+        string.Equals(claims.GetValueOrDefault(IssuerClaim), rule.LocalIssuer, StringComparison.Ordinal);
 
     private static IReadOnlyCollection<string> ReadPermissions(
         IReadOnlyDictionary<string, string> claims)

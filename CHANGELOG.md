@@ -7,6 +7,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-20
+
+### Upgrading from 3.x to 4.0
+
+- **Operators:** remove `FORTUNA_AUTH_TOKEN_SECRET` and `_PREVIOUS` from the environment once both 4.0.0 releases
+  are live, in the order below; they are no longer read, and a warning names them while set (never their value).
+  Deploy only after heimdall-api 3.0.0 has run for 24 hours. Heimdall's HS256 tokens are refused with `401`,
+  whether or not the secret is still set. Local-account tokens are unaffected: they are signed with
+  `FORTUNA_LOCAL_TOKEN_SECRET` under the local issuer, and still carry the `fortuna_local` claim fortuna-ui reads.
+- **Order:** this release ships first, and heimdall-api 4.0.0 ships only once fortuna-api 4.0.0 is live. Neither
+  4.0.0 compose file passes the secrets, so the running containers stop receiving them at those deploys. Only then
+  are the store values unset, Fortuna's references before Heimdall's values: `FORTUNA_AUTH_TOKEN_SECRET` in each
+  environment, then `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS`, then `HEIMDALL_AUTH_TOKEN_SECRET` in each environment,
+  then `HEIMDALL_AUTH_TOKEN_SECRET_PREVIOUS`, then `ygg vars check`. In the store, Fortuna's secret is a reference
+  to Heimdall's, so unsetting Heimdall's value first breaks `ygg vars check`, and with it Fortuna's next deploy.
+- **Rolling back to 3.1.0 or 3.0.0:** both treat the secret alike, and what they do depends on whether it is still
+  in the store.
+  - While `FORTUNA_AUTH_TOKEN_SECRET` is set, 3.x starts and re-opens the HS256 overlap, with no sign but its
+    start-up line (`accepted until FORTUNA_AUTH_TOKEN_SECRET is removed`). It accepts HS256 tokens under Heimdall's
+    issuer again and honours the `fortuna_local` claim on them, so anyone holding the secret can mint tokens
+    Fortuna accepts, local-account ones included.
+  - Once it is unset, 3.x still starts (its compose file maps `${FORTUNA_AUTH_TOKEN_SECRET:-}`, and the secret is
+    optional there) and refuses those tokens, as 4.0.0 does. It does not start with `_PREVIOUS` set alone, so
+    unset both.
+
+### Removed
+
+- **Breaking (configuration):** the legacy HS256 secret; Heimdall-issuer HS256 tokens and the `fortuna_local` claim
+  on them are refused. `FORTUNA_AUTH_TOKEN_SECRET` and `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS` are no longer read or
+  checked, and the compose file and the environment templates no longer pass them. The start-up line now always
+  reports Heimdall's HS256 tokens as `refused`.
+
+### Security
+
+- Only Heimdall's published keys verify a Heimdall token. A token under Heimdall's issuer that names no key gets
+  none, and the `fortuna_local` claim is removed from every token not under the local issuer.
+
 ## [3.1.0] - 2026-10-20
 
 ### Added
@@ -235,7 +272,8 @@ holders sign in again.
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...v4.0.0
 [3.1.0]: https://github.com/artur-rios/fortuna-api/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/artur-rios/fortuna-api/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/artur-rios/fortuna-api/compare/v2.1.0...v2.2.0

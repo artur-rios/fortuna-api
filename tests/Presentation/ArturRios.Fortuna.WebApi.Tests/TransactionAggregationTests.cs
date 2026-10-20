@@ -25,7 +25,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class TransactionAggregationTests : IAsyncLifetime
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateOnly Start = new(2026, 9, 1);
@@ -687,11 +686,11 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             3600,
             Issuer,
             Audience,
-            Secret,
+            string.Empty,
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            new JwtHandler().CreateToken(configuration));
+            TestHeimdallKeySet.Sign(configuration));
     }
 
     private static Dictionary<string, string?> ValidSettings() => new()
@@ -704,7 +703,6 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
         ["FORTUNA_REPORT_MAX_RANGE_DAYS"] = "366",
         ["FORTUNA_REPORT_KEY_TTL_MINUTES"] = "15",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",

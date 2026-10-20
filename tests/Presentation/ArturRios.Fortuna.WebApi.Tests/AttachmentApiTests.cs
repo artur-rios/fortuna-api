@@ -26,7 +26,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class AttachmentApiTests : IAsyncLifetime
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private readonly PostgreSqlContainer database =
@@ -831,11 +830,11 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             3600,
             Issuer,
             Audience,
-            Secret,
+            string.Empty,
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            new JwtHandler().CreateToken(configuration));
+            TestHeimdallKeySet.Sign(configuration));
     }
 
     private Dictionary<string, string?> ValidSettings(int maximumBytes) => new()
@@ -848,7 +847,6 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         ["FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES"] = "application/pdf,image/png",
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",

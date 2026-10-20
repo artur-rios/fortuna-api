@@ -269,11 +269,11 @@ public sealed class HealthCheckTests : IAsyncLifetime
             3600,
             Issuer,
             Audience,
-            Secret,
+            string.Empty,
             new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            new JwtHandler().CreateToken(configuration));
+            TestHeimdallKeySet.Sign(configuration));
     }
 
     private Dictionary<string, string?> ValidSettings() => new()
@@ -286,7 +286,6 @@ public sealed class HealthCheckTests : IAsyncLifetime
             Path.GetTempPath(), "fortuna-api-health-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
         ["FORTUNA_HEALTH_JOB_MAX_PENDING_SECONDS"] = "300",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",

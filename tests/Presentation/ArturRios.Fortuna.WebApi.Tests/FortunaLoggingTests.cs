@@ -74,6 +74,42 @@ public sealed class FortunaLoggingTests
             .IsEnabled(LogEventLevel.Debug));
     }
 
+    /// <summary>
+    /// The retired secrets are no longer read, so nothing checks them any more: an operator learns they can
+    /// go from one warning each, which names the variable and never carries its value.
+    /// </summary>
+    [UnitFact]
+    public void GivenTheRetiredSecretIsSet_WhenStarting_ThenAWarningNamesItAndNeverItsValue()
+    {
+        const string previous = "fortuna-tests-retired-previous-signing-key";
+        var settings = JwksTestSupport.Settings(retiredSecret: true);
+        settings["FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"] = previous;
+        var sink = new CollectingSink();
+
+        using (var logger = new LoggerConfiguration().MinimumLevel.Verbose().WriteTo.Sink(sink).CreateLogger())
+        {
+            FortunaWebApiServiceCollectionExtensions.LogBearerTokenSettings(
+                logger, FortunaOptions.From(settings.GetValueOrDefault));
+        }
+
+        var warnings = sink.Events.Where(logEvent => logEvent.Level == LogEventLevel.Warning).ToList();
+        var startup = Assert.Single(sink.Events, logEvent => logEvent.Level == LogEventLevel.Information);
+
+        Assert.Equal(
+            new[] { "FORTUNA_AUTH_TOKEN_SECRET", "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS" },
+            warnings.Select(warning => Scalar(warning, "Variable")));
+        Assert.All(warnings, warning =>
+            Assert.Equal("{Variable} is set but no longer read; remove it", warning.MessageTemplate.Text));
+        Assert.Equal("refused", Scalar(startup, "LegacyState"));
+        Assert.All(sink.Events, logEvent =>
+        {
+            var written = logEvent.RenderMessage() + string.Join('|', logEvent.Properties.Values);
+
+            Assert.DoesNotContain(JwksTestSupport.SharedSecret, written, StringComparison.Ordinal);
+            Assert.DoesNotContain(previous, written, StringComparison.Ordinal);
+        });
+    }
+
     [UnitFact]
     public void GivenPlainHttpHeimdallUrl_WhenStarting_ThenTheTransportIsLogged()
     {
@@ -149,7 +185,6 @@ public sealed class FortunaLoggingTests
             StorageProvider = "Filesystem",
             StoragePath = Path.Combine(Path.GetTempPath(), "fortuna-api-logging-tests-storage"),
             LogDirectory = Path.Combine(Path.GetTempPath(), "fortuna-api-logging-tests"),
-            AuthTokenSecret = "fortuna-tests-signing-key-with-enough-entropy",
             AuthTokenIssuer = "heimdall-tests",
             AuthTokenAudience = "fortuna-tests",
             Locale = "pt-BR",

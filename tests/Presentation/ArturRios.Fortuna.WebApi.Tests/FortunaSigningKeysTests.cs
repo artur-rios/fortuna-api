@@ -16,19 +16,23 @@ public sealed class FortunaSigningKeysTests
 {
     private const string LocalIssuer = "fortuna-local";
 
-    /// <summary>A shared secret long enough for IdentityModel to compute HS384 and HS512 over it.</summary>
-    private const string LongSharedSecret = "fortuna-tests-signing-key-long-enough-for-hs512-with-plenty-of-entropy";
+    /// <summary>A local secret long enough for IdentityModel to compute HS384 and HS512 over it.</summary>
+    private const string LongLocalSecret = "fortuna-tests-local-key-long-enough-for-hs512-with-plenty-of-entropy";
 
+    /// <summary>
+    /// Fortuna's keys with Heimdall's key published and known. The retired shared secret is still set unless
+    /// <paramref name="retiredSecret" /> says otherwise, so every case shows it is not read.
+    /// </summary>
     private static async Task<(FortunaSigningKeys Keys, JwtKey HeimdallKey, string HeimdallPem)> CreateAsync(
-        bool sharedSecret = true, string? sharedSecretValue = null)
+        bool retiredSecret = true, string? localSecret = null)
     {
         var heimdallPem = JwksTestSupport.NewPem();
         var heimdallKey = JwtKey.FromEcPrivateKeyPem(heimdallPem);
-        var settings = JwksTestSupport.Settings(sharedSecret);
+        var settings = JwksTestSupport.Settings(retiredSecret);
 
-        if (sharedSecretValue is not null)
+        if (localSecret is not null)
         {
-            settings["FORTUNA_AUTH_TOKEN_SECRET"] = sharedSecretValue;
+            settings["FORTUNA_LOCAL_TOKEN_SECRET"] = localSecret;
         }
 
         var keys = await JwksTestSupport.SigningKeysAsync(FortunaOptions.From(settings.GetValueOrDefault), heimdallKey);
@@ -54,11 +58,11 @@ public sealed class FortunaSigningKeysTests
             SigningKeyId = ecKey?.Id
         });
 
-    /// <summary>A token signed however an attacker likes, under Heimdall's issuer.</summary>
-    private static string Forge(SigningCredentials credentials) =>
+    /// <summary>A token signed however an attacker likes, under Heimdall's issuer unless another is named.</summary>
+    private static string Forge(SigningCredentials credentials, string issuer = JwksTestSupport.Issuer) =>
         new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
-            Issuer = JwksTestSupport.Issuer,
+            Issuer = issuer,
             Audience = JwksTestSupport.Audience,
             Claims = new Dictionary<string, object> { ["id"] = "42" },
             Expires = DateTime.UtcNow.AddHours(1),
@@ -100,24 +104,14 @@ public sealed class FortunaSigningKeysTests
         Assert.Empty(keys.Resolve(Naming(JwksTestSupport.Issuer), "unknown"));
     }
 
+    /// <summary>Heimdall's HS256 tokens never named a kid; with the retired secret still set, they meet no key.</summary>
     [UnitFact]
-    public async Task GivenHeimdallsIssuerWithoutAKidDuringTheOverlap_WhenResolving_ThenTheSharedSecret()
+    public async Task GivenAHeimdallTokenWithNoKid_WhenResolvingKeys_ThenNoKeyIsReturned()
     {
-        var (keys, _, _) = await CreateAsync();
+        var (keys, _, _) = await CreateAsync(retiredSecret: true);
 
-        var resolved = Assert.IsType<SymmetricSecurityKey>(Assert.Single(keys.Resolve(Naming(JwksTestSupport.Issuer), null)));
-
-        Assert.True(keys.AcceptsLegacyHeimdallTokens);
-        Assert.Equal(Encoding.ASCII.GetBytes(JwksTestSupport.SharedSecret), resolved.Key);
-    }
-
-    [UnitFact]
-    public async Task GivenHeimdallsIssuerWithoutAKidAfterTheOverlap_WhenResolving_ThenNoKey()
-    {
-        var (keys, _, _) = await CreateAsync(sharedSecret: false);
-
-        Assert.False(keys.AcceptsLegacyHeimdallTokens);
         Assert.Empty(keys.Resolve(Naming(JwksTestSupport.Issuer), null));
+        Assert.Empty(keys.Resolve(Naming(JwksTestSupport.Issuer), string.Empty));
     }
 
     [UnitTheory]
@@ -175,20 +169,43 @@ public sealed class FortunaSigningKeysTests
         Assert.True(result.IsValid, result.Exception?.Message);
     }
 
+    /// <summary>
+    /// An ES256 token that names Heimdall's published kid but is signed by another P-256 key. Every check but
+    /// the signature passes: the kid resolves to Heimdall's EC key, ES256 is that key's algorithm, and the same
+    /// token signed by Heimdall's own key is accepted. Only the signature can refuse it.
+    /// </summary>
     [UnitFact]
-    public async Task GivenAnHs256HeimdallTokenDuringTheOverlap_WhenValidated_ThenItIsAccepted()
+    public async Task GivenAnEs256TokenNamingHeimdallsKidSignedByAnotherKey_WhenValidated_ThenItIsRefused()
     {
-        var (keys, _, _) = await CreateAsync();
+        var (keys, heimdallKey, heimdallPem) = await CreateAsync();
+        using var heimdallEcdsa = ECDsa.Create();
+        heimdallEcdsa.ImportFromPem(heimdallPem);
+        using var impostorEcdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var genuine = Forge(new SigningCredentials(
+            new ECDsaSecurityKey(heimdallEcdsa) { KeyId = heimdallKey.Id }, SecurityAlgorithms.EcdsaSha256));
+        var forged = Forge(new SigningCredentials(
+            new ECDsaSecurityKey(impostorEcdsa) { KeyId = heimdallKey.Id }, SecurityAlgorithms.EcdsaSha256));
+        var read = new JsonWebToken(forged);
 
-        var result = await ValidateAsync(keys, Issue(JwksTestSupport.Issuer, JwksTestSupport.SharedSecret));
+        var accepted = await ValidateAsync(keys, genuine);
+        var result = await ValidateAsync(keys, forged);
+        var resolved = Assert.Single(keys.Resolve(read, read.Kid));
 
-        Assert.True(result.IsValid, result.Exception?.Message);
+        Assert.True(accepted.IsValid, accepted.Exception?.Message);
+        Assert.Equal(SecurityAlgorithms.EcdsaSha256, read.Alg);
+        Assert.Equal(heimdallKey.Id, read.Kid);
+        Assert.Equal(heimdallKey.Id, resolved.KeyId);
+        Assert.True(FortunaSigningKeys.IsAllowed(read.Alg, resolved));
+        Assert.False(result.IsValid);
+        Assert.IsAssignableFrom<SecurityTokenInvalidSignatureException>(result.Exception);
     }
 
-    [UnitFact]
-    public async Task GivenAnHs256HeimdallTokenAfterTheOverlap_WhenValidated_ThenItIsRefused()
+    [UnitTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GivenAnHs256HeimdallTokenSignedWithTheRetiredSecret_WhenValidated_ThenItIsRefused(bool retiredSecret)
     {
-        var (keys, _, _) = await CreateAsync(sharedSecret: false);
+        var (keys, _, _) = await CreateAsync(retiredSecret);
 
         var result = await ValidateAsync(keys, Issue(JwksTestSupport.Issuer, JwksTestSupport.SharedSecret));
 
@@ -198,7 +215,7 @@ public sealed class FortunaSigningKeysTests
     [UnitFact]
     public async Task GivenALocalTokenSignedWithTheLocalSecret_WhenValidated_ThenItIsAccepted()
     {
-        var (keys, _, _) = await CreateAsync(sharedSecret: false);
+        var (keys, _, _) = await CreateAsync();
 
         var result = await ValidateAsync(keys, Issue(LocalIssuer, JwksTestSupport.LocalSecret));
 
@@ -226,20 +243,22 @@ public sealed class FortunaSigningKeysTests
     }
 
     /// <summary>
-    /// The shared secret is HS256's alone: without the per-key algorithm check, an HS384 or HS512 token signed
+    /// The local secret is HS256's alone: without the per-key algorithm check, an HS384 or HS512 token signed
     /// with it would validate, because IdentityModel accepts any HMAC algorithm over a symmetric key long
-    /// enough for it.
+    /// enough for it. The HS256 token over the same secret shows the key itself is accepted.
     /// </summary>
     [UnitTheory]
     [InlineData(SecurityAlgorithms.HmacSha384)]
     [InlineData(SecurityAlgorithms.HmacSha512)]
-    public async Task GivenAnotherHmacAlgorithmOverTheSharedSecret_WhenValidated_ThenItIsRefused(string algorithm)
+    public async Task GivenAnotherHmacAlgorithmOverTheLocalSecret_WhenValidated_ThenItIsRefused(string algorithm)
     {
-        var (keys, _, _) = await CreateAsync(sharedSecretValue: LongSharedSecret);
-        var secret = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(LongSharedSecret));
+        var (keys, _, _) = await CreateAsync(localSecret: LongLocalSecret);
+        var secret = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(LongLocalSecret));
 
-        var result = await ValidateAsync(keys, Forge(new SigningCredentials(secret, algorithm)));
+        var accepted = await ValidateAsync(keys, Forge(new SigningCredentials(secret, SecurityAlgorithms.HmacSha256), LocalIssuer));
+        var result = await ValidateAsync(keys, Forge(new SigningCredentials(secret, algorithm), LocalIssuer));
 
+        Assert.True(accepted.IsValid, accepted.Exception?.Message);
         Assert.False(result.IsValid);
     }
 
@@ -269,7 +288,7 @@ public sealed class FortunaSigningKeysTests
         Assert.All(resolved, key => Assert.False(FortunaSigningKeys.IsAllowed(read.Alg, key)));
     }
 
-    /// <summary>The same attack without a kid: it meets the shared secret alone, which its HMAC key is not.</summary>
+    /// <summary>The same attack without a kid: it meets no key at all.</summary>
     [UnitTheory]
     [InlineData("pem")]
     [InlineData("der")]
@@ -281,9 +300,8 @@ public sealed class FortunaSigningKeysTests
         var read = new JsonWebToken(token);
 
         var result = await ValidateAsync(keys, token);
-        var resolved = Assert.IsType<SymmetricSecurityKey>(Assert.Single(keys.Resolve(read, read.Kid)));
 
         Assert.False(result.IsValid);
-        Assert.Equal(Encoding.ASCII.GetBytes(JwksTestSupport.SharedSecret), resolved.Key);
+        Assert.Empty(keys.Resolve(read, read.Kid));
     }
 }

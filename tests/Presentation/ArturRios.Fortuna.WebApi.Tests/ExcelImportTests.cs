@@ -31,7 +31,6 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class ExcelImportTests : IAsyncLifetime
 {
-    private const string Secret = "fortuna-tests-signing-key-with-enough-entropy";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateTimeOffset Now =
@@ -533,9 +532,9 @@ public sealed class ExcelImportTests : IAsyncLifetime
             DisplayName = "Account Owner"
         };
         var configuration = new JwtConfiguration(
-            3600, Issuer, Audience, Secret, new FortunaIdentityMapper().ToClaims(identity));
+            3600, Issuer, Audience, string.Empty, new FortunaIdentityMapper().ToClaims(identity));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer", new JwtHandler().CreateToken(configuration));
+            "Bearer", TestHeimdallKeySet.Sign(configuration));
     }
 
     private static Dictionary<string, string?> ValidSettings(int maximumBytes) => new()
@@ -547,7 +546,6 @@ public sealed class ExcelImportTests : IAsyncLifetime
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
         ["FORTUNA_EXCEL_IMPORT_MAX_BYTES"] = maximumBytes.ToString(),
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = Secret,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",

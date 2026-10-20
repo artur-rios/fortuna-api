@@ -14,6 +14,7 @@ internal static class JwksTestSupport
 {
     public const string Issuer = "heimdall-tests";
     public const string Audience = "fortuna-tests";
+    /// <summary>The secret Heimdall signed its HS256 tokens with, which Fortuna no longer reads.</summary>
     public const string SharedSecret = "fortuna-tests-signing-key-with-enough-entropy";
     public const string LocalSecret = "fortuna-tests-local-token-secret-with-enough-entropy";
     public const string JwksUrl = "http://heimdall.example.test/.well-known/jwks.json";
@@ -41,8 +42,11 @@ internal static class JwksTestSupport
     /// <summary>The key set Heimdall would publish for these keys.</summary>
     public static string KeySet(params JwtKey[] keys) => JwksDocument.From(keys.Select(key => key.ToPublicKey()));
 
-    /// <summary>Every setting Fortuna needs to start, with or without the legacy shared secret.</summary>
-    public static Dictionary<string, string?> Settings(bool sharedSecret = true) => new()
+    /// <summary>
+    /// Every setting Fortuna needs to start, with or without the retired shared secret still set, as an
+    /// environment nobody has cleaned up yet would have it.
+    /// </summary>
+    public static Dictionary<string, string?> Settings(bool retiredSecret = false) => new()
     {
         ["FORTUNA_DATA_CONNECTIONSTRING"] = TestDatabase.Unreachable,
         ["FORTUNA_DATA_DATABASETYPE"] = "PostgreSql",
@@ -50,7 +54,7 @@ internal static class JwksTestSupport
         ["FORTUNA_STORAGE_PATH"] = Path.Combine(Path.GetTempPath(), "fortuna-api-tests"),
         ["FORTUNA_LOG_DIRECTORY"] = Path.Combine(Path.GetTempPath(), "fortuna-api-test-logs"),
         ["FORTUNA_JOB_QUEUE_CAPACITY"] = "32",
-        ["FORTUNA_AUTH_TOKEN_SECRET"] = sharedSecret ? SharedSecret : null,
+        ["FORTUNA_AUTH_TOKEN_SECRET"] = retiredSecret ? SharedSecret : null,
         ["FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS"] = null,
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
@@ -67,8 +71,8 @@ internal static class JwksTestSupport
     };
 
     /// <summary>The options those settings parse into.</summary>
-    public static FortunaOptions Options(bool sharedSecret = true) =>
-        FortunaOptions.From(Settings(sharedSecret).GetValueOrDefault);
+    public static FortunaOptions Options(bool retiredSecret = false) =>
+        FortunaOptions.From(Settings(retiredSecret).GetValueOrDefault);
 
     /// <summary>Fortuna's verification keys under <paramref name="options" />, with <paramref name="heimdallKey" /> published and known.</summary>
     public static async Task<FortunaSigningKeys> SigningKeysAsync(FortunaOptions options, JwtKey heimdallKey)
