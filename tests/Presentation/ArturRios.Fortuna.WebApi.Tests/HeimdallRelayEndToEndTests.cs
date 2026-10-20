@@ -1,6 +1,11 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using ArturRios.Fortuna.Integration.Security;
 using ArturRios.Fortuna.Shared.Security;
@@ -12,6 +17,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -136,6 +142,60 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
     }
 
     [FunctionalFact]
+    public async Task GivenTlsHeimdall_WhenItRedirectsToAnotherHost_ThenNeitherTheRequestNorTheCallerKeyFollows()
+    {
+        // Given — Heimdall over TLS redirects a sign-in to a second TLS server. A followed redirect drops
+        // Authorization but keeps every other header, so the caller key would reach that server.
+        using var certificate = LoopbackCertificate();
+        using var elsewhere = new LoopbackHttpServer(
+            _ => "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            certificate: certificate);
+        using var heimdall = new LoopbackHttpServer(
+            _ => "HTTP/1.1 302 Found\r\n" +
+                 $"Location: https://127.0.0.1:{elsewhere.Port}/api/auth/login\r\n" +
+                 "Content-Length: 0\r\nConnection: close\r\n\r\n",
+            certificate: certificate);
+        await using var factory = CreateFactory(
+            heimdall: null,
+            CallerKey,
+            heimdallBaseUrl: $"https://127.0.0.1:{heimdall.Port}/",
+            trustedCertificate: certificate);
+        using var client = factory.CreateClient();
+
+        // When
+        using var response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "user@example.test", password = "secret-in-transit" });
+
+        // Then — Heimdall had the caller key over TLS; its redirect was a failed exchange and went nowhere.
+        Assert.Equal(1, heimdall.Connections);
+        Assert.Contains(heimdall.Heads, head => head.Contains(CallerKey, StringComparison.Ordinal));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.DoesNotContain(elsewhere.Heads, head => head.Contains(CallerKey, StringComparison.Ordinal));
+        Assert.Equal(0, elsewhere.Connections);
+    }
+
+    [FunctionalTheory]
+    [InlineData("https://heimdall.example.test/")]
+    [InlineData("http://heimdall-api.production:8080/")]
+    public async Task GivenEitherTransport_WhenTheHeimdallClientIsBuilt_ThenItsHandlerFollowsNoRedirect(string url)
+    {
+        // Given
+        await using var factory = CreateFactory(heimdall: null, CallerKey, heimdallBaseUrl: url);
+
+        // When — the chain the typed client the app registered sends through, down to its primary handler.
+        var handler = factory.Services.GetRequiredService<IHttpMessageHandlerFactory>()
+            .CreateHandler(nameof(IHeimdallAuthGateway));
+        while (handler is DelegatingHandler delegating)
+        {
+            handler = delegating.InnerHandler!;
+        }
+
+        // Then
+        Assert.False(Assert.IsType<SocketsHttpHandler>(handler).AllowAutoRedirect);
+    }
+
+    [FunctionalFact]
     public async Task GivenClientForwardedFor_WhenRelayedToHeimdall_ThenNoForwardingHeaderReachesHeimdall()
     {
         // Given
@@ -201,7 +261,8 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
     private static WebApplicationFactory<Program> CreateFactory(
         FakeHeimdall? heimdall,
         string? callerKey,
-        string heimdallBaseUrl = DefaultHeimdallBaseUrl)
+        string heimdallBaseUrl = DefaultHeimdallBaseUrl,
+        X509Certificate2? trustedCertificate = null)
     {
         foreach (var setting in ValidSettings(callerKey, heimdallBaseUrl))
         {
@@ -221,8 +282,38 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
                     services.AddHttpClient<IHeimdallAuthGateway, HeimdallAuthGateway>()
                         .ConfigurePrimaryHttpMessageHandler(() => heimdall);
                 }
+                if (trustedCertificate is not null)
+                {
+                    // Trusts the test's certificate in whichever handler the app built, changing nothing else.
+                    services.Configure<HttpClientFactoryOptions>(nameof(IHeimdallAuthGateway), options =>
+                        options.HttpMessageHandlerBuilderActions.Add(builder =>
+                            Trust(builder.PrimaryHandler, trustedCertificate)));
+                }
             });
         });
+    }
+
+    private static void Trust(HttpMessageHandler handler, X509Certificate2 trusted)
+    {
+        var sockets = handler as SocketsHttpHandler ?? throw new InvalidOperationException(
+            $"No way to trust a certificate in {handler.GetType()}.");
+        sockets.SslOptions.RemoteCertificateValidationCallback = (_, presented, _, _) =>
+            presented is not null && presented.GetRawCertData().AsSpan().SequenceEqual(trusted.RawData);
+    }
+
+    /// <summary>A self-signed certificate for 127.0.0.1, valid for the next hour.</summary>
+    private static X509Certificate2 LoopbackCertificate()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var request = new CertificateRequest("CN=127.0.0.1", key, HashAlgorithmName.SHA256);
+        var names = new SubjectAlternativeNameBuilder();
+        names.AddIpAddress(IPAddress.Loopback);
+        request.CertificateExtensions.Add(names.Build());
+        using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5),
+            DateTimeOffset.UtcNow.AddHours(1));
+
+        // A PKCS#12 round trip leaves the private key in a form SslStream can use on every platform.
+        return X509CertificateLoader.LoadPkcs12(certificate.Export(X509ContentType.Pkcs12), null);
     }
 
     private static Dictionary<string, string?> ValidSettings(string? callerKey, string heimdallBaseUrl) => new()
@@ -272,16 +363,23 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
 
     /// <summary>
     ///     A server on a loopback port that reads each request's head, answers it with a fixed raw
-    ///     response and closes the connection, counting the connections it accepted.
+    ///     response and closes the connection, counting the connections it accepted. Given a
+    ///     certificate, it speaks TLS.
     /// </summary>
     private sealed class LoopbackHttpServer : IDisposable
     {
         private readonly TcpListener _listener;
+        private readonly X509Certificate2? _certificate;
         private readonly CancellationTokenSource _stopping = new();
+        private readonly ConcurrentQueue<string> _heads = new();
         private int _connections;
 
-        public LoopbackHttpServer(Func<string, string> answer, IPAddress? address = null)
+        public LoopbackHttpServer(
+            Func<string, string> answer,
+            IPAddress? address = null,
+            X509Certificate2? certificate = null)
         {
+            _certificate = certificate;
             _listener = new TcpListener(address ?? IPAddress.Loopback, 0);
             _listener.Start();
             Port = ((IPEndPoint)_listener.LocalEndpoint).Port;
@@ -291,6 +389,9 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
         public int Port { get; }
 
         public int Connections => Volatile.Read(ref _connections);
+
+        /// <summary>The head of each request received, request line and headers.</summary>
+        public IReadOnlyCollection<string> Heads => _heads.ToArray();
 
         public void Dispose()
         {
@@ -320,8 +421,9 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
                 {
                     try
                     {
-                        var stream = connection.GetStream();
+                        await using var stream = await OpenAsync(connection.GetStream(), _stopping.Token);
                         var head = await ReadHeadAsync(stream, _stopping.Token);
+                        _heads.Enqueue(head);
                         await stream.WriteAsync(Encoding.UTF8.GetBytes(answer(head)), _stopping.Token);
                         // Ends the answer cleanly, then drains what the client still sends, so closing
                         // never resets the connection under a response the client has yet to read.
@@ -329,15 +431,40 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
                         await DrainAsync(stream, _stopping.Token);
                     }
                     catch (Exception exception) when (exception is OperationCanceledException or
-                                                          IOException or SocketException)
+                                                          IOException or SocketException or
+                                                          AuthenticationException)
                     {
-                        // The client went away, or the test is over; the next connection is served.
+                        // The client went away or refused the handshake, or the test is over; the next
+                        // connection is served.
                     }
                 }
             }
         }
 
-        private static async Task DrainAsync(NetworkStream stream, CancellationToken cancellationToken)
+        private async Task<Stream> OpenAsync(NetworkStream network, CancellationToken cancellationToken)
+        {
+            if (_certificate is null)
+            {
+                return network;
+            }
+
+            var tls = new SslStream(network, leaveInnerStreamOpen: true);
+            try
+            {
+                await tls.AuthenticateAsServerAsync(
+                    new SslServerAuthenticationOptions { ServerCertificate = _certificate },
+                    cancellationToken);
+
+                return tls;
+            }
+            catch
+            {
+                await tls.DisposeAsync();
+                throw;
+            }
+        }
+
+        private static async Task DrainAsync(Stream stream, CancellationToken cancellationToken)
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(5));
@@ -347,7 +474,7 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
             }
         }
 
-        private static async Task<string> ReadHeadAsync(NetworkStream stream, CancellationToken cancellationToken)
+        private static async Task<string> ReadHeadAsync(Stream stream, CancellationToken cancellationToken)
         {
             var buffer = new byte[4096];
             var received = new StringBuilder();
