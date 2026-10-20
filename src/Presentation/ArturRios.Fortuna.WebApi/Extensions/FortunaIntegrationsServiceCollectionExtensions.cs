@@ -16,6 +16,7 @@ using ArturRios.Fortuna.Shared.Security;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Fortuna.WebApi.Services;
+using Serilog;
 
 namespace ArturRios.Fortuna.WebApi.Extensions;
 
@@ -37,12 +38,33 @@ public static class FortunaIntegrationsServiceCollectionExtensions
         services.AddTransient(provider => new HeimdallCallerHeadersHandler(
             provider.GetRequiredService<IHttpContextAccessor>(),
             options.HeimdallCallerKey));
-        services.AddHttpClient<IHeimdallAuthGateway, HeimdallAuthGateway>(client =>
+        var heimdall = services.AddHttpClient<IHeimdallAuthGateway, HeimdallAuthGateway>(client =>
             {
                 client.BaseAddress = options.HeimdallBaseUri;
                 client.Timeout = TimeSpan.FromSeconds(10);
             })
             .AddHttpMessageHandler<HeimdallCallerHeadersHandler>();
+        var plainHttp = options.HeimdallBaseUri.Scheme == Uri.UriSchemeHttp;
+        if (plainHttp)
+        {
+            // Credentials and the caller key travel unencrypted, so every connection is opened only to a
+            // private address, judged when it is made. A redirect is never followed: it could name a
+            // public host. No proxy is used either: the connection would then be the proxy's, not
+            // Heimdall's, and the proxy would carry the request on to wherever it resolves Heimdall.
+            heimdall.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                ConnectCallback = PrivateNetworkConnector.ConnectAsync,
+                AllowAutoRedirect = false,
+                UseProxy = false
+            });
+        }
+
+        // The address is not a secret; the caller key is, so only whether it is set is logged.
+        Log.Information(
+            "Heimdall credential exchange: {HeimdallBaseUrl} over {Transport}; caller key {CallerKeyState}",
+            options.HeimdallBaseUri,
+            plainHttp ? "plain HTTP to private addresses only" : "TLS",
+            string.IsNullOrWhiteSpace(options.HeimdallCallerKey) ? "not configured" : "configured");
         services.AddSingleton<IRateLimitDelay, RateLimitDelay>();
         services.AddHttpClient<IPtaxRateClient, PtaxRateClient>(client =>
         {

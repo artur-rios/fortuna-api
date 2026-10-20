@@ -97,17 +97,19 @@ Locally:
 docker compose --env-file docker/local.env up -d --build
 ```
 
-Local signs in with Fortuna's own local account (`FORTUNA_LOCAL_AUTH_ENABLED=true`): the local
-heimdall-api (`http://localhost:8080`) is plain HTTP, which `FORTUNA_HEIMDALL_BASE_URL` does not
-accept. The API has no CORS support, so a browser build of the web UI on another local port cannot
-call it; the UI's README describes how to work with it locally.
+Local signs in with Fortuna's own local account (`FORTUNA_LOCAL_AUTH_ENABLED=true`). To sign in
+through the local heimdall-api instead, it is `http://host.docker.internal:8080/`: plain HTTP is
+accepted because that host resolves to a private address. The API has no CORS support, so a
+browser build of the web UI on another local port cannot call it; the UI's README describes how to
+work with it locally.
 
 The three VPS environments are deployed by [yggdrasil](https://github.com/artur-rios/yggdrasil),
 from a copy of the matching template at `/etc/yggdrasil/<environment>/fortuna-api.env` on the VPS:
 Traefik serves the API on its own host and under the web UI's host at `/api/`, so the browser
 reaches it on the UI's own origin. Homologation runs as `Production` because the API treats every
 other ASP.NET environment as a debugging one (Swagger UI, detailed errors). Each of them has its
-own secrets, its own Heimdall (`FORTUNA_HEIMDALL_BASE_URL`, which must be HTTPS) whose public signing
+own secrets, its own Heimdall (`FORTUNA_HEIMDALL_BASE_URL`, which is HTTPS, or plain HTTP to a private address:
+inside yggdrasil `http://heimdall-api.<environment>:8080/`) whose public signing
 keys it reads from `FORTUNA_HEIMDALL_JWKS_URL`, and its own `FORTUNA_LOCAL_TOKEN_SECRET` for
 local-account tokens. Only those published keys verify a Heimdall token: the shared secret Fortuna
 once held for Heimdall's HS256 tokens (`FORTUNA_AUTH_TOKEN_SECRET`, `_PREVIOUS`) is no longer read

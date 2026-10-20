@@ -1,17 +1,36 @@
+using System.Collections.Concurrent;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Fortuna.WebApi.Extensions;
 using ArturRios.Fortuna.WebApi.Observability;
 using ArturRios.Util.Test.Attributes;
 using ArturRios.Util.WebApi.Middleware;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
+/// <summary>
+///     Groups the tests that replace Serilog's static logger, which every host a factory starts
+///     replaces too. The assembly already runs its tests one at a time (<c>TestAssembly.cs</c>); this
+///     collection keeps these apart from the rest only should that ever change.
+/// </summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class StaticLoggerCollection
+{
+    public const string Name = "Static Serilog logger";
+}
+
+[Collection(StaticLoggerCollection.Name)]
 public sealed class FortunaLoggingTests
 {
+    private const string HeimdallTransportTemplate =
+        "Heimdall credential exchange: {HeimdallBaseUrl} over {Transport}; caller key {CallerKeyState}";
+
+    private const string CallerKey = "caller-key-with-at-least-32-characters-0123";
+
     [UnitTheory]
     [InlineData("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Information, false)]
     [InlineData("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning, true)]
@@ -77,7 +96,7 @@ public sealed class FortunaLoggingTests
         var startup = Assert.Single(sink.Events, logEvent => logEvent.Level == LogEventLevel.Information);
 
         Assert.Equal(
-            new object?[] { "FORTUNA_AUTH_TOKEN_SECRET", "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS" },
+            new[] { "FORTUNA_AUTH_TOKEN_SECRET", "FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS" },
             warnings.Select(warning => Scalar(warning, "Variable")));
         Assert.All(warnings, warning =>
             Assert.Equal("{Variable} is set but no longer read; remove it", warning.MessageTemplate.Text));
@@ -91,17 +110,80 @@ public sealed class FortunaLoggingTests
         });
     }
 
-    private static object? Scalar(LogEvent logEvent, string property) =>
-        Assert.IsType<ScalarValue>(logEvent.Properties[property]).Value;
+    [UnitFact]
+    public void GivenPlainHttpHeimdallUrl_WhenStarting_ThenTheTransportIsLogged()
+    {
+        var options = Options() with
+        {
+            HeimdallBaseUri = new Uri("http://heimdall-api.production:8080/"),
+            HeimdallCallerKey = CallerKey
+        };
+
+        var events = CaptureStartup(options);
+
+        var line = Assert.Single(events, logEvent => logEvent.MessageTemplate.Text == HeimdallTransportTemplate);
+        Assert.Equal(LogEventLevel.Information, line.Level);
+        Assert.Equal("http://heimdall-api.production:8080/", Scalar(line, "HeimdallBaseUrl"));
+        Assert.Equal("plain HTTP to private addresses only", Scalar(line, "Transport"));
+        Assert.Equal("configured", Scalar(line, "CallerKeyState"));
+        Assert.All(events, logEvent =>
+        {
+            Assert.DoesNotContain(CallerKey, logEvent.RenderMessage(), StringComparison.Ordinal);
+            Assert.All(logEvent.Properties.Values, value =>
+                Assert.DoesNotContain(CallerKey, value.ToString(), StringComparison.Ordinal));
+        });
+    }
+
+    [UnitFact]
+    public void GivenHttpsHeimdallUrl_WhenStarting_ThenTlsIsLogged()
+    {
+        var options = Options() with { HeimdallBaseUri = new Uri("https://heimdall.example.test/") };
+
+        var events = CaptureStartup(options);
+
+        var line = Assert.Single(events, logEvent => logEvent.MessageTemplate.Text == HeimdallTransportTemplate);
+        Assert.Equal("https://heimdall.example.test/", Scalar(line, "HeimdallBaseUrl"));
+        Assert.Equal("TLS", Scalar(line, "Transport"));
+        Assert.Equal("not configured", Scalar(line, "CallerKeyState"));
+    }
+
+    private static IReadOnlyList<LogEvent> CaptureStartup(FortunaOptions options)
+    {
+        var sink = new CollectingSink();
+        var previous = Log.Logger;
+        Log.Logger = new LoggerConfiguration().MinimumLevel.Verbose().WriteTo.Sink(sink).CreateLogger();
+        try
+        {
+            new ServiceCollection().AddFortunaIntegrations(options);
+        }
+        finally
+        {
+            (Log.Logger as IDisposable)?.Dispose();
+            Log.Logger = previous;
+        }
+
+        return sink.Events.ToArray();
+    }
+
+    private static string? Scalar(LogEvent logEvent, string property) =>
+        logEvent.Properties.TryGetValue(property, out var value) && value is ScalarValue scalar
+            ? scalar.Value?.ToString()
+            : null;
 
     private static Logger CreateLogger(Dictionary<string, string?> settings)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
-        var options = new FortunaOptions
+
+        return FortunaLogging.Configure(new LoggerConfiguration(), configuration, Options()).CreateLogger();
+    }
+
+    private static FortunaOptions Options() =>
+        new()
         {
             DataConnectionString = "unused",
             DataDatabaseType = "PostgreSql",
             StorageProvider = "Filesystem",
+            StoragePath = Path.Combine(Path.GetTempPath(), "fortuna-api-logging-tests-storage"),
             LogDirectory = Path.Combine(Path.GetTempPath(), "fortuna-api-logging-tests"),
             AuthTokenIssuer = "heimdall-tests",
             AuthTokenAudience = "fortuna-tests",
@@ -113,15 +195,10 @@ public sealed class FortunaLoggingTests
             LocalTokenIssuer = FortunaOptions.DefaultLocalTokenIssuer
         };
 
-        return FortunaLogging.Configure(new LoggerConfiguration(), configuration, options).CreateLogger();
-    }
-
     private sealed class CollectingSink : ILogEventSink
     {
-        private readonly List<LogEvent> _events = [];
+        public ConcurrentQueue<LogEvent> Events { get; } = new();
 
-        public IReadOnlyList<LogEvent> Events => _events;
-
-        public void Emit(LogEvent logEvent) => _events.Add(logEvent);
+        public void Emit(LogEvent logEvent) => Events.Enqueue(logEvent);
     }
 }
