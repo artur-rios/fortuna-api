@@ -75,6 +75,34 @@ public sealed class HeimdallAuthGatewayTests
         Assert.Null(result.RetryAfterSeconds);
     }
 
+    /// <summary>
+    /// The client never follows a redirect, so a 3xx reaches the gateway as Heimdall's answer: it is a
+    /// failed exchange, and its text is kept out like any other refusal's.
+    /// </summary>
+    [UnitTheory]
+    [InlineData(HttpStatusCode.MovedPermanently)]
+    [InlineData(HttpStatusCode.Found)]
+    [InlineData(HttpStatusCode.SeeOther)]
+    [InlineData(HttpStatusCode.TemporaryRedirect)]
+    [InlineData(HttpStatusCode.PermanentRedirect)]
+    public async Task GivenHeimdallRedirects_WhenForwarded_ThenTheExchangeIsUnavailable(HttpStatusCode status)
+    {
+        var handler = new RecordingHandler(_ =>
+        {
+            var response = Json(status, "{\"errors\":[\"sensitive upstream detail\"]}");
+            response.Headers.Location = new Uri("https://elsewhere.example.test/api/auth/login");
+
+            return response;
+        });
+
+        var result = await Gateway(handler).LoginAsync(
+            "user@example.test", "credential", ScopeId, CancellationToken.None);
+
+        Assert.Equal(HeimdallAuthOutcome.Unavailable, result.Outcome);
+        Assert.Null(result.Data);
+        Assert.Null(result.Message);
+    }
+
     [UnitFact]
     public async Task GivenHeimdallRateLimitsWithRetryAfter_WhenForwarded_ThenItsMessageAndWaitAreCarried()
     {

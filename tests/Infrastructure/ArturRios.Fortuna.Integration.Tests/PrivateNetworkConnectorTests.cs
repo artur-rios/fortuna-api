@@ -128,6 +128,115 @@ public sealed class PrivateNetworkConnectorTests
     }
 
     [UnitFact]
+    public async Task GivenFirstPrivateAddressNeverAnswers_WhenConnecting_ThenTheNextIsTriedOnceItsAttemptTimesOut()
+    {
+        // The first address swallows the connection attempt; only the attempt's own limit ends it.
+        const int port = 8080;
+        var silent = IPAddress.Parse("10.0.0.7");
+        var dialed = new List<IPEndPoint>();
+        using var guard = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var stopwatch = Stopwatch.StartNew();
+
+        await using var stream = await PrivateNetworkConnector.ConnectAsync(
+            new DnsEndPoint("heimdall-api.production", port),
+            (_, _) => Task.FromResult(new[] { silent, IPAddress.Loopback }),
+            async (address, token) =>
+            {
+                dialed.Add(address);
+                if (address.Address.Equals(silent))
+                {
+                    await Task.Delay(Timeout.Infinite, token);
+                }
+
+                return new MemoryStream();
+            },
+            TimeSpan.FromMilliseconds(200),
+            guard.Token);
+        stopwatch.Stop();
+
+        Assert.Equal([new IPEndPoint(silent, port), new IPEndPoint(IPAddress.Loopback, port)], dialed);
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(5), $"The fallback took {stopwatch.Elapsed}.");
+    }
+
+    [UnitFact]
+    public async Task GivenEveryPrivateAddressNeverAnswers_WhenConnecting_ThenTheConnectionTimesOut()
+    {
+        // The guard only bounds the test: the attempts' own limit must end them long before it.
+        using var guard = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var dialed = new List<IPEndPoint>();
+
+        var exception = await Assert.ThrowsAsync<SocketException>(async () =>
+            await PrivateNetworkConnector.ConnectAsync(
+                new DnsEndPoint("heimdall-api.production", 8080),
+                (_, _) => Task.FromResult(new[] { IPAddress.Parse("10.0.0.7"), IPAddress.Parse("10.0.0.8") }),
+                async (address, token) =>
+                {
+                    dialed.Add(address);
+                    await Task.Delay(Timeout.Infinite, token);
+
+                    return new MemoryStream();
+                },
+                TimeSpan.FromMilliseconds(100),
+                guard.Token));
+
+        Assert.Equal(SocketError.TimedOut, exception.SocketErrorCode);
+        Assert.Equal(2, dialed.Count);
+    }
+
+    [UnitFact]
+    public async Task GivenTheRequestIsCancelledDuringAnAttempt_WhenConnecting_ThenNoOtherAddressIsTried()
+    {
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        var dialed = new List<IPEndPoint>();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+            await PrivateNetworkConnector.ConnectAsync(
+                new DnsEndPoint("heimdall-api.production", 8080),
+                (_, _) => Task.FromResult(new[] { IPAddress.Parse("10.0.0.7"), IPAddress.Loopback }),
+                async (address, token) =>
+                {
+                    dialed.Add(address);
+                    await Task.Delay(Timeout.Infinite, token);
+
+                    return new MemoryStream();
+                },
+                TimeSpan.FromSeconds(30),
+                cancellation.Token));
+
+        Assert.Equal([new IPEndPoint(IPAddress.Parse("10.0.0.7"), 8080)], dialed);
+    }
+
+    [UnitFact]
+    public void GivenTheAttemptTimeout_WhenComparedWithTheHeimdallClientTimeout_ThenALaterAddressStillHasTime()
+    {
+        // The Heimdall client gives a whole request ten seconds.
+        Assert.InRange(PrivateNetworkConnector.AttemptTimeout, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+    }
+
+    [UnitFact]
+    public async Task GivenBracketedIpv6LoopbackLiteral_WhenConnecting_ThenItIsDialedWithoutBeingResolved()
+    {
+        // SocketsHttpHandler hands the callback "[::1]" for http://[::1]:port/; read as a host name, it would
+        // go to the resolver, which this test refuses to be. IPAddress.TryParse reads the bracketed form as
+        // well, so this pins the outcome, not the trim before it: dropping the trim keeps it green.
+        const int port = 8080;
+        var dialed = new List<IPEndPoint>();
+
+        await using var stream = await PrivateNetworkConnector.ConnectAsync(
+            new DnsEndPoint("[::1]", port),
+            (host, _) => throw new InvalidOperationException($"'{host}' was resolved."),
+            (address, _) =>
+            {
+                dialed.Add(address);
+
+                return ValueTask.FromResult<Stream>(new MemoryStream());
+            },
+            CancellationToken.None);
+
+        Assert.Equal([new IPEndPoint(IPAddress.IPv6Loopback, port)], dialed);
+    }
+
+    [UnitFact]
     public async Task GivenIpv4MappedPrivateAddress_WhenConnecting_ThenItConnectsOverIpv4()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
