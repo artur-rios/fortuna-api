@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-10-21
+
 ### Fixed
 
 - Each plain-HTTP connection attempt to Heimdall gets three seconds before the next private address the host
@@ -286,7 +288,8 @@ holders sign in again.
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.0.1...HEAD
+[4.0.1]: https://github.com/artur-rios/fortuna-api/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...v4.0.0
 [3.1.0]: https://github.com/artur-rios/fortuna-api/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/artur-rios/fortuna-api/compare/v2.2.0...v3.0.0
