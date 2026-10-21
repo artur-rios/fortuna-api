@@ -21,7 +21,8 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 public sealed class HealthCheckTests : IAsyncLifetime
 {
-    private const string Secret = "fortuna-health-tests-signing-key-with-enough-entropy";
+    // The signing secret the app is given, so the detailed report can be checked for it.
+    private const string LocalSecret = JwksTestSupport.LocalSecret;
     private const string Issuer = "heimdall-health-tests";
     private const string Audience = "fortuna-health-tests";
     private static readonly DateTimeOffset Now = new(
@@ -104,7 +105,7 @@ public sealed class HealthCheckTests : IAsyncLifetime
             .GetProperty("status").GetString());
         Assert.DoesNotContain("Password", text, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("postgres", text, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(Secret, text, StringComparison.Ordinal);
+        Assert.DoesNotContain(LocalSecret, text, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, invalidToken.StatusCode);
@@ -289,6 +290,7 @@ public sealed class HealthCheckTests : IAsyncLifetime
         ["FORTUNA_AUTH_TOKEN_ISSUER"] = Issuer,
         ["FORTUNA_AUTH_TOKEN_AUDIENCE"] = Audience,
         ["FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS"] = "3600",
+        ["FORTUNA_LOCAL_TOKEN_SECRET"] = LocalSecret,
         ["FORTUNA_DEFAULT_DISPLAY_CURRENCY"] = "BRL",
         ["FORTUNA_LOCALE"] = "pt-BR",
         ["FORTUNA_LOCAL_AUTH_ENABLED"] = "false",

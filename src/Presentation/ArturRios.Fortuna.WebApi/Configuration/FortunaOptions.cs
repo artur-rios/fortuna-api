@@ -347,6 +347,7 @@ public sealed record FortunaOptions
         /// and judged by the addresses it resolves to each time a connection is opened
         /// (<see cref="PrivateNetworkConnector" />); an IP address is judged now, so a public one stops
         /// startup. A user name or password in the URL stops startup too: the address is logged at startup.
+        /// The scheme and address are judged first, so a URL wrong on both counts gets only that message.
         /// </summary>
         public Uri RequiredHeimdallBaseUri(string key)
         {
@@ -364,6 +365,18 @@ public sealed record FortunaOptions
                 return fallback;
             }
 
+            var acceptable = uri.Scheme == Uri.UriSchemeHttps ||
+                (uri.Scheme == Uri.UriSchemeHttp &&
+                 (uri.HostNameType is not (UriHostNameType.IPv4 or UriHostNameType.IPv6) ||
+                  (IPAddress.TryParse(uri.DnsSafeHost, out var address) &&
+                   PrivateNetworkConnector.IsPrivate(address))));
+            if (!acceptable)
+            {
+                errors.Add(ConfigurationMessages.HeimdallBaseUri(key));
+
+                return fallback;
+            }
+
             if (!string.IsNullOrEmpty(uri.UserInfo))
             {
                 errors.Add(ConfigurationMessages.HeimdallBaseUriUserInfo(key));
@@ -371,21 +384,7 @@ public sealed record FortunaOptions
                 return fallback;
             }
 
-            if (uri.Scheme == Uri.UriSchemeHttps)
-            {
-                return uri;
-            }
-
-            if (uri.Scheme == Uri.UriSchemeHttp &&
-                (uri.HostNameType is not (UriHostNameType.IPv4 or UriHostNameType.IPv6) ||
-                 (IPAddress.TryParse(uri.DnsSafeHost, out var address) && PrivateNetworkConnector.IsPrivate(address))))
-            {
-                return uri;
-            }
-
-            errors.Add(ConfigurationMessages.HeimdallBaseUri(key));
-
-            return fallback;
+            return uri;
         }
 
         /// <summary>

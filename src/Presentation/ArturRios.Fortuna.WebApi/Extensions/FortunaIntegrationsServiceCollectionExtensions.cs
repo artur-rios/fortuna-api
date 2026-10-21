@@ -45,18 +45,25 @@ public static class FortunaIntegrationsServiceCollectionExtensions
             })
             .AddHttpMessageHandler<HeimdallCallerHeadersHandler>();
         var plainHttp = options.HeimdallBaseUri.Scheme == Uri.UriSchemeHttp;
+        // A redirect is never followed, over either transport: .NET drops Authorization on one but
+        // forwards every other header, so the caller key would go to whatever host it names. The gateway
+        // takes a redirect as a failed exchange, as it does any other status it does not expect.
         if (plainHttp)
         {
             // Credentials and the caller key travel unencrypted, so every connection is opened only to a
-            // private address, judged when it is made. A redirect is never followed: it could name a
-            // public host. No proxy is used either: the connection would then be the proxy's, not
-            // Heimdall's, and the proxy would carry the request on to wherever it resolves Heimdall.
+            // private address, judged when it is made. No proxy is used: the connection would then
+            // be the proxy's, not Heimdall's, and the proxy would carry the request on to wherever it
+            // resolves Heimdall.
             heimdall.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
                 ConnectCallback = PrivateNetworkConnector.ConnectAsync,
                 AllowAutoRedirect = false,
                 UseProxy = false
             });
+        }
+        else
+        {
+            heimdall.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
         }
 
         // The address is not a secret; the caller key is, so only whether it is set is logged.

@@ -318,6 +318,32 @@ public sealed class FoundationApiTests
         Assert.DoesNotContain("userinfo-secret", exception.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A URL wrong on both counts gets one message, the one about its scheme or address, which is read first;
+    /// the user name or password is reported once that is fixed. Neither message repeats the URL.
+    /// </summary>
+    [UnitTheory]
+    [InlineData("ftp://user:userinfo-secret@heimdall.example.test/", false)]
+    [InlineData("http://user:userinfo-secret@203.0.113.10/", true)]
+    [InlineData("http://userinfo-secret@[2001:db8::1]/", true)]
+    public void GivenHeimdallUrlWithUserInfoAndBadSchemeOrAddress_WhenConfigurationLoads_ThenOnlyThatIsReported(
+        string url,
+        bool plainHttpToPublicAddress)
+    {
+        const string key = "FORTUNA_HEIMDALL_BASE_URL";
+        var values = ValidSettings();
+        values[key] = url;
+
+        var result = FortunaOptions.Parse(values.GetValueOrDefault);
+        var expected = plainHttpToPublicAddress
+            ? ConfigurationMessages.HeimdallBaseUri(key)
+            : ConfigurationMessages.AbsoluteUri(key);
+
+        Assert.Equal([expected], result.Errors.Where(error => error.Contains(key, StringComparison.Ordinal)));
+        Assert.All(result.Errors, error =>
+            Assert.DoesNotContain("userinfo-secret", error, StringComparison.Ordinal));
+    }
+
     [UnitFact]
     public void GivenHeimdallUrlWithUnsupportedScheme_WhenConfigurationLoads_ThenStartupIsRejected()
     {

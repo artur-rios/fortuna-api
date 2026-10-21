@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-10-21
+
+### Fixed
+
+- Each plain-HTTP connection attempt to Heimdall gets three seconds before the next private address the host
+  resolves to is tried. An address that never answered used to hold the exchange until the client's ten-second
+  timeout, so the addresses after it were never reached.
+- A `FORTUNA_HEIMDALL_BASE_URL` with a user name or password and a public plain-HTTP address now reports only the
+  address, the first thing to fix, rather than the user name or password.
+
+### Security
+
+- The Heimdall client never follows a redirect, over TLS as well as plain HTTP. .NET drops `Authorization` when it
+  follows one but forwards every other header, so the caller key could have reached whatever host a 3xx named; a
+  redirect is now a failed exchange, answered as Heimdall being unavailable.
+
 ## [4.0.0] - 2026-10-20
 
 ### Upgrading from 3.x to 4.0
@@ -272,7 +288,8 @@ holders sign in again.
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.0.1...HEAD
+[4.0.1]: https://github.com/artur-rios/fortuna-api/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...v4.0.0
 [3.1.0]: https://github.com/artur-rios/fortuna-api/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/artur-rios/fortuna-api/compare/v2.2.0...v3.0.0
