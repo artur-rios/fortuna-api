@@ -1,0 +1,50 @@
+# What Jenkins checks for this repository, read by the pipeline of the yggdrasil installation that deploys it
+# (yggdrasil's docs/catalog.md, "Repository pipeline file", has every field). It is data, never code: images
+# (pinned by version and digest, which Renovate keeps up to date: the owner merges those changes), commands, globs and
+# the names of Jenkins credentials. The commands are the scripts under ci/, which run from the repository's root, so
+# you can run them on your machine too. Check it where the catalog is, in the yggdrasil checkout:
+#   python3 scripts/pipeline_config.py describe fortuna-api <this repository's checkout>
+#
+# Each check is a job of a GitHub workflow this repository had (the workflow files were deleted; native-core.yml
+# stays for its Windows build, which GitHub Actions still runs, path-filtered and never required).
+
+checks:
+  test:                                  # tests.yml / test: helper tests, build, unit and functional tests, coverage
+    image: mcr.microsoft.com/dotnet/sdk:10.0.402@sha256:747cbade5bfd918a175ac32f8f1d931edec2c7d0d5397a3de72eaef1ac1f66d2
+    run: ci/test.sh
+    docker: true                         # the functional tests start PostgreSQL with Testcontainers
+    credentials:
+      # ReportGenerator's PRO license. Not bound on renovate/* builds, nor when missing: the free report is made.
+      REPORTGENERATOR_LICENSE: reportgenerator-license
+    archive: "docs/coverage-report/**, **/TestResults/*.trx"   # the coverage report and test results, as the workflow uploaded them
+
+  docker:                                # tests.yml / docker: the Dockerfile builds
+    image: docker:29.9.2-cli@sha256:5e6baf67325a79f64ed3bed6863954d5e05d0f3d4e57cbdb14809346814bbfdb
+    run: ci/docker.sh
+    docker: true                         # docker build, on the CI engine
+
+  check:                                 # check-openapi.yml / check: the committed OpenAPI document is current
+    image: mcr.microsoft.com/dotnet/sdk:10.0.402@sha256:747cbade5bfd918a175ac32f8f1d931edec2c7d0d5397a3de72eaef1ac1f66d2
+    run: ci/check.sh
+
+  audit:                                 # audit.yml / audit: the native core against the RustSec advisories
+    image: rust:1.99.1-bookworm@sha256:48b7f435b8fc6378ce43b44f15e3a47fd8919b2825f835c39bd4bd3da50af5b8
+    run: ci/audit.sh
+
+  native-msrv:                           # native-core.yml / msrv: tests on Cargo.toml's rust-version
+    image: rust:1.88-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0
+    run: ci/native-msrv.sh
+    paths:                               # the workflow's path filter: what the native core is built from
+      - "native/**"
+      - "docs/openapi/fortuna.json"      # build.rs generates the operation table and the C header from it
+      - ".github/workflows/native-core.yml"
+      - "ci/native-*.sh"
+
+  native-build:                          # native-core.yml / build, Linux leg: fmt, clippy, tests, release build, header
+    image: rust:1.99.1-bookworm@sha256:48b7f435b8fc6378ce43b44f15e3a47fd8919b2825f835c39bd4bd3da50af5b8
+    run: ci/native-build.sh
+    paths:                               # the same filter
+      - "native/**"
+      - "docs/openapi/fortuna.json"
+      - ".github/workflows/native-core.yml"
+      - "ci/native-*.sh"
