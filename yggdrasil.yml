@@ -31,6 +31,9 @@ checks:
     image: rust:1.99.1-bookworm@sha256:48b7f435b8fc6378ce43b44f15e3a47fd8919b2825f835c39bd4bd3da50af5b8
     run: ci/audit.sh
 
+  # The image is the toolchain of Cargo.toml's rust-version (native/fortuna-core), and ci/native-msrv.sh fails when they
+  # differ. Raising rust-version means editing this image and the rule for it in renovate.json together; Renovate's
+  # version moves of this tag are disabled there (digest updates still come through).
   native-msrv:                           # native-core.yml / msrv: tests on Cargo.toml's rust-version
     image: rust:1.88-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0
     run: ci/native-msrv.sh

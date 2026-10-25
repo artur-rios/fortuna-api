@@ -26,6 +26,15 @@
       "description": "Dependabot checked the Dockerfile's base images (pinned by digest) weekly.",
       "matchManagers": ["dockerfile"],
       "schedule": ["on monday"]
+    },
+    {
+      "description": "native-msrv's image is pinned to Cargo.toml's rust-version (native/fortuna-core): never move its Rust version on its own. Digest updates still come through. Raising rust-version means editing the image in yggdrasil.yml and this rule together.",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["yggdrasil.yml"],
+      "matchDepNames": ["rust"],
+      "matchCurrentValue": "/^1\\.88-bookworm$/",
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
     }
   ]
 }
