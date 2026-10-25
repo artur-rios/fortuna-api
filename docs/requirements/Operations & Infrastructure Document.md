@@ -108,7 +108,8 @@ to write a row.
 
 ```
 fortuna-api/
-├── .github/workflows/            tests.yml, check-openapi.yml, native-core.yml
+├── .github/workflows/            native-core.yml (the Windows build; Jenkins runs the other checks)
+├── ci/                           the scripts of the Jenkins checks (test, docker, check, audit, native-*)
 ├── docker/                       local, development, homologation and production .env.example
 ├── docs/
 │   ├── initial/                  Brainstorm, Project Overview, Technology Stack, Workflow, Business Rules
@@ -131,7 +132,9 @@ fortuna-api/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── LICENSE
-└── README.md
+├── README.md
+├── renovate.json                 dependency updates (extends yggdrasil's preset)
+└── yggdrasil.yml                 the Jenkins checks: images, scripts, paths
 ```
 
 ### 2.4 Platform Requirements
