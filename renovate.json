@@ -1,0 +1,31 @@
+{
+  "extends": ["local>artur-rios/yggdrasil//renovate/default"],
+  "enabledManagers": ["nuget", "cargo", "github-actions", "dockerfile", "docker-compose", "custom.regex"],
+  "packageRules": [
+    {
+      "description": "Dependabot's nuget group: one pull request for the minor and patch updates of Directory.Packages.props and the local tools in .config/dotnet-tools.json.",
+      "matchManagers": ["nuget"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "nuget-minor-and-patch"
+    },
+    {
+      "description": "Dependabot's cargo group, for the native core (native/fortuna-core). The shared preset does not enable cargo, so it is enabled above; weekly, like nuget.",
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "cargo-minor-and-patch",
+      "schedule": ["on monday"]
+    },
+    {
+      "description": "Dependabot proposed workflow action updates weekly, all in one pull request, with the ci prefix.",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "semanticCommitType": "ci",
+      "schedule": ["on monday"]
+    },
+    {
+      "description": "Dependabot checked the Dockerfile's base images (pinned by digest) weekly.",
+      "matchManagers": ["dockerfile"],
+      "schedule": ["on monday"]
+    }
+  ]
+}
