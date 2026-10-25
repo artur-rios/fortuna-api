@@ -10,8 +10,8 @@ set -euo pipefail
 # The repository's root, wherever this is run from.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-# shellcheck source=ci/lib.sh
-. ci/lib.sh
+# shellcheck source=ci/python.sh
+. ci/python.sh
 
 export DOTNET_NOLOGO=1 DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
