@@ -1,5 +1,11 @@
 # Fortuna API
 
+> [!NOTE]
+> This is the real, open-source code of fortuna-api. Its home is Forgejo, at
+> https://git.techcraftsmen.net/artur-rios/fortuna-api; the copy on GitHub is a read-only mirror, for viewing only, and
+> its issues and pull requests are not followed. If you want to contribute, email me at
+> arturdev@duck.com.
+
 Fortuna is a personal finance system that tracks a person's whole financial life — bank accounts,
 credit cards, investments, expenses and earnings — in one place, and turns that history into tabular
 views, drillable charts and forward projections. **This repository is the back end only:** an HTTP
