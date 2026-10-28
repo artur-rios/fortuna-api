@@ -23,8 +23,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
 {
     private const string OriginalSecret = "correct-horse-battery-staple";
     private const string NewSecret = "new-correct-horse-battery-staple";
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
 
     [FunctionalFact]
     public async Task GivenUnusedRecoveryCode_WhenRecovering_ThenCodeIsSpentAndNewSecretAuthenticates()

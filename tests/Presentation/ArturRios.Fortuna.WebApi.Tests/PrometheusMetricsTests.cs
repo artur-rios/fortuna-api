@@ -25,8 +25,7 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
     private const string LocalPortHeader = "X-Test-Local-Port";
     private const string Issuer = "heimdall-metrics-tests";
     private const string Audience = "fortuna-metrics-tests";
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
     private readonly string storageRoot = Path.Combine(
         Path.GetTempPath(), "fortuna-metrics-tests", Guid.NewGuid().ToString("N"));
 

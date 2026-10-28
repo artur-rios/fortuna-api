@@ -27,8 +27,7 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 public sealed class LocalAccountCreationTests : IAsyncLifetime
 {
     private const string Secret = "correct-horse-battery-staple";
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
 
     [FunctionalFact]
     public async Task GivenDesktopModeAndNoAccount_WhenCreatingAccount_ThenSecretsAreHashedAndCodesReturnedOnce()

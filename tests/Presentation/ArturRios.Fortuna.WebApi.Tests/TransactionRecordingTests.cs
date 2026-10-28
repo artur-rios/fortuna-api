@@ -26,8 +26,7 @@ public sealed class TransactionRecordingTests : IAsyncLifetime
 {
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
 
     [FunctionalFact]
     public async Task GivenOwnedAccountAndCategory_WhenRecorded_ThenDetailsAndBalanceAreStored()

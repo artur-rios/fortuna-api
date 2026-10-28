@@ -31,8 +31,7 @@ public sealed class NetPositionTests : IAsyncLifetime
     private static readonly DateOnly AsOf = new(2026, 9, 8);
     private static readonly DateTimeOffset CreatedAt =
         new(2026, 9, 7, 12, 0, 0, TimeSpan.Zero);
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
 
     [FunctionalFact]
     public async Task GivenMixedLiveHoldings_WhenNetPositionRequested_ThenAsOfIsolationAndConversionApply()

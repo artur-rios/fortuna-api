@@ -28,8 +28,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
 {
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
     private readonly string storageRoot = Path.Combine(
         Path.GetTempPath(),
         $"fortuna-attachment-tests-{Guid.NewGuid():N}");
