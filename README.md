@@ -14,6 +14,9 @@ Windows, Linux, the browser and mobile is a separate repository and a separate c
 
 > **Status:** version 1.0.0 is released, and every issue in the backlog below is closed.
 
+> **Where this lives:** the repository is at <https://git.techcraftsmen.net/artur-rios/fortuna-api>.
+> The GitHub repository is a read-only mirror of it.
+
 ## What it does
 
 - Tracks **bank accounts, credit cards and investments**, each with its own currency and history.
@@ -71,7 +74,7 @@ container workflow — see the
 [Operations & Infrastructure Document](docs/requirements/Operations%20%26%20Infrastructure%20Document.md).
 
 ```bash
-git clone https://github.com/artur-rios/fortuna-api.git
+git clone https://git.techcraftsmen.net/artur-rios/fortuna-api.git
 ```
 
 ```bash

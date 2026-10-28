@@ -1,5 +1,8 @@
 # Contributing
 
+This repository lives at <https://git.techcraftsmen.net/artur-rios/fortuna-api>; the GitHub repository is a
+read-only mirror of it. Open pull requests on the git server.
+
 One use case = one branch = one issue = one pull request. The full process — branch naming, the
 issue status lifecycle, the approval gates, the testing gate, and the Definition of Done — is in the
 [Development Workflow Document](docs/requirements/Development%20Workflow%20Document.md), with its
@@ -115,8 +118,8 @@ Names are lowercase: letters, digits, `.`, `_` and `-`. A `release/` branch is a
 `develop` and carries no commits of its own: a fix for a release lands on `develop` through a
 `fix/` branch and a new release branch is cut.
 
-The **Branch Policy** workflow checks all of this on every pull request and is a required check
-on `develop` and `main`.
+The `branch-policy` check, which Jenkins runs on every pull request, checks all of this and is a
+required check on `develop` and `main`.
 
 ## Commits and the changelog
 

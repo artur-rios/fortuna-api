@@ -108,7 +108,8 @@ to write a row.
 
 ```
 fortuna-api/
-├── .github/workflows/            tests.yml, check-openapi.yml, native-core.yml
+├── .github/workflows/            native-core.yml (the Windows build; Jenkins runs the other checks)
+├── ci/                           the scripts of the Jenkins checks (test, docker, check, audit, native-*)
 ├── docker/                       local, development, homologation and production .env.example
 ├── docs/
 │   ├── initial/                  Brainstorm, Project Overview, Technology Stack, Workflow, Business Rules
@@ -131,7 +132,9 @@ fortuna-api/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── LICENSE
-└── README.md
+├── README.md
+├── renovate.json                 dependency updates (extends yggdrasil's preset)
+└── yggdrasil.yml                 the Jenkins checks: images, scripts, paths
 ```
 
 ### 2.4 Platform Requirements
@@ -505,26 +508,32 @@ docker compose --env-file docker/local.env up -d --build
 ```
 
 The development, homologation and production instances on the VPS are deployed by
-[yggdrasil](https://github.com/artur-rios/yggdrasil)'s Jenkins pipeline (`Jenkinsfile`), which runs
+[yggdrasil](https://github.com/artur-rios/yggdrasil)'s Jenkins pipeline (this repository's `yggdrasil.yml` names its checks), which runs
 this same `docker-compose.yml`, with `/etc/yggdrasil/<environment>/fortuna-api.env` as the
 environment file, when `develop` is pushed (development), when a `release/x.y.z` branch is pushed
 (homologation) and when its pull request into `main` passes every check (production); the release
 process is described in [CONTRIBUTING.md](../../CONTRIBUTING.md#releasing).
 
-**Continuous integration** (IR-17). The workflows run on every pull request into `develop` and
-`main` and on every commit to either branch. Those that report a required check run with no path
-filters — a filter would let a change to an unlisted path merge without evidence that anything still
-passes, and a required check whose workflow is skipped never reports, which blocks the pull request.
-Only `native-core.yml`, which reports no required check, runs only when the native core or the
-OpenAPI document it is generated from changes:
+**Continuous integration** (IR-17). Jenkins (yggdrasil's pipeline) runs the checks of `yggdrasil.yml`
+on every pull request into `develop` and `main` and on every commit to either branch; each check is a
+script under `ci/` that also runs on a developer machine. The checks that report required results run
+with no path filters — a filter would let a change to an unlisted path merge without evidence that
+anything still passes. Only the two native checks, which run only when the native core or the OpenAPI
+document it is generated from changes, are path-filtered: Jenkins reports a skipped one as passed.
 
-| Workflow | Stages |
-| --- | --- |
-| `tests.yml` | Test the helper scripts → check for a blank line above every `return`, `break` and `yield` → restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor → upload the report and the test results → build the container image in a separate job |
-| `check-openapi.yml` | Regenerate the OpenAPI document from the code and fail if the committed one differs (IR-14) |
-| `native-core.yml` | Test on the declared minimum Rust version → format-check, lint and test the Rust boundary on Windows and Linux → build each release dynamic library → reject generated-header drift → upload the library and header as platform artifacts (IR-21 … IR-25) |
-| `audit.yml` | Check the native core's Cargo dependencies against the RustSec advisory database — on every pull request, so a newly published advisory fails it without any change here |
-| `branch-policy.yml` | Enforce the branching model on pull requests into `develop` and `main`, described in [CONTRIBUTING.md](../../CONTRIBUTING.md#branching-model) |
+| Check | `ci/` script | Stages |
+| --- | --- | --- |
+| `test` | `test.sh` | Test the helper scripts → check for a blank line above every `return`, `break` and `yield` → restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor (the report is kept with the build) |
+| `docker` | `docker.sh` | Build the container image |
+| `check` | `check.sh` | Regenerate the OpenAPI document from the code and fail if the committed one differs (IR-14) |
+| `native-msrv` | `native-msrv.sh` | Test the native core on the declared minimum Rust version (IR-21 … IR-25) |
+| `native-build` | `native-build.sh` | Format-check, lint and test the Rust boundary on Linux → build the release dynamic library → reject generated-header drift → compile the C and C++ header consumers (IR-21 … IR-25) |
+| `audit` | `audit.sh` | Check the native core's Cargo dependencies against the RustSec advisory database — on every pull request, so a newly published advisory fails it without any change here |
+
+The branching model, described in [CONTRIBUTING.md](../../CONTRIBUTING.md#branching-model), is enforced
+by Jenkins' `branch-policy` check on pull requests into `develop` and `main`. The native core's Windows
+build stays a GitHub Actions workflow (`native-core.yml`) on the mirror: it runs on the same path filter, is
+waited for when it runs, and is never required.
 
 The unit suite runs before the functional one on purpose: it costs seconds, so a broken handler is
 reported before the runner spends minutes pulling and starting a database container. The vulnerability

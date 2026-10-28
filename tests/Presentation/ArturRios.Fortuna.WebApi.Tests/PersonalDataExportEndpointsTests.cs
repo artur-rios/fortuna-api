@@ -29,8 +29,7 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateTimeOffset Now = DateTimeOffset.UtcNow;
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
     private readonly MemoryStorage storage = new();
 
     [FunctionalFact]

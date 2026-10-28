@@ -25,8 +25,7 @@ public sealed class CategoryViewTests : IAsyncLifetime
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateOnly Today = new(2026, 9, 5);
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
 
     [FunctionalFact]
     public async Task GivenOwnedHierarchy_WhenTreeRequested_ThenNestedSortedNodesAreReturned()

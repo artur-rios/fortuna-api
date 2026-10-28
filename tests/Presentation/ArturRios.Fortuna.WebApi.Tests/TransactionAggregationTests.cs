@@ -29,8 +29,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
     private const string Audience = "fortuna-tests";
     private static readonly DateOnly Start = new(2026, 9, 1);
     private static readonly DateTimeOffset Now = new(2026, 9, 7, 12, 0, 0, TimeSpan.Zero);
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
 
     [FunctionalFact]
     public async Task GivenPeriodData_WhenAggregated_ThenIsolationGapsTransfersAndRatesAreCorrect()
