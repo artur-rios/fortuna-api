@@ -44,7 +44,7 @@ public sealed class CreateLocalAccountCommandHandler(
             return output.WithError(LocalAccountMessages.AlreadyExists);
         }
 
-        var secretHash = Hash.EncodeWithRandomSalt(command.Secret, out var salt);
+        var secretHash = Hash.EncodeWithRandomSalt(command.Secret, out var salt, SecretHashing.Configuration);
         var recoveryCodes = recoveryCodeGenerator.Generate(options.RecoveryCodeCount);
         var creation = await accounts.CreateAsync(
             new LocalAccountCreation(

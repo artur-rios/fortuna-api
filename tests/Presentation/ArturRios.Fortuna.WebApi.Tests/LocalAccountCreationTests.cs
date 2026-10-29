@@ -56,7 +56,7 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
             .Include(x => x.RecoveryCodes)
             .SingleAsync();
         Assert.Null(account.User.ExternalSubject);
-        Assert.True(Hash.TextMatches(Secret, account.SecretHash, account.Salt));
+        Assert.True(Hash.TextMatches(Secret, account.SecretHash, account.Salt, SecretHashing.Configuration));
         Assert.Equal(10, account.RecoveryCodes.Count);
         Assert.All(envelope.Data.RecoveryCodes, raw =>
             Assert.Single(account.RecoveryCodes, code => LocalRecoveryCodeHash.Matches(raw, code.CodeHash)));

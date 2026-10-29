@@ -118,7 +118,7 @@ public sealed class AuthenticateLocalAccountCommandHandlerTests
 
     private static LocalAccountCredentialSnapshot Credentials(string secret)
     {
-        var hash = Hash.EncodeWithRandomSalt(secret, out var salt);
+        var hash = Hash.EncodeWithRandomSalt(secret, out var salt, SecretHashing.Configuration);
 
         return new LocalAccountCredentialSnapshot(Guid.NewGuid(), "Local User", hash, salt);
     }

@@ -41,7 +41,7 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandler(
         // rejects one with an exception rather than a false result.
         if (credentials is null ||
             string.IsNullOrEmpty(command.Secret) ||
-            !Hash.TextMatches(command.Secret, credentials.SecretHash, credentials.Salt))
+            !Hash.TextMatches(command.Secret, credentials.SecretHash, credentials.Salt, SecretHashing.Configuration))
         {
             return output.WithError(LocalRecoveryCodeRegenerationMessages.InvalidSecret);
         }
