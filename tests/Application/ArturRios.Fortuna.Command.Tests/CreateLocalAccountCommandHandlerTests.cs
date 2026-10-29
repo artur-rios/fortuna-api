@@ -29,7 +29,7 @@ public sealed class CreateLocalAccountCommandHandlerTests
         Assert.Equal(4, result.Data.RecoveryCodes.Distinct().Count());
         Assert.Equal(LocalAccountMessages.RecoveryWarning, result.Data.RecoveryWarning);
         Assert.NotNull(store.Creation);
-        Assert.True(Hash.TextMatches(Secret, store.Creation.SecretHash, store.Creation.Salt));
+        Assert.True(Hash.TextMatches(Secret, store.Creation.SecretHash, store.Creation.Salt, SecretHashing.Configuration));
         Assert.Equal(4, store.Creation.RecoveryCodeHashes.Count);
         Assert.All(
             result.Data.RecoveryCodes.Zip(store.Creation.RecoveryCodeHashes),

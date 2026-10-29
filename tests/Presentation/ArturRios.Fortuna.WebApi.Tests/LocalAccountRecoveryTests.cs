@@ -50,8 +50,8 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
 
         await using var context = CreateContext();
         var account = await context.LocalAccounts.Include(x => x.RecoveryCodes).SingleAsync();
-        Assert.True(Hash.TextMatches(NewSecret, account.SecretHash, account.Salt));
-        Assert.False(Hash.TextMatches(OriginalSecret, account.SecretHash, account.Salt));
+        Assert.True(Hash.TextMatches(NewSecret, account.SecretHash, account.Salt, SecretHashing.Configuration));
+        Assert.False(Hash.TextMatches(OriginalSecret, account.SecretHash, account.Salt, SecretHashing.Configuration));
         Assert.NotNull(account.RecoveryCodes.Single(code =>
             LocalRecoveryCodeHash.Matches(recoveryCode, code.CodeHash)).UsedAt);
         Assert.Equal(9, account.RecoveryCodes.Count(code => code.UsedAt is null));
@@ -71,7 +71,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         Assert.Contains(LocalAccountRecoveryMessages.InvalidRecoveryCode, error!.Errors);
         await using var context = CreateContext();
         var account = await context.LocalAccounts.Include(x => x.RecoveryCodes).SingleAsync();
-        Assert.True(Hash.TextMatches(OriginalSecret, account.SecretHash, account.Salt));
+        Assert.True(Hash.TextMatches(OriginalSecret, account.SecretHash, account.Salt, SecretHashing.Configuration));
         Assert.All(account.RecoveryCodes, code => Assert.Null(code.UsedAt));
     }
 
@@ -125,7 +125,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         Assert.Contains(LocalAccountRecoveryMessages.InvalidRecoveryCode, error!.Errors);
         await using var context = CreateContext();
         var account = await context.LocalAccounts.Include(x => x.RecoveryCodes).SingleAsync();
-        Assert.True(Hash.TextMatches(NewSecret, account.SecretHash, account.Salt));
+        Assert.True(Hash.TextMatches(NewSecret, account.SecretHash, account.Salt, SecretHashing.Configuration));
         Assert.Equal(1, account.RecoveryCodes.Count(code => code.UsedAt is not null));
     }
 
@@ -153,7 +153,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         Assert.Contains(LocalAccountRecoveryMessages.RecoveryCodesExhausted, error!.Errors);
         await using var context = CreateContext();
         var stored = await context.LocalAccounts.SingleAsync();
-        Assert.True(Hash.TextMatches(OriginalSecret, stored.SecretHash, stored.Salt));
+        Assert.True(Hash.TextMatches(OriginalSecret, stored.SecretHash, stored.Salt, SecretHashing.Configuration));
     }
 
     [FunctionalFact]
@@ -172,7 +172,7 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         await using (var context = CreateContext())
         {
             var account = await context.LocalAccounts.Include(x => x.RecoveryCodes).SingleAsync();
-            Assert.True(Hash.TextMatches(OriginalSecret, account.SecretHash, account.Salt));
+            Assert.True(Hash.TextMatches(OriginalSecret, account.SecretHash, account.Salt, SecretHashing.Configuration));
             Assert.All(account.RecoveryCodes, code => Assert.Null(code.UsedAt));
         }
 
@@ -198,8 +198,8 @@ public sealed class LocalAccountRecoveryTests : IAsyncLifetime
         var account = await context.LocalAccounts.Include(x => x.RecoveryCodes).SingleAsync();
         Assert.Equal(1, account.RecoveryCodes.Count(code => code.UsedAt is not null));
         Assert.True(
-            Hash.TextMatches("first-concurrent-secret", account.SecretHash, account.Salt) ||
-            Hash.TextMatches("second-concurrent-secret", account.SecretHash, account.Salt));
+            Hash.TextMatches("first-concurrent-secret", account.SecretHash, account.Salt, SecretHashing.Configuration) ||
+            Hash.TextMatches("second-concurrent-secret", account.SecretHash, account.Salt, SecretHashing.Configuration));
     }
 
     [FunctionalFact]

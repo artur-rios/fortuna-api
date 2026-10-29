@@ -40,7 +40,7 @@ public sealed class AuthenticateLocalAccountCommandHandler(
         var account = await accounts.FindForAuthenticationAsync(command.Name.Trim(), cancellationToken);
         var hash = account?.SecretHash ?? dummy.Hash;
         var salt = account?.Salt ?? dummy.Salt;
-        var secretMatches = Hash.TextMatches(command.Secret, hash, salt);
+        var secretMatches = Hash.TextMatches(command.Secret, hash, salt, SecretHashing.Configuration);
 
         if (account is null || !secretMatches)
         {
@@ -61,7 +61,7 @@ public sealed class AuthenticateLocalAccountCommandHandler(
     private static (byte[] Hash, byte[] Salt) CreateDummyCredentials()
     {
         var secret = CustomRandom.Text(new RandomStringOptions { Length = 32 });
-        var hash = Hash.EncodeWithRandomSalt(secret, out var salt);
+        var hash = Hash.EncodeWithRandomSalt(secret, out var salt, SecretHashing.Configuration);
 
         return (hash, salt);
     }

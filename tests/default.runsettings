@@ -7,6 +7,11 @@
   </LoggerRunSettings>
   <RunConfiguration>
     <EnvironmentVariables>
+      <!-- The cheapest Argon2id cost instead of 600 MB a derivation (SecretHashing): at the production cost the
+           CI agent killed the test process at its memory limit. Start-up refuses it anywhere but Development, so
+           the run declares Development; each test host still picks its own environment. -->
+      <ASPNETCORE_ENVIRONMENT>Development</ASPNETCORE_ENVIRONMENT>
+      <FORTUNA_INSECURE_TEST_SECRET_HASHING>true</FORTUNA_INSECURE_TEST_SECRET_HASHING>
       <FORTUNA_HEIMDALL_BASE_URL>https://heimdall.example.test/</FORTUNA_HEIMDALL_BASE_URL>
       <!-- A placeholder only: in the WebApi tests TestHeimdallKeySet's [ModuleInitializer] overrides it with its
            in-process key set (http://127.0.0.1:<port>/.well-known/jwks.json) before any test host is built. -->

@@ -34,7 +34,7 @@ public sealed class RecoverLocalAccountCommandHandler(
             return output.WithErrors(validation.Errors.Select(failure => failure.ErrorMessage));
         }
 
-        var newSecretHash = Hash.EncodeWithRandomSalt(command.NewSecret, out var newSalt);
+        var newSecretHash = Hash.EncodeWithRandomSalt(command.NewSecret, out var newSalt, SecretHashing.Configuration);
         var recovery = await accounts.RecoverAsync(
             new LocalAccountRecovery(
                 command.Name.Trim(),

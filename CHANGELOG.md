@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `FORTUNA_INSECURE_TEST_SECRET_HASHING=true` derives local-account secrets and recovery codes with the cheapest
+  Argon2id cost (one lane, one pass, 8 KB) instead of 600 MB and 16 lanes, for the test suite, which sets it in
+  `tests/default.runsettings`. At the production cost the suite's test process grew past the CI agent's memory limit
+  and was killed. Unset, or any value but `true`, keeps the production cost. Startup refuses it anywhere but
+  Development, an unset `ASPNETCORE_ENVIRONMENT` counting as Production, since it makes every secret trivial to
+  brute-force and no secret stored under it verifies once it is removed.
+
 ## [4.0.1] - 2026-10-21
 
 ### Fixed
