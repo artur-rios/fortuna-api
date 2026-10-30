@@ -36,11 +36,7 @@ public sealed class PdfInvoiceImportTests : IAsyncLifetime
     private const string Audience = "fortuna-tests";
     private static readonly DateTimeOffset Now =
         new(2027, 2, 2, 14, 0, 0, TimeSpan.Zero);
-    private readonly PostgreSqlContainer database = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("fortuna")
-        .WithUsername("postgres")
-        .WithPassword("postgres")
-        .Build();
+    private readonly FreshDatabase database = new("postgres:18-alpine");
 
     [FunctionalFact]
     public async Task GivenNubankInvoice_WhenProcessedTwice_ThenStatementAndDuplicatesAreReported()

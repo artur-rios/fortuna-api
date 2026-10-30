@@ -65,7 +65,7 @@ container workflow — see the
 [Operations & Infrastructure Document](docs/requirements/Operations%20%26%20Infrastructure%20Document.md).
 
 ```bash
-git clone https://github.com/artur-rios/fortuna-api.git
+git clone https://git.techcraftsmen.net/artur-rios/fortuna-api.git
 ```
 
 ```bash
@@ -313,6 +313,9 @@ Notable changes in each release are recorded in [CHANGELOG.md](./CHANGELOG.md).
 
 Building from source, running the tests, the delivery workflow, the branching model and the release
 process are described in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+The GitHub repository is a read-only mirror for the real, open-source code of fortuna-api. Its home is Forgejo, at
+https://git.techcraftsmen.net/artur-rios/fortuna-api. If you want to contribute, e-mail me at arturdev@duck.com.
 
 ## Legal
 

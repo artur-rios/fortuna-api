@@ -25,11 +25,7 @@ public sealed class CounterpartyManagementTests : IAsyncLifetime
 {
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
-    private readonly PostgreSqlContainer database = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("fortuna")
-        .WithUsername("postgres")
-        .WithPassword("postgres")
-        .Build();
+    private readonly FreshDatabase database = new("postgres:18-alpine");
 
     [FunctionalFact]
     public async Task GivenCounterparties_WhenManaged_ThenCrudAndNormalizedReuseAreApplied()

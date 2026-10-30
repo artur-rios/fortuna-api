@@ -27,8 +27,7 @@ public sealed class HealthCheckTests : IAsyncLifetime
     private const string Audience = "fortuna-health-tests";
     private static readonly DateTimeOffset Now = new(
         2026, 9, 8, 12, 0, 0, TimeSpan.Zero);
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
     private readonly string storageRoot = Path.Combine(
         Path.GetTempPath(), "fortuna-health-tests", Guid.NewGuid().ToString("N"));
 

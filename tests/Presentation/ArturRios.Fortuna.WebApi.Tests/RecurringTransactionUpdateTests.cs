@@ -26,8 +26,7 @@ public sealed class RecurringTransactionUpdateTests : IAsyncLifetime
     private const string Audience = "fortuna-tests";
     private static readonly DateTimeOffset Now =
         new(2026, 9, 5, 12, 0, 0, TimeSpan.Zero);
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
     private readonly MutableTimeProvider clock = new(Now);
 
     [FunctionalFact]

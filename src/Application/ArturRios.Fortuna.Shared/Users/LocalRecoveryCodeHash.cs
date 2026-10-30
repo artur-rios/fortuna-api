@@ -22,8 +22,10 @@ public static class LocalRecoveryCodeHash
 
     // Deliberately lighter than the account-secret defaults: redeeming a code verifies it against
     // every unused code (ten by default), so the cost is paid once per stored code. These values
-    // follow the OWASP Argon2id minimum (19 MiB, two iterations, one lane).
-    private static readonly HashConfiguration Configuration = new(1, 2, 19 * 1024);
+    // follow the OWASP Argon2id minimum (19 MiB, two iterations, one lane). The test suite's switch
+    // replaces them as it does the secrets' (SecretHashing).
+    private static readonly HashConfiguration Configuration =
+        SecretHashing.IsInsecure ? SecretHashing.Insecure : new HashConfiguration(1, 2, 19 * 1024);
 
     /// <summary>Normalizes user input so case and surrounding whitespace do not matter.</summary>
     public static string Normalize(string? code) =>

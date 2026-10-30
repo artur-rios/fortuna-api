@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using ArturRios.Fortuna.Integration.Security;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.Shared.Users;
 
 namespace ArturRios.Fortuna.WebApi.Configuration;
 
@@ -180,6 +181,7 @@ public sealed record FortunaOptions
         var validation = new FortunaOptionsValidator().Validate(options);
         var errors = settings.Errors
             .Concat(validation.Errors.Select(failure => failure.ErrorMessage))
+            .Concat(SecretHashing.StartupError(read) is { } hashingError ? [hashingError] : [])
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 

@@ -160,7 +160,7 @@ public sealed class RegenerateLocalAccountRecoveryCodesCommandHandlerTests
 
     private static LocalAccountCredentialSnapshot Credentials(Guid userId, string secret)
     {
-        var hash = Hash.EncodeWithRandomSalt(secret, out var salt);
+        var hash = Hash.EncodeWithRandomSalt(secret, out var salt, SecretHashing.Configuration);
 
         return new LocalAccountCredentialSnapshot(userId, "Local User", hash, salt);
     }

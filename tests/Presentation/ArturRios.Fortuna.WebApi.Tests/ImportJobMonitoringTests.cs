@@ -31,11 +31,7 @@ public sealed class ImportJobMonitoringTests : IAsyncLifetime
     private const string Audience = "fortuna-tests";
     private static readonly DateTimeOffset Now =
         new(2026, 9, 6, 21, 0, 0, TimeSpan.Zero);
-    private readonly PostgreSqlContainer database = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("fortuna")
-        .WithUsername("postgres")
-        .WithPassword("postgres")
-        .Build();
+    private readonly FreshDatabase database = new("postgres:18-alpine");
 
     [FunctionalFact]
     public async Task GivenOwnedJobs_WhenMonitored_ThenStatesCountsAndRowsAreReturned()

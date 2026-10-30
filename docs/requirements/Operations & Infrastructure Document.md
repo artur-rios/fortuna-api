@@ -108,7 +108,8 @@ to write a row.
 
 ```
 fortuna-api/
-├── .github/workflows/            tests.yml, check-openapi.yml, native-core.yml
+├── .github/workflows/            native-core.yml (the Windows build; Jenkins runs the other checks)
+├── ci/                           the scripts of the Jenkins checks (test, docker, check, audit, native-*)
 ├── docker/                       local, development, homologation and production .env.example
 ├── docs/
 │   ├── initial/                  Brainstorm, Project Overview, Technology Stack, Workflow, Business Rules
@@ -131,7 +132,9 @@ fortuna-api/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── LICENSE
-└── README.md
+├── README.md
+├── renovate.json                 dependency updates (extends yggdrasil's preset)
+└── yggdrasil.yml                 the Jenkins checks: images, scripts, paths
 ```
 
 ### 2.4 Platform Requirements
@@ -181,6 +184,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Migrations | `FORTUNA_RUN_MIGRATIONS` | Whether the entrypoint applies pending migrations before starting. `false` when they are applied out of band. |
 | Token validation | `FORTUNA_HEIMDALL_JWKS_URL`, `FORTUNA_AUTH_TOKEN_ISSUER`, `FORTUNA_AUTH_TOKEN_AUDIENCE` | Heimdall's tokens are ES256, verified with the public keys Heimdall publishes at the required `FORTUNA_HEIMDALL_JWKS_URL` (HTTP or HTTPS; inside yggdrasil `http://heimdall-api.<environment>:8080/.well-known/jwks.json`, over the internal network). The key set is fetched when a token under Heimdall's issuer names a key Fortuna does not know, at most once a minute; that request waits for the fetch (at most five seconds), and a failed fetch keeps the keys already known. Each key verifies its own algorithm only, and only these keys verify a Heimdall token: its former HS256 tokens are answered `401`. `FORTUNA_AUTH_TOKEN_SECRET` and `FORTUNA_AUTH_TOKEN_SECRET_PREVIOUS`, which held Heimdall's former HS256 secret, were removed in 4.0.0 and are no longer read; while either is still set, startup logs a warning naming it, never its value. Under yggdrasil the compose file no longer passes either variable to the container, so the warning never appears there: check the store with `ygg vars list <scope> --keys`. |
 | Local tokens | `FORTUNA_LOCAL_TOKEN_SECRET`, `FORTUNA_LOCAL_TOKEN_ISSUER` | Fortuna's own HS256 key (required, at least 32 characters, never shared) and issuer (default `fortuna-local`, different from `FORTUNA_AUTH_TOKEN_ISSUER`) for local-account tokens. A token is a local-account token when it names this issuer. **Secret.** |
+| Test secret hashing | `FORTUNA_INSECURE_TEST_SECRET_HASHING` | Unset: local-account secrets and recovery codes are derived at the production Argon2id cost (600 MB and 16 lanes for secrets). `true` selects the cheapest cost Argon2id accepts, for the test suite only (`tests/default.runsettings` sets it). Startup refuses it anywhere but Development (unset `ASPNETCORE_ENVIRONMENT` counts as Production), and no secret stored under it verifies once it is removed: **never set it in a deployment.** |
 | Token lifetime | `FORTUNA_AUTH_TOKEN_EXPIRATION_IN_SECONDS` | Bounds the window in which a token revoked at Heimdall is still accepted here (NFR-14). |
 | Heimdall exchange | `FORTUNA_HEIMDALL_BASE_URL`, `FORTUNA_HEIMDALL_SCOPE_ID` | Required base URL and non-empty public scope identifier used only by the explicit `api/auth` credential exchanges. The URL is HTTPS, or plain HTTP to a private address (inside yggdrasil `http://heimdall-api.<environment>:8080/`). |
 | Heimdall caller key | `FORTUNA_HEIMDALL_CALLER_KEY` | Optional. One of Heimdall's `HEIMDALL_TRUSTED_CALLER_KEYS`, at least 32 visible ASCII characters with no spaces or commas (Heimdall splits its list on commas); startup rejects anything else. When set, each `api/auth` request names the end user's address so Heimdall rate-limits per user rather than per instance ([4.1](#41-client-ip-addresses)). Unset, no address is sent. **Secret.** |
@@ -505,26 +509,32 @@ docker compose --env-file docker/local.env up -d --build
 ```
 
 The development, homologation and production instances on the VPS are deployed by
-[yggdrasil](https://github.com/artur-rios/yggdrasil)'s Jenkins pipeline (`Jenkinsfile`), which runs
+[yggdrasil](https://github.com/artur-rios/yggdrasil)'s Jenkins pipeline (this repository's `yggdrasil.yml` names its checks), which runs
 this same `docker-compose.yml`, with `/etc/yggdrasil/<environment>/fortuna-api.env` as the
 environment file, when `develop` is pushed (development), when a `release/x.y.z` branch is pushed
 (homologation) and when its pull request into `main` passes every check (production); the release
 process is described in [CONTRIBUTING.md](../../CONTRIBUTING.md#releasing).
 
-**Continuous integration** (IR-17). The workflows run on every pull request into `develop` and
-`main` and on every commit to either branch. Those that report a required check run with no path
-filters — a filter would let a change to an unlisted path merge without evidence that anything still
-passes, and a required check whose workflow is skipped never reports, which blocks the pull request.
-Only `native-core.yml`, which reports no required check, runs only when the native core or the
-OpenAPI document it is generated from changes:
+**Continuous integration** (IR-17). Jenkins (yggdrasil's pipeline) runs the checks of `yggdrasil.yml`
+on every pull request into `develop` and `main` and on every commit to either branch; each check is a
+script under `ci/` that also runs on a developer machine. The checks that report required results run
+with no path filters — a filter would let a change to an unlisted path merge without evidence that
+anything still passes. Only the two native checks, which run only when the native core or the OpenAPI
+document it is generated from changes, are path-filtered: Jenkins reports a skipped one as passed.
 
-| Workflow | Stages |
-| --- | --- |
-| `tests.yml` | Test the helper scripts → check for a blank line above every `return`, `break` and `yield` → restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor → upload the report and the test results → build the container image in a separate job |
-| `check-openapi.yml` | Regenerate the OpenAPI document from the code and fail if the committed one differs (IR-14) |
-| `native-core.yml` | Test on the declared minimum Rust version → format-check, lint and test the Rust boundary on Windows and Linux → build each release dynamic library → reject generated-header drift → upload the library and header as platform artifacts (IR-21 … IR-25) |
-| `audit.yml` | Check the native core's Cargo dependencies against the RustSec advisory database — on every pull request, so a newly published advisory fails it without any change here |
-| `branch-policy.yml` | Enforce the branching model on pull requests into `develop` and `main`, described in [CONTRIBUTING.md](../../CONTRIBUTING.md#branching-model) |
+| Check | `ci/` script | Stages |
+| --- | --- | --- |
+| `test` | `test.sh` | Test the helper scripts → check for a blank line above every `return`, `break` and `yield` → restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor (the report is kept with the build) |
+| `docker` | `docker.sh` | Build the container image |
+| `check` | `check.sh` | Regenerate the OpenAPI document from the code and fail if the committed one differs (IR-14) |
+| `native-msrv` | `native-msrv.sh` | Test the native core on the declared minimum Rust version (IR-21 … IR-25) |
+| `native-build` | `native-build.sh` | Format-check, lint and test the Rust boundary on Linux → build the release dynamic library → reject generated-header drift → compile the C and C++ header consumers (IR-21 … IR-25) |
+| `audit` | `audit.sh` | Check the native core's Cargo dependencies against the RustSec advisory database — on every pull request, so a newly published advisory fails it without any change here |
+
+The branching model, described in [CONTRIBUTING.md](../../CONTRIBUTING.md#branching-model), is enforced
+by Jenkins' `branch-policy` check on pull requests into `develop` and `main`. The native core's Windows
+build stays a GitHub Actions workflow (`native-core.yml`) on the mirror: it runs on the same path filter, is
+waited for when it runs, and is never required.
 
 The unit suite runs before the functional one on purpose: it costs seconds, so a broken handler is
 reported before the runner spends minutes pulling and starting a database container. The vulnerability

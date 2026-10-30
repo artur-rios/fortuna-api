@@ -27,8 +27,7 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 public sealed class LocalAccountCreationTests : IAsyncLifetime
 {
     private const string Secret = "correct-horse-battery-staple";
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly FreshDatabase database = new("postgres:17-alpine");
 
     [FunctionalFact]
     public async Task GivenDesktopModeAndNoAccount_WhenCreatingAccount_ThenSecretsAreHashedAndCodesReturnedOnce()
@@ -57,7 +56,7 @@ public sealed class LocalAccountCreationTests : IAsyncLifetime
             .Include(x => x.RecoveryCodes)
             .SingleAsync();
         Assert.Null(account.User.ExternalSubject);
-        Assert.True(Hash.TextMatches(Secret, account.SecretHash, account.Salt));
+        Assert.True(Hash.TextMatches(Secret, account.SecretHash, account.Salt, SecretHashing.Configuration));
         Assert.Equal(10, account.RecoveryCodes.Count);
         Assert.All(envelope.Data.RecoveryCodes, raw =>
             Assert.Single(account.RecoveryCodes, code => LocalRecoveryCodeHash.Matches(raw, code.CodeHash)));

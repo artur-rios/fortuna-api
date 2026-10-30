@@ -32,11 +32,7 @@ public sealed class ConnectionCreationTests : IAsyncLifetime
     private const string AccessToken = "pluggy-access-token-never-stored-in-plain-text";
     private static readonly DateTimeOffset Now =
         new(2026, 9, 6, 7, 0, 0, TimeSpan.Zero);
-    private readonly PostgreSqlContainer database = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("fortuna")
-        .WithUsername("postgres")
-        .WithPassword("postgres")
-        .Build();
+    private readonly FreshDatabase database = new("postgres:18-alpine");
 
     [FunctionalFact]
     public async Task GivenValidPluggyItem_WhenConnected_ThenOnlyEncryptedTokenIsStored()

@@ -36,7 +36,7 @@ public sealed class RecoverLocalAccountCommandHandlerTests
         Assert.NotNull(store.Recovery);
         Assert.Equal(RecoveryCode, store.Recovery.RecoveryCode);
         Assert.Equal("Local User", store.Recovery.Name);
-        Assert.True(Hash.TextMatches(NewSecret, store.Recovery.NewSecretHash, store.Recovery.NewSalt));
+        Assert.True(Hash.TextMatches(NewSecret, store.Recovery.NewSecretHash, store.Recovery.NewSalt, SecretHashing.Configuration));
         Assert.Equal(Now, store.Recovery.RecoveredAt);
     }
 
