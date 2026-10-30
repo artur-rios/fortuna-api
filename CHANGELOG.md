@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-10-30
+
 ### Added
 
 - `FORTUNA_INSECURE_TEST_SECRET_HASHING=true` derives local-account secrets and recovery codes with the cheapest
@@ -297,7 +299,8 @@ holders sign in again.
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.0.1...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.1.0...HEAD
+[4.1.0]: https://github.com/artur-rios/fortuna-api/compare/v4.0.1...v4.1.0
 [4.0.1]: https://github.com/artur-rios/fortuna-api/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...v4.0.0
 [3.1.0]: https://github.com/artur-rios/fortuna-api/compare/v3.0.0...v3.1.0
