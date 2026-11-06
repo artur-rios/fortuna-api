@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Base images are pinned by digest for reproducible builds; Renovate bumps them.
-FROM mcr.microsoft.com/dotnet/sdk:10.0.402@sha256:747cbade5bfd918a175ac32f8f1d931edec2c7d0d5397a3de72eaef1ac1f66d2 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403@sha256:212fe4cb74627d5adf9817a4088906ae3edff1bd853bb27565d4b46731efe61e AS build
 WORKDIR /source
 
 # Every step that restores or builds mounts the same NuGet cache, so locally packages survive layer
@@ -40,7 +40,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     --output /app/fortuna-migrate \
     --force
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.13@sha256:8af87eba5e7cdafb1514d7388be287365da97c132509e84dfe252ffd552398ca AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.14@sha256:1a48394b6f29d3a32c79d9edecd4abda0ecbe8776d567dbfc4590ed6979c740c AS final
 WORKDIR /app
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl \
