@@ -28,7 +28,7 @@ checks:
     run: ci/check.sh
 
   audit:                                 # audit.yml / audit: the native core against the RustSec advisories
-    image: rust:1.99.1-bookworm@sha256:48b7f435b8fc6378ce43b44f15e3a47fd8919b2825f835c39bd4bd3da50af5b8
+    image: rust:1.99.1-bookworm@sha256:e6f2cff35d0f309acf8433b4f05878ed77092602c5065cc81801177da0bb3a9c
     run: ci/audit.sh
 
   # The image is the toolchain of Cargo.toml's rust-version (native/fortuna-core), and ci/native-msrv.sh fails when they
@@ -44,7 +44,7 @@ checks:
       - "ci/native-*.sh"
 
   native-build:                          # native-core.yml / build, Linux leg: fmt, clippy, tests, release build, header
-    image: rust:1.99.1-bookworm@sha256:48b7f435b8fc6378ce43b44f15e3a47fd8919b2825f835c39bd4bd3da50af5b8
+    image: rust:1.99.1-bookworm@sha256:e6f2cff35d0f309acf8433b4f05878ed77092602c5065cc81801177da0bb3a9c
     run: ci/native-build.sh
     paths:                               # the same filter
       - "native/**"
