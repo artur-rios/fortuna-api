@@ -124,8 +124,8 @@ public static class InternalHealthEndpoint
             }
             catch (Exception exception)
             {
-                // Only a set of checks that could not be listed gets here, since each check's own failure is
-                // caught. A report still goes out.
+                // Only a set of checks that could not be listed, or not in time, gets here, since each check's
+                // own failure is caught. A report still goes out.
                 return new OperationalHealthReport(
                     OperationalHealthStatus.Unhealthy,
                     [
@@ -146,7 +146,9 @@ public static class InternalHealthEndpoint
 
             try
             {
-                var checks = await ListChecksAsync();
+                // Under the deadline as well, and off this thread: building the checks runs their constructors,
+                // and one that blocks here would hold every caller of this shared run.
+                var checks = await Task.Run(ListChecksAsync, CancellationToken.None).WaitAsync(deadline);
 
                 // Side by side, and started together, so the one deadline is each check's own three seconds
                 // and a slow provider costs the others nothing: one after another, two of them at their
@@ -185,7 +187,8 @@ public static class InternalHealthEndpoint
             await using var scope = scopes.CreateAsyncScope();
             var check = scope.ServiceProvider.GetServices<IOperationalHealthCheck>().ElementAt(index);
 
-            return await check.CheckAsync(deadline);
+            // Read-only: this route has no credential, so calling it must not be able to change anything.
+            return await check.CheckReadOnlyAsync(deadline);
         }
 
         private static async Task<OperationalHealthCheckResult> ResultOfAsync(

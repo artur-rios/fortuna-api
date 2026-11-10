@@ -25,6 +25,13 @@ public interface IOperationalHealthCheck
     string Name { get; }
     bool IsRequired { get; }
     Task<OperationalHealthCheckResult> CheckAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    ///     The check as a caller with no credential may trigger it, which must change nothing. A check
+    ///     whose <see cref="CheckAsync" /> writes anything has to override this.
+    /// </summary>
+    Task<OperationalHealthCheckResult> CheckReadOnlyAsync(CancellationToken cancellationToken) =>
+        CheckAsync(cancellationToken);
 }
 
 public sealed class OperationalHealthEvaluator(IEnumerable<IOperationalHealthCheck> checks)

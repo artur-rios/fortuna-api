@@ -111,6 +111,74 @@ public sealed class FilesystemAttachmentStoreTests : IDisposable
         Assert.False(await store.IsHealthyAsync(CancellationToken.None));
     }
 
+    [UnitFact]
+    public async Task GivenWriteProbeIsCancelledAfterCreatingItsFile_WhenHealthIsChecked_ThenNoFileIsLeft()
+    {
+        // Given a probe that has created its file when the deadline cancels it
+        var store = new FilesystemAttachmentStore(root, async (path, _) =>
+        {
+            await File.WriteAllBytesAsync(path, [1], CancellationToken.None);
+
+            throw new OperationCanceledException();
+        });
+
+        // When
+        await Assert.ThrowsAsync<OperationCanceledException>(() => store.IsHealthyAsync(CancellationToken.None));
+
+        // Then
+        Assert.Empty(Directory.GetFileSystemEntries(root));
+    }
+
+    [UnitFact]
+    public async Task GivenWriteProbeFails_WhenHealthIsChecked_ThenItIsUnhealthyAndNoFileIsLeft()
+    {
+        // Given
+        var store = new FilesystemAttachmentStore(root, async (path, _) =>
+        {
+            await File.WriteAllBytesAsync(path, [1], CancellationToken.None);
+
+            throw new IOException("disk full");
+        });
+
+        // When
+        var healthy = await store.IsHealthyAsync(CancellationToken.None);
+
+        // Then
+        Assert.False(healthy);
+        Assert.Empty(Directory.GetFileSystemEntries(root));
+    }
+
+    [UnitFact]
+    public async Task GivenExistingStorageRoot_WhenReachabilityIsChecked_ThenItIsReachableAndNothingIsWritten()
+    {
+        // Given a probe that fails the test if it is ever used, and a root whose every write would show
+        var store = new FilesystemAttachmentStore(root, (_, _) =>
+            throw new InvalidOperationException("The reachability check must not write."));
+        var modified = Directory.GetLastWriteTimeUtc(root);
+
+        // When
+        var reachable = await store.IsReachableAsync(CancellationToken.None);
+
+        // Then
+        Assert.True(reachable);
+        Assert.Empty(Directory.GetFileSystemEntries(root));
+        Assert.Equal(modified, Directory.GetLastWriteTimeUtc(root));
+    }
+
+    [UnitFact]
+    public async Task GivenRemovedStorageRoot_WhenReachabilityIsChecked_ThenItIsNotReachable()
+    {
+        // Given
+        var store = new FilesystemAttachmentStore(root);
+        Directory.Delete(root, recursive: true);
+
+        // When
+        var reachable = await store.IsReachableAsync(CancellationToken.None);
+
+        // Then
+        Assert.False(reachable);
+    }
+
     [UnitTheory]
     [InlineData("")]
     [InlineData(" ")]

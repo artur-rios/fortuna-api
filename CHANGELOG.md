@@ -14,10 +14,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `200` for `Healthy` and `Degraded`, `503` for `Unhealthy`. Traefik routes only `8080` and nothing publishes the
   metrics port, so it is never reachable from outside. It answers within about four seconds whatever its dependencies
   do: checks run side by side, each bounded at three seconds, and the report is reused for five seconds. The rest of
-  the metrics port stays closed, and `FORTUNA_METRICS_PORT=0` removes this route with the exporter.
+  the metrics port stays closed, and `FORTUNA_METRICS_PORT=0` removes this route with the exporter. It changes
+  nothing: its `AttachmentStorage` entry checks only that the store can be reached (the directory can be listed, or
+  `HeadBucket` answers), so unlike `/healthcheck/detailed` it does not notice a read-only or full volume.
 - `/healthcheck/detailed` lists `Heimdall`, an optional service checked at `FORTUNA_HEIMDALL_JWKS_URL`: a failure
   degrades the report without failing it, and an installation using local authentication reports it as
   `NotConfigured`. A service entry can carry an optional `reason`, such as `connection refused` or `HTTP 503`.
+
+### Fixed
+
+- The filesystem store's write probe removes its `.health-*.tmp` file when the write is cancelled or fails. It used
+  to stay on the attachment volume, and nothing removes those files.
 
 ## [4.1.0] - 2026-10-30
 

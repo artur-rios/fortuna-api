@@ -181,6 +181,8 @@ public sealed class GetPersonalDataExportQueryHandlerTests
         public bool Missing { get; init; }
         public bool Healthy { get; init; } = true;
 
+        public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
+
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) =>
             Task.FromResult(Healthy);
         public Task<AttachmentReadResult> OpenReadAsync(string key, CancellationToken cancellationToken) =>

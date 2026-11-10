@@ -199,6 +199,8 @@ public sealed class AttachDocumentCommandHandlerTests
         public byte[]? WrittenContent { get; private set; }
         public string? DeletedKey { get; private set; }
 
+        public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
+
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) =>
             Task.FromResult(Healthy);
 

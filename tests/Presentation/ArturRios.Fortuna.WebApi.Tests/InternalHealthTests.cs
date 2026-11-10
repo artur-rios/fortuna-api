@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Text.Json;
 using ArturRios.Fortuna.Domain.Security;
+using ArturRios.Fortuna.Shared.Attachments;
 using ArturRios.Fortuna.Shared.Health;
 using ArturRios.Fortuna.Shared.Users;
 using ArturRios.Fortuna.WebApi.Configuration;
@@ -22,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -582,12 +584,11 @@ public sealed class InternalHealthTests
         HttpStatusCode expectedCode,
         string expectedStatus)
     {
-        // Given a dependency that never answers and does not listen for cancellation, beside a healthy one
+        // Given a dependency that never answers and does not listen for cancellation
         var clock = new TimerClock();
         var never = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var healthy = StubCheck.Returning("Fine", required: false, OperationalHealthStatus.Healthy);
         var hung = StubCheck.Gated("Hung", required, never);
-        await using var app = await StartAsync(MetricsPort, Stubs(healthy, hung), clock: clock);
+        await using var app = await StartAsync(MetricsPort, Stubs(hung), clock: clock);
         var request = app.GetTestClient().GetAsync(Route);
         await hung.Started.Task.WaitAsync(Soon);
 
@@ -600,7 +601,29 @@ public sealed class InternalHealthTests
         // Then
         Assert.Equal(expectedCode, response.StatusCode);
         Assert.Equal(
-            $$"""{"status":"{{expectedStatus}}","services":[{"name":"Fine","status":"Healthy"},{"name":"Hung","status":"Unhealthy","reason":"timeout"}]}""",
+            $$"""{"status":"{{expectedStatus}}","services":[{"name":"Hung","status":"Unhealthy","reason":"timeout"}]}""",
+            body);
+    }
+
+    [UnitFact]
+    public async Task GivenAHungCheckBesideAHealthyOne_WhenTheRealBoundPasses_ThenOnlyTheHungOneReadsTimeout()
+    {
+        // Given the real clock: nothing tells a test when the healthy check's result is in, so a moved clock
+        // could overtake it, and three real seconds leave it all the room it needs
+        var never = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var app = await StartAsync(MetricsPort, Stubs(
+            StubCheck.Returning("Fine", required: false, OperationalHealthStatus.Healthy),
+            StubCheck.Gated("Hung", required: false, never)));
+
+        // When
+        var response = await app.GetTestClient().GetAsync(Route).WaitAsync(Soon);
+        var body = await response.Content.ReadAsStringAsync();
+        never.SetResult();
+
+        // Then
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            """{"status":"Degraded","services":[{"name":"Fine","status":"Healthy"},{"name":"Hung","status":"Unhealthy","reason":"timeout"}]}""",
             body);
     }
 
@@ -630,6 +653,86 @@ public sealed class InternalHealthTests
 
         // Then
         Assert.Contains("\"reason\":\"timeout\"", body);
+    }
+
+    [UnitFact]
+    public async Task GivenACheckConstructorThatBlocks_WhenTheBoundPasses_ThenTheReportStillGoesOut()
+    {
+        // Given a registration that holds its thread while the checks are being listed
+        var clock = new TimerClock();
+        using var release = new ManualResetEventSlim();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var app = await StartAsync(MetricsPort, services =>
+        {
+            services.RemoveAll<IOperationalHealthCheck>();
+            services.AddScoped<IOperationalHealthCheck>(_ =>
+            {
+                started.TrySetResult();
+                release.Wait(Soon);
+
+                return StubCheck.Returning("Slow", required: true, OperationalHealthStatus.Healthy);
+            });
+        }, clock: clock);
+        var request = app.GetTestClient().GetAsync(Route);
+        await started.Task.WaitAsync(Soon);
+
+        // When
+        clock.Advance(CheckBound);
+        var response = await request.WaitAsync(Soon);
+        var body = await response.Content.ReadAsStringAsync();
+        release.Set();
+
+        // Then
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(
+            """{"status":"Unhealthy","services":[{"name":"Health checks","status":"Unhealthy","reason":"timeout"}]}""",
+            body);
+    }
+
+    [UnitTheory]
+    [InlineData(true, HttpStatusCode.OK, "Healthy")]
+    [InlineData(false, HttpStatusCode.ServiceUnavailable, "Unhealthy")]
+    public async Task GivenStorageCheck_WhenInternalHealthRequested_ThenOnlyTheReadOnlyProbeRuns(
+        bool reachable,
+        HttpStatusCode expectedCode,
+        string expectedStatus)
+    {
+        // Given the real check: the route has no credential, and the design forbids a check that writes
+        var storage = new Mock<IAttachmentStore>();
+        storage.Setup(item => item.IsReachableAsync(It.IsAny<CancellationToken>())).ReturnsAsync(reachable);
+        storage.Setup(item => item.IsHealthyAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        await using var app = await StartAsync(MetricsPort, services =>
+        {
+            services.AddSingleton(storage.Object);
+            services.AddScoped<IOperationalHealthCheck, AttachmentStorageOperationalHealthCheck>();
+        });
+
+        // When
+        var response = await app.GetTestClient().GetAsync(Route);
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Then
+        Assert.Equal(expectedCode, response.StatusCode);
+        Assert.Equal(
+            $$"""{"status":"{{expectedStatus}}","services":[{"name":"AttachmentStorage","status":"{{expectedStatus}}"}]}""",
+            body);
+        storage.Verify(item => item.IsHealthyAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [UnitFact]
+    public async Task GivenStorageCheck_WhenRunAsTheAdminRouteRunsIt_ThenTheWriteProbeIsKept()
+    {
+        // Given
+        var storage = new Mock<IAttachmentStore>();
+        storage.Setup(item => item.IsHealthyAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var check = new AttachmentStorageOperationalHealthCheck(storage.Object);
+
+        // When
+        var result = await check.CheckAsync(CancellationToken.None);
+
+        // Then
+        Assert.Equal(OperationalHealthStatus.Healthy, result.Status);
+        storage.Verify(item => item.IsReachableAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [UnitFact]
