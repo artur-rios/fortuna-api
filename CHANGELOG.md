@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-11-10
+
 ### Added
 
 - `GET /internal/health` on the metrics port (`FORTUNA_METRICS_PORT`, `9464` by default): the per-dependency report
@@ -321,7 +323,8 @@ holders sign in again.
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.1.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.2.0...HEAD
+[4.2.0]: https://github.com/artur-rios/fortuna-api/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/artur-rios/fortuna-api/compare/v4.0.1...v4.1.0
 [4.0.1]: https://github.com/artur-rios/fortuna-api/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...v4.0.0
