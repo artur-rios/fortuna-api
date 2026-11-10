@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `GET /internal/health` on the metrics port (`FORTUNA_METRICS_PORT`, `9464` by default): the per-dependency report
+  for yggdrasil's status API, as `{ "status", "services": [{ "name", "status", "reason" }] }`, with no credential.
+  `200` for `Healthy` and `Degraded`, `503` for `Unhealthy`. Traefik routes only `8080` and nothing publishes the
+  metrics port, so it is never reachable from outside. It answers within about four seconds whatever its dependencies
+  do: checks run side by side, each bounded at three seconds, and the report is reused for five seconds. The rest of
+  the metrics port stays closed, and `FORTUNA_METRICS_PORT=0` removes this route with the exporter.
+- `/healthcheck/detailed` lists `Heimdall`, an optional service checked at `FORTUNA_HEIMDALL_JWKS_URL`: a failure
+  degrades the report without failing it, and an installation using local authentication reports it as
+  `NotConfigured`. A service entry can carry an optional `reason`, such as `connection refused` or `HTTP 503`.
+
 ## [4.1.0] - 2026-10-30
 
 ### Added

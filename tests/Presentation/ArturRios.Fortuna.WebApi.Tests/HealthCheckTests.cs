@@ -90,7 +90,7 @@ public sealed class HealthCheckTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Healthy", document.RootElement.GetProperty("status").GetString());
-        Assert.Equal(5, services.GetArrayLength());
+        Assert.Equal(6, services.GetArrayLength());
         Assert.Equal("Healthy", Service(services, "Database").GetProperty("status").GetString());
         Assert.Equal("Healthy", Service(services, "AttachmentStorage")
             .GetProperty("status").GetString());
@@ -101,6 +101,8 @@ public sealed class HealthCheckTests : IAsyncLifetime
         Assert.Equal("NotConfigured", Service(services, "Aggregator")
             .GetProperty("status").GetString());
         Assert.Equal("NotConfigured", Service(services, "ExchangeRateSource")
+            .GetProperty("status").GetString());
+        Assert.Equal("Healthy", Service(services, "Heimdall")
             .GetProperty("status").GetString());
         Assert.DoesNotContain("Password", text, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("postgres", text, StringComparison.OrdinalIgnoreCase);

@@ -6016,6 +6016,10 @@
             "nullable": true,
             "type": "integer"
           },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
           "status": {
             "nullable": true,
             "type": "string"

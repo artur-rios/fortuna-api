@@ -13,7 +13,8 @@ public sealed record OperationalHealthCheckResult(
     OperationalHealthStatus Status,
     bool IsRequired,
     int? QueueDepth = null,
-    long? OldestPendingSeconds = null);
+    long? OldestPendingSeconds = null,
+    string? Reason = null);
 
 public sealed record OperationalHealthReport(
     OperationalHealthStatus Status,
@@ -37,18 +38,28 @@ public sealed class OperationalHealthEvaluator(IEnumerable<IOperationalHealthChe
             services.Add(await CheckSafelyAsync(check, cancellationToken));
         }
 
+        return new OperationalHealthReport(Aggregate(services), services);
+    }
+
+    /// <summary>
+    ///     The report's status from its entries, whatever order or way they were produced in: a required
+    ///     dependency that is anything but healthy makes it unhealthy, an optional one that is down only
+    ///     degrades it.
+    /// </summary>
+    public static OperationalHealthStatus Aggregate(
+        IReadOnlyCollection<OperationalHealthCheckResult> services)
+    {
         var requiredDown = services.Any(service =>
             service.IsRequired && service.Status != OperationalHealthStatus.Healthy);
         var optionalDown = services.Any(service =>
             !service.IsRequired && service.Status is
                 OperationalHealthStatus.Degraded or OperationalHealthStatus.Unhealthy);
-        var status = requiredDown
+
+        return requiredDown
             ? OperationalHealthStatus.Unhealthy
             : optionalDown
                 ? OperationalHealthStatus.Degraded
                 : OperationalHealthStatus.Healthy;
-
-        return new OperationalHealthReport(status, services);
     }
 
     // One failing probe must not take the whole report down: it is reported as

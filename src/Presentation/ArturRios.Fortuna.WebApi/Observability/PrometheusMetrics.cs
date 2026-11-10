@@ -7,12 +7,14 @@ namespace ArturRios.Fortuna.WebApi.Observability;
 /// Publishes OpenTelemetry metrics in the Prometheus text format on a private listener. The API
 /// runs behind a reverse proxy that forwards the caller's Host header, so the scrape endpoint is
 /// selected by the local port the connection arrived on rather than by any request header. That
-/// listener answers only the scrape; every other path on it is <c>404</c>.
+/// listener answers only the scrape and the internal health report; every other path on it is
+/// <c>404</c>.
 /// </summary>
 public static class PrometheusMetrics
 {
     public const string ServiceName = "fortuna-api";
     public const string ScrapePath = "/metrics";
+    public const string InternalHealthPath = "/internal/health";
 
     internal static readonly string[] BuiltInMeters =
     [
@@ -36,6 +38,7 @@ public static class PrometheusMetrics
                 .AddHttpClientInstrumentation()
                 .AddMeter(BuiltInMeters)
                 .AddPrometheusExporter());
+        services.AddSingleton<InternalHealthEndpoint.Reports>();
 
         return services;
     }
@@ -43,8 +46,9 @@ public static class PrometheusMetrics
     /// <summary>
     /// Must run before authentication, authorization, rate limiting and routing so none of them
     /// apply to a scrape; the endpoint is middleware, so it never reaches the OpenAPI document.
-    /// The private listener serves the scrape and nothing else: any other request that arrives on
-    /// it is answered <c>404</c> here, before it can reach the API.
+    /// The private listener serves the scrape and <c>GET</c> <see cref="InternalHealthPath" />, and
+    /// nothing else: any other request that arrives on it is answered <c>404</c> here, before it
+    /// can reach the API.
     /// </summary>
     public static IApplicationBuilder UsePrometheusMetrics(this IApplicationBuilder app, int metricsPort)
     {
@@ -62,6 +66,11 @@ public static class PrometheusMetrics
                 return next(context);
             }
 
+            if (IsInternalHealthRequest(context))
+            {
+                return InternalHealthEndpoint.Handle(context);
+            }
+
             context.Response.StatusCode = StatusCodes.Status404NotFound;
 
             return Task.CompletedTask;
@@ -77,4 +86,9 @@ public static class PrometheusMetrics
 
     public static bool IsMetricsListenerRequest(int localPort, int metricsPort) =>
         metricsPort > 0 && localPort == metricsPort;
+
+    // Asked only of a request already known to be on the metrics listener.
+    private static bool IsInternalHealthRequest(HttpContext context) =>
+        HttpMethods.IsGet(context.Request.Method) &&
+        context.Request.Path.Equals(InternalHealthPath, StringComparison.OrdinalIgnoreCase);
 }
