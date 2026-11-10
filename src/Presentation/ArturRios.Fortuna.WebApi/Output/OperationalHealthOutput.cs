@@ -15,6 +15,7 @@ public sealed class OperationalHealthOutput
         {
             Name = service.Name,
             Status = service.Status.ToString(),
+            Reason = service.Reason,
             QueueDepth = service.QueueDepth,
             OldestPendingSeconds = service.OldestPendingSeconds
         }).ToArray()
@@ -25,6 +26,9 @@ public sealed class OperationalHealthServiceOutput
 {
     public string Name { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Reason { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? QueueDepth { get; init; }

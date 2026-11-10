@@ -857,6 +857,8 @@ public sealed class AttachmentApiTests : IAsyncLifetime
 
     private sealed class UnavailableAttachmentStore : IAttachmentStore
     {
+        public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
+
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) =>
             Task.FromResult(false);
         public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken) =>
@@ -871,6 +873,8 @@ public sealed class AttachmentApiTests : IAsyncLifetime
     {
         private readonly ArturRios.Fortuna.Integration.Storage.FilesystemAttachmentStore inner =
             new(root);
+
+        public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
 
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) =>
             inner.IsHealthyAsync(cancellationToken);

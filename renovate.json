@@ -32,7 +32,7 @@
       "matchManagers": ["custom.regex"],
       "matchFileNames": ["yggdrasil.yml"],
       "matchDepNames": ["rust"],
-      "matchCurrentValue": "/^1\\.88-bookworm$/",
+      "matchCurrentValue": "/^1\\.89-bookworm$/",
       "matchUpdateTypes": ["major", "minor"],
       "enabled": false
     }

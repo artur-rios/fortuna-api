@@ -8,14 +8,21 @@ public sealed class FilesystemAttachmentStore : IAttachmentStore
     private const string TemporarySuffix = ".tmp";
 
     private readonly string root;
+    private readonly Func<string, CancellationToken, Task> writeProbe;
 
     public FilesystemAttachmentStore(string root)
+        : this(root, (path, cancellationToken) => File.WriteAllBytesAsync(path, [1], cancellationToken))
+    {
+    }
+
+    internal FilesystemAttachmentStore(string root, Func<string, CancellationToken, Task> writeProbe)
     {
         if (string.IsNullOrWhiteSpace(root))
         {
             throw new ArgumentException("A storage path is required.", nameof(root));
         }
 
+        this.writeProbe = writeProbe;
         this.root = Path.GetFullPath(root);
         Directory.CreateDirectory(this.root);
     }
@@ -107,14 +114,38 @@ public sealed class FilesystemAttachmentStore : IAttachmentStore
         var probe = Path.Combine(root, $".health-{Guid.NewGuid():N}{TemporarySuffix}");
         try
         {
-            await File.WriteAllBytesAsync(probe, [1], cancellationToken);
-            File.Delete(probe);
+            try
+            {
+                await writeProbe(probe, cancellationToken);
+            }
+            finally
+            {
+                // A finally, so a cancelled write leaves nothing behind: nothing sweeps these files.
+                File.Delete(probe);
+            }
 
             return true;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return false;
+        }
+    }
+
+    public Task<bool> IsReachableAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            // Asking for an entry is what makes the system list the directory.
+            _ = Directory.EnumerateFileSystemEntries(root).Any();
+
+            return Task.FromResult(true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return Task.FromResult(false);
         }
     }
 

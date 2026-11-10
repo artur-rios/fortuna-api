@@ -10,12 +10,19 @@ public sealed class AttachmentStorageOperationalHealthCheck(IAttachmentStore sto
     public string Name => "AttachmentStorage";
     public bool IsRequired => true;
 
-    public async Task<OperationalHealthCheckResult> CheckAsync(
+    public Task<OperationalHealthCheckResult> CheckAsync(CancellationToken cancellationToken) =>
+        ProbeAsync(storage.IsHealthyAsync, cancellationToken);
+
+    public Task<OperationalHealthCheckResult> CheckReadOnlyAsync(CancellationToken cancellationToken) =>
+        ProbeAsync(storage.IsReachableAsync, cancellationToken);
+
+    private async Task<OperationalHealthCheckResult> ProbeAsync(
+        Func<CancellationToken, Task<bool>> probe,
         CancellationToken cancellationToken)
     {
         try
         {
-            var healthy = await storage.IsHealthyAsync(cancellationToken);
+            var healthy = await probe(cancellationToken);
 
             return Result(healthy
                 ? OperationalHealthStatus.Healthy

@@ -118,6 +118,7 @@ public static class FortunaIntegrationsServiceCollectionExtensions
                 !options.LocalAuthEnabled && options.RatesSourceBaseUri is not null,
                 provider.GetRequiredService<IHttpClientFactory>().CreateClient(
                     OperationalHealthClientNames.ExchangeRateSource)));
+        services.AddScoped<IOperationalHealthCheck, HeimdallOperationalHealthCheck>();
         services.AddScoped<OperationalHealthEvaluator>();
         services.AddSingleton<IIngestionSource, ExcelWorkbookIngestionSource>();
         services.AddSingleton<IIngestionSource, NubankInvoiceIngestionSource>();
