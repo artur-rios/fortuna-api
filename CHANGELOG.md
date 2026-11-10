@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The native core uses `rusqlite` 0.41.1, whose bundled SQLite (`libsqlite3-sys` 0.39.1) is past RUSTSEC-2026-0459.
+  `rusqlite` 0.41 needs Rust 1.89, so the native core's minimum Rust (`rust-version`, the `native-msrv` image and its
+  Renovate rule) moves from 1.88 to 1.89.
 - The filesystem store's write probe removes its `.health-*.tmp` file when the write is cancelled or fails. It used
   to stay on the attachment volume, and nothing removes those files.
 
