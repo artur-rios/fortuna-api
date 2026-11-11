@@ -64,6 +64,9 @@ public sealed class S3AttachmentStore(IAmazonS3 client, string bucket) : IAttach
         }
     }
 
+    // HeadBucket already changes nothing.
+    public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => IsHealthyAsync(cancellationToken);
+
     private static void Validate(string key)
     {
         if (string.IsNullOrWhiteSpace(key) || key.StartsWith('/') || key.Contains("..", StringComparison.Ordinal))

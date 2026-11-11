@@ -15,7 +15,17 @@ public interface IAttachmentStore
     /// <summary>Deletes a stored object. Deleting an object that does not exist succeeds.</summary>
     Task DeleteAsync(string key, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Whether an object could be stored now. The filesystem store proves it by writing a file and
+    /// removing it, so this is for callers who hold a credential or are about to use the store.
+    /// </summary>
     Task<bool> IsHealthyAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Whether the store can be reached, changing nothing: what a caller with no credential may trigger.
+    /// It cannot tell a read-only or full volume from a healthy one.
+    /// </summary>
+    Task<bool> IsReachableAsync(CancellationToken cancellationToken);
 }
 
 public enum AttachmentReadStatus

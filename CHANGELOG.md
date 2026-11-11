@@ -7,6 +7,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-11-10
+
+### Added
+
+- `GET /internal/health` on the metrics port (`FORTUNA_METRICS_PORT`, `9464` by default): the per-dependency report
+  for yggdrasil's status API, as `{ "status", "services": [{ "name", "status", "reason" }] }`, with no credential.
+  `200` for `Healthy` and `Degraded`, `503` for `Unhealthy`. Traefik routes only `8080` and nothing publishes the
+  metrics port, so it is never reachable from outside. It answers within about four seconds whatever its dependencies
+  do: checks run side by side, each bounded at three seconds, and the report is reused for five seconds. The rest of
+  the metrics port stays closed, and `FORTUNA_METRICS_PORT=0` removes this route with the exporter. It changes
+  nothing: its `AttachmentStorage` entry checks only that the store can be reached (the directory can be listed, or
+  `HeadBucket` answers), so unlike `/healthcheck/detailed` it does not notice a read-only or full volume.
+- `/healthcheck/detailed` lists `Heimdall`, an optional service checked at `FORTUNA_HEIMDALL_JWKS_URL`: a failure
+  degrades the report without failing it, and an installation using local authentication reports it as
+  `NotConfigured`. A service entry can carry an optional `reason`, such as `connection refused` or `HTTP 503`.
+
+### Fixed
+
+- The native core uses `rusqlite` 0.41.1, whose bundled SQLite (`libsqlite3-sys` 0.39.1) is past RUSTSEC-2026-0459.
+  `rusqlite` 0.41 needs Rust 1.89, so the native core's minimum Rust (`rust-version`, the `native-msrv` image and its
+  Renovate rule) moves from 1.88 to 1.89.
+- The filesystem store's write probe removes its `.health-*.tmp` file when the write is cancelled or fails. It used
+  to stay on the attachment volume, and nothing removes those files.
+
 ## [4.1.0] - 2026-10-30
 
 ### Added
@@ -299,7 +323,8 @@ holders sign in again.
 - A public liveness check that reports the API contract version, an administrator-only detailed health check, and
   Prometheus metrics on a private port.
 
-[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.1.0...HEAD
+[Unreleased]: https://github.com/artur-rios/fortuna-api/compare/v4.2.0...HEAD
+[4.2.0]: https://github.com/artur-rios/fortuna-api/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/artur-rios/fortuna-api/compare/v4.0.1...v4.1.0
 [4.0.1]: https://github.com/artur-rios/fortuna-api/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/artur-rios/fortuna-api/compare/v3.1.0...v4.0.0

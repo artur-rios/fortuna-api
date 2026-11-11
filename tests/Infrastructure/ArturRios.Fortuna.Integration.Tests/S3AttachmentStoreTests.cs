@@ -52,6 +52,23 @@ public sealed class S3AttachmentStoreTests
         Assert.False(await store.IsHealthyAsync(CancellationToken.None));
     }
 
+    [UnitTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GivenBucket_WhenReachabilityIsChecked_ThenHeadBucketDecides(bool failing)
+    {
+        // Given
+        using var client = new StubS3Client { FailHealth = failing };
+        var store = new S3AttachmentStore(client, "receipts");
+
+        // When
+        var reachable = await store.IsReachableAsync(CancellationToken.None);
+
+        // Then
+        Assert.Equal(!failing, reachable);
+        Assert.Equal("receipts", client.HealthBucket);
+    }
+
     [UnitFact]
     public async Task GivenMissingObject_WhenOpened_ThenNotFoundIsReturned()
     {

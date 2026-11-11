@@ -478,6 +478,8 @@ public sealed class DataExportTests : IAsyncLifetime
             string key,
             CancellationToken cancellationToken) => throw new NotSupportedException();
 
+        public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(true);
+
         public Task<bool> IsHealthyAsync(CancellationToken cancellationToken) =>
             Task.FromResult(true);
     }

@@ -35,7 +35,7 @@ checks:
   # differ. Raising rust-version means editing this image and the rule for it in renovate.json together; Renovate's
   # version moves of this tag are disabled there (digest updates still come through).
   native-msrv:                           # native-core.yml / msrv: tests on Cargo.toml's rust-version
-    image: rust:1.88-bookworm@sha256:af306cfa71d987911a781c37b59d7d67d934f49684058f96cf72079c3626bfe0
+    image: rust:1.89-bookworm@sha256:948f9b08a66e7fe01b03a98ef1c7568292e07ec2e4fe90d88c07bb14563c84ff
     run: ci/native-msrv.sh
     paths:                               # the workflow's path filter: what the native core is built from
       - "native/**"

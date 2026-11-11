@@ -200,7 +200,7 @@ process at startup rather than surfacing as a failure later (IR-08).
 | Reporting bounds | `FORTUNA_REPORT_MAX_RANGE_DAYS`, `FORTUNA_REPORT_KEY_TTL_MINUTES`, `FORTUNA_PROJECTION_MAX_HORIZON_DAYS`, `FORTUNA_PAGE_SIZE_MAX` | The limits the endpoints validate against, including drill-down key lifetime. |
 | Transaction tags | `FORTUNA_TRANSACTION_MAX_TAGS` | Maximum number of live tags attached to one transaction; defaults to `50`. |
 | Reconciliation | `FORTUNA_RECONCILIATION_AMOUNT_TOLERANCE`, `FORTUNA_RECONCILIATION_DATE_TOLERANCE_DAYS` | Differences beyond these non-negative amount and day tolerances are accepted but flagged. Defaults to `0.01` and `1`. |
-| Metrics | `FORTUNA_METRICS_PORT` | Local port whose listener serves `GET /metrics` (IR-27). Defaults to `9464`; `0` disables the exporter. The container entrypoint opens this port next to `8080`; outside the container it must also be one Kestrel listens on (`ASPNETCORE_HTTP_PORTS`). |
+| Metrics | `FORTUNA_METRICS_PORT` | Local port whose listener serves `GET /metrics` (IR-27) and `GET /internal/health` (FR-HC-13). Defaults to `9464`; `0` disables the exporter. The container entrypoint opens this port next to `8080`; outside the container it must also be one Kestrel listens on (`ASPNETCORE_HTTP_PORTS`). |
 | Reverse proxy | `FORTUNA_FORWARDED_KNOWN_NETWORKS`, `FORTUNA_FORWARDED_KNOWN_PROXIES` | Comma-separated CIDR networks and IP addresses whose `X-Forwarded-For` / `X-Forwarded-Proto` are believed, one hop deep; loopback is always trusted. Set the proxy's network in production, or every caller is the proxy — see [4.1](#41-client-ip-addresses). |
 | CORS | `FORTUNA_CORS_ALLOWED_ORIGINS` | Empty by default, which refuses every cross-origin request; a browser client does not reach the API until its origin is listed. |
 | Logging | `FORTUNA_LOG_DIRECTORY`, `FORTUNA_LOG_LEVEL` | The log directory is a mounted volume in a container. |
@@ -310,6 +310,7 @@ mapped to Fortuna's own message, without Heimdall's text. `POST /api/auth/2fa/ch
 | `GET /healthcheck` | Liveness — identifies `Fortuna API` and its published contract version without touching dependencies | **Public** |
 | `GET /healthcheck/detailed` | Per-dependency status and an aggregate | **Instance Administrator only** |
 | `GET /metrics` | Prometheus scrape of OpenTelemetry metrics — see [5.5](#55-metrics) | **Private listener only** — never served on the public port |
+| `GET /internal/health` | The per-dependency report for yggdrasil's status API — see [5.3](#53-response-contract) | **Private listener only** — no credential, never served on the public port |
 
 ### 5.2 Functional Requirements
 
@@ -327,6 +328,11 @@ mapped to Fortuna's own message, without Heimdall's text. `POST /api/auth/2fa/ch
 | FR-HC-10 | The detailed endpoint shall map the aggregate to an HTTP status — `200 OK` for `Healthy` and `Degraded`, `503 Service Unavailable` for `Unhealthy` | Medium |
 | FR-HC-11 | The health response shall contain no configuration value, no connection string and no credential | High |
 | FR-HC-12 | Public liveness shall return exactly service identifier `Fortuna API` and `contractVersion` equal to the OpenAPI `info.version`; it shall expose no build version or operational detail | High |
+| FR-HC-13 | The system shall serve the per-dependency report at `GET /internal/health` on the metrics listener only, selected by the connection's local port, with no credential and with no other method answered. Calling it shall change nothing: its `AttachmentStorage` entry only checks that the store can be reached, where the detailed endpoint proves it by writing | High |
+| FR-HC-14 | The internal report shall answer within about four seconds whatever its dependencies do: its checks run side by side, each in its own dependency-injection scope and bounded at three seconds, and a check past its bound reads `Unhealthy` with reason `timeout` | High |
+| FR-HC-15 | The internal report shall be reused for five seconds from when its checks finished, and callers who arrive during a run shall share it; the run shall belong to no request | Medium |
+| FR-HC-16 | A health entry's optional `reason` shall be one word or phrase of a fixed vocabulary, or `HTTP <code>`, and never exception text | High |
+| FR-HC-17 | The detailed and internal checks shall verify Heimdall at `FORTUNA_HEIMDALL_JWKS_URL`, through the client real key fetches use and with no credential. Only a 2xx passes, within three seconds. Heimdall is optional, and installations using local authentication report it as not configured without calling it | Medium |
 
 ### 5.3 Response Contract
 
@@ -362,6 +368,25 @@ The aggregate is `Healthy` only when every entry is healthy; `Degraded` when the
 entries are optional external services (FR-HC-08); `Unhealthy` when a required dependency — the
 database, the storage backing, the job runner — is down.
 
+Both reports also list `Heimdall`, an optional entry (FR-HC-17). An entry that failed may carry a
+`reason`, omitted when there is none (FR-HC-16):
+
+```json
+{ "name": "Heimdall", "status": "Unhealthy", "reason": "HTTP 503" }
+```
+
+`reason` is one of `timeout`, `connection refused`, `connection failed`, `connection reset`,
+`connection closed`, `name not resolved`, `host unreachable`, `tls error`, `invalid response`,
+`request failed` or `HTTP <code>`. A failing `Heimdall` entry reads `Unhealthy`, and being optional it
+makes the aggregate `Degraded`, not `Unhealthy`.
+
+`GET /internal/health` answers the same bare shape and the same status codes on the metrics port
+(FR-HC-13). The admin route still runs its checks one after another under the administrator's
+request. The internal route cannot, because yggdrasil's status API gives a report five seconds and
+counts anything slower as the API not answering, so it runs them side by side, each bounded at three
+seconds (FR-HC-14), and caches the result (FR-HC-15). A failed check is logged once per change of
+status, with its reason and no stack trace.
+
 ### 5.4 Use Case — UC-75: Check API Health
 
 | Field | Value |
@@ -372,7 +397,7 @@ database, the storage backing, the job runner — is down.
 | **Description** | Observe whether the API is running, and whether its dependencies are healthy |
 | **Preconditions** | For the detailed check, the caller is authenticated as an instance administrator. The liveness check has no preconditions |
 | **Postconditions** | Health information is returned; no state is modified |
-| **Requirements** | FR-HC-01 … FR-HC-11 |
+| **Requirements** | FR-HC-01 … FR-HC-17 |
 
 **Main Flow (liveness)**
 
@@ -428,8 +453,9 @@ exporter is disabled) and refuses to start when it equals the API port; an expli
 scrapes `http://<container>:9464/metrics` over the private Docker network, and the compose file never
 publishes `9464` on the host. A request is served as a scrape only when its path is `/metrics` **and**
 the connection's local port equals `FORTUNA_METRICS_PORT` (IR-27). The `Host` header plays no part:
-the proxy forwards the caller's, so a client could forge any value. The private port serves nothing
-but the scrape: every other path that arrives on it is answered `404` before it reaches the API.
+the proxy forwards the caller's, so a client could forge any value. The private port serves the
+scrape and `GET /internal/health` (FR-HC-13), selected the same way, and nothing else: every other
+path or method that arrives on it is answered `404` before it reaches the API.
 
 The exporter runs before the request-start entry, request logging, rate limiting, authentication
 and authorization, so a scrape needs no token and is not logged; it is middleware rather than a controller, so it is absent
@@ -563,5 +589,5 @@ and a continuous integration run answer the same question, and so that raising i
 | Containerization and deployment | IR-18, IR-19 | — |
 | Offline and network-independent operation | IR-20 | — |
 | In-process desktop native core and C ABI | IR-21 … IR-26 | — |
-| Health and monitoring | FR-HC-01 … FR-HC-12 | UC-75 |
+| Health and monitoring | FR-HC-01 … FR-HC-17 | UC-75 |
 | Metrics | IR-27 | — |
