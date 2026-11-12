@@ -233,7 +233,7 @@ public sealed class DataExportTests : IAsyncLifetime
         Assert.Contains(DataExportMessages.Expired, await expired.Content.ReadAsStringAsync());
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -241,7 +241,7 @@ public sealed class DataExportTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await database.DisposeAsync();
         if (Directory.Exists(storageRoot))

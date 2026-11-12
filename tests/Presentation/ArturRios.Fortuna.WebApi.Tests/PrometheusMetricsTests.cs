@@ -123,7 +123,7 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
         Assert.Null(factory.Services.GetService<MeterProvider>());
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -131,7 +131,7 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         Environment.SetEnvironmentVariable("FORTUNA_METRICS_PORT", null);
         await database.DisposeAsync();

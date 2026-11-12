@@ -18,7 +18,7 @@ public abstract class ReportingDatabaseFixture : IAsyncLifetime
 
     public abstract AppDbContext CreateContext();
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await CreateDatabaseAsync();
         await using (var migration = CreateContext())
@@ -30,7 +30,7 @@ public abstract class ReportingDatabaseFixture : IAsyncLifetime
         scenario = await ReportingScenario.SeedAsync(context);
     }
 
-    public abstract Task DisposeAsync();
+    public abstract ValueTask DisposeAsync();
 
     protected abstract Task CreateDatabaseAsync();
 
@@ -54,7 +54,7 @@ public sealed class PostgreSqlReportingFixture : ReportingDatabaseFixture
     public override AppDbContext CreateContext() =>
         CreateContext(DatabaseProvider.PostgreSql, database.GetConnectionString());
 
-    public override async Task DisposeAsync() => await database.DisposeAsync();
+    public override async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     protected override Task CreateDatabaseAsync() => database.StartAsync();
 }
@@ -68,12 +68,12 @@ public sealed class SqliteReportingFixture : ReportingDatabaseFixture
     public override AppDbContext CreateContext() =>
         CreateContext(DatabaseProvider.SQLite, path);
 
-    public override Task DisposeAsync()
+    public override ValueTask DisposeAsync()
     {
         SqliteConnection.ClearAllPools();
         File.Delete(path);
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     protected override Task CreateDatabaseAsync() => Task.CompletedTask;

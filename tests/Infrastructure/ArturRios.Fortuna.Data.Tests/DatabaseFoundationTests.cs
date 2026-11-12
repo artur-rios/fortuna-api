@@ -766,14 +766,14 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         Assert.Equal(PostgresErrorCodes.RestrictViolation, exception.SqlState);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
         await context.Database.MigrateAsync();
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private AppDbContext CreateContext()
     {

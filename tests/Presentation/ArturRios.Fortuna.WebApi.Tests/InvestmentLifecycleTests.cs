@@ -217,7 +217,7 @@ public sealed class InvestmentLifecycleTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorHardDelete.StatusCode);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -225,7 +225,7 @@ public sealed class InvestmentLifecycleTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private async Task<Guid> SeedInvestmentAsync(
         HttpClient client,

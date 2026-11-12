@@ -80,7 +80,7 @@ that no other user can reach it.
 
 ## Testing
 
-- **xUnit** as the framework, with `Microsoft.NET.Test.Sdk` and `coverlet.collector`.
+- **xUnit v3** as the framework, with `Microsoft.NET.Test.Sdk` and `coverlet.collector`.
 - **ArturRios.Util.Test** for the category attributes (`[UnitFact]` / `[FunctionalFact]`), the
   `WebApiTest<TEntryPoint>` functional base class, the repository fakes and `CustomAssert`.
 - **Moq** for non-repository doubles — one mocking library, no second one.

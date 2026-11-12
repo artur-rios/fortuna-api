@@ -217,7 +217,7 @@ public sealed class ImportJobRetryTests : IAsyncLifetime
         Assert.Equal(1, factory.Services.GetRequiredService<IBackgroundJobQueue>().Depth);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -225,7 +225,7 @@ public sealed class ImportJobRetryTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private WebApplicationFactory<Program> CreateFactory()
     {

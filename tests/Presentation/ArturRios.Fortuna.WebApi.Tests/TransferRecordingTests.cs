@@ -463,7 +463,7 @@ public sealed class TransferRecordingTests : IAsyncLifetime
             item.PublicId == transfer.Id)).IsDeleted);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -471,7 +471,7 @@ public sealed class TransferRecordingTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private async Task<decimal> BalanceAsync(HttpClient client, Guid accountId)
     {

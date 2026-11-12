@@ -214,7 +214,7 @@ canonical list of the tools.
 
 | Concern | Technology | Version | How it is used |
 | --- | --- | --- | --- |
-| Test framework | **xUnit** (`xunit`, `xunit.runner.visualstudio`) | latest stable at implementation time | The framework for every test project. |
+| Test framework | **xUnit v3** (`xunit.v3.mtp-off`, `xunit.runner.visualstudio`) | latest stable at implementation time | The framework for every test project. The `mtp-off` flavour runs through VSTest, so `dotnet test`, its `--filter` and the `.trx` logger work as with xUnit v2. |
 | Test runner / SDK | `Microsoft.NET.Test.Sdk` | latest stable at implementation time | Host and runner integration for `dotnet test` and IDEs. |
 | Coverage | `coverlet.collector`, reported by `dotnet-reportgenerator-globaltool` | latest stable at implementation time | Collects coverage per project; the report is merged and gated in CI. |
 | Test helpers & doubles | **ArturRios.Util.Test** | latest stable at implementation time | The category attributes (`[UnitFact]` / `[UnitTheory]`, `[FunctionalFact]` / `[FunctionalTheory]`, which stamp a `Category` trait), the `WebApiTest<TEntryPoint>` functional base class, `FakeRepository<T, TKey>`, `AsyncFakeRepository<T, TKey>` (key-typed since 4.0, for Relational.Core 5.x), and `CustomAssert`. Fortuna's entities are not Relational.Core entities, so its tests use hand-written store fakes instead. |
@@ -252,7 +252,7 @@ through their abstractions with in-repository fakes and recorded fixtures — se
 | Import / export | ClosedXML | latest stable at implementation time |
 | Import / export | CsvHelper | latest stable at implementation time |
 | Storage | AWSSDK.S3 | latest stable at implementation time |
-| Testing | xunit | latest stable at implementation time |
+| Testing | xunit.v3.mtp-off | latest stable at implementation time |
 | Testing | xunit.runner.visualstudio | latest stable at implementation time |
 | Testing | Microsoft.NET.Test.Sdk | latest stable at implementation time |
 | Testing | coverlet.collector | latest stable at implementation time |

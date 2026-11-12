@@ -281,7 +281,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
             await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -289,7 +289,7 @@ public sealed class GoalDefinitionTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private WebApplicationFactory<Program> CreateFactory(DateTimeOffset? now = null)
     {

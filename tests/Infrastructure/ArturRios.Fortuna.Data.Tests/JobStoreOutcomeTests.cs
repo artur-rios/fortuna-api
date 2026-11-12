@@ -30,13 +30,13 @@ public sealed class JobStoreOutcomeTests : IAsyncLifetime
 
     private AppDbContext context = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         context = CreateContext(path);
         await context.Database.MigrateAsync();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await context.DisposeAsync();
         SqliteConnection.ClearAllPools();

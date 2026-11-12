@@ -114,7 +114,7 @@ public sealed class CommittedObligationsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -125,7 +125,7 @@ public sealed class CommittedObligationsTests : IAsyncLifetime
     private static decimal WireDecimal(JsonElement value) =>
         decimal.Parse(value.GetString()!, CultureInfo.InvariantCulture);
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private async Task SeedCommitmentsAsync(Guid subject)
     {

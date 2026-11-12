@@ -181,7 +181,7 @@ public sealed class RecurringTransactionUpdateTests : IAsyncLifetime
         Assert.Equal(50m, saved.Amount);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -189,7 +189,7 @@ public sealed class RecurringTransactionUpdateTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private async Task<Guid> SeedCategoryAsync(Guid subject, string name)
     {

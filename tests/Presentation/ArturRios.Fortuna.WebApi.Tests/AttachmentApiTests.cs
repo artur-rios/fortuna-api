@@ -494,7 +494,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
             item.PublicId == attachmentId)).IsDeleted);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -502,7 +502,7 @@ public sealed class AttachmentApiTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         await database.DisposeAsync();
         if (Directory.Exists(storageRoot))
