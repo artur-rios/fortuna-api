@@ -211,7 +211,7 @@ public sealed class InvestmentViewTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorResponse.StatusCode);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -219,7 +219,7 @@ public sealed class InvestmentViewTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     [FunctionalFact]
     public async Task GivenDeletedInvestment_WhenListed_ThenExplicitInclusionControlsVisibility()

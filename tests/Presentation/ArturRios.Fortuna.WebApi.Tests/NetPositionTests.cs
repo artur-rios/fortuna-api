@@ -134,7 +134,7 @@ public sealed class NetPositionTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, invalidResponse.StatusCode);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -142,7 +142,7 @@ public sealed class NetPositionTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private async Task SeedPortfolioAsync(Guid subject, Guid brlAccountId, Guid usdAccountId)
     {

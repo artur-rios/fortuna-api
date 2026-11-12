@@ -352,7 +352,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorDetail.StatusCode);
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -360,7 +360,7 @@ public sealed class TransactionSearchTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private async Task<Guid> SeedCategoryAsync(Guid subject, string name)
     {

@@ -9,7 +9,7 @@
     <PackageVersion Include="ArturRios.Jwt" Version="1.4.1" />
     <PackageVersion Include="ArturRios.Mediator" Version="2.0.1" />
     <PackageVersion Include="ArturRios.Util" Version="2.2.0" />
-    <PackageVersion Include="ArturRios.Util.Test" Version="4.0.0" />
+    <PackageVersion Include="ArturRios.Util.Test" Version="5.0.1" />
     <PackageVersion Include="ArturRios.Util.WebApi" Version="5.2.0" />
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <PackageVersion Include="PdfPig" Version="0.1.16" />
@@ -55,7 +55,7 @@
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
-    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
   </ItemGroup>
 </Project>

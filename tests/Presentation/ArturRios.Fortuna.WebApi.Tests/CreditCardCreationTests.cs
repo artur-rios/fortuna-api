@@ -228,7 +228,7 @@ public sealed class CreditCardCreationTests : IAsyncLifetime
         Assert.False(await context.CreditCards.AnyAsync());
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -236,7 +236,7 @@ public sealed class CreditCardCreationTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private WebApplicationFactory<Program> CreateFactory()
     {

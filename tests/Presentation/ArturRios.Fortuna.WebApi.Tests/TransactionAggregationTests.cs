@@ -390,7 +390,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
             message => message.Contains("totals may differ", StringComparison.OrdinalIgnoreCase));
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
@@ -398,7 +398,7 @@ public sealed class TransactionAggregationTests : IAsyncLifetime
         await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private async Task<AggregationEnvelope> AggregateAsync(
         HttpClient client,

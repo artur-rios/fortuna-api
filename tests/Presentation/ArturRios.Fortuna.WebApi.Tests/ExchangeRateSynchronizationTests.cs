@@ -121,14 +121,14 @@ public sealed class ExchangeRateSynchronizationTests : IAsyncLifetime
         Assert.Equal(before, await afterContext.BackgroundJobs.CountAsync());
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await database.StartAsync();
         await using var context = CreateContext();
         await context.Database.MigrateAsync();
     }
 
-    public async Task DisposeAsync() => await database.DisposeAsync();
+    public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
     private WebApplicationFactory<Program> CreateFactory(bool configured, RecordingQueue queue)
     {

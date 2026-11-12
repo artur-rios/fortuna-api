@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -496,7 +497,10 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
     /// <summary>A functional fact, skipped with its reason where the host has no IPv6 loopback.</summary>
     private sealed class Ipv6LoopbackFactAttribute : FunctionalFactAttribute
     {
-        public Ipv6LoopbackFactAttribute()
+        public Ipv6LoopbackFactAttribute(
+            [CallerFilePath] string? sourceFilePath = null,
+            [CallerLineNumber] int sourceLineNumber = -1)
+            : base(sourceFilePath: sourceFilePath, sourceLineNumber: sourceLineNumber)
         {
             if (Skip is null && !HasIpv6Loopback())
             {
