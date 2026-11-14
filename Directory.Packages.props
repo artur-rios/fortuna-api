@@ -43,14 +43,15 @@
     <!--
       The Prometheus exporter has never shipped a stable release: upstream keeps it in beta until the
       OpenTelemetry Prometheus specification is stable. It is pinned to the beta that matches the
-      stable 1.19.1 SDK that OpenTelemetry.Extensions.Hosting above brings in (the exporter requires
-      OpenTelemetry 1.19.1 or later), and only serves the private scrape endpoint.
+      stable 1.20.1 SDK that OpenTelemetry.Extensions.Hosting above brings in (the exporter requires
+      OpenTelemetry 1.20.1 or later), and only serves the private scrape endpoint. The 1.21 line is
+      not taken: OpenTelemetry.Api 1.21.0 requires System.Diagnostics.DiagnosticSource 11.0.0.
     -->
-    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.19.1-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.20.1-beta.1" />
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="Bogus" Version="35.6.5" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <PackageVersion Include="Moq" Version="4.21.0" />
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
