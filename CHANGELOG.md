@@ -12,6 +12,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The tests run on xUnit v3: `xunit` 2.9.3 → `xunit.v3.mtp-off` 4.0.3 and `ArturRios.Util.Test` 4.0.0 → 5.0.1, the
   release built on xUnit v3. The `mtp-off` flavour runs through VSTest, so `dotnet test`, its `Category` filters and
   the `.trx` logger work as before. Test-only; the HTTP API, the OpenAPI document and the native core are unchanged.
+- The `ArturRios.*` packages are on their newest releases: `ArturRios.Util.WebApi` 5.2.0 → 6.0.0, `ArturRios.Util.Test`
+  5.0.1 → 6.0.0 (test-only), `ArturRios.Data.PostgreSql` 4.0.0 → 4.0.1, `ArturRios.Data.Relational.Core` 5.0.1 →
+  5.0.2, `ArturRios.Jwt` 1.4.1 → 1.4.2, `ArturRios.Mediator` 2.0.1 → 2.0.2 and `ArturRios.Util` 2.2.0 → 2.2.1.
+  `Swashbuckle.AspNetCore` and the `swashbuckle.aspnetcore.cli` tool move from 10.3.1 to 11.0.1, on `Microsoft.OpenApi`
+  3.11.0; the document is still OpenAPI 3.0.4 and `EnumNamesSchemaFilter` still publishes `x-enum-varnames`.
+  `ArturRios.Configuration` comes in at 2.0.0 (it was 1.2.0) through `ArturRios.Util.WebApi`; Fortuna loads no `.env`
+  file through it, so its `.env` precedence change does not apply. These packages also bring `ArturRios.Output` 3.3.1
+  (it was 3.2.0), whose `PaginatedOutput` carries `nextPageToken` and `hasNextPage`: every paginated response now
+  includes `"nextPageToken": null` and `"hasNextPage": false` next to the existing page fields, and the OpenAPI
+  document lists both on each `*PaginatedOutput` schema. The change is additive; no existing field changes.
 
 ## [4.2.0] - 2026-11-10
 
