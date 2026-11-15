@@ -160,12 +160,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -246,12 +254,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -1618,12 +1634,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -2836,12 +2860,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -3007,12 +3039,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -3886,12 +3926,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -4792,12 +4840,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -4970,12 +5026,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -5450,12 +5514,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -5553,12 +5625,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
@@ -7559,12 +7639,20 @@
             "nullable": true,
             "type": "array"
           },
+          "hasNextPage": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "type": "string"
             },
             "nullable": true,
             "type": "array"
+          },
+          "nextPageToken": {
+            "nullable": true,
+            "type": "string"
           },
           "pageNumber": {
             "format": "int32",
