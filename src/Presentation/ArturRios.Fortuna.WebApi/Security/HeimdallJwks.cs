@@ -42,7 +42,10 @@ public sealed class HeimdallJwks(
     /// <summary>The shortest time between two fetches.</summary>
     public static readonly TimeSpan MinimumRefreshInterval = TimeSpan.FromMinutes(1);
 
-    /// <summary>How long a fetch, the body included, may take before it counts as failed.</summary>
+    /// <summary>
+    /// How long a fetch, the body included, may take before it counts as failed, measured on the injected
+    /// <see cref="TimeProvider" />.
+    /// </summary>
     public static readonly TimeSpan FetchTimeout = TimeSpan.FromSeconds(5);
 
     private readonly Lock _gate = new();
@@ -103,7 +106,7 @@ public sealed class HeimdallJwks(
     /// <summary>Fetches the key set and, when it holds a usable key, replaces the known keys. Never throws.</summary>
     private async Task FetchAsync()
     {
-        using var timeout = new CancellationTokenSource(FetchTimeout);
+        using var timeout = new CancellationTokenSource(FetchTimeout, timeProvider);
 
         try
         {

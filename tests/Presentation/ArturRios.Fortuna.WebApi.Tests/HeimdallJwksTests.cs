@@ -30,7 +30,7 @@ public sealed class HeimdallJwksTests
 
     public static TheoryData<string> Failures() => new()
     {
-        "404", "500", "timeout", "unreachable", "cut off", "garbage", "oversized", "no usable key"
+        "404", "500", "unreachable", "cut off", "garbage", "oversized", "no usable key"
     };
 
     /// <summary>The failures Heimdall or the network can cause, as opposed to a defect in Fortuna.</summary>
@@ -210,6 +210,49 @@ public sealed class HeimdallJwksTests
     }
 
     [UnitFact]
+    public async Task GivenAFetchThatNeverAnswers_WhenTheFetchTimeoutPasses_ThenTheKnownKeysStay()
+    {
+        // The timeout runs on the injected clock, so moving the clock past it is what ends the fetch: no test
+        // waits the real five seconds, and a timeout on the wall clock would outlast the wait below.
+        var logger = new CapturingLogger();
+        var clock = new TimerClock();
+        var handler = new StubJwksHandler();
+        var jwks = new HeimdallJwks(new StubHttpClientFactory(handler), JwksTestSupport.Options(), clock, logger);
+        var known = JwksTestSupport.NewKey();
+        handler.Serve(JwksTestSupport.KeySet(known));
+        await jwks.EnsureKnownAsync(known.Id, CancellationToken.None);
+        var rotated = JwksTestSupport.NewKey();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        handler.Respond = async cancellationToken =>
+        {
+            started.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+
+            return StubJwksHandler.Json(JwksTestSupport.KeySet(rotated));
+        };
+        clock.Advance(HeimdallJwks.MinimumRefreshInterval);
+        var refreshing = jwks.EnsureKnownAsync(rotated.Id, CancellationToken.None);
+        await started.Task.WaitAsync(TestTimeout);
+
+        clock.Advance(HeimdallJwks.FetchTimeout - TimeSpan.FromTicks(1));
+
+        Assert.False(refreshing.IsCompleted);
+
+        clock.Advance(TimeSpan.FromTicks(1));
+        await refreshing.WaitAsync(HeimdallJwks.FetchTimeout / 2);
+
+        Assert.Equal(2, handler.Requests);
+        Assert.Equal([known.Id], jwks.Keys.Select(key => key.Id));
+        var warning = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, warning.Level);
+        Assert.Contains($"no answer within {HeimdallJwks.FetchTimeout}", warning.Message);
+
+        await jwks.EnsureKnownAsync(rotated.Id, CancellationToken.None);
+
+        Assert.Equal(2, handler.Requests);
+    }
+
+    [UnitFact]
     public async Task GivenAFetchThatThrowsUnexpectedly_WhenRefreshing_ThenAnErrorWithTheExceptionIsLogged()
     {
         var logger = new CapturingLogger();
@@ -265,12 +308,6 @@ public sealed class HeimdallJwksTests
     {
         "404" => _ => Task.FromResult(WithStatus(HttpStatusCode.NotFound, keySet)),
         "500" => _ => Task.FromResult(WithStatus(HttpStatusCode.InternalServerError, keySet)),
-        "timeout" => async cancellationToken =>
-        {
-            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-
-            return StubJwksHandler.Json(keySet);
-        },
         "unreachable" => _ => Task.FromException<HttpResponseMessage>(new HttpRequestException("connection refused")),
         "cut off" => _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
         {
