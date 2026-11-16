@@ -424,6 +424,7 @@ imported; the payment-option and regulatory pages are ignored by design.
 | FR-RL-09 | The system shall return to a user the audit entries concerning their own records |
 | FR-RL-10 | The system shall maintain a creation and a last-update timestamp on every entity |
 | FR-RL-11 | The system shall fix a record's owner at creation and reject any operation that would change it |
+| FR-RL-12 | The system shall list only the soft-deleted transactions, or only the soft-deleted financial accounts, of the acting user on request, so a client can show what is restorable without reading every live record |
 | FR-RL-12 | Account erasure shall remove every owned financial, classification, planning, ingestion, connection, attachment, export and background-job record in one explicit dependency-ordered transaction; any failure shall leave the account entirely intact |
 | FR-RL-13 | Audit entries shall identify an actor only by a random opaque subject reference held in a separate revocable mapping, and account erasure shall append its final non-identifying entry before destroying that mapping |
 
@@ -826,7 +827,7 @@ deliberately not generated. The native equivalents for health and local recovery
 | Method | Path | Description | Requirement |
 | --- | --- | --- | --- |
 | POST | `/api/accounts` | Create a financial account | FR-AC-01 |
-| GET | `/api/accounts` | List with filter, sort and pagination | FR-AC-05 |
+| GET | `/api/accounts` | List with filter, sort and pagination; `DeletedOnly` lists only the soft-deleted | FR-AC-05, FR-RL-12 |
 | GET | `/api/accounts/{id}` | Retrieve one | FR-AC-04 |
 | GET | `/api/accounts/{id}/balance` | The derived balance | FR-AC-07 |
 | PUT | `/api/accounts/{id}` | Update name, institution and type | FR-AC-06 |
@@ -867,7 +868,7 @@ deliberately not generated. The native equivalents for health and local recovery
 | Method | Path | Description | Requirement |
 | --- | --- | --- | --- |
 | POST | `/api/transactions` | Record an expense or earning | FR-TX-01 |
-| GET | `/api/transactions` | Search, filter, sort and paginate | FR-TX-10, FR-TX-11 |
+| GET | `/api/transactions` | Search, filter, sort and paginate; `DeletedOnly` lists only the soft-deleted | FR-TX-10, FR-TX-11, FR-RL-12 |
 | GET | `/api/transactions/{id}` | Retrieve one | FR-TX-09 |
 | PUT | `/api/transactions/{id}` | Update | FR-TX-12 |
 | DELETE | `/api/transactions/{id}` · `/hard` · `POST /restore` | Lifecycle | FR-TX-26 |
