@@ -211,6 +211,7 @@ public sealed class TransactionQueryHandlerTests
             MaximumAmount = 2m,
             Text = "  coffee  ",
             IncludeDeleted = true,
+            DeletedOnly = true,
             PageSize = 500
         };
 
@@ -230,6 +231,7 @@ public sealed class TransactionQueryHandlerTests
         Assert.Equal(query.MaximumAmount, reader.LastCriteria?.MaximumAmount);
         Assert.Equal("coffee", reader.LastCriteria?.Text);
         Assert.True(reader.LastCriteria?.IncludeDeleted);
+        Assert.True(reader.LastCriteria?.DeletedOnly);
     }
 
     [UnitFact]

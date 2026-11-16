@@ -17,6 +17,7 @@ public sealed class SearchTransactionsQuery : BaseQuery
     public decimal? MaximumAmount { get; set; }
     public string? Text { get; set; }
     public bool IncludeDeleted { get; set; }
+    public bool DeletedOnly { get; set; }
     public string? DisplayCurrencyCode { get; set; }
     public DateOnly? FigureDate { get; set; }
     public string SortBy { get; set; } = "OccurredOn";

@@ -151,6 +151,28 @@ public sealed class FinancialAccountQueryHandlerTests
     }
 
     [UnitTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GivenLiveAndDeletedAccounts_WhenListedDeletedOnly_ThenOnlyTheDeletedAreReturned(
+        bool includeDeleted)
+    {
+        var user = User();
+        var live = Account(user, "Live");
+        var deleted = Account(user, "Deleted");
+        deleted.SoftDelete(DateTimeOffset.UtcNow);
+        var handler = ListHandler(Profile(user), new StubFinancialAccountReader(live, deleted));
+
+        var result = await handler.HandleAsync(new ListFinancialAccountsQuery
+        {
+            DeletedOnly = true,
+            IncludeDeleted = includeDeleted
+        });
+
+        Assert.Equal(1, result.TotalItems);
+        Assert.Equal(deleted.PublicId, Assert.Single(result.Data!).Id);
+    }
+
+    [UnitTheory]
     [InlineData("Name", false, "Alpha")]
     [InlineData("Name", true, "Beta")]
     [InlineData("Institution", false, "Beta")]

@@ -141,7 +141,8 @@ public sealed class SearchTransactionsQueryHandler(
             MinimumAmount = query.MinimumAmount,
             MaximumAmount = query.MaximumAmount,
             Text = string.IsNullOrWhiteSpace(query.Text) ? null : query.Text.Trim(),
-            IncludeDeleted = query.IncludeDeleted
+            IncludeDeleted = query.IncludeDeleted,
+            DeletedOnly = query.DeletedOnly
         };
 
     private DateOnly Today() => DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);

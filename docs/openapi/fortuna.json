@@ -11161,6 +11161,13 @@
           },
           {
             "in": "query",
+            "name": "DeletedOnly",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
             "name": "SortBy",
             "schema": {
               "type": "string"
@@ -17826,6 +17833,13 @@
           {
             "in": "query",
             "name": "IncludeDeleted",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "DeletedOnly",
             "schema": {
               "type": "boolean"
             }
