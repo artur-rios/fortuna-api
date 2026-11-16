@@ -38,6 +38,7 @@ public static class DatabaseProvider
                 sqlite => sqlite
                     .MigrationsAssembly(SQLiteMigrationsAssembly)
                     .MigrationsHistoryTable("__ef_migrations_history"));
+            options.AddInterceptors(SqliteDecimalCollation.Instance);
 
             return;
         }
