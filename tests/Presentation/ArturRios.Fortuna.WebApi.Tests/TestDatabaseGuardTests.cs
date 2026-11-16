@@ -21,11 +21,8 @@ public sealed partial class TestDatabaseGuardTests
     {
         var tests = TestsDirectory();
 
-        var offenders = Directory
-            .EnumerateFiles(tests, "*", SearchOption.AllDirectories)
-            .Where(path => SourceExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+        var offenders = SourceFiles(tests)
             .Select(path => Path.GetRelativePath(tests, path))
-            .Where(path => !path.Split(Path.DirectorySeparatorChar).Any(BuildOutputDirectories.Contains))
             .SelectMany(path => File
                 .ReadLines(Path.Combine(tests, path))
                 .Select((line, index) => (Path: path, Line: line, Number: index + 1)))
@@ -108,6 +105,35 @@ public sealed partial class TestDatabaseGuardTests
         }
 
         return LoopbackDefaultPort().IsMatch(line);
+    }
+
+    /// <summary>
+    ///     The source files under <paramref name="directory" />. Build output is pruned as the walk reaches it
+    ///     rather than filtered out afterwards: bin, obj and TestResults hold far more files than the sources, and
+    ///     walking them made this the slowest unit test of the suite.
+    /// </summary>
+    private static IEnumerable<string> SourceFiles(string directory)
+    {
+        foreach (var file in Directory.EnumerateFiles(directory))
+        {
+            if (SourceExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase))
+            {
+                yield return file;
+            }
+        }
+
+        foreach (var child in Directory.EnumerateDirectories(directory))
+        {
+            if (BuildOutputDirectories.Contains(Path.GetFileName(child)))
+            {
+                continue;
+            }
+
+            foreach (var file in SourceFiles(child))
+            {
+                yield return file;
+            }
+        }
     }
 
     private static (string Name, string? Port) SplitPort(string host)
