@@ -2,7 +2,6 @@ using ArturRios.Fortuna.Data.Configuration;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.Data.Tests;
 
@@ -48,8 +47,7 @@ public abstract class ReportingDatabaseFixture : IAsyncLifetime
 
 public sealed class PostgreSqlReportingFixture : ReportingDatabaseFixture
 {
-    private readonly PostgreSqlContainer database =
-        new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly PostgresTestDatabase database = new();
 
     public override AppDbContext CreateContext() =>
         CreateContext(DatabaseProvider.PostgreSql, database.GetConnectionString());

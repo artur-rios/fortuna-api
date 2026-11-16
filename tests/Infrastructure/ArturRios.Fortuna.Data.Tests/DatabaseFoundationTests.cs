@@ -21,13 +21,12 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.Data.Tests;
 
 public sealed class DatabaseFoundationTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer database = new PostgreSqlBuilder("postgres:17-alpine").Build();
+    private readonly PostgresTestDatabase database = new();
 
     [FunctionalFact]
     public async Task GivenEmptyDatabase_WhenMigrated_ThenFortunaSchemaAndFoundationTablesExist()
@@ -766,12 +765,7 @@ public sealed class DatabaseFoundationTests : IAsyncLifetime
         Assert.Equal(PostgresErrorCodes.RestrictViolation, exception.SqlState);
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync();
 
     public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
