@@ -73,11 +73,15 @@ WEBAPI_SHARDS=(
   "$(first_letters ABCDEFGHI | sed 's/|/\&/g; s/~/!~/g')"
 )
 RUN_LOGS=$(mktemp -d)
-trap 'rm -rf "$RUN_LOGS"' EXIT
+SHARD_COPIES=()
+trap 'rm -rf "$RUN_LOGS" "${SHARD_COPIES[@]}"' EXIT
 run_tests() { # <project> <run name> [dotnet test arguments...]
   local project=$1 name=$2
   shift 2
-  dotnet test "$project" --configuration Release --no-build     --logger "trx;LogFilePrefix=$name"     --results-directory "$(dirname "$project")/TestResults"     --collect:"XPlat Code Coverage" "$@" >"$RUN_LOGS/$name.log" 2>&1
+  dotnet test "$project" --configuration Release --no-build \
+    --logger "trx;LogFilePrefix=$name" \
+    --results-directory "$(dirname "$project")/TestResults" \
+    --collect:"XPlat Code Coverage" "$@" >"$RUN_LOGS/$name.log" 2>&1
 }
 runs=()
 for project in $(find tests -name '*.Tests.csproj' | sort); do
@@ -85,10 +89,16 @@ for project in $(find tests -name '*.Tests.csproj' | sort); do
   if [ "$name" = "$WEBAPI_TESTS" ]; then
     output=$(dirname "$project")/bin/Release/net10.0
     for shard in "${!WEBAPI_SHARDS[@]}"; do
-      copy=$RUN_LOGS/$name.$((shard + 1))
+      # Inside the project's own bin/ (ignored by git), not a temporary directory: some tests find the repository
+      # by walking up from their assembly's directory. OutputPath must be absolute, or MSBuild reads it relative to
+      # the project.
+      copy=$PWD/$(dirname "$project")/bin/shard-$((shard + 1))
+      rm -rf "$copy"
       cp -R "$output" "$copy"
+      SHARD_COPIES+=("$copy")
       # The project still names the run, so the coverage collector is found; OutputPath points it at the copy.
-      run_tests "$project" "$name.$((shard + 1))" -p:OutputPath="$copy/" -p:AppendTargetFrameworkToOutputPath=false         --filter "${WEBAPI_SHARDS[$shard]}" &
+      run_tests "$project" "$name.$((shard + 1))" -p:OutputPath="$copy/" -p:AppendTargetFrameworkToOutputPath=false \
+        --filter "${WEBAPI_SHARDS[$shard]}" &
       runs+=("$!:$name.$((shard + 1))")
     done
   else
