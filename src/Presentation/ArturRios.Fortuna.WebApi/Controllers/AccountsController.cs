@@ -126,8 +126,8 @@ public sealed class AccountsController : FortunaController
 
     [HttpGet]
     [AllowedQuery(
-        "PageNumber", "PageSize", "Name", "Institution", "AccountType", "CurrencyCode", "IncludeDeleted", "SortBy",
-        "Descending")]
+        "PageNumber", "PageSize", "Name", "Institution", "AccountType", "CurrencyCode", "IncludeDeleted", "DeletedOnly",
+        "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<PaginatedOutput<FinancialAccountOutput>>> List(
         [FromQuery] ListFinancialAccountsQuery query)

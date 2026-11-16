@@ -2010,6 +2010,64 @@ mod tests {
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
     }
 
+    #[test]
+    fn given_live_and_deleted_records_when_listed_deleted_only_then_only_the_deleted_are_returned()
+    {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let token = create_local_user(&path);
+        let live = create_account(&token, "0");
+        let deleted = create_account(&token, "0");
+        let route = serde_json::json!({"token": token, "route": {"id": deleted}}).to_string();
+        assert_eq!(
+            FORTUNA_STATUS_OK,
+            call(fortuna_api_accounts_by_id_delete, &route).status
+        );
+        let record = |description: &str| {
+            create_owned(
+                fortuna_api_transactions_post,
+                &token,
+                serde_json::json!({"financialAccountId": live, "direction": 2, "amount": 1,
+                    "description": description, "occurredAt": "2026-09-09T12:00:00Z"}),
+            )
+        };
+        record("Kept");
+        let removed = record("Removed");
+        let route = serde_json::json!({"token": token, "route": {"id": removed}}).to_string();
+        assert_eq!(
+            FORTUNA_STATUS_OK,
+            call(fortuna_api_transactions_by_id_delete, &route).status
+        );
+
+        let accounts = call(
+            fortuna_api_accounts_get,
+            &serde_json::json!({"token": token, "query": {"DeletedOnly": true}}).to_string(),
+        );
+        let transactions = call(
+            fortuna_api_transactions_get,
+            &serde_json::json!({"token": token, "query": {"deletedOnly": true}}).to_string(),
+        );
+
+        assert_eq!(FORTUNA_STATUS_OK, accounts.status, "{}", accounts.body);
+        let listed = body_of(&accounts)["data"].as_array().unwrap().clone();
+        assert_eq!(1, listed.len(), "{}", accounts.body);
+        assert_eq!(deleted, listed[0]["id"]);
+        assert_ne!(live, listed[0]["id"]);
+        assert_eq!(true, listed[0]["isDeleted"]);
+        assert_eq!(
+            FORTUNA_STATUS_OK, transactions.status,
+            "{}",
+            transactions.body
+        );
+        let page = body_of(&transactions)["data"].clone();
+        assert_eq!(1, page["totalItems"], "{}", transactions.body);
+        assert_eq!(removed, page["items"][0]["id"]);
+        assert_eq!(true, page["items"][0]["isDeleted"]);
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
     fn body_of(response: &Response) -> Value {
         serde_json::from_str(&response.body).unwrap()
     }

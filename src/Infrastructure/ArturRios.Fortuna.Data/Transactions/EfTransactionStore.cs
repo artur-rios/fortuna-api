@@ -777,7 +777,13 @@ public sealed class EfTransactionStore(
         var transactions = context.FinancialTransactions
             .AsNoTracking()
             .Where(transaction => transaction.User.PublicId == criteria.UserId);
-        if (!criteria.IncludeDeleted)
+        if (criteria.DeletedOnly)
+        {
+            // The record itself is deleted: one hidden only because its category or holding
+            // is deleted is not restorable on its own.
+            transactions = transactions.Where(transaction => transaction.IsDeleted);
+        }
+        else if (!criteria.IncludeDeleted)
         {
             transactions = transactions.WhereLive();
         }

@@ -28,7 +28,11 @@ public sealed class ListFinancialAccountsQueryHandler(
         }
 
         var filtered = accounts.Query().Where(account => account.User.PublicId == profile.Id);
-        if (!query.IncludeDeleted)
+        if (query.DeletedOnly)
+        {
+            filtered = filtered.Where(account => account.IsDeleted);
+        }
+        else if (!query.IncludeDeleted)
         {
             filtered = filtered.Where(account => !account.IsDeleted);
         }

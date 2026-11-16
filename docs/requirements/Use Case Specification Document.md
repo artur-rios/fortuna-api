@@ -496,7 +496,7 @@ probe an operation that is not available offline.
 | **Description** | Retrieve one account, or list them with filtering, sorting and pagination |
 | **Preconditions** | The request is authenticated |
 | **Postconditions** | None; the operation is read-only |
-| **Requirements** | FR-AC-04, FR-AC-05 |
+| **Requirements** | FR-AC-04, FR-AC-05, FR-RL-12 |
 
 **Main Flow**
 
@@ -513,6 +513,7 @@ probe an operation that is not available offline.
 | AF-02 | The identifier matches an account owned by another user | `404 Not Found` — the same response |
 | AF-03 | An unsupported sort field or filter is supplied | `400 Bad Request` naming the field |
 | AF-04 | The page size exceeds the configured maximum | It is clamped to the maximum and the applied value is reported |
+| AF-05 | Only the soft-deleted accounts are requested (`DeletedOnly`) | Only those are returned, each marked deleted, whatever `IncludeDeleted` says |
 
 ---
 
@@ -1074,7 +1075,7 @@ probe an operation that is not available offline.
 | **Description** | Find transactions by any combination of criteria, shaped for a spreadsheet-style grid |
 | **Preconditions** | The request is authenticated |
 | **Postconditions** | None; the operation is read-only |
-| **Requirements** | FR-TX-09, FR-TX-10, FR-TX-11 |
+| **Requirements** | FR-TX-09, FR-TX-10, FR-TX-11, FR-RL-12 |
 
 **Main Flow**
 
@@ -1092,6 +1093,7 @@ probe an operation that is not available offline.
 | AF-03 | An unsupported sort field or filter is supplied | `400 Bad Request` naming it |
 | AF-04 | The matched set spans several currencies | Totals are returned per currency unless a display currency is requested, in which case UC-10 applies |
 | AF-05 | Soft-deleted transactions are explicitly requested | They are returned, each marked deleted, and excluded from the totals |
+| AF-06 | Only the soft-deleted transactions are requested (`DeletedOnly`) | Only those whose own record is deleted are returned, whatever `IncludeDeleted` says; the totals stay empty, since no deleted record counts toward one |
 
 ---
 

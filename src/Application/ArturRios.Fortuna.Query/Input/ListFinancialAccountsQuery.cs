@@ -10,6 +10,7 @@ public sealed class ListFinancialAccountsQuery : BaseQuery
     public FinancialAccountType? AccountType { get; set; }
     public string? CurrencyCode { get; set; }
     public bool IncludeDeleted { get; set; }
+    public bool DeletedOnly { get; set; }
     public string SortBy { get; set; } = "Name";
     public bool Descending { get; set; }
 }

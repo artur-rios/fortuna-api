@@ -74,6 +74,9 @@ public sealed class TransactionSearchCriteria
     public decimal? MaximumAmount { get; init; }
     public string? Text { get; init; }
     public bool IncludeDeleted { get; init; }
+
+    /// <summary>Only the soft-deleted transactions, whatever <see cref="IncludeDeleted"/> says.</summary>
+    public bool DeletedOnly { get; init; }
 }
 
 public sealed class TransactionReadSnapshot

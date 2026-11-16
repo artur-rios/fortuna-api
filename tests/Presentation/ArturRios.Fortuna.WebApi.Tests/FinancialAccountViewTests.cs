@@ -100,6 +100,28 @@ public sealed class FinancialAccountViewTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenLiveAndDeletedAccounts_WhenListedDeletedOnly_ThenOnlyTheDeletedAreReturned()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, Guid.NewGuid(), HeimdallRoles.User);
+        await CreateAccountAsync(client, "Live");
+        var deleted = await CreateAccountAsync(client, "Archived");
+        await using (var context = CreateContext())
+        {
+            var stored = await context.FinancialAccounts.SingleAsync(item => item.PublicId == deleted.Id);
+            stored.SoftDelete(DateTimeOffset.UtcNow);
+            await context.SaveChangesAsync();
+        }
+
+        var deletedOnly = await client.GetFromJsonAsync<AccountPage>("/api/accounts?DeletedOnly=true");
+
+        var listed = Assert.Single(deletedOnly!.Data);
+        Assert.Equal(deleted.Id, listed.Id);
+        Assert.True(listed.IsDeleted);
+    }
+
+    [FunctionalFact]
     public async Task GivenFiltersAndSort_WhenListed_ThenOnlyOwnedMatchesAreReturnedInOrder()
     {
         await using var factory = CreateFactory();

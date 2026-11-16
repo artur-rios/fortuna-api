@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `GET /api/transactions` and `GET /api/accounts` take an optional `DeletedOnly` query parameter (FR-RL-12). When it
+  is `true`, only the soft-deleted records are returned, whatever `IncludeDeleted` says, so a client can list what is
+  restorable without reading every live record. A transaction is listed when its own record is deleted; the search
+  totals stay empty for such a page. The desktop native core honours it on the same two routes.
+
 ### Changed
 
 - The tests run on xUnit v3: `xunit` 2.9.3 → `xunit.v3.mtp-off` 4.0.3 and `ArturRios.Util.Test` 4.0.0 → 5.0.1, the

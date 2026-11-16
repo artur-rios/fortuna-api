@@ -98,7 +98,7 @@ public sealed class TransactionsController(
     [AllowedQuery(
         "PageNumber", "PageSize", "From", "To", "FinancialAccountId", "CreditCardId", "CategoryId", "TagId",
         "CounterpartyId", "Direction", "MinimumAmount", "MaximumAmount", "Text", "IncludeDeleted",
-        "DisplayCurrencyCode", "FigureDate", "SortBy", "Descending")]
+        "DeletedOnly", "DisplayCurrencyCode", "FigureDate", "SortBy", "Descending")]
     [RoleRequirement((int)HeimdallRoles.User)]
     public async Task<ActionResult<DataOutput<TransactionSearchOutput?>>> Search(
         [FromQuery] SearchTransactionsQuery query)

@@ -296,6 +296,44 @@ public sealed class TransactionSearchTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenLiveAndDeletedTransactions_WhenSearchedDeletedOnly_ThenOnlyTheDeletedAreReturned()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        var account = await CreateAccountAsync(client, "Lifecycle", "BRL");
+        var categoryId = await SeedCategoryAsync(subject, "General");
+        var deleted = await RecordAsync(
+            client,
+            categoryId,
+            100m,
+            TransactionDirection.Expense,
+            Today,
+            "Deleted",
+            financialAccountId: account.Id);
+        await RecordAsync(
+            client,
+            categoryId,
+            20m,
+            TransactionDirection.Earning,
+            Today,
+            "Live",
+            financialAccountId: account.Id);
+        await SoftDeleteAsync(deleted.Id);
+
+        var deletedOnly = await client.GetFromJsonAsync<SearchEnvelope>(
+            "/api/transactions?DeletedOnly=true");
+
+        var listed = Assert.Single(deletedOnly!.Data!.Items);
+        Assert.Equal(deleted.Id, listed.Id);
+        Assert.True(listed.IsDeleted);
+        Assert.Equal(1, deletedOnly.Data.TotalItems);
+        // FR-RL-02: a deleted record never counts toward a total.
+        Assert.Empty(deletedOnly.Data.Totals.ByCurrency);
+    }
+
+    [FunctionalFact]
     public async Task GivenTransferRows_WhenSearched_ThenRowsAppearButTotalsExcludeThem()
     {
         var subject = Guid.NewGuid();
