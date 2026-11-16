@@ -606,8 +606,20 @@ fn execute_record_operation(
     let include_deleted = query_bool(request, "includeDeleted");
 
     if operation.method == "GET" && !operation.path.contains("{id}") {
-        return match core.store.list_records(user_id, resource, include_deleted) {
-            Ok(records) => list_result(operation, records, request),
+        // DeletedOnly, as the HTTP host offers it on these two lists, narrows to the
+        // soft-deleted records whatever IncludeDeleted says.
+        let deleted_only = matches!(operation.path, "/api/accounts" | "/api/transactions")
+            && query_bool(request, "DeletedOnly");
+        return match core
+            .store
+            .list_records(user_id, resource, include_deleted || deleted_only)
+        {
+            Ok(mut records) => {
+                if deleted_only {
+                    records.retain(|record| record["isDeleted"].as_bool().unwrap_or(false));
+                }
+                list_result(operation, records, request)
+            }
             Err(_) => failure(FORTUNA_STATUS_INTERNAL_ERROR, INTERNAL_ERROR),
         };
     }
