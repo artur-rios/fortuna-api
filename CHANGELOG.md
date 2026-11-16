@@ -30,6 +30,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   includes `"nextPageToken": null` and `"hasNextPage": false` next to the existing page fields, and the OpenAPI
   document lists both on each `*PaginatedOutput` schema. The change is additive; no existing field changes.
 
+### Fixed
+
+- On SQLite (the desktop offline mode), `GET /api/recurring-transactions?SortBy=Amount` now orders the rules by their
+  exact amount whatever the machine's regional format. With Portuguese (Brazil), or any format that writes `1.000,50`,
+  the rules came back as if `9.99` were 999 and `20.0` were 200: 20.00, 9.99, 100.50 instead of 9.99, 20.00, 100.49.
+  The stored amounts were always right and do not change, so existing desktop databases need no migration. Any other
+  ordering by a decimal column on SQLite gets the same fix.
+
 ## [4.2.0] - 2026-11-10
 
 ### Added

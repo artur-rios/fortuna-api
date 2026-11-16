@@ -1,3 +1,4 @@
+using System.Globalization;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Transactions;
@@ -42,6 +43,54 @@ public sealed class RecurringTransactionStoreTests
                 descending ? [100.5m, 100.49m, 20m] : [9.99m, 20m, 100.49m],
                 page.Rules.Select(rule => rule.Amount));
         });
+    }
+
+    // SQLite stores decimals as invariant TEXT ("9.99"). Reading one back in a culture whose
+    // group separator is '.' turns it into 999, so the order must not depend on the process culture.
+    [FunctionalTheory]
+    [InlineData("pt-BR", false)]
+    [InlineData("pt-BR", true)]
+    [InlineData("de-DE", false)]
+    [InlineData("de-DE", true)]
+    public async Task GivenCommaDecimalCulture_WhenSqliteRulesAreListedByAmount_ThenTheyAreOrderedByExactAmount(
+        string culture,
+        bool descending)
+    {
+        var original = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+        try
+        {
+            await WithDatabaseAsync(async context =>
+            {
+                var data = await StoreTestData.SeedAsync(context);
+                var account = data.Account(context, "Checking");
+                foreach (var amount in new[] { 100.5m, 9.99m, 100.49m, 20m, 1000m })
+                {
+                    context.RecurringTransactions.Add(Rule(data, account, amount));
+                }
+
+                await context.SaveChangesAsync();
+
+                var page = await Store(context).ListAsync(
+                    new RecurringTransactionListCriteria(
+                        data.User.PublicId,
+                        null,
+                        false,
+                        "Amount",
+                        descending,
+                        1,
+                        5),
+                    CancellationToken.None);
+
+                Assert.Equal(
+                    descending ? [1000m, 100.5m, 100.49m, 20m, 9.99m] : [9.99m, 20m, 100.49m, 100.5m, 1000m],
+                    page.Rules.Select(rule => rule.Amount));
+            });
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 
     [FunctionalFact]
