@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -79,7 +80,7 @@ public sealed class ManualExchangeRateTests : IAsyncLifetime
 
         var response = await client.PostAsJsonAsync(
             "/api/exchange-rates",
-            Command("USD", "BRL", decimal.Parse(value), new DateOnly(2026, 8, 30)));
+            Command("USD", "BRL", decimal.Parse(value, CultureInfo.InvariantCulture), new DateOnly(2026, 8, 30)));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         await using var context = CreateContext();
