@@ -627,13 +627,13 @@ public sealed class TokenSchemesTests : IDisposable
         Guid subject,
         string issuer,
         SigningCredentials? signingCredentials) => new()
-    {
-        Issuer = issuer,
-        Audience = JwksTestSupport.Audience,
-        Claims = Claims(subject, localClaim: false).ToDictionary(claim => claim.Key, claim => (object)claim.Value),
-        Expires = DateTime.UtcNow.AddMinutes(10),
-        SigningCredentials = signingCredentials
-    };
+        {
+            Issuer = issuer,
+            Audience = JwksTestSupport.Audience,
+            Claims = Claims(subject, localClaim: false).ToDictionary(claim => claim.Key, claim => (object)claim.Value),
+            Expires = DateTime.UtcNow.AddMinutes(10),
+            SigningCredentials = signingCredentials
+        };
 
     private static string Es256(JwtKey key, Guid subject, string issuer = JwksTestSupport.Issuer, bool localClaim = false) =>
         new JwtHandler().CreateToken(new JwtConfiguration(

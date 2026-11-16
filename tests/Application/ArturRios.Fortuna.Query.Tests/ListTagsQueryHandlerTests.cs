@@ -1,6 +1,6 @@
 using ArturRios.Fortuna.Query.Handlers;
-using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Query.Input;
+using ArturRios.Fortuna.Query.Input.Validation;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Messages;

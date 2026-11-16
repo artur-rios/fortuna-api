@@ -1,6 +1,6 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Globalization;
 using System.Text.Json;
 using ArturRios.Fortuna.Data.Configuration;
 using ArturRios.Fortuna.Domain.Accounts;

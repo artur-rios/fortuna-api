@@ -212,7 +212,10 @@ public sealed class RecurringTransactionDefinitionTests : IAsyncLifetime
 
     private WebApplicationFactory<Program> CreateFactory()
     {
-        foreach (var setting in ValidSettings()) Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+        foreach (var setting in ValidSettings())
+        {
+            Environment.SetEnvironmentVariable(setting.Key, setting.Value);
+        }
 
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {

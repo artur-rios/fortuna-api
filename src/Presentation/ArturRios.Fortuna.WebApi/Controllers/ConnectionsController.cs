@@ -4,9 +4,9 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.Filters;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.Security.Attributes;
-using ArturRios.Fortuna.WebApi.Filters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ArturRios.Fortuna.WebApi.Controllers;

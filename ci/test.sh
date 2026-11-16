@@ -32,6 +32,10 @@ dotnet restore "$SOLUTION"
 # Scan dependencies
 python3 scripts/vulnerabilities.py
 
+# Check formatting. Fails when `dotnet format` (whitespace, code style and analyzers, at the severities
+# .editorconfig sets) would change a file; `dotnet format src/ArturRios.Fortuna.sln` applies the same fixes.
+dotnet format "$SOLUTION" --verify-no-changes --no-restore
+
 # Build
 dotnet build "$SOLUTION" --configuration Release --no-restore -m:1
 

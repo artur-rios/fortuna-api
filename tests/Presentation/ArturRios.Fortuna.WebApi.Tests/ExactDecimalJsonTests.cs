@@ -142,11 +142,11 @@ public sealed class ExactDecimalJsonTests
             yield return element;
         }
         foreach (var child in element.ValueKind switch
-                 {
-                     JsonValueKind.Object => element.EnumerateObject().Select(item => item.Value),
-                     JsonValueKind.Array => element.EnumerateArray(),
-                     _ => []
-                 })
+        {
+            JsonValueKind.Object => element.EnumerateObject().Select(item => item.Value),
+            JsonValueKind.Array => element.EnumerateArray(),
+            _ => []
+        })
         {
             foreach (var nested in EnumerateObjects(child))
             {

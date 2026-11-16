@@ -1,19 +1,19 @@
-using ArturRios.Fortuna.Domain.Auditing;
-using ArturRios.Fortuna.Domain.Attachments;
 using ArturRios.Fortuna.Domain.Accounts;
+using ArturRios.Fortuna.Domain.Attachments;
+using ArturRios.Fortuna.Domain.Auditing;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Exports;
-using ArturRios.Fortuna.Domain.Jobs;
-using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Ingestion;
+using ArturRios.Fortuna.Domain.Investments;
+using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Planning;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ArturRios.Fortuna.Data.Configuration;

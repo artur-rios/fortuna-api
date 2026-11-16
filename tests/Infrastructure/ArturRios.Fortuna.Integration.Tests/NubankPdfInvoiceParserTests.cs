@@ -1,9 +1,9 @@
+using System.Globalization;
+using System.Text;
 using ArturRios.Fortuna.Integration.Ingestion;
 using ArturRios.Fortuna.Shared.Ingestion;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Util.Test.Attributes;
-using System.Globalization;
-using System.Text;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Fonts.Standard14Fonts;

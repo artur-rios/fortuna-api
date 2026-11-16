@@ -401,7 +401,9 @@ public sealed class HeimdallAuthCommandHandlerTests
 
         var result = await handler.HandleAsync(new()
         {
-            Name = "  New Person ", Email = " new@example.test ", Password = " keep spaces "
+            Name = "  New Person ",
+            Email = " new@example.test ",
+            Password = " keep spaces "
         });
 
         Assert.True(result.Success);
@@ -419,7 +421,9 @@ public sealed class HeimdallAuthCommandHandlerTests
 
         var result = await handler.HandleAsync(new()
         {
-            Name = "New Person", Email = "new@example.test", Password = "a-long-secret"
+            Name = "New Person",
+            Email = "new@example.test",
+            Password = "a-long-secret"
         });
 
         Assert.Contains(HeimdallAuthMessages.RegistrationUnavailable, result.Errors);
@@ -438,7 +442,9 @@ public sealed class HeimdallAuthCommandHandlerTests
 
         var result = await handler.HandleAsync(new()
         {
-            Name = "New Person", Email = "new@example.test", Password = "a-long-secret"
+            Name = "New Person",
+            Email = "new@example.test",
+            Password = "a-long-secret"
         });
 
         Assert.Contains(expected, result.Errors);
@@ -471,7 +477,9 @@ public sealed class HeimdallAuthCommandHandlerTests
 
         var result = await handler.HandleAsync(new()
         {
-            Name = new string('a', 201), Email = "new@example.test", Password = "a-long-secret"
+            Name = new string('a', 201),
+            Email = "new@example.test",
+            Password = "a-long-secret"
         });
 
         Assert.Contains(HeimdallAuthMessages.NameTooLong, result.Errors);
@@ -487,7 +495,9 @@ public sealed class HeimdallAuthCommandHandlerTests
 
         var result = await handler.HandleAsync(new()
         {
-            Name = name, Email = "new@example.test", Password = "a-long-secret"
+            Name = name,
+            Email = "new@example.test",
+            Password = "a-long-secret"
         });
 
         Assert.True(result.Success);
@@ -504,7 +514,9 @@ public sealed class HeimdallAuthCommandHandlerTests
 
         var result = await handler.HandleAsync(new()
         {
-            Name = $"   {name}   ", Email = "new@example.test", Password = "a-long-secret"
+            Name = $"   {name}   ",
+            Email = "new@example.test",
+            Password = "a-long-secret"
         });
 
         Assert.True(result.Success);
@@ -520,7 +532,9 @@ public sealed class HeimdallAuthCommandHandlerTests
 
         var result = await handler.HandleAsync(new()
         {
-            Name = "     ", Email = "new@example.test", Password = "a-long-secret"
+            Name = "     ",
+            Email = "new@example.test",
+            Password = "a-long-secret"
         });
 
         Assert.Contains(HeimdallAuthMessages.NameRequired, result.Errors);
@@ -537,7 +551,9 @@ public sealed class HeimdallAuthCommandHandlerTests
 
         var result = await handler.HandleAsync(new()
         {
-            Name = "New Person", Email = email, Password = "a-long-secret"
+            Name = "New Person",
+            Email = email,
+            Password = "a-long-secret"
         });
 
         Assert.True(result.Success);
@@ -553,7 +569,9 @@ public sealed class HeimdallAuthCommandHandlerTests
 
         var result = await handler.HandleAsync(new()
         {
-            Name = "New Person", Email = EmailOfLength(257), Password = "a-long-secret"
+            Name = "New Person",
+            Email = EmailOfLength(257),
+            Password = "a-long-secret"
         });
 
         Assert.Contains(HeimdallAuthMessages.EmailTooLong, result.Errors);

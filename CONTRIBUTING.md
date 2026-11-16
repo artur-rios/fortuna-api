@@ -70,6 +70,7 @@ locally:
 python3 -m unittest discover -s scripts -p "test_*.py"   # the helper scripts' own tests
 python3 scripts/check_blank_lines.py                     # a blank line above every return, break and yield
 python3 scripts/vulnerabilities.py                       # fail on any vulnerable NuGet package, transitive included
+dotnet format src/ArturRios.Fortuna.sln --verify-no-changes  # the code matches .editorconfig; drop the flag to fix it
 python3 scripts/openapi.py --check                       # docs/openapi/fortuna.json matches the code
 ```
 

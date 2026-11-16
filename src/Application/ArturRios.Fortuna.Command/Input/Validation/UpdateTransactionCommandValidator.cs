@@ -1,5 +1,5 @@
-using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.Shared.Classification;
+using ArturRios.Fortuna.Shared.Messages;
 using FluentValidation;
 
 namespace ArturRios.Fortuna.Command.Input.Validation;

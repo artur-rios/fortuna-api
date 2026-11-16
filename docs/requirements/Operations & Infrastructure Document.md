@@ -550,7 +550,7 @@ document it is generated from changes, are path-filtered: Jenkins reports a skip
 
 | Check | `ci/` script | Stages |
 | --- | --- | --- |
-| `test` | `test.sh` | Test the helper scripts → check for a blank line above every `return`, `break` and `yield` → restore → scan for vulnerable dependencies → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor (the report is kept with the build) |
+| `test` | `test.sh` | Test the helper scripts → check for a blank line above every `return`, `break` and `yield` → restore → scan for vulnerable dependencies → check formatting (`dotnet format --verify-no-changes`) → build once in Release → unit suite (`Category=Unit`) → functional suite (`Category=Functional`, on a Testcontainers PostgreSQL) → merge the coverage reports and fail below the floor (the report is kept with the build) |
 | `docker` | `docker.sh` | Build the container image |
 | `check` | `check.sh` | Regenerate the OpenAPI document from the code and fail if the committed one differs (IR-14) |
 | `native-msrv` | `native-msrv.sh` | Test the native core on the declared minimum Rust version (IR-21 … IR-25) |
