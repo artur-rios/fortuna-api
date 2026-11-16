@@ -1,7 +1,7 @@
+using System.Text.Json.Serialization;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Shared.Reporting;
 using ArturRios.Mediator.Query;
-using System.Text.Json.Serialization;
 
 namespace ArturRios.Fortuna.Query.Input;
 

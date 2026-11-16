@@ -1,18 +1,18 @@
 using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Classification;
 using ArturRios.Fortuna.Data.Configuration;
-using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Data.Currencies;
+using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
-using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Ingestion;
+using ArturRios.Fortuna.Domain.Lifecycle;
 using ArturRios.Fortuna.Domain.Transactions;
 using ArturRios.Fortuna.Domain.Users;
-using ArturRios.Fortuna.Shared.Transactions;
 using ArturRios.Fortuna.Shared.Attachments;
+using ArturRios.Fortuna.Shared.Transactions;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Transactions;

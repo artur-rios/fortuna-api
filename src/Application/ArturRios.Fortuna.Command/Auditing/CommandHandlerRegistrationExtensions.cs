@@ -1,7 +1,7 @@
 using ArturRios.Fortuna.Command.Validation;
+using ArturRios.Fortuna.Shared.Auditing;
 using ArturRios.Mediator.Command;
 using ArturRios.Mediator.Command.Interfaces;
-using ArturRios.Fortuna.Shared.Auditing;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

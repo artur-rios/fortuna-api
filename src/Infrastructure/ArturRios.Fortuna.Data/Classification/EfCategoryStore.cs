@@ -3,8 +3,8 @@ using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Lifecycle;
-using ArturRios.Fortuna.Shared.Classification;
 using ArturRios.Fortuna.Shared.Attachments;
+using ArturRios.Fortuna.Shared.Classification;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Classification;

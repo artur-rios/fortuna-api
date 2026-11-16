@@ -1,5 +1,5 @@
-using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Fortuna.Domain.Jobs;
+using ArturRios.Fortuna.Shared.Jobs;
 using ArturRios.Output;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.Extensions.Logging.Abstractions;

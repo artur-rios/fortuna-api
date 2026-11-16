@@ -3,8 +3,8 @@ using ArturRios.Fortuna.Data.EntityMaps;
 using ArturRios.Fortuna.Data.Transactions;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Lifecycle;
-using ArturRios.Fortuna.Shared.Cards;
 using ArturRios.Fortuna.Shared.Attachments;
+using ArturRios.Fortuna.Shared.Cards;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArturRios.Fortuna.Data.Cards;

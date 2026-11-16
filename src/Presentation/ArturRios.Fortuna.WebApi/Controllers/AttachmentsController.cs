@@ -1,6 +1,6 @@
-using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Output;
+using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
