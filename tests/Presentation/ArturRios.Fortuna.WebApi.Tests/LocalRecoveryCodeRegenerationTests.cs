@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Data.Configuration;
-using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Domain.Users;
 using ArturRios.Fortuna.Shared.Messages;
@@ -17,7 +16,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -26,7 +24,7 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
     private const string Secret = "correct-horse-battery-staple";
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
-    private readonly FreshDatabase database = new("postgres:17-alpine");
+    private readonly FreshDatabase database = new();
 
     [FunctionalFact]
     public async Task GivenLocalActorAndMatchingSecret_WhenRegenerating_ThenOldCodesAreReplaced()
@@ -159,13 +157,7 @@ public sealed class LocalRecoveryCodeRegenerationTests : IAsyncLifetime
         Assert.Equal(0, await context.LocalAccounts.CountAsync());
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync();
 
     public async ValueTask DisposeAsync() => await database.DisposeAsync();
 

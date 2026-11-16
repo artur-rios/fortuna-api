@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ArturRios.Fortuna.Data.Configuration;
-using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Security;
@@ -16,7 +15,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -26,7 +24,7 @@ public sealed class RecurringTransactionUpdateTests : IAsyncLifetime
     private const string Audience = "fortuna-tests";
     private static readonly DateTimeOffset Now =
         new(2026, 9, 5, 12, 0, 0, TimeSpan.Zero);
-    private readonly FreshDatabase database = new("postgres:17-alpine");
+    private readonly FreshDatabase database = new();
     private readonly MutableTimeProvider clock = new(Now);
 
     [FunctionalFact]
@@ -181,13 +179,7 @@ public sealed class RecurringTransactionUpdateTests : IAsyncLifetime
         Assert.Equal(50m, saved.Amount);
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync();
 
     public async ValueTask DisposeAsync() => await database.DisposeAsync();
 

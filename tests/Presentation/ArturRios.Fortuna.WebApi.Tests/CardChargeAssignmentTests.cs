@@ -4,7 +4,6 @@ using System.Net.Http.Json;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Data.Cards;
 using ArturRios.Fortuna.Data.Configuration;
-using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
@@ -21,7 +20,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -29,7 +27,7 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
 {
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
-    private readonly FreshDatabase database = new("postgres:17-alpine");
+    private readonly FreshDatabase database = new();
 
     [FunctionalFact]
     public async Task GivenChargesInSameCycle_WhenRecorded_ThenStatementIsReusedAndTotaled()
@@ -775,13 +773,7 @@ public sealed class CardChargeAssignmentTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorResult.StatusCode);
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync();
 
     public async ValueTask DisposeAsync() => await database.DisposeAsync();
 

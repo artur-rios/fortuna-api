@@ -1,25 +1,37 @@
-using System.Collections.Concurrent;
+using ArturRios.Fortuna.Data.Configuration;
+using ArturRios.Fortuna.Data.Seeding;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
 /// <summary>
-///     An empty PostgreSQL database of a test's own, in a container the whole test run shares per image.
+///     A migrated PostgreSQL database of a test's own, copied from a template in a container the whole test run shares.
 /// </summary>
 /// <remarks>
 ///     Each functional test used to start a PostgreSQL container of its own (xUnit builds the class, and so its
-///     <see cref="IAsyncLifetime" />, once per test): starting it was most of each test's time. A database per test
-///     keeps what that gave, a test that starts from nothing and leaves nothing behind, without the start. The class
-///     still migrates and seeds its database itself, as it did its container's.
+///     <see cref="IAsyncLifetime" />, once per test), and later migrated an empty database of its own: both were most
+///     of each test's time. The run now migrates two template databases once, one seeded with the reference currencies
+///     and one not, and every test gets a copy of one of them. A test still starts from a database nobody else has
+///     touched and leaves nothing behind.
 ///     <para>
-///         Ryuk, Testcontainers' reaper, is off in CI (yggdrasil's scripts/run-check.sh), so the containers are
-///         removed when the test process exits.
+///         Durability is off in the shared server (<c>fsync</c>, <c>synchronous_commit</c>, <c>full_page_writes</c>):
+///         nothing in it outlives the container. The image is the major version production runs.
+///     </para>
+///     <para>
+///         Ryuk, Testcontainers' reaper, is off in CI (yggdrasil's scripts/run-check.sh), so the container is removed
+///         when the test process exits.
 ///     </para>
 /// </remarks>
-public sealed class FreshDatabase(string image)
+public sealed class FreshDatabase
 {
-    private static readonly ConcurrentDictionary<string, Lazy<Task<PostgreSqlContainer>>> Containers = new();
+    private const string Image = "postgres:18-alpine";
+    private const string MigratedTemplate = "fortuna_migrated";
+    private const string SeededTemplate = "fortuna_seeded";
+
+    private static readonly Lazy<Task<PostgreSqlContainer>> Server = new(StartServerAsync);
 
     private readonly string name = "test_" + Guid.NewGuid().ToString("N");
     private string? connectionString;
@@ -28,22 +40,22 @@ public sealed class FreshDatabase(string image)
     {
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
         {
-            foreach (var container in Containers.Values)
+            if (Server.IsValueCreated && Server.Value.IsCompletedSuccessfully)
             {
-                if (container.IsValueCreated && container.Value.IsCompletedSuccessfully)
-                {
-                    container.Value.Result.DisposeAsync().AsTask().GetAwaiter().GetResult();
-                }
+                Server.Value.Result.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
         };
     }
 
-    /// <summary>Creates the database, starting the image's shared container first if no test has yet.</summary>
-    public async Task StartAsync()
+    /// <summary>
+    ///     Creates the database as a copy of the migrated template, with the reference currencies seeded unless
+    ///     <paramref name="seeded" /> is false. The first call of the run starts the server and builds the templates.
+    /// </summary>
+    public async Task StartAsync(bool seeded = true)
     {
-        var server = await ServerAsync();
-        await ExecuteAsync(server, $"CREATE DATABASE \"{name}\"");
-        connectionString = new NpgsqlConnectionStringBuilder(server) { Database = name }.ConnectionString;
+        var server = await ServerConnectionStringAsync();
+        await ExecuteAsync(server, $"CREATE DATABASE \"{name}\" TEMPLATE \"{(seeded ? SeededTemplate : MigratedTemplate)}\"");
+        connectionString = Connection(server, name, pooling: true);
     }
 
     public string GetConnectionString() =>
@@ -58,25 +70,43 @@ public sealed class FreshDatabase(string image)
         }
 
         NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
-        await ExecuteAsync(await ServerAsync(), $"DROP DATABASE \"{name}\" WITH (FORCE)");
+        await ExecuteAsync(await ServerConnectionStringAsync(), $"DROP DATABASE \"{name}\" WITH (FORCE)");
     }
 
-    private async Task<string> ServerAsync()
-    {
-        var container = await Containers
-            .GetOrAdd(image, key => new Lazy<Task<PostgreSqlContainer>>(() => StartContainerAsync(key)))
-            .Value;
+    private static async Task<string> ServerConnectionStringAsync() => (await Server.Value).GetConnectionString();
 
-        return container.GetConnectionString();
-    }
-
-    private static async Task<PostgreSqlContainer> StartContainerAsync(string image)
+    private static async Task<PostgreSqlContainer> StartServerAsync()
     {
-        var container = new PostgreSqlBuilder(image).Build();
+        var container = new PostgreSqlBuilder(Image)
+            .WithCommand("-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off")
+            .Build();
         await container.StartAsync();
+        var server = container.GetConnectionString();
+
+        // A database can only be copied while nobody is connected to it, so the templates are built over unpooled
+        // connections: none stays open once the migration and the seed are done.
+        await ExecuteAsync(server, $"CREATE DATABASE \"{MigratedTemplate}\"");
+        await using (var context = CreateContext(Connection(server, MigratedTemplate, pooling: false)))
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        await ExecuteAsync(server, $"CREATE DATABASE \"{SeededTemplate}\" TEMPLATE \"{MigratedTemplate}\"");
+        await using (var context = CreateContext(Connection(server, SeededTemplate, pooling: false)))
+        {
+            await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
+        }
 
         return container;
     }
+
+    private static string Connection(string server, string database, bool pooling) =>
+        new NpgsqlConnectionStringBuilder(server) { Database = database, Pooling = pooling }.ConnectionString;
+
+    private static AppDbContext CreateContext(string connection) => new(
+        new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connection).Options,
+        NullLoggerFactory.Instance,
+        DatabaseDiagnosticsOptions.Disabled);
 
     private static async Task ExecuteAsync(string server, string sql)
     {

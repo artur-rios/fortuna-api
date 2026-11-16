@@ -16,7 +16,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -24,7 +23,7 @@ public sealed class ExchangeRateSynchronizationTests : IAsyncLifetime
 {
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
-    private readonly FreshDatabase database = new("postgres:17-alpine");
+    private readonly FreshDatabase database = new();
 
     [FunctionalFact]
     public async Task GivenConfiguredSource_WhenSynchronizationIsRequested_ThenPendingJobIsPersistedAndQueued()
@@ -121,12 +120,7 @@ public sealed class ExchangeRateSynchronizationTests : IAsyncLifetime
         Assert.Equal(before, await afterContext.BackgroundJobs.CountAsync());
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync(seeded: false);
 
     public async ValueTask DisposeAsync() => await database.DisposeAsync();
 

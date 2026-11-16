@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ArturRios.Fortuna.Data.Configuration;
-using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
@@ -18,7 +17,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -26,7 +24,7 @@ public sealed class TransactionRecordingTests : IAsyncLifetime
 {
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
-    private readonly FreshDatabase database = new("postgres:17-alpine");
+    private readonly FreshDatabase database = new();
 
     [FunctionalFact]
     public async Task GivenOwnedAccountAndCategory_WhenRecorded_ThenDetailsAndBalanceAreStored()
@@ -267,13 +265,7 @@ public sealed class TransactionRecordingTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, administratorResponse.StatusCode);
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync();
 
     public async ValueTask DisposeAsync() => await database.DisposeAsync();
 
