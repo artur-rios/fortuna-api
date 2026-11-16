@@ -1,3 +1,4 @@
+using System.Globalization;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Util.Test.Attributes;
 
@@ -34,7 +35,7 @@ public sealed class ExchangeRateTests
     public void GivenNonPositiveRate_WhenCreated_ThenArgumentOutOfRangeExceptionIsThrown(string value)
     {
         var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new ExchangeRate(1, 2, decimal.Parse(value), DateOnly.MinValue, ExchangeRateSource.Manual));
+            new ExchangeRate(1, 2, decimal.Parse(value, CultureInfo.InvariantCulture), DateOnly.MinValue, ExchangeRateSource.Manual));
 
         Assert.Equal("rate", exception.ParamName);
     }

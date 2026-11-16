@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Globalization;
 using System.Text.Json;
 using ArturRios.Fortuna.Data.Configuration;
-using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
@@ -21,7 +20,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -30,7 +28,7 @@ public sealed class CommittedObligationsTests : IAsyncLifetime
     private const string Issuer = "heimdall-tests";
     private const string Audience = "fortuna-tests";
     private static readonly DateOnly Today = new(2026, 9, 8);
-    private readonly FreshDatabase database = new("postgres:17-alpine");
+    private readonly FreshDatabase database = new();
 
     [FunctionalFact]
     public async Task GivenMixedCommitments_WhenListed_ThenOnlyOwnedFactsAreConvertedAndOrdered()
@@ -114,13 +112,7 @@ public sealed class CommittedObligationsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync();
 
     private static decimal WireDecimal(JsonElement value) =>
         decimal.Parse(value.GetString()!, CultureInfo.InvariantCulture);

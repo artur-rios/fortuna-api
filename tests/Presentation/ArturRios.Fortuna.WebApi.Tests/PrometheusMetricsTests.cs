@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using ArturRios.Fortuna.Data.Configuration;
-using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.WebApi.Security;
 using ArturRios.Jwt;
@@ -14,7 +13,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Metrics;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -25,7 +23,7 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
     private const string LocalPortHeader = "X-Test-Local-Port";
     private const string Issuer = "heimdall-metrics-tests";
     private const string Audience = "fortuna-metrics-tests";
-    private readonly FreshDatabase database = new("postgres:17-alpine");
+    private readonly FreshDatabase database = new();
     private readonly string storageRoot = Path.Combine(
         Path.GetTempPath(), "fortuna-metrics-tests", Guid.NewGuid().ToString("N"));
 
@@ -123,17 +121,10 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
         Assert.Null(factory.Services.GetService<MeterProvider>());
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync();
 
     public async ValueTask DisposeAsync()
     {
-        Environment.SetEnvironmentVariable("FORTUNA_METRICS_PORT", null);
         await database.DisposeAsync();
         if (Directory.Exists(storageRoot))
         {

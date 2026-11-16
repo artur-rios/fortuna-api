@@ -1,3 +1,4 @@
+using System.Globalization;
 using ArturRios.Fortuna.Domain.Currencies;
 using ArturRios.Fortuna.Domain.Investments;
 using ArturRios.Fortuna.Domain.Users;
@@ -42,7 +43,7 @@ public sealed class InvestmentMovementTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new InvestmentMovement(
             Investment(),
             InvestmentMovementType.Contribution,
-            decimal.Parse(amount),
+            decimal.Parse(amount, CultureInfo.InvariantCulture),
             new DateOnly(2026, 9, 4),
             Now));
     }

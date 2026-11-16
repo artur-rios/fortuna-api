@@ -1,3 +1,4 @@
+using System.Globalization;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Currencies;
@@ -41,10 +42,10 @@ public sealed class InstallmentPlanTests
         short digits,
         string expectedSum)
     {
-        var amounts = InstallmentPlan.TrySplit(decimal.Parse(total), count, digits).Amounts;
+        var amounts = InstallmentPlan.TrySplit(decimal.Parse(total, CultureInfo.InvariantCulture), count, digits).Amounts;
 
         Assert.All(amounts, amount => Assert.Equal(decimal.Round(amount, digits), amount));
-        Assert.Equal(decimal.Parse(expectedSum), amounts.Sum());
+        Assert.Equal(decimal.Parse(expectedSum, CultureInfo.InvariantCulture), amounts.Sum());
     }
 
     [UnitTheory]
@@ -56,7 +57,7 @@ public sealed class InstallmentPlanTests
         short count,
         InstallmentSplitOutcome expected)
     {
-        var split = InstallmentPlan.TrySplit(decimal.Parse(total), count, 2);
+        var split = InstallmentPlan.TrySplit(decimal.Parse(total, CultureInfo.InvariantCulture), count, 2);
 
         Assert.False(split.Succeeded);
         Assert.Equal(expected, split.Outcome);

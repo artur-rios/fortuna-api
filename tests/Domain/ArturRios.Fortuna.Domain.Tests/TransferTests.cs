@@ -1,3 +1,4 @@
+using System.Globalization;
 using ArturRios.Fortuna.Domain.Accounts;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
@@ -128,7 +129,7 @@ public sealed class TransferTests
         Assert.Throws<ArgumentException>(() => new Transfer(
             AccountMovement(user, TransactionDirection.Expense),
             CardMovement(user, TransactionDirection.Earning),
-            rate is null ? null : decimal.Parse(rate),
+            rate is null ? null : decimal.Parse(rate, CultureInfo.InvariantCulture),
             date is null ? null : DateOnly.Parse(date),
             Now));
     }

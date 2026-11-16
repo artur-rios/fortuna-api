@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ArturRios.Fortuna.Data.Configuration;
-using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Cards;
 using ArturRios.Fortuna.Domain.Classification;
 using ArturRios.Fortuna.Domain.Ingestion;
@@ -22,7 +21,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Testcontainers.PostgreSql;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Fonts.Standard14Fonts;
@@ -36,7 +34,7 @@ public sealed class PdfInvoiceImportTests : IAsyncLifetime
     private const string Audience = "fortuna-tests";
     private static readonly DateTimeOffset Now =
         new(2027, 2, 2, 14, 0, 0, TimeSpan.Zero);
-    private readonly FreshDatabase database = new("postgres:18-alpine");
+    private readonly FreshDatabase database = new();
 
     [FunctionalFact]
     public async Task GivenNubankInvoice_WhenProcessedTwice_ThenStatementAndDuplicatesAreReported()
@@ -240,13 +238,7 @@ public sealed class PdfInvoiceImportTests : IAsyncLifetime
             (await foreign.Content.ReadFromJsonAsync<ErrorEnvelope>())?.Errors);
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync();
 
     public async ValueTask DisposeAsync() => await database.DisposeAsync();
 

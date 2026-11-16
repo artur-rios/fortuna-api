@@ -1,3 +1,4 @@
+using System.Globalization;
 using ArturRios.Fortuna.Command.Input;
 using ArturRios.Fortuna.Command.Input.Validation;
 using ArturRios.Fortuna.Shared.Messages;
@@ -31,7 +32,7 @@ public sealed class RecordManualExchangeRateCommandValidatorTests
     public async Task GivenNonPositiveRate_WhenValidated_ThenRateErrorIsReturned(string rate)
     {
         var command = ValidCommand();
-        command.Rate = decimal.Parse(rate);
+        command.Rate = decimal.Parse(rate, CultureInfo.InvariantCulture);
 
         var result = await validator.ValidateAsync(command);
 
@@ -46,7 +47,7 @@ public sealed class RecordManualExchangeRateCommandValidatorTests
     public async Task GivenRateOutsideStoragePrecision_WhenValidated_ThenPrecisionErrorIsReturned(string rate)
     {
         var command = ValidCommand();
-        command.Rate = decimal.Parse(rate);
+        command.Rate = decimal.Parse(rate, CultureInfo.InvariantCulture);
 
         var result = await validator.ValidateAsync(command);
 

@@ -49,8 +49,8 @@ category at a time:
 dotnet test src/ArturRios.Fortuna.sln -m:1 --filter "Category=Unit"
 ```
 
-CI runs the unit and functional categories as separate steps and fails first if any test carries neither, since
-neither step would run it.
+CI runs every test once, each test project in a process of its own and side by side (the Web API tests in three
+processes), and fails first if any test carries neither category, since neither filter above would run it.
 
 Merged line coverage is gated at 90%, enforced in CI and reproducibly on a developer machine. That
 is a floor, not a target — the standard is to test everything that can be tested. Every use case

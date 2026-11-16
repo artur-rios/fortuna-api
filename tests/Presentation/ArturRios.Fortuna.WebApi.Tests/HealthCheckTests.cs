@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using ArturRios.Fortuna.Data.Configuration;
-using ArturRios.Fortuna.Data.Seeding;
 using ArturRios.Fortuna.Domain.Jobs;
 using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Shared.Health;
@@ -15,7 +14,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Testcontainers.PostgreSql;
 
 namespace ArturRios.Fortuna.WebApi.Tests;
 
@@ -27,7 +25,7 @@ public sealed class HealthCheckTests : IAsyncLifetime
     private const string Audience = "fortuna-health-tests";
     private static readonly DateTimeOffset Now = new(
         2026, 9, 8, 12, 0, 0, TimeSpan.Zero);
-    private readonly FreshDatabase database = new("postgres:17-alpine");
+    private readonly FreshDatabase database = new();
     private readonly string storageRoot = Path.Combine(
         Path.GetTempPath(), "fortuna-health-tests", Guid.NewGuid().ToString("N"));
 
@@ -180,13 +178,7 @@ public sealed class HealthCheckTests : IAsyncLifetime
         }
     }
 
-    public async ValueTask InitializeAsync()
-    {
-        await database.StartAsync();
-        await using var context = CreateContext();
-        await context.Database.MigrateAsync();
-        await new DatabaseSeeder(context).SeedAsync(CancellationToken.None);
-    }
+    public async ValueTask InitializeAsync() => await database.StartAsync();
 
     public async ValueTask DisposeAsync()
     {
