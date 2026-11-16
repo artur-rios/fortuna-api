@@ -125,7 +125,6 @@ public sealed class PrometheusMetricsTests : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        Environment.SetEnvironmentVariable("FORTUNA_METRICS_PORT", null);
         await database.DisposeAsync();
         if (Directory.Exists(storageRoot))
         {
