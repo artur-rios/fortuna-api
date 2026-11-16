@@ -27,19 +27,12 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 ///     forwarded-headers handling, typed client, caller headers handler and gateway, against a fake
 ///     Heimdall that answers as the real one does.
 /// </summary>
-public sealed class HeimdallRelayEndToEndTests : IDisposable
+public sealed class HeimdallRelayEndToEndTests
 {
     private const string CallerKey = "caller-key-with-at-least-32-characters-0123";
     private const string Proxy = "10.1.2.3";
     private const string EndUser = "203.0.113.50";
     private const string DefaultHeimdallBaseUrl = "https://heimdall.example.test/";
-
-    private static readonly string[] OverriddenSettings =
-    [
-        "FORTUNA_HEIMDALL_CALLER_KEY",
-        "FORTUNA_FORWARDED_KNOWN_NETWORKS",
-        "FORTUNA_FORWARDED_KNOWN_PROXIES"
-    ];
 
     [FunctionalFact]
     public async Task GivenACallerKeyBehindATrustedProxy_WhenHeimdallRateLimits_ThenTheUserIsNamedAndTheWaitRelayed()
@@ -246,17 +239,6 @@ public sealed class HeimdallRelayEndToEndTests : IDisposable
         // Then
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Equal(1, heimdall.Connections);
-    }
-
-    public void Dispose()
-    {
-        foreach (var setting in OverriddenSettings)
-        {
-            Environment.SetEnvironmentVariable(setting, null);
-        }
-
-        // The test run's settings name this default; other classes read it from the environment.
-        Environment.SetEnvironmentVariable("FORTUNA_HEIMDALL_BASE_URL", DefaultHeimdallBaseUrl);
     }
 
     private static WebApplicationFactory<Program> CreateFactory(
