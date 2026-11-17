@@ -74,6 +74,9 @@ dotnet format src/ArturRios.Fortuna.sln --verify-no-changes  # the code matches 
 python3 scripts/openapi.py --check                       # docs/openapi/fortuna.json matches the code
 ```
 
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` makes `git blame` skip the commit that
+formatted the whole solution, listed in [.git-blame-ignore-revs](./.git-blame-ignore-revs).
+
 When the native core or the OpenAPI document changes, CI also runs `cargo fmt --check`,
 `cargo clippy -- -D warnings`, the tests on the declared minimum Rust version, and checks that the
 generated C header is committed. The `audit` check scans the native core's dependencies against the
