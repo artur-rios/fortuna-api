@@ -1579,10 +1579,21 @@ fn project_payload(response_schema: &str, value: &Value) -> Value {
     project_schema(payload, value, schemas)
 }
 
+/// The schema that `schema` refers to: through a `$ref`, or through an `allOf` over a single
+/// reference, which is how the document marks a reference nullable (OpenAPI 3.0 allows nothing
+/// beside a `$ref`). Both resolve alike, so marking a reference nullable changes no projection.
+fn referenced<'a>(schema: &Value, schemas: &'a Value) -> Option<&'a Value> {
+    let reference = match schema.get("allOf").and_then(Value::as_array) {
+        Some(all_of) if all_of.len() == 1 => all_of[0].get("$ref"),
+        _ => schema.get("$ref"),
+    }?;
+    let name = reference.as_str()?.rsplit('/').next().unwrap_or_default();
+    Some(&schemas[name])
+}
+
 fn project_schema(schema: &Value, value: &Value, schemas: &Value) -> Value {
-    if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
-        let name = reference.rsplit('/').next().unwrap_or_default();
-        return project_schema(&schemas[name], value, schemas);
+    if let Some(target) = referenced(schema, schemas) {
+        return project_schema(target, value, schemas);
     }
     if let Some(items) = schema.get("items")
         && let Some(values) = value.as_array()
@@ -1625,9 +1636,8 @@ fn normalize_decimal_response(
 }
 
 fn normalize_decimal_schema(schema: &Value, value: &mut Value, schemas: &Value) {
-    if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
-        let name = reference.rsplit('/').next().unwrap_or_default();
-        normalize_decimal_schema(&schemas[name], value, schemas);
+    if let Some(target) = referenced(schema, schemas) {
+        normalize_decimal_schema(target, value, schemas);
         return;
     }
     if schema.get("format").and_then(Value::as_str) == Some("decimal") {
@@ -1654,12 +1664,13 @@ fn normalize_decimal_schema(schema: &Value, value: &mut Value, schemas: &Value) 
 }
 
 fn schema_default(schema: &Value, schemas: &Value) -> Value {
+    // A reference first: a missing field that refers to a schema defaults to that schema's
+    // default whether or not the reference is marked nullable.
+    if let Some(target) = referenced(schema, schemas) {
+        return schema_default(target, schemas);
+    }
     if schema.get("nullable").and_then(Value::as_bool) == Some(true) {
         return Value::Null;
-    }
-    if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
-        let name = reference.rsplit('/').next().unwrap_or_default();
-        return schema_default(&schemas[name], schemas);
     }
     match schema.get("type").and_then(Value::as_str) {
         Some("array") => Value::Array(Vec::new()),
@@ -1688,4 +1699,65 @@ pub(crate) fn success<T: Serialize>(
 
 pub(crate) fn failure(status: c_int, error: impl Into<String>) -> (c_int, String) {
     (status, serialize(&DataOutput::<Value>::failure(error)))
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::{normalize_decimal_schema, project_schema, schema_default};
+
+    fn schemas() -> serde_json::Value {
+        json!({
+            "Money": {
+                "properties": {
+                    "amount": {"format": "decimal", "type": "string"},
+                    "currencyCode": {"nullable": true, "type": "string"}
+                },
+                "type": "object"
+            }
+        })
+    }
+
+    fn reference() -> serde_json::Value {
+        json!({"$ref": "#/components/schemas/Money"})
+    }
+
+    fn nullable_reference() -> serde_json::Value {
+        json!({"allOf": [{"$ref": "#/components/schemas/Money"}], "nullable": true})
+    }
+
+    #[test]
+    fn given_nullable_reference_when_projecting_then_it_resolves_like_the_plain_reference() {
+        let schemas = schemas();
+        let value = json!({"amount": "1.50", "currencyCode": "BRL", "extra": true});
+
+        let projected = project_schema(&nullable_reference(), &value, &schemas);
+
+        assert_eq!(project_schema(&reference(), &value, &schemas), projected);
+        assert_eq!(json!({"amount": "1.50", "currencyCode": "BRL"}), projected);
+    }
+
+    #[test]
+    fn given_nullable_reference_when_defaulting_a_missing_field_then_its_default_is_kept() {
+        let schemas = schemas();
+
+        let default = schema_default(&nullable_reference(), &schemas);
+
+        assert_eq!(schema_default(&reference(), &schemas), default);
+        assert_eq!(json!({"amount": "", "currencyCode": null}), default);
+    }
+
+    #[test]
+    fn given_nullable_reference_when_normalizing_decimals_then_nested_amounts_are_normalized() {
+        let schemas = schemas();
+        let mut plain = json!({"amount": "1.500", "currencyCode": "BRL"});
+        let mut nullable = plain.clone();
+
+        normalize_decimal_schema(&reference(), &mut plain, &schemas);
+        normalize_decimal_schema(&nullable_reference(), &mut nullable, &schemas);
+
+        assert_eq!(plain, nullable);
+        assert_eq!(json!({"amount": "1.5", "currencyCode": "BRL"}), nullable);
+    }
 }
