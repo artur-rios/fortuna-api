@@ -1579,16 +1579,43 @@ fn project_payload(response_schema: &str, value: &Value) -> Value {
     project_schema(payload, value, schemas)
 }
 
-/// The schema that `schema` refers to: through a `$ref`, or through an `allOf` over a single
-/// reference, which is how the document marks a reference nullable (OpenAPI 3.0 allows nothing
-/// beside a `$ref`). Both resolve alike, so marking a reference nullable changes no projection.
+/// The schema that `schema` refers to: through a `$ref`, or through an `anyOf` over a single
+/// reference and the null type, which is how the OpenAPI 3.1 document marks a reference nullable.
+/// Both resolve alike, so marking a reference nullable changes no projection.
 fn referenced<'a>(schema: &Value, schemas: &'a Value) -> Option<&'a Value> {
-    let reference = match schema.get("allOf").and_then(Value::as_array) {
-        Some(all_of) if all_of.len() == 1 => all_of[0].get("$ref"),
-        _ => schema.get("$ref"),
+    let reference = match schema.get("anyOf").and_then(Value::as_array) {
+        Some(any_of) => {
+            let mut branches = any_of.iter().filter(|branch| !is_null_type(branch));
+            match (branches.next(), branches.next()) {
+                (Some(branch), None) => branch.get("$ref"),
+                _ => None,
+            }
+        }
+        None => schema.get("$ref"),
     }?;
     let name = reference.as_str()?.rsplit('/').next().unwrap_or_default();
     Some(&schemas[name])
+}
+
+/// `{"type": "null"}`, the branch of an `anyOf` that makes it nullable.
+fn is_null_type(schema: &Value) -> bool {
+    schema.get("type").and_then(Value::as_str) == Some("null")
+}
+
+/// The schema's `type` other than `"null"`, and whether `"null"` is one: OpenAPI 3.1 writes a
+/// nullable string as `"type": ["null", "string"]` and a plain one as `"type": "string"`.
+fn schema_type(schema: &Value) -> (Option<&str>, bool) {
+    match schema.get("type") {
+        Some(Value::Array(types)) => (
+            types
+                .iter()
+                .filter_map(Value::as_str)
+                .find(|name| *name != "null"),
+            types.iter().any(|name| name.as_str() == Some("null")),
+        ),
+        Some(name) => (name.as_str(), false),
+        None => (None, false),
+    }
 }
 
 fn project_schema(schema: &Value, value: &Value, schemas: &Value) -> Value {
@@ -1669,10 +1696,11 @@ fn schema_default(schema: &Value, schemas: &Value) -> Value {
     if let Some(target) = referenced(schema, schemas) {
         return schema_default(target, schemas);
     }
-    if schema.get("nullable").and_then(Value::as_bool) == Some(true) {
+    let (kind, nullable) = schema_type(schema);
+    if nullable {
         return Value::Null;
     }
-    match schema.get("type").and_then(Value::as_str) {
+    match kind {
         Some("array") => Value::Array(Vec::new()),
         Some("boolean") => Value::Bool(false),
         Some("integer") | Some("number") => Value::Number(0.into()),
@@ -1705,14 +1733,16 @@ pub(crate) fn failure(status: c_int, error: impl Into<String>) -> (c_int, String
 mod tests {
     use serde_json::json;
 
-    use super::{normalize_decimal_schema, project_schema, schema_default};
+    use super::{
+        normalize_decimal_schema, openapi_document, project_schema, referenced, schema_default,
+    };
 
     fn schemas() -> serde_json::Value {
         json!({
             "Money": {
                 "properties": {
                     "amount": {"format": "decimal", "type": "string"},
-                    "currencyCode": {"nullable": true, "type": "string"}
+                    "currencyCode": {"type": ["null", "string"]}
                 },
                 "type": "object"
             }
@@ -1724,7 +1754,7 @@ mod tests {
     }
 
     fn nullable_reference() -> serde_json::Value {
-        json!({"allOf": [{"$ref": "#/components/schemas/Money"}], "nullable": true})
+        json!({"anyOf": [{"$ref": "#/components/schemas/Money"}, {"type": "null"}]})
     }
 
     #[test]
@@ -1739,6 +1769,19 @@ mod tests {
     }
 
     #[test]
+    fn given_null_branch_first_when_projecting_then_it_resolves_like_the_plain_reference() {
+        let schemas = schemas();
+        let value = json!({"amount": "1.50", "extra": true});
+        let null_first =
+            json!({"anyOf": [{"type": "null"}, {"$ref": "#/components/schemas/Money"}]});
+
+        let projected = project_schema(&null_first, &value, &schemas);
+
+        assert_eq!(project_schema(&reference(), &value, &schemas), projected);
+        assert_eq!(json!({"amount": "1.50", "currencyCode": null}), projected);
+    }
+
+    #[test]
     fn given_nullable_reference_when_defaulting_a_missing_field_then_its_default_is_kept() {
         let schemas = schemas();
 
@@ -1746,6 +1789,49 @@ mod tests {
 
         assert_eq!(schema_default(&reference(), &schemas), default);
         assert_eq!(json!({"amount": "", "currencyCode": null}), default);
+    }
+
+    #[test]
+    fn given_null_in_a_type_array_when_defaulting_then_the_default_is_null() {
+        let schemas = schemas();
+
+        for nullable in [
+            json!({"type": ["null", "string"]}),
+            json!({"type": ["string", "null"]}),
+            json!({"type": ["null", "array"], "items": {"type": "string"}}),
+            json!({"type": ["null", "integer"], "format": "int32"}),
+            json!({"type": ["null", "boolean"]}),
+            json!({"type": ["null", "object"]}),
+        ] {
+            assert_eq!(serde_json::Value::Null, schema_default(&nullable, &schemas));
+        }
+    }
+
+    #[test]
+    fn given_a_type_without_null_when_defaulting_then_its_type_decides_the_default() {
+        let schemas = schemas();
+
+        assert_eq!(
+            json!([]),
+            schema_default(&json!({"type": "array"}), &schemas)
+        );
+        assert_eq!(
+            json!([]),
+            schema_default(&json!({"type": ["array"]}), &schemas)
+        );
+        assert_eq!(
+            json!(false),
+            schema_default(&json!({"type": "boolean"}), &schemas)
+        );
+        assert_eq!(
+            json!(0),
+            schema_default(&json!({"type": "integer"}), &schemas)
+        );
+        assert_eq!(
+            json!(""),
+            schema_default(&json!({"type": "string"}), &schemas)
+        );
+        assert_eq!(json!(""), schema_default(&json!({}), &schemas));
     }
 
     #[test]
@@ -1759,5 +1845,33 @@ mod tests {
 
         assert_eq!(plain, nullable);
         assert_eq!(json!({"amount": "1.5", "currencyCode": "BRL"}), nullable);
+    }
+
+    #[test]
+    fn given_nullable_decimal_when_normalizing_then_a_value_is_normalized_and_null_is_kept() {
+        let schemas = schemas();
+        let decimal = json!({"format": "decimal", "type": ["null", "string"]});
+        let mut value = json!("2.500");
+        let mut null = serde_json::Value::Null;
+
+        normalize_decimal_schema(&decimal, &mut value, &schemas);
+        normalize_decimal_schema(&decimal, &mut null, &schemas);
+
+        assert_eq!(json!("2.5"), value);
+        assert_eq!(serde_json::Value::Null, null);
+    }
+
+    #[test]
+    fn given_checked_in_envelope_when_resolving_its_data_then_the_payload_schema_is_found() {
+        let schemas = &openapi_document()["components"]["schemas"];
+        let data = &schemas["CreateFinancialAccountCommandOutputDataOutput"]["properties"]["data"];
+
+        let resolved = referenced(data, schemas);
+
+        assert!(data.get("anyOf").is_some(), "data is {data}");
+        assert_eq!(
+            Some(&schemas["CreateFinancialAccountCommandOutput"]),
+            resolved
+        );
     }
 }

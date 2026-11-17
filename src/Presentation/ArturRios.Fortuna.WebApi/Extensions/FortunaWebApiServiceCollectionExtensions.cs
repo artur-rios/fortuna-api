@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Serilog;
+using Swashbuckle.AspNetCore.Swagger;
 
 namespace ArturRios.Fortuna.WebApi.Extensions;
 
@@ -112,6 +113,10 @@ public static class FortunaWebApiServiceCollectionExtensions
             document.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, jwtSecurityScheme);
             document.AddSecurityRequirement(_ => jwtRequirement);
         });
+        // OpenAPI 3.1, whose null type marks a nullable field (3.0's nullable keyword is ignored next to
+        // a $ref, so client generators read nullable references as never null). UseSwagger and
+        // scripts/openapi.py's `dotnet swagger tofile --openapiversion 3.1` both publish it.
+        services.Configure<SwaggerOptions>(swagger => swagger.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);
 
         return services;
     }

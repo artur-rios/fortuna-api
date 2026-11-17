@@ -29,6 +29,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   (it was 3.2.0), whose `PaginatedOutput` carries `nextPageToken` and `hasNextPage`: every paginated response now
   includes `"nextPageToken": null` and `"hasNextPage": false` next to the existing page fields, and the OpenAPI
   document lists both on each `*PaginatedOutput` schema. The change is additive; no existing field changes.
+- The OpenAPI document is now OpenAPI 3.1 (`3.1.2`), both `docs/openapi/fortuna.json` and the one Swagger serves at
+  `/swagger/v1/swagger.json`. Nullable fields use 3.1's `null` type, since 3.0's `nullable: true` beside a reference
+  was read by client generators such as swagger_parser 2 as never `null`: a nullable scalar or array is
+  `"type": ["null", "string"]` (`"array"`, `"integer"`, ...), and a nullable reference, such as every envelope's
+  `data`, is `anyOf` over the `$ref` and `{"type": "null"}`. The `nullable` keyword is gone. The enum names
+  (`x-enum-varnames`) stay on the enum's own schema, not repeated beside each reference to it. Nothing changes on the
+  wire: paths, statuses, bodies and the JSON the API answers are as before. The desktop native core reads the 3.1
+  forms, and its responses are unchanged.
 
 ### Fixed
 
@@ -44,7 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
     one body that may be omitted, `POST /api/exchange-rates/sync`'s, stays optional.
   - **Nullable properties.** A property that refers to another schema and can be `null` (every envelope's `data`,
     which is `null` on a failure, and nullable fields such as `rateSource` or a drill-down's `transaction`) is published
-    as `allOf` over the reference with `nullable: true`; it was a bare `$ref`, which said it is never `null`. The
+    as nullable (in OpenAPI 3.1's form, under Changed); it was a bare `$ref`, which said it is never `null`. The
     desktop native core, which reads the document to shape its responses, resolves the new form exactly like the plain
     reference, so its responses do not change either.
 - On SQLite (the desktop offline mode), `GET /api/recurring-transactions?SortBy=Amount` now orders the rules by their

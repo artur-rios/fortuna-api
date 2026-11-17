@@ -10,9 +10,9 @@ namespace ArturRios.Fortuna.WebApi.OpenApi;
 ///     Marks a property that refers to another schema nullable when its CLR member is: a nullable
 ///     reference (<c>Output?</c>, the envelope's <c>T? Data</c>) or a nullable value type (<c>Enum?</c>).
 ///     The API writes <c>null</c> in such a property. Swashbuckle marks inline properties (strings,
-///     arrays, <c>int?</c>) nullable already, but OpenAPI 3.0 allows nothing beside a <c>$ref</c>, so a
-///     property that refers to a schema was published as never null. It becomes <c>allOf</c> over the
-///     reference with <c>nullable: true</c>. The JSON on the wire is unchanged.
+///     arrays, <c>int?</c>) nullable already, which OpenAPI 3.1 writes as <c>type: [T, "null"]</c>, but a
+///     property that refers to a schema is a bare <c>$ref</c>, published as never null. It becomes
+///     <c>anyOf</c> over the reference and the <c>null</c> type. The JSON on the wire is unchanged.
 /// </summary>
 public sealed class NullableReferenceSchemaFilter : ISchemaFilter
 {
@@ -33,8 +33,7 @@ public sealed class NullableReferenceSchemaFilter : ISchemaFilter
             {
                 concrete.Properties[name] = new OpenApiSchema
                 {
-                    AllOf = [reference],
-                    Type = JsonSchemaType.Null
+                    AnyOf = [reference, new OpenApiSchema { Type = JsonSchemaType.Null }]
                 };
             }
         }

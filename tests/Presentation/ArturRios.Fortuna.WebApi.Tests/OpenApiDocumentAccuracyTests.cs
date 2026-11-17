@@ -15,8 +15,8 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 /// <summary>
 ///     Keeps docs/openapi/fortuna.json honest about what the API answers, since client generators
 ///     trust it: the success statuses each operation can answer, which request bodies are required,
-///     and which properties can be null. The check job keeps the committed document what the build
-///     generates, so these read the committed one.
+///     and which properties can be null, in OpenAPI 3.1's terms. The check job keeps the committed
+///     document what the build generates, so these read the committed one.
 /// </summary>
 public sealed partial class OpenApiDocumentAccuracyTests
 {
@@ -194,7 +194,7 @@ public sealed partial class OpenApiDocumentAccuracyTests
 
                 Assert.True(IsNullable(publishedProperty),
                     $"{type.Name}.{name} can be null but the document does not say so.");
-                if (publishedProperty.TryGetProperty("allOf", out _))
+                if (publishedProperty.TryGetProperty("anyOf", out _))
                 {
                     nullableReferences++;
                 }
@@ -211,7 +211,7 @@ public sealed partial class OpenApiDocumentAccuracyTests
     [InlineData("ReconcileTransactionCommandOutput", "reconciliation")]
     [InlineData("InvestmentOutput", "rateSource")]
     [InlineData("ConvertedCurrencyGroupOutput", "rateSource")]
-    public void GivenKnownNullableReference_WhenDocumented_ThenItIsAllOfTheReferenceAndNullable(
+    public void GivenKnownNullableReference_WhenDocumented_ThenItIsAnyOfTheReferenceAndNull(
         string schemaName,
         string propertyName)
     {
@@ -220,20 +220,77 @@ public sealed partial class OpenApiDocumentAccuracyTests
         var property = Schemas(contract).Single(schema => schema.Name == schemaName).Value
             .GetProperty("properties").GetProperty(propertyName);
 
-        Assert.True(property.GetProperty("nullable").GetBoolean());
-        Assert.StartsWith("#/components/schemas/",
-            property.GetProperty("allOf")[0].GetProperty("$ref").GetString());
-        Assert.False(property.TryGetProperty("$ref", out _));
+        Assert.True(IsNullableReference(property), $"{schemaName}.{propertyName} is {property}.");
+        Assert.Equal(["anyOf"], property.EnumerateObject().Select(keyword => keyword.Name));
+    }
+
+    [UnitFact]
+    public void GivenTheDocument_WhenRead_ThenItIsOpenApi31()
+    {
+        using var contract = Contract();
+
+        Assert.StartsWith("3.1.", contract.RootElement.GetProperty("openapi").GetString());
+    }
+
+    [UnitFact]
+    public void GivenNullableSchemas_WhenDocumented_ThenTheyUseTheNullTypeAndNoNullableKeyword()
+    {
+        using var contract = Contract();
+        var objects = Objects(contract.RootElement).ToArray();
+        var nullableReferences = objects.Where(item => item.TryGetProperty("anyOf", out _)).ToArray();
+
+        // OpenAPI 3.1 dropped 3.0's nullable keyword, which a generator reading 3.1 ignores; a
+        // reference is made nullable as anyOf over it and the null type, and nothing else.
+        Assert.DoesNotContain(objects, item => item.TryGetProperty("nullable", out _));
+        Assert.DoesNotContain(objects, item => item.TryGetProperty("allOf", out _));
+        Assert.NotEmpty(nullableReferences);
+        Assert.All(nullableReferences, item =>
+            Assert.True(IsNullableReference(item), $"An anyOf is not a reference or null: {item}"));
+        Assert.Contains(objects, item => item.TryGetProperty("type", out var type) &&
+                                         type.ValueKind == JsonValueKind.Array &&
+                                         type.EnumerateArray().Any(member => member.GetString() == "null"));
     }
 
     /// <summary>
-    ///     Whether the schema admits <c>null</c>: it says <c>nullable: true</c>, or it is untyped
-    ///     (<c>object?</c> publishes <c>{}</c>, which OpenAPI 3.0 lets hold any value, <c>null</c> included).
+    ///     Whether the schema admits <c>null</c>: its <c>type</c> includes <c>"null"</c>, it is
+    ///     <c>anyOf</c> a reference and the null type, or it is untyped (<c>object?</c> publishes
+    ///     <c>{}</c>, which holds any value, <c>null</c> included).
     /// </summary>
     private static bool IsNullable(JsonElement property) =>
-        (property.TryGetProperty("nullable", out var nullable) && nullable.GetBoolean()) ||
+        (property.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.Array &&
+         type.EnumerateArray().Any(member => member.GetString() == "null")) ||
+        IsNullableReference(property) ||
         !(property.TryGetProperty("type", out _) || property.TryGetProperty("$ref", out _) ||
-          property.TryGetProperty("allOf", out _));
+          property.TryGetProperty("anyOf", out _) || property.TryGetProperty("allOf", out _));
+
+    /// <summary><c>anyOf: [{$ref}, {type: "null"}]</c>, OpenAPI 3.1's nullable reference.</summary>
+    private static bool IsNullableReference(JsonElement schema) =>
+        schema.TryGetProperty("anyOf", out var anyOf) &&
+        anyOf.GetArrayLength() == 2 &&
+        anyOf[0].EnumerateObject().Select(keyword => keyword.Name).SequenceEqual(["$ref"]) &&
+        anyOf[0].GetProperty("$ref").GetString()!.StartsWith("#/components/schemas/", StringComparison.Ordinal) &&
+        anyOf[1].EnumerateObject().Select(keyword => keyword.Name).SequenceEqual(["type"]) &&
+        anyOf[1].GetProperty("type").GetString() == "null";
+
+    private static IEnumerable<JsonElement> Objects(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            yield return element;
+        }
+        foreach (var child in element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject().Select(item => item.Value),
+            JsonValueKind.Array => element.EnumerateArray(),
+            _ => []
+        })
+        {
+            foreach (var nested in Objects(child))
+            {
+                yield return nested;
+            }
+        }
+    }
 
     private static int[] SuccessStatuses(JsonElement operation) =>
         operation.GetProperty("responses")

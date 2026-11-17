@@ -9,8 +9,10 @@ public sealed class EnumNamesSchemaFilter : ISchemaFilter
 {
     public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
     {
+        // The enum's own schema only. A property or parameter of the enum type is a reference to it,
+        // and OpenAPI 3.1, unlike 3.0, would write the names again beside each such $ref.
         var enumType = Nullable.GetUnderlyingType(context.Type) ?? context.Type;
-        if (!enumType.IsEnum)
+        if (!enumType.IsEnum || schema is not OpenApiSchema concrete)
         {
             return;
         }
@@ -20,9 +22,6 @@ public sealed class EnumNamesSchemaFilter : ISchemaFilter
         {
             names.Add(name);
         }
-        if (schema is IOpenApiExtensible extensible)
-        {
-            extensible.AddExtension("x-enum-varnames", new JsonNodeExtension(names));
-        }
+        concrete.AddExtension("x-enum-varnames", new JsonNodeExtension(names));
     }
 }

@@ -130,7 +130,12 @@ public sealed class ExactDecimalJsonTests
 
     private static void AssertDecimal(JsonElement field, string name)
     {
-        Assert.Equal("string", field.GetProperty("type").GetString());
+        // A nullable decimal is OpenAPI 3.1's ["null", "string"]; null is the only other type it may admit.
+        var type = field.GetProperty("type");
+        var types = type.ValueKind == JsonValueKind.Array
+            ? type.EnumerateArray().Select(item => item.GetString()).Where(item => item != "null").ToArray()
+            : [type.GetString()];
+        Assert.True(types is ["string"], $"{name} is not a string schema.");
         Assert.Equal("decimal", field.GetProperty("format").GetString());
         Assert.Equal(DecimalPattern, field.GetProperty("pattern").GetString());
     }
