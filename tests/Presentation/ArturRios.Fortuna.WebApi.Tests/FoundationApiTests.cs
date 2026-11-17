@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Text.Json;
 using ArturRios.Fortuna.Shared.Messages;
 using ArturRios.Fortuna.WebApi.Configuration;
 using ArturRios.Util.Test.Attributes;
@@ -729,6 +730,8 @@ public sealed class FoundationApiTests
         Assert.Contains("/healthcheck", document);
         Assert.Contains("\"securitySchemes\"", document);
         Assert.Contains("\"Bearer\"", document);
+        using var served = JsonDocument.Parse(document);
+        Assert.StartsWith("3.1.", served.RootElement.GetProperty("openapi").GetString());
     }
 
     [FunctionalFact]

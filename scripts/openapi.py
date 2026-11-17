@@ -13,11 +13,28 @@ ROOT = Path(__file__).resolve().parent.parent
 PROJECT = ROOT / "src/Presentation/ArturRios.Fortuna.WebApi/ArturRios.Fortuna.WebApi.csproj"
 ASSEMBLY = PROJECT.parent / "bin/Release/net10.0/ArturRios.Fortuna.WebApi.dll"
 DOCUMENT = ROOT / "docs/openapi/fortuna.json"
+# The OpenAPI version the document is written in. `dotnet swagger tofile` writes 3.0 unless told otherwise:
+# it does not read SwaggerOptions.OpenApiVersion, which AddFortunaWebApi sets for the /swagger endpoint.
+OPENAPI_VERSION = "3.1"
+
+
+def sorted_keys(value, key=None):
+    """`value` with every object's keys sorted, except a media type map's (the `content` of a request body,
+    response or parameter). Its order is the generator's, the order of the API's input and output formatters,
+    and a client generator takes the first media type as the one to send: sorted, `application/*+json` came
+    before `application/json`. `key` is the key `value` sits under; the keys of a `properties` map are
+    property names, so a property called `content` is a schema like any other."""
+    if isinstance(value, dict):
+        names = list(value) if key == "content" else sorted(value)
+        return {name: sorted_keys(value[name], None if key == "properties" else name) for name in names}
+    if isinstance(value, list):
+        return [sorted_keys(item) for item in value]
+    return value
 
 
 def normalized(path):
     with path.open(encoding="utf-8") as source:
-        return json.dumps(json.load(source), indent=2, sort_keys=True) + "\n"
+        return json.dumps(sorted_keys(json.load(source)), indent=2) + "\n"
 
 
 def generate(output):
@@ -57,7 +74,17 @@ def generate(output):
         return build.returncode
 
     result = subprocess.run(
-        ["dotnet", "swagger", "tofile", "--output", str(output), str(ASSEMBLY), "v1"],
+        [
+            "dotnet",
+            "swagger",
+            "tofile",
+            "--openapiversion",
+            OPENAPI_VERSION,
+            "--output",
+            str(output),
+            str(ASSEMBLY),
+            "v1",
+        ],
         cwd=ROOT,
         env=environment,
     )
