@@ -666,6 +666,9 @@ fn execute_record_operation(
     }
     if operation.method == "PUT" {
         let mut body = request_body(request);
+        if let Err(error) = keep_immutable_fields(resource, &mut body) {
+            return failure(FORTUNA_STATUS_BAD_REQUEST, error);
+        }
         let updated = if classification::names_counterparty(resource) {
             let link = match classification::counterparty_link(&mut body, false) {
                 Ok(link) => link,
@@ -1274,6 +1277,84 @@ fn lower_first(value: &str) -> String {
         .next()
         .map(|first| first.to_ascii_lowercase().to_string() + characters.as_str())
         .unwrap_or_default()
+}
+
+/// The fields an update body carries but may not change, by resource, each with the message the
+/// HTTP host's update validator answers a value with (UC-13, UC-32 AF-03, BR-08). In validator
+/// order, so the first refused field names the same error the HTTP host lists first.
+const IMMUTABLE_UPDATE_FIELDS: &[(&str, &[(&str, &str)])] = &[
+    (
+        "accounts",
+        &[
+            (
+                "ownerId",
+                "OwnerId cannot be changed after account creation.",
+            ),
+            (
+                "currencyCode",
+                "CurrencyCode cannot be changed after account creation.",
+            ),
+            (
+                "openingBalance",
+                "OpeningBalance cannot be changed after account creation.",
+            ),
+        ],
+    ),
+    (
+        "credit-cards",
+        &[(
+            "currencyCode",
+            "CurrencyCode cannot be changed after card creation.",
+        )],
+    ),
+    (
+        "investments",
+        &[(
+            "currencyCode",
+            "CurrencyCode cannot be changed after investment creation.",
+        )],
+    ),
+    (
+        "transactions",
+        &[
+            ("financialAccountId", TRANSACTION_TARGET_IMMUTABLE),
+            ("creditCardId", TRANSACTION_TARGET_IMMUTABLE),
+            (
+                "currencyCode",
+                "CurrencyCode cannot be supplied; the transaction currency is fixed by its target.",
+            ),
+            ("ownerId", OWNER_FIXED),
+        ],
+    ),
+    ("recurring-transactions", &[("ownerId", OWNER_FIXED)]),
+];
+
+const TRANSACTION_TARGET_IMMUTABLE: &str =
+    "FinancialAccountId and CreditCardId cannot be supplied; the transaction target is fixed.";
+const OWNER_FIXED: &str = "OwnerId cannot be supplied; ownership is fixed.";
+
+/// Holds an update `body` to the fields of `resource` it may change. The HTTP host requires
+/// each [`IMMUTABLE_UPDATE_FIELDS`] entry to be null and never reads it, so a value is refused
+/// with its message, and a null is dropped here: merged, it would clear the stored value the
+/// HTTP host keeps.
+fn keep_immutable_fields(resource: &str, body: &mut Value) -> Result<(), &'static str> {
+    let Some(object) = body.as_object_mut() else {
+        return Ok(());
+    };
+    let fields = IMMUTABLE_UPDATE_FIELDS
+        .iter()
+        .find(|(name, _)| *name == resource)
+        .map_or(&[][..], |(_, fields)| fields);
+    if let Some((_, error)) = fields
+        .iter()
+        .find(|(field, _)| object.get(*field).is_some_and(|value| !value.is_null()))
+    {
+        return Err(error);
+    }
+    for (field, _) in fields {
+        object.remove(*field);
+    }
+    Ok(())
 }
 
 fn resource_for(path: &str) -> &str {

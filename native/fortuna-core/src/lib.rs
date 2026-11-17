@@ -2435,6 +2435,205 @@ mod tests {
         assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
     }
 
+    /// An update route, its resource, a record's id, a change it may make, and each field it may
+    /// not change with a value for it and the error that value is refused with.
+    type ImmutableUpdateCase<'a> = (
+        NativeOperationFunction,
+        &'a str,
+        &'a str,
+        Value,
+        &'a [(&'a str, Value, &'a str)],
+    );
+
+    fn stored_record(path: &Path, resource: &str, id: &str) -> Value {
+        let connection = Connection::open(path).unwrap();
+        let body: String = connection
+            .query_row(
+                "SELECT body_json FROM native_offline_record WHERE resource = ?1 AND public_id = ?2",
+                params![resource, id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        serde_json::from_str(&body).unwrap()
+    }
+
+    #[test]
+    fn given_immutable_update_fields_when_updating_then_a_null_keeps_the_stored_value_and_a_value_is_rejected()
+     {
+        let _guard = test_guard();
+        stop();
+        let path = temp_database();
+        let token = create_local_user(&path);
+        let account_id = create_account(&token, "12.5");
+        let card_id = create_owned(
+            fortuna_api_credit_cards_post,
+            &token,
+            serde_json::json!({"name": "Card", "issuer": "Bank", "currencyCode": "BRL",
+                "creditLimit": "1000", "closingDay": 5, "dueDay": 15}),
+        );
+        let investment_id = create_owned(
+            fortuna_api_investments_post,
+            &token,
+            serde_json::json!({"instrument": "Fund", "investmentType": 1, "currencyCode": "BRL"}),
+        );
+        let transaction_id = create_owned(
+            fortuna_api_transactions_post,
+            &token,
+            serde_json::json!({"financialAccountId": account_id, "direction": 1,
+                "amount": "10", "occurredOn": "2026-03-01", "currencyCode": "BRL"}),
+        );
+        let rule_id = create_owned(
+            fortuna_api_recurring_transactions_post,
+            &token,
+            serde_json::json!({"financialAccountId": account_id, "direction": 1, "amount": "5",
+                "frequency": 3, "startsOn": "2026-03-01"}),
+        );
+        let account_owner = "OwnerId cannot be changed after account creation.";
+        let fixed_owner = "OwnerId cannot be supplied; ownership is fixed.";
+        let fixed_target = "FinancialAccountId and CreditCardId cannot be supplied; the transaction target is fixed.";
+        let cases: [ImmutableUpdateCase<'_>; 5] = [
+            (
+                fortuna_api_accounts_by_id_put,
+                "accounts",
+                &account_id,
+                serde_json::json!({"name": "Renamed", "institution": null, "accountType": 1}),
+                &[
+                    (
+                        "ownerId",
+                        Value::String(Uuid::new_v4().to_string()),
+                        account_owner,
+                    ),
+                    (
+                        "currencyCode",
+                        "USD".into(),
+                        "CurrencyCode cannot be changed after account creation.",
+                    ),
+                    (
+                        "openingBalance",
+                        "99".into(),
+                        "OpeningBalance cannot be changed after account creation.",
+                    ),
+                ],
+            ),
+            (
+                fortuna_api_credit_cards_by_id_put,
+                "credit-cards",
+                &card_id,
+                serde_json::json!({"name": "Renamed", "issuer": "Bank", "creditLimit": "1000",
+                    "closingDay": 5, "dueDay": 15}),
+                &[(
+                    "currencyCode",
+                    "USD".into(),
+                    "CurrencyCode cannot be changed after card creation.",
+                )],
+            ),
+            (
+                fortuna_api_investments_by_id_put,
+                "investments",
+                &investment_id,
+                serde_json::json!({"instrument": "Renamed", "institution": null, "investmentType": 1}),
+                &[(
+                    "currencyCode",
+                    "USD".into(),
+                    "CurrencyCode cannot be changed after investment creation.",
+                )],
+            ),
+            (
+                fortuna_api_transactions_by_id_put,
+                "transactions",
+                &transaction_id,
+                serde_json::json!({"occurredOn": "2026-03-02", "amount": "11", "direction": 1,
+                    "description": "Renamed"}),
+                &[
+                    (
+                        "financialAccountId",
+                        Value::String(account_id.clone()),
+                        fixed_target,
+                    ),
+                    ("creditCardId", Value::String(card_id.clone()), fixed_target),
+                    (
+                        "currencyCode",
+                        "BRL".into(),
+                        "CurrencyCode cannot be supplied; the transaction currency is fixed by its target.",
+                    ),
+                    (
+                        "ownerId",
+                        Value::String(Uuid::new_v4().to_string()),
+                        fixed_owner,
+                    ),
+                ],
+            ),
+            (
+                fortuna_api_recurring_transactions_by_id_put,
+                "recurring-transactions",
+                &rule_id,
+                serde_json::json!({"financialAccountId": account_id, "direction": 1, "amount": "6",
+                    "frequency": 3, "startsOn": "2026-03-01", "description": "Renamed"}),
+                &[(
+                    "ownerId",
+                    Value::String(Uuid::new_v4().to_string()),
+                    fixed_owner,
+                )],
+            ),
+        ];
+
+        for (put, resource, id, change, immutable) in cases {
+            let before = stored_record(&path, resource, id);
+            let update = |body: Value| {
+                call(
+                    put,
+                    &serde_json::json!({"token": token, "route": {"id": id}, "body": body})
+                        .to_string(),
+                )
+            };
+
+            // UC-13, BR-08, UC-32 AF-03: a field the update may not change is rejected with
+            // the HTTP validator's message when it carries a value, and nothing is written.
+            for (field, value, error) in immutable {
+                let mut body = change.clone();
+                body[*field] = value.clone();
+                let refused = update(body);
+                assert_eq!(
+                    FORTUNA_STATUS_BAD_REQUEST, refused.status,
+                    "{resource}.{field}: {}",
+                    refused.body
+                );
+                assert_eq!(*error, body_of(&refused)["errors"][0], "{resource}.{field}");
+                assert_eq!(
+                    before,
+                    stored_record(&path, resource, id),
+                    "{resource}.{field}"
+                );
+            }
+
+            // An explicit null, as a client writing every key sends it, is ignored as the HTTP
+            // host ignores it: the stored value stays, and the rest of the update applies.
+            let mut body = change.clone();
+            for (field, _, _) in immutable {
+                body[*field] = Value::Null;
+            }
+            let updated = update(body);
+            assert_eq!(
+                FORTUNA_STATUS_OK, updated.status,
+                "{resource}: {}",
+                updated.body
+            );
+            let after = stored_record(&path, resource, id);
+            for (field, _, _) in immutable {
+                assert_eq!(before.get(*field), after.get(*field), "{resource}.{field}");
+            }
+            for (field, value) in change.as_object().unwrap() {
+                assert_eq!(Some(value), after.get(field), "{resource}.{field}");
+            }
+        }
+        assert_eq!(
+            "BRL",
+            stored_record(&path, "accounts", &account_id)["currencyCode"]
+        );
+        stop();
+        assert_eq!(0, OUTSTANDING_STRINGS.load(Ordering::SeqCst));
+    }
+
     #[test]
     fn given_concurrent_tag_assignments_when_applied_then_no_update_is_lost() {
         let _guard = test_guard();
