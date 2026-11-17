@@ -14164,7 +14164,27 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The attachment's bytes, as the content type it was uploaded with: one of FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES, which are these three by default."
           }
         },
         "tags": [
@@ -17258,26 +17278,26 @@
         "responses": {
           "200": {
             "content": {
-              "text/plain": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                 "schema": {
                   "format": "binary",
                   "type": "string"
                 }
               },
-              "application/json": {
+              "application/pdf": {
                 "schema": {
                   "format": "binary",
                   "type": "string"
                 }
               },
-              "text/json": {
+              "text/csv": {
                 "schema": {
                   "format": "binary",
                   "type": "string"
                 }
               }
             },
-            "description": "OK"
+            "description": "The export itself, when it is small enough to deliver at once; a larger one is queued (202)."
           },
           "202": {
             "content": {
@@ -17335,9 +17355,27 @@
                 "schema": {
                   "$ref": "#/components/schemas/RetrieveDataExportQueryOutputDataOutput"
                 }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
               }
             },
-            "description": "OK"
+            "description": "The export's record (JSON) while it is pending or failed; the file once it is completed."
           }
         },
         "tags": [
@@ -19216,9 +19254,15 @@
                 "schema": {
                   "$ref": "#/components/schemas/PersonalDataExportQueryOutputDataOutput"
                 }
+              },
+              "application/zip": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
               }
             },
-            "description": "OK"
+            "description": "The job's report (JSON) until the archive is ready; the ZIP archive once it is."
           }
         },
         "tags": [

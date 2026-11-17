@@ -42,6 +42,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The OpenAPI document describes the routes that answer a file as files: each lists, on its `200`, the media types
+  the file is really sent as, each `type: string, format: binary`. `POST /api/exports` sent a small export straight
+  away but documented it as a binary string under `application/json`, `text/json` and `text/plain`; it now lists
+  `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/pdf` and `text/csv`, and keeps
+  the `202` envelope of a queued export. `GET /api/exports/{id}` answers the export's record (JSON) until it is
+  completed and the file after; it documented only the record and now lists the same three file types beside it.
+  `GET /api/me/data-export/{jobId}` likewise lists `application/zip` beside its report, and
+  `GET /api/attachments/{id}`, which documented no body at all, lists `application/pdf`, `image/jpeg` and
+  `image/png`, the types `FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES` allows by default. A generated client reads the
+  attachment and the direct export as bytes; the record and report reads are unchanged. Nothing changes on the
+  wire, and the desktop native core's responses do not change either.
 - The desktop native core keeps the fields an update may not change, as the HTTP API does (UC-13, UC-32 AF-03,
   BR-08, NFR-28). On `PUT /api/accounts/{id}` these are `ownerId`, `currencyCode` and `openingBalance`. On
   `/credit-cards/{id}` and `/investments/{id}` it is `currencyCode`. On `/transactions/{id}` these are

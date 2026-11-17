@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.OpenApi;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
@@ -74,9 +75,10 @@ public sealed class MeController : FortunaController
 
     [HttpGet("data-export/{jobId:guid}")]
     [RoleRequirement((int)HeimdallRoles.User, (int)HeimdallRoles.SystemAdmin)]
-    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(DataOutput<PersonalDataExportQueryOutput?>),
         StatusCodes.Status200OK)]
+    [ProducesFile(StatusCodes.Status200OK, "application/zip",
+        Description = "The job's report (JSON) until the archive is ready; the ZIP archive once it is.")]
     public async Task<IActionResult> GetDataExport(Guid jobId)
     {
         var result = await Queries.ExecuteQueryAsync<

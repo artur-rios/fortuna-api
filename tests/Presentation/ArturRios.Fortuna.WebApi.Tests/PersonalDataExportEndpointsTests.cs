@@ -142,6 +142,8 @@ public sealed class PersonalDataExportEndpointsTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/zip", response.Content.Headers.ContentType?.MediaType);
+        Assert.True(CommittedOpenApiDocument.DocumentsFile(
+            "GET /api/me/data-export/{jobId}", 200, response.Content.Headers.ContentType!.MediaType!));
         Assert.Equal(new byte[] { 80, 75, 3, 4 }, await response.Content.ReadAsByteArrayAsync());
     }
 

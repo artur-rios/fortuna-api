@@ -55,6 +55,8 @@ public sealed class DataExportTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.StartsWith("text/csv", response.Content.Headers.ContentType!.ToString());
+        Assert.True(CommittedOpenApiDocument.DocumentsFile(
+            "POST /api/exports", 200, response.Content.Headers.ContentType!.MediaType!));
         Assert.Contains("currencyCode", text);
         Assert.Contains("Owner BRL", text);
         Assert.Contains("Owner USD", text);
@@ -100,6 +102,10 @@ public sealed class DataExportTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, excel.StatusCode);
         Assert.Equal("PK", Encoding.ASCII.GetString(
             (await excel.Content.ReadAsByteArrayAsync())[..2]));
+        Assert.True(CommittedOpenApiDocument.DocumentsFile(
+            "POST /api/exports", 200, excel.Content.Headers.ContentType!.MediaType!));
+        Assert.True(CommittedOpenApiDocument.DocumentsFile(
+            "POST /api/exports", 200, pdf.Content.Headers.ContentType!.MediaType!));
         Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
         Assert.StartsWith("%PDF-1.4", Encoding.ASCII.GetString(
             await pdf.Content.ReadAsByteArrayAsync()));
@@ -180,8 +186,14 @@ public sealed class DataExportTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, pending.StatusCode);
         Assert.Equal((int)DataExportStatus.Pending,
             pendingJson.RootElement.GetProperty("data").GetProperty("status").GetInt32());
+        Assert.Contains(CommittedOpenApiDocument.Content("GET /api/exports/{id}", 200), media =>
+            media.Key == pending.Content.Headers.ContentType!.MediaType &&
+            media.Value.GetProperty("$ref").GetString() ==
+            "#/components/schemas/RetrieveDataExportQueryOutputDataOutput");
         Assert.Equal(HttpStatusCode.OK, completed.StatusCode);
         Assert.StartsWith("text/csv", completed.Content.Headers.ContentType!.ToString());
+        Assert.True(CommittedOpenApiDocument.DocumentsFile(
+            "GET /api/exports/{id}", 200, completed.Content.Headers.ContentType!.MediaType!));
         Assert.Contains("completed export", await completed.Content.ReadAsStringAsync());
         Assert.Equal("attachment; filename=export.csv; filename*=UTF-8''export.csv",
             completed.Content.Headers.ContentDisposition!.ToString());

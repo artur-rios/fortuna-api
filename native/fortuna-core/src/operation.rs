@@ -1815,7 +1815,8 @@ mod tests {
     use serde_json::json;
 
     use super::{
-        normalize_decimal_schema, openapi_document, project_schema, referenced, schema_default,
+        NATIVE_OPERATIONS, NOT_IMPLEMENTED_OPERATIONS, normalize_decimal_schema, openapi_document,
+        project_schema, referenced, schema_default,
     };
 
     fn schemas() -> serde_json::Value {
@@ -1954,5 +1955,39 @@ mod tests {
             Some(&schemas["CreateFinancialAccountCommandOutput"]),
             resolved
         );
+    }
+
+    #[test]
+    fn given_file_routes_when_generated_then_each_projects_its_envelope_or_nothing() {
+        // These routes answer a file, documented as its own media types beside the JSON envelope
+        // or alone. build.rs keys an operation's projection on the first success status whose
+        // first media type refers to a schema. A file's media types sort after application/json
+        // and are listed after the envelope's, so that stays the envelope where the route also
+        // answers one, and nothing for a bare file.
+        let schema = |method: &str, path: &str| {
+            NATIVE_OPERATIONS
+                .iter()
+                .chain(
+                    NOT_IMPLEMENTED_OPERATIONS
+                        .iter()
+                        .map(|entry| &entry.operation),
+                )
+                .find(|operation| operation.method == method && operation.path == path)
+                .map(|operation| operation.response_schema)
+        };
+
+        assert_eq!(
+            Some("RequestDataExportCommandOutputDataOutput"),
+            schema("POST", "/api/exports")
+        );
+        assert_eq!(
+            Some("RetrieveDataExportQueryOutputDataOutput"),
+            schema("GET", "/api/exports/{id}")
+        );
+        assert_eq!(
+            Some("PersonalDataExportQueryOutputDataOutput"),
+            schema("GET", "/api/me/data-export/{jobId}")
+        );
+        assert_eq!(Some(""), schema("GET", "/api/attachments/{id}"));
     }
 }
