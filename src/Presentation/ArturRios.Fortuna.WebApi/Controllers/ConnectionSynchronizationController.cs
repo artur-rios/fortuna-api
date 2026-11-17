@@ -28,6 +28,8 @@ public sealed class ConnectionSynchronizationController : FortunaController
 
     [HttpPost("{id:guid}/sync")]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<SynchronizeConnectionCommandOutput?>),
+        StatusCodes.Status202Accepted)]
     public async Task<ActionResult<DataOutput<SynchronizeConnectionCommandOutput?>>> Synchronize(
         Guid id,
         [FromBody] SynchronizeConnectionCommand command)

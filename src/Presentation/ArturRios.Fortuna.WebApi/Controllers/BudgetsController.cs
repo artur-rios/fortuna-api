@@ -42,6 +42,8 @@ public sealed class BudgetsController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<BudgetCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<BudgetCommandOutput?>>> Create(
         [FromBody] CreateBudgetCommand command)
     {

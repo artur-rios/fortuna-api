@@ -42,6 +42,8 @@ public sealed class CategoriesController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<CreateCategoryCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<CreateCategoryCommandOutput?>>> Create(
         [FromBody] CreateCategoryCommand command)
     {

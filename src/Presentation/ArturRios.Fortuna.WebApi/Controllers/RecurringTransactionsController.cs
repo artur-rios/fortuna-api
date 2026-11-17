@@ -69,6 +69,8 @@ public sealed class RecurringTransactionsController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<DefineRecurringTransactionCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<DefineRecurringTransactionCommandOutput?>>> Define(
         [FromBody] DefineRecurringTransactionCommand command)
     {

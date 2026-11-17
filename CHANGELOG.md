@@ -32,6 +32,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The OpenAPI document (`docs/openapi/fortuna.json`) now describes what the API answers, so a client generated from it
+  accepts real responses. Nothing changes on the wire: statuses, bodies and JSON are as before.
+  - **Success statuses.** Creates declare `201 Created` (`POST /api/accounts`, `/budgets`, `/categories`,
+    `/connections`, `/credit-cards`, `/goals`, `/installment-plans`, `/investments`, `/local-accounts`,
+    `/recurring-transactions`, `/tags`, `/transactions`, `/transactions/{id}/attachments`, `/transfers`) and queued
+    work declares `202 Accepted` (`POST /api/connections/{id}/sync`, `/import-jobs/{id}/retry`, `/imports/excel`,
+    `/imports/pdf`) instead of `200`. `POST /api/counterparties` declares `201` for a new counterparty and `200` for a
+    reused one, and `POST /api/exchange-rates` `201` for a new rate and `200` for a replaced one.
+  - **Required bodies.** Every JSON request body the API rejects when it is missing is marked `required: true`. The
+    one body that may be omitted, `POST /api/exchange-rates/sync`'s, stays optional.
+  - **Nullable properties.** A property that refers to another schema and can be `null` (every envelope's `data`,
+    which is `null` on a failure, and nullable fields such as `rateSource` or a drill-down's `transaction`) is published
+    as `allOf` over the reference with `nullable: true`; it was a bare `$ref`, which said it is never `null`. The
+    desktop native core, which reads the document to shape its responses, resolves the new form exactly like the plain
+    reference, so its responses do not change either.
 - On SQLite (the desktop offline mode), `GET /api/recurring-transactions?SortBy=Amount` now orders the rules by their
   exact amount whatever the machine's regional format. With Portuguese (Brazil), or any format that writes `1.000,50`,
   the rules came back as if `9.99` were 999 and `20.0` were 200: 20.00, 9.99, 100.50 instead of 9.99, 20.00, 100.49.

@@ -39,6 +39,10 @@ public sealed class CounterpartiesController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<CounterpartyCommandOutput?>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(DataOutput<CounterpartyCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<CounterpartyCommandOutput?>>> Create(
         [FromBody] CreateCounterpartyCommand command)
     {

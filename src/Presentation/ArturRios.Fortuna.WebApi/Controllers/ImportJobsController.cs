@@ -36,6 +36,8 @@ public sealed class ImportJobsController : FortunaController
 
     [HttpPost("{id:guid}/retry")]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<RetryImportJobCommandOutput?>),
+        StatusCodes.Status202Accepted)]
     public async Task<ActionResult<DataOutput<RetryImportJobCommandOutput?>>> Retry(Guid id)
     {
         return await SendAsync<

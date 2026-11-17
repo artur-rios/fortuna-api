@@ -43,6 +43,8 @@ public sealed class ConnectionsController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<CreateConnectionCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<CreateConnectionCommandOutput?>>> Create(
         [FromBody] CreateConnectionCommand command)
     {

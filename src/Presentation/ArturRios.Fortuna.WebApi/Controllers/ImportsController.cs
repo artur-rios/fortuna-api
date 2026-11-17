@@ -48,6 +48,8 @@ public sealed class ImportsController(
     [Consumes("multipart/form-data")]
     [UploadLimit(UploadKind.ExcelImport)]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<ImportExcelWorkbookCommandOutput?>),
+        StatusCodes.Status202Accepted)]
     public async Task<ActionResult<DataOutput<ImportExcelWorkbookCommandOutput?>>> Excel(
         [FromForm] ImportExcelWorkbookRequest request)
     {
@@ -87,6 +89,8 @@ public sealed class ImportsController(
     [Consumes("multipart/form-data")]
     [UploadLimit(UploadKind.PdfInvoiceImport)]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<ImportPdfInvoiceCommandOutput?>),
+        StatusCodes.Status202Accepted)]
     public async Task<ActionResult<DataOutput<ImportPdfInvoiceCommandOutput?>>> Pdf(
         [FromForm] ImportPdfInvoiceRequest request)
     {
