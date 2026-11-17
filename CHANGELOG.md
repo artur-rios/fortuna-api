@@ -42,6 +42,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The desktop native core keeps the fields an update may not change, as the HTTP API does (UC-13, UC-32 AF-03,
+  BR-08, NFR-28). On `PUT /api/accounts/{id}` these are `ownerId`, `currencyCode` and `openingBalance`. On
+  `/credit-cards/{id}` and `/investments/{id}` it is `currencyCode`. On `/transactions/{id}` these are
+  `financialAccountId`, `creditCardId`, `currencyCode` and `ownerId`, and on `/recurring-transactions/{id}` it is
+  `ownerId`. Before, the core merged the whole body into the stored record, so a client that writes every key
+  cleared those values offline: an account lost its currency and opening balance, and a transaction lost its account.
+  A value could also change them, where the HTTP API answers `400`. Now a null or absent key leaves the stored value
+  as it is. A value is refused with `400` and the HTTP validator's message, and nothing is written. The HTTP API and
+  the OpenAPI document are unchanged.
 - The OpenAPI document (`docs/openapi/fortuna.json`) now describes what the API answers, so a client generated from it
   accepts real responses. Nothing changes on the wire: statuses, bodies and JSON are as before.
   - **Success statuses.** Creates declare `201 Created` (`POST /api/accounts`, `/budgets`, `/categories`,
