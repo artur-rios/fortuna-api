@@ -75,6 +75,7 @@ public sealed class ClientAddressLoggingTests
     public async Task GivenAnyRequest_WhenItIsServed_ThenTheClientAddressIsTaggedOnItsActivity()
     {
         var stopped = new List<Activity>();
+        using var stoppedOne = new SemaphoreSlim(0);
         using var listener = new ActivityListener();
         listener.ShouldListenTo = source => source.Name == "Microsoft.AspNetCore";
         listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) =>
@@ -85,6 +86,8 @@ public sealed class ClientAddressLoggingTests
             {
                 stopped.Add(activity);
             }
+
+            stoppedOne.Release();
         };
         ActivitySource.AddActivityListener(listener);
         await using var factory = CreateFactory(new CapturingLogger(), remoteAddress: Caller);
@@ -92,7 +95,16 @@ public sealed class ClientAddressLoggingTests
 
         using var response = await client.GetAsync("/healthcheck");
 
+        // The server stops the request's activity when it disposes the request, which can come
+        // just after the client has the response: wait for it rather than look once.
         var traceId = ActivityContext.Parse(response.Headers.GetValues("traceparent").Single(), null).TraceId;
+        while (!HasStopped(stopped, traceId))
+        {
+            Assert.True(
+                await stoppedOne.WaitAsync(TimeSpan.FromSeconds(10)),
+                "The request's activity did not stop within 10 seconds.");
+        }
+
         Activity request;
         lock (stopped)
         {
@@ -168,6 +180,14 @@ public sealed class ClientAddressLoggingTests
         using var response = await SendForwardedAsync(client, forwardedFor: Caller);
 
         Assert.Equal(Proxy, Assert.Single(log.Entries).ClientIp);
+    }
+
+    private static bool HasStopped(List<Activity> stopped, ActivityTraceId traceId)
+    {
+        lock (stopped)
+        {
+            return stopped.Exists(activity => activity.TraceId == traceId);
+        }
     }
 
     private static Task<HttpResponseMessage> SendForwardedAsync(HttpClient client, string forwardedFor)
