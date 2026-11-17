@@ -33,10 +33,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   `/swagger/v1/swagger.json`. Nullable fields use 3.1's `null` type, since 3.0's `nullable: true` beside a reference
   was read by client generators such as swagger_parser 2 as never `null`: a nullable scalar or array is
   `"type": ["null", "string"]` (`"array"`, `"integer"`, ...), and a nullable reference, such as every envelope's
-  `data`, is `anyOf` over the `$ref` and `{"type": "null"}`. The `nullable` keyword is gone. The enum names
-  (`x-enum-varnames`) stay on the enum's own schema, not repeated beside each reference to it. Nothing changes on the
-  wire: paths, statuses, bodies and the JSON the API answers are as before. The desktop native core reads the 3.1
-  forms, and its responses are unchanged.
+  `data`, is `anyOf` over the `$ref` and `{"type": "null"}`. The `nullable` keyword is gone. JSON request bodies list
+  `application/json` first, then `text/json` and `application/*+json` (the document used to sort them, putting
+  `application/*+json` first, which a generator then sent); responses list their media types in the API's order, too.
+  The enum names (`x-enum-varnames`) stay on the enum's own schema, not repeated beside each reference to it. Nothing
+  changes on the wire: paths, statuses, bodies, the media types the API accepts and the JSON it answers are as
+  before. The desktop native core reads the 3.1 forms, and its responses are unchanged.
 
 ### Fixed
 

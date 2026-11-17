@@ -14,9 +14,10 @@ namespace ArturRios.Fortuna.WebApi.Tests;
 
 /// <summary>
 ///     Keeps docs/openapi/fortuna.json honest about what the API answers, since client generators
-///     trust it: the success statuses each operation can answer, which request bodies are required,
-///     and which properties can be null, in OpenAPI 3.1's terms. The check job keeps the committed
-///     document what the build generates, so these read the committed one.
+///     trust it: the success statuses each operation can answer, which request bodies are required
+///     and the media type they are sent as, and which properties can be null, in OpenAPI 3.1's terms.
+///     The check job keeps the committed document what the build generates, so these read the
+///     committed one.
 /// </summary>
 public sealed partial class OpenApiDocumentAccuracyTests
 {
@@ -249,6 +250,29 @@ public sealed partial class OpenApiDocumentAccuracyTests
         Assert.Contains(objects, item => item.TryGetProperty("type", out var type) &&
                                          type.ValueKind == JsonValueKind.Array &&
                                          type.EnumerateArray().Any(member => member.GetString() == "null"));
+    }
+
+    [UnitFact]
+    public void GivenJsonRequestBodies_WhenDocumented_ThenApplicationJsonIsListedFirst()
+    {
+        using var contract = Contract();
+
+        // A client generator sends a body as the first JSON media type listed. Listed first, as it
+        // once sorted, application/*+json made swagger_parser send every body through a direct call
+        // that accepts its lowest success status only. The API accepts all of them alike.
+        var bodies = Operations(contract)
+            .Where(operation => operation.Value.TryGetProperty("requestBody", out _))
+            .Select(operation => (operation.Key, MediaTypes: operation.Value.GetProperty("requestBody")
+                .GetProperty("content").EnumerateObject().Select(media => media.Name).ToArray()))
+            .Where(body => body.MediaTypes.Any(media => media.Contains("json", StringComparison.Ordinal)))
+            .ToArray();
+
+        Assert.True(bodies.Length > 50, $"Only {bodies.Length} JSON request bodies were found.");
+        foreach (var (key, mediaTypes) in bodies)
+        {
+            Assert.True(mediaTypes[0] == "application/json",
+                $"{key} lists {string.Join(", ", mediaTypes)}, not application/json first.");
+        }
     }
 
     /// <summary>

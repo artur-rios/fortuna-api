@@ -13768,17 +13768,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialAccountOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FinancialAccountOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountOutputPaginatedOutput"
                 }
@@ -13794,17 +13794,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFinancialAccountCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateFinancialAccountCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFinancialAccountCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateFinancialAccountCommand"
               }
@@ -13815,17 +13815,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateFinancialAccountCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateFinancialAccountCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateFinancialAccountCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateFinancialAccountCommandOutputDataOutput"
                 }
@@ -13855,17 +13855,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
                 }
@@ -13901,17 +13901,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialAccountOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FinancialAccountOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountOutputDataOutput"
                 }
@@ -13938,17 +13938,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateFinancialAccountCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateFinancialAccountCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFinancialAccountCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateFinancialAccountCommand"
               }
@@ -13959,17 +13959,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateFinancialAccountCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateFinancialAccountCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateFinancialAccountCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateFinancialAccountCommandOutputDataOutput"
                 }
@@ -14007,17 +14007,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialAccountBalanceOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountBalanceOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FinancialAccountBalanceOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountBalanceOutputDataOutput"
                 }
@@ -14047,17 +14047,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
                 }
@@ -14087,17 +14087,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutputDataOutput"
                 }
@@ -14127,17 +14127,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AttachmentLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AttachmentLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/AttachmentLifecycleCommandOutputDataOutput"
                 }
@@ -14188,17 +14188,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AttachmentLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AttachmentLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/AttachmentLifecycleCommandOutputDataOutput"
                 }
@@ -14280,17 +14280,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEntryOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuditEntryOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuditEntryOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/AuditEntryOutputPaginatedOutput"
                 }
@@ -14309,17 +14309,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTwoFactorStatusThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GetTwoFactorStatusThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GetTwoFactorStatusThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GetTwoFactorStatusThroughApiCommandOutputDataOutput"
                 }
@@ -14337,17 +14337,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommand"
               }
@@ -14358,17 +14358,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutputDataOutput"
                 }
@@ -14386,17 +14386,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommand"
               }
@@ -14407,17 +14407,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommandOutputDataOutput"
                 }
@@ -14435,17 +14435,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommand"
               }
@@ -14456,17 +14456,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommandOutputDataOutput"
                 }
@@ -14484,17 +14484,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommand"
               }
@@ -14505,17 +14505,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommandOutputDataOutput"
                 }
@@ -14533,17 +14533,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommand"
               }
@@ -14554,17 +14554,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommandOutputDataOutput"
                 }
@@ -14582,17 +14582,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommand"
               }
@@ -14603,17 +14603,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommandOutputDataOutput"
                 }
@@ -14631,17 +14631,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/GoogleSignInThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GoogleSignInThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleSignInThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/GoogleSignInThroughApiCommand"
               }
@@ -14652,17 +14652,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleSignInThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoogleSignInThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoogleSignInThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GoogleSignInThroughApiCommandOutputDataOutput"
                 }
@@ -14681,17 +14681,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleSignOutThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoogleSignOutThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoogleSignOutThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GoogleSignOutThroughApiCommandOutputDataOutput"
                 }
@@ -14709,17 +14709,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/LoginThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/LoginThroughApiCommand"
               }
@@ -14730,17 +14730,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LoginThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LoginThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/LoginThroughApiCommandOutputDataOutput"
                 }
@@ -14758,17 +14758,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommand"
               }
@@ -14779,17 +14779,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommandOutputDataOutput"
                 }
@@ -14807,17 +14807,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResetPasswordThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ResetPasswordThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ResetPasswordThroughApiCommand"
               }
@@ -14828,17 +14828,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetPasswordThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ResetPasswordThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResetPasswordThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ResetPasswordThroughApiCommandOutputDataOutput"
                 }
@@ -14856,17 +14856,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegisterThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RegisterThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RegisterThroughApiCommand"
               }
@@ -14877,17 +14877,17 @@
         "responses": {
           "202": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
@@ -14897,17 +14897,17 @@
           },
           "400": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
@@ -14917,17 +14917,17 @@
           },
           "403": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
@@ -14937,17 +14937,17 @@
           },
           "409": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
@@ -14957,17 +14957,17 @@
           },
           "429": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
@@ -14977,17 +14977,17 @@
           },
           "503": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RegisterThroughApiCommandOutputDataOutput"
                 }
@@ -15006,17 +15006,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendVerificationThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ResendVerificationThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResendVerificationThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ResendVerificationThroughApiCommandOutputDataOutput"
                 }
@@ -15034,17 +15034,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyEmailThroughApiCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/VerifyEmailThroughApiCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailThroughApiCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/VerifyEmailThroughApiCommand"
               }
@@ -15055,17 +15055,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
@@ -15075,17 +15075,17 @@
           },
           "400": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
@@ -15095,17 +15095,17 @@
           },
           "401": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
@@ -15115,17 +15115,17 @@
           },
           "409": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
@@ -15135,17 +15135,17 @@
           },
           "422": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
@@ -15155,17 +15155,17 @@
           },
           "429": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
@@ -15175,17 +15175,17 @@
           },
           "503": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutputDataOutput"
                 }
@@ -15232,17 +15232,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetListOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetListOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetListOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetListOutputDataOutput"
                 }
@@ -15258,17 +15258,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateBudgetCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateBudgetCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBudgetCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateBudgetCommand"
               }
@@ -15279,17 +15279,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
                 }
@@ -15319,17 +15319,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
                 }
@@ -15365,17 +15365,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetOutputDataOutput"
                 }
@@ -15402,17 +15402,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateBudgetCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateBudgetCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBudgetCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateBudgetCommand"
               }
@@ -15423,17 +15423,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetCommandOutputDataOutput"
                 }
@@ -15471,17 +15471,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetConsumptionDetailOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetConsumptionDetailOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BudgetConsumptionDetailOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BudgetConsumptionDetailOutputDataOutput"
                 }
@@ -15518,17 +15518,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryTreeOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryTreeOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategoryTreeOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryTreeOutputDataOutput"
                 }
@@ -15544,17 +15544,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCategoryCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateCategoryCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateCategoryCommand"
               }
@@ -15565,17 +15565,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCategoryCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateCategoryCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateCategoryCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateCategoryCommandOutputDataOutput"
                 }
@@ -15605,17 +15605,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
                 }
@@ -15659,17 +15659,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategoryOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryOutputDataOutput"
                 }
@@ -15696,17 +15696,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCategoryCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateCategoryCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateCategoryCommand"
               }
@@ -15717,17 +15717,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCategoryCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateCategoryCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateCategoryCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateCategoryCommandOutputDataOutput"
                 }
@@ -15757,17 +15757,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
                 }
@@ -15796,17 +15796,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReassignCategoryTransactionsCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ReassignCategoryTransactionsCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignCategoryTransactionsCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ReassignCategoryTransactionsCommand"
               }
@@ -15817,17 +15817,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutputDataOutput"
                 }
@@ -15857,17 +15857,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryLifecycleCommandOutputDataOutput"
                 }
@@ -15932,17 +15932,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConnectionOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConnectionOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ConnectionOutputPaginatedOutput"
                 }
@@ -15958,17 +15958,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateConnectionCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateConnectionCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateConnectionCommand"
               }
@@ -15979,17 +15979,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateConnectionCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateConnectionCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateConnectionCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateConnectionCommandOutputDataOutput"
                 }
@@ -16019,17 +16019,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConnectionOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConnectionOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ConnectionOutputDataOutput"
                 }
@@ -16058,17 +16058,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReauthenticateConnectionCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ReauthenticateConnectionCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthenticateConnectionCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ReauthenticateConnectionCommand"
               }
@@ -16079,17 +16079,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReauthenticateConnectionCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReauthenticateConnectionCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReauthenticateConnectionCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ReauthenticateConnectionCommandOutputDataOutput"
                 }
@@ -16119,17 +16119,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeConnectionCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RevokeConnectionCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RevokeConnectionCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RevokeConnectionCommandOutputDataOutput"
                 }
@@ -16158,17 +16158,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/SynchronizeConnectionCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SynchronizeConnectionCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynchronizeConnectionCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/SynchronizeConnectionCommand"
               }
@@ -16179,17 +16179,17 @@
         "responses": {
           "202": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SynchronizeConnectionCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SynchronizeConnectionCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SynchronizeConnectionCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/SynchronizeConnectionCommandOutputDataOutput"
                 }
@@ -16236,17 +16236,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyListOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyListOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CounterpartyListOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyListOutputDataOutput"
                 }
@@ -16262,17 +16262,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCounterpartyCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateCounterpartyCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCounterpartyCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateCounterpartyCommand"
               }
@@ -16283,17 +16283,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
                 }
@@ -16303,17 +16303,17 @@
           },
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
                 }
@@ -16343,17 +16343,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
                 }
@@ -16380,17 +16380,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCounterpartyCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateCounterpartyCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCounterpartyCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateCounterpartyCommand"
               }
@@ -16401,17 +16401,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
                 }
@@ -16440,17 +16440,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/MergeCounterpartiesCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/MergeCounterpartiesCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeCounterpartiesCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/MergeCounterpartiesCommand"
               }
@@ -16461,17 +16461,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyMergeCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyMergeCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CounterpartyMergeCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyMergeCommandOutputDataOutput"
                 }
@@ -16501,17 +16501,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyCategorySuggestionOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCategorySuggestionOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CounterpartyCategorySuggestionOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CounterpartyCategorySuggestionOutputDataOutput"
                 }
@@ -16590,17 +16590,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardOutputPaginatedOutput"
                 }
@@ -16616,17 +16616,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCreditCardCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateCreditCardCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCreditCardCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateCreditCardCommand"
               }
@@ -16637,17 +16637,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCreditCardCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateCreditCardCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateCreditCardCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateCreditCardCommandOutputDataOutput"
                 }
@@ -16677,17 +16677,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
                 }
@@ -16715,17 +16715,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardOutputDataOutput"
                 }
@@ -16752,17 +16752,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateCreditCardCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateCreditCardCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCreditCardCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateCreditCardCommand"
               }
@@ -16773,17 +16773,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCreditCardCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateCreditCardCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateCreditCardCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateCreditCardCommandOutputDataOutput"
                 }
@@ -16813,17 +16813,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
                 }
@@ -16853,17 +16853,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardLifecycleCommandOutputDataOutput"
                 }
@@ -16946,17 +16946,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardStatementOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardStatementOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardStatementOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardStatementOutputPaginatedOutput"
                 }
@@ -16975,17 +16975,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSupportedCurrenciesQueryOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ListSupportedCurrenciesQueryOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListSupportedCurrenciesQueryOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ListSupportedCurrenciesQueryOutputDataOutput"
                 }
@@ -17014,17 +17014,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrencyOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CurrencyOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CurrencyOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CurrencyOutputDataOutput"
                 }
@@ -17043,17 +17043,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataSourceListOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DataSourceListOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DataSourceListOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/DataSourceListOutputDataOutput"
                 }
@@ -17071,17 +17071,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordManualExchangeRateCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordManualExchangeRateCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordManualExchangeRateCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordManualExchangeRateCommand"
               }
@@ -17092,17 +17092,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
                 }
@@ -17112,17 +17112,17 @@
           },
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
                 }
@@ -17140,17 +17140,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ConvertFigureQuery"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ConvertFigureQuery"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertFigureQuery"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ConvertFigureQuery"
               }
@@ -17161,17 +17161,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConvertFigureQueryOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConvertFigureQueryOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConvertFigureQueryOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ConvertFigureQueryOutputDataOutput"
                 }
@@ -17189,11 +17189,6 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/SynchronizeExchangeRatesCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SynchronizeExchangeRatesCommand"
@@ -17203,23 +17198,28 @@
               "schema": {
                 "$ref": "#/components/schemas/SynchronizeExchangeRatesCommand"
               }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynchronizeExchangeRatesCommand"
+              }
             }
           }
         },
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutputDataOutput"
                 }
@@ -17237,17 +17237,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RequestDataExportCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RequestDataExportCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestDataExportCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RequestDataExportCommand"
               }
@@ -17258,6 +17258,12 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
               "application/json": {
                 "schema": {
                   "format": "binary",
@@ -17265,12 +17271,6 @@
                 }
               },
               "text/json": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "format": "binary",
                   "type": "string"
@@ -17281,17 +17281,17 @@
           },
           "202": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDataExportCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestDataExportCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RequestDataExportCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestDataExportCommandOutputDataOutput"
                 }
@@ -17321,17 +17321,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrieveDataExportQueryOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RetrieveDataExportQueryOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RetrieveDataExportQueryOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RetrieveDataExportQueryOutputDataOutput"
                 }
@@ -17378,17 +17378,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalListOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalListOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoalListOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalListOutputDataOutput"
                 }
@@ -17404,17 +17404,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateGoalCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateGoalCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoalCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateGoalCommand"
               }
@@ -17425,17 +17425,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
                 }
@@ -17465,17 +17465,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
                 }
@@ -17511,17 +17511,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoalOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalOutputDataOutput"
                 }
@@ -17548,17 +17548,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateGoalCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateGoalCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGoalCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateGoalCommand"
               }
@@ -17569,17 +17569,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalCommandOutputDataOutput"
                 }
@@ -17609,17 +17609,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalProgressDetailOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalProgressDetailOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoalProgressDetailOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GoalProgressDetailOutputDataOutput"
                 }
@@ -17684,17 +17684,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportJobOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImportJobOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportJobOutputPaginatedOutput"
                 }
@@ -17724,17 +17724,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportJobOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImportJobOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportJobOutputDataOutput"
                 }
@@ -17788,17 +17788,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportedRecordOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportedRecordOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImportedRecordOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportedRecordOutputPaginatedOutput"
                 }
@@ -17828,17 +17828,17 @@
         "responses": {
           "202": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetryImportJobCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RetryImportJobCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RetryImportJobCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RetryImportJobCommandOutputDataOutput"
                 }
@@ -17932,17 +17932,17 @@
         "responses": {
           "202": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutputDataOutput"
                 }
@@ -17988,17 +17988,17 @@
         "responses": {
           "202": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutputDataOutput"
                 }
@@ -18016,17 +18016,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordInstallmentPlanCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordInstallmentPlanCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInstallmentPlanCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordInstallmentPlanCommand"
               }
@@ -18037,17 +18037,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordInstallmentPlanCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordInstallmentPlanCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecordInstallmentPlanCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordInstallmentPlanCommandOutputDataOutput"
                 }
@@ -18077,17 +18077,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutputDataOutput"
                 }
@@ -18123,17 +18123,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallmentPlanOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InstallmentPlanOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstallmentPlanOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/InstallmentPlanOutputDataOutput"
                 }
@@ -18163,17 +18163,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutputDataOutput"
                 }
@@ -18274,17 +18274,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvestmentOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentOutputPaginatedOutput"
                 }
@@ -18300,17 +18300,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateInvestmentCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateInvestmentCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvestmentCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateInvestmentCommand"
               }
@@ -18321,17 +18321,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateInvestmentCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateInvestmentCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateInvestmentCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateInvestmentCommandOutputDataOutput"
                 }
@@ -18361,17 +18361,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
                 }
@@ -18414,17 +18414,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvestmentOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentOutputDataOutput"
                 }
@@ -18451,17 +18451,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateInvestmentCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateInvestmentCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInvestmentCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateInvestmentCommand"
               }
@@ -18472,17 +18472,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateInvestmentCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateInvestmentCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateInvestmentCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateInvestmentCommandOutputDataOutput"
                 }
@@ -18512,17 +18512,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
                 }
@@ -18551,17 +18551,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordInvestmentMovementCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordInvestmentMovementCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInvestmentMovementCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordInvestmentMovementCommand"
               }
@@ -18572,17 +18572,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutputDataOutput"
                 }
@@ -18612,17 +18612,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentLifecycleCommandOutputDataOutput"
                 }
@@ -18706,17 +18706,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentValuationOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentValuationOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvestmentValuationOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/InvestmentValuationOutputPaginatedOutput"
                 }
@@ -18743,17 +18743,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordInvestmentValuationCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordInvestmentValuationCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordInvestmentValuationCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordInvestmentValuationCommand"
               }
@@ -18764,17 +18764,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutputDataOutput"
                 }
@@ -18792,17 +18792,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateLocalAccountCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateLocalAccountCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLocalAccountCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateLocalAccountCommand"
               }
@@ -18813,17 +18813,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateLocalAccountCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateLocalAccountCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateLocalAccountCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreateLocalAccountCommandOutputDataOutput"
                 }
@@ -18841,17 +18841,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthenticateLocalAccountCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AuthenticateLocalAccountCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthenticateLocalAccountCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/AuthenticateLocalAccountCommand"
               }
@@ -18862,17 +18862,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticateLocalAccountCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthenticateLocalAccountCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthenticateLocalAccountCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthenticateLocalAccountCommandOutputDataOutput"
                 }
@@ -18891,17 +18891,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ObjectDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ObjectDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ObjectDataOutput"
                 }
@@ -18919,17 +18919,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecoverLocalAccountCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RecoverLocalAccountCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverLocalAccountCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RecoverLocalAccountCommand"
               }
@@ -18940,17 +18940,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoverLocalAccountCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecoverLocalAccountCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecoverLocalAccountCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecoverLocalAccountCommandOutputDataOutput"
                 }
@@ -18968,17 +18968,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommand"
               }
@@ -18989,17 +18989,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutputDataOutput"
                 }
@@ -19018,17 +19018,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserProfileOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserProfileOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/UserProfileOutputDataOutput"
                 }
@@ -19047,17 +19047,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessingConsentQueryOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProcessingConsentQueryOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProcessingConsentQueryOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ProcessingConsentQueryOutputDataOutput"
                 }
@@ -19073,17 +19073,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/GrantProcessingConsentCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GrantProcessingConsentCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantProcessingConsentCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/GrantProcessingConsentCommand"
               }
@@ -19094,17 +19094,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantProcessingConsentCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GrantProcessingConsentCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GrantProcessingConsentCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/GrantProcessingConsentCommandOutputDataOutput"
                 }
@@ -19133,17 +19133,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WithdrawProcessingConsentCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WithdrawProcessingConsentCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WithdrawProcessingConsentCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/WithdrawProcessingConsentCommandOutputDataOutput"
                 }
@@ -19162,17 +19162,17 @@
         "responses": {
           "202": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestPersonalDataExportCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestPersonalDataExportCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RequestPersonalDataExportCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestPersonalDataExportCommandOutputDataOutput"
                 }
@@ -19202,17 +19202,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalDataExportQueryOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PersonalDataExportQueryOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PersonalDataExportQueryOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/PersonalDataExportQueryOutputDataOutput"
                 }
@@ -19230,17 +19230,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/EraseUserCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EraseUserCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EraseUserCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/EraseUserCommand"
               }
@@ -19251,17 +19251,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
                 }
@@ -19327,17 +19327,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashFlowProjectionOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CashFlowProjectionOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CashFlowProjectionOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CashFlowProjectionOutputDataOutput"
                 }
@@ -19389,17 +19389,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommittedObligationListOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CommittedObligationListOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CommittedObligationListOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CommittedObligationListOutputDataOutput"
                 }
@@ -19464,17 +19464,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecurringTransactionOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecurringTransactionOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecurringTransactionOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecurringTransactionOutputPaginatedOutput"
                 }
@@ -19490,17 +19490,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/DefineRecurringTransactionCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DefineRecurringTransactionCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefineRecurringTransactionCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/DefineRecurringTransactionCommand"
               }
@@ -19511,17 +19511,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefineRecurringTransactionCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DefineRecurringTransactionCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DefineRecurringTransactionCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/DefineRecurringTransactionCommandOutputDataOutput"
                 }
@@ -19539,17 +19539,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommand"
               }
@@ -19560,17 +19560,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutputDataOutput"
                 }
@@ -19600,17 +19600,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecurringTransactionLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecurringTransactionLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecurringTransactionLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecurringTransactionLifecycleCommandOutputDataOutput"
                 }
@@ -19638,17 +19638,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecurringTransactionOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecurringTransactionOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecurringTransactionOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecurringTransactionOutputDataOutput"
                 }
@@ -19675,17 +19675,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateRecurringTransactionCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateRecurringTransactionCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecurringTransactionCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateRecurringTransactionCommand"
               }
@@ -19696,17 +19696,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateRecurringTransactionCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateRecurringTransactionCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateRecurringTransactionCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateRecurringTransactionCommandOutputDataOutput"
                 }
@@ -19859,17 +19859,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionAggregationOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionAggregationOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionAggregationOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionAggregationOutputDataOutput"
                 }
@@ -19920,17 +19920,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionDrillDownOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionDrillDownOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionDrillDownOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionDrillDownOutputDataOutput"
                 }
@@ -19982,17 +19982,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetPositionOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NetPositionOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NetPositionOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/NetPositionOutputDataOutput"
                 }
@@ -20010,17 +20010,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/QueryRecordsAsTableQuery"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/QueryRecordsAsTableQuery"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRecordsAsTableQuery"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/QueryRecordsAsTableQuery"
               }
@@ -20031,17 +20031,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableReportOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TableReportOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableReportOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TableReportOutputDataOutput"
                 }
@@ -20071,17 +20071,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardStatementOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardStatementOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreditCardStatementOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CreditCardStatementOutputDataOutput"
                 }
@@ -20111,17 +20111,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutputDataOutput"
                 }
@@ -20150,17 +20150,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/SettleCreditCardStatementCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SettleCreditCardStatementCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettleCreditCardStatementCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/SettleCreditCardStatementCommand"
               }
@@ -20171,17 +20171,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutputDataOutput"
                 }
@@ -20228,17 +20228,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagListOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TagListOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TagListOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TagListOutputDataOutput"
                 }
@@ -20254,17 +20254,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTagCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateTagCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTagCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateTagCommand"
               }
@@ -20275,17 +20275,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TagCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TagCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TagCommandOutputDataOutput"
                 }
@@ -20315,17 +20315,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TagCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TagCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TagCommandOutputDataOutput"
                 }
@@ -20352,17 +20352,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTagCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateTagCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTagCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateTagCommand"
               }
@@ -20373,17 +20373,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TagCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TagCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TagCommandOutputDataOutput"
                 }
@@ -20551,17 +20551,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionSearchOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionSearchOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionSearchOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionSearchOutputDataOutput"
                 }
@@ -20577,17 +20577,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordTransactionCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordTransactionCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordTransactionCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordTransactionCommand"
               }
@@ -20598,17 +20598,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordTransactionCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordTransactionCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecordTransactionCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordTransactionCommandOutputDataOutput"
                 }
@@ -20638,17 +20638,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
                 }
@@ -20684,17 +20684,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionOutputDataOutput"
                 }
@@ -20721,17 +20721,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTransactionCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateTransactionCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTransactionCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateTransactionCommand"
               }
@@ -20742,17 +20742,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTransactionCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateTransactionCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UpdateTransactionCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/UpdateTransactionCommandOutputDataOutput"
                 }
@@ -20805,17 +20805,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentOutputPaginatedOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AttachmentOutputPaginatedOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AttachmentOutputPaginatedOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/AttachmentOutputPaginatedOutput"
                 }
@@ -20863,17 +20863,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachDocumentCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AttachDocumentCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AttachDocumentCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/AttachDocumentCommandOutputDataOutput"
                 }
@@ -20903,17 +20903,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
                 }
@@ -20942,17 +20942,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReconcileTransactionCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ReconcileTransactionCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconcileTransactionCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ReconcileTransactionCommand"
               }
@@ -20963,17 +20963,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcileTransactionCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReconcileTransactionCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReconcileTransactionCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ReconcileTransactionCommandOutputDataOutput"
                 }
@@ -21003,17 +21003,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionLifecycleCommandOutputDataOutput"
                 }
@@ -21052,17 +21052,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionTagCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionTagCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionTagCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionTagCommandOutputDataOutput"
                 }
@@ -21099,17 +21099,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionTagCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionTagCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransactionTagCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionTagCommandOutputDataOutput"
                 }
@@ -21127,17 +21127,17 @@
       "post": {
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecordTransferCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordTransferCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordTransferCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/RecordTransferCommand"
               }
@@ -21148,17 +21148,17 @@
         "responses": {
           "201": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordTransferCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordTransferCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecordTransferCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordTransferCommandOutputDataOutput"
                 }
@@ -21188,17 +21188,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
                 }
@@ -21234,17 +21234,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransferOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransferOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransferOutputDataOutput"
                 }
@@ -21274,17 +21274,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/TransferLifecycleCommandOutputDataOutput"
                 }
@@ -21313,17 +21313,17 @@
         ],
         "requestBody": {
           "content": {
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/EraseUserCommand"
-              }
-            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EraseUserCommand"
               }
             },
             "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EraseUserCommand"
+              }
+            },
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/EraseUserCommand"
               }
@@ -21334,17 +21334,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/EraseUserCommandOutputDataOutput"
                 }
@@ -21363,17 +21363,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivenessOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LivenessOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LivenessOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/LivenessOutput"
                 }
@@ -21392,17 +21392,17 @@
         "responses": {
           "200": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalHealthOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OperationalHealthOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OperationalHealthOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OperationalHealthOutput"
                 }
@@ -21412,17 +21412,17 @@
           },
           "503": {
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalHealthOutput"
+                }
+              },
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OperationalHealthOutput"
                 }
               },
               "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OperationalHealthOutput"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OperationalHealthOutput"
                 }
