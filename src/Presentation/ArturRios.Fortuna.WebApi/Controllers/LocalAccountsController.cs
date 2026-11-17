@@ -33,6 +33,8 @@ public sealed class LocalAccountsController(
 
     [HttpPost]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(DataOutput<CreateLocalAccountCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<CreateLocalAccountCommandOutput?>>> Create(
         [FromBody] CreateLocalAccountCommand command)
     {

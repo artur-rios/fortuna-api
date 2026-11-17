@@ -65,6 +65,8 @@ public sealed class TransfersController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<RecordTransferCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<RecordTransferCommandOutput?>>> Record(
         [FromBody] RecordTransferCommand command)
     {

@@ -54,6 +54,8 @@ public sealed class CreditCardsController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<CreateCreditCardCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<CreateCreditCardCommandOutput?>>> Create(
         [FromBody] CreateCreditCardCommand command)
     {

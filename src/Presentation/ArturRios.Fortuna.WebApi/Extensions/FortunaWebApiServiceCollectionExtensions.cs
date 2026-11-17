@@ -82,6 +82,8 @@ public static class FortunaWebApiServiceCollectionExtensions
         services.AddSwaggerGen(document =>
         {
             document.SchemaFilter<EnumNamesSchemaFilter>();
+            document.SchemaFilter<NullableReferenceSchemaFilter>();
+            document.RequestBodyFilter<RequiredRequestBodyFilter>();
             document.MapType<decimal>(() => new OpenApiSchema
             {
                 Type = JsonSchemaType.String,

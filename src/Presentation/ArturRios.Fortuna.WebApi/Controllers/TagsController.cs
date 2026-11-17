@@ -33,6 +33,8 @@ public sealed class TagsController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<TagCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<TagCommandOutput?>>> Create(
         [FromBody] CreateTagCommand command)
     {

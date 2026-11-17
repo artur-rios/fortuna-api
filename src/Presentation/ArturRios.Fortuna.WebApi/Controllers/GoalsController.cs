@@ -43,6 +43,8 @@ public sealed class GoalsController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<GoalCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<GoalCommandOutput?>>> Create(
         [FromBody] CreateGoalCommand command)
     {

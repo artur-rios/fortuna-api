@@ -60,6 +60,8 @@ public sealed class InstallmentPlansController : FortunaController
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<RecordInstallmentPlanCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<RecordInstallmentPlanCommandOutput?>>> Record(
         [FromBody] RecordInstallmentPlanCommand command)
     {

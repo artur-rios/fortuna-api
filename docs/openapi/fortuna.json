@@ -35,7 +35,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/AttachDocumentCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttachDocumentCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -79,7 +84,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/AttachmentLifecycleCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttachmentLifecycleCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -341,7 +351,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/AuthenticateLocalAccountCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuthenticateLocalAccountCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -450,7 +465,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/BudgetCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BudgetCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -592,7 +612,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/BudgetConsumptionDetailOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BudgetConsumptionDetailOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -679,7 +704,12 @@
             "type": "string"
           },
           "rateSource": {
-            "$ref": "#/components/schemas/ExchangeRateSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateSource"
+              }
+            ],
+            "nullable": true
           },
           "sourceAmount": {
             "format": "decimal",
@@ -731,7 +761,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/BudgetListOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BudgetListOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -812,7 +847,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/BudgetOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BudgetOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -990,7 +1030,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CashFlowProjectionOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CashFlowProjectionOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1061,7 +1106,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CategoryLifecycleCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CategoryLifecycleCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1134,7 +1184,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CategoryOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CategoryOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1181,7 +1236,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CategoryTreeOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CategoryTreeOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1256,7 +1316,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CloseCreditCardStatementCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1354,7 +1419,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CommittedObligationListOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommittedObligationListOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1439,7 +1509,12 @@
             "type": "string"
           },
           "rateSource": {
-            "$ref": "#/components/schemas/ExchangeRateSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateSource"
+              }
+            ],
+            "nullable": true
           },
           "unconvertedReason": {
             "nullable": true,
@@ -1531,7 +1606,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1590,7 +1670,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ConnectionOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1761,7 +1846,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ConvertFigureQueryOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ConvertFigureQueryOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1809,7 +1899,12 @@
             "type": "string"
           },
           "rateSource": {
-            "$ref": "#/components/schemas/ExchangeRateSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateSource"
+              }
+            ],
+            "nullable": true
           },
           "sourceAmount": {
             "format": "decimal",
@@ -1853,7 +1948,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CounterpartyCategorySuggestionOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterpartyCategorySuggestionOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1912,7 +2012,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CounterpartyCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterpartyCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -1973,7 +2078,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CounterpartyListOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterpartyListOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2026,7 +2136,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CounterpartyMergeCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CounterpartyMergeCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2157,7 +2272,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CreateCategoryCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreateCategoryCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2234,7 +2354,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CreateConnectionCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreateConnectionCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2357,7 +2482,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CreateCreditCardCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreateCreditCardCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2452,7 +2582,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CreateFinancialAccountCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreateFinancialAccountCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2576,7 +2711,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CreateInvestmentCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreateInvestmentCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2660,7 +2800,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CreateLocalAccountCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreateLocalAccountCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2720,7 +2865,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CreditCardLifecycleCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreditCardLifecycleCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2816,7 +2966,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CreditCardOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreditCardOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -2995,7 +3150,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CreditCardStatementOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreditCardStatementOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -3173,7 +3333,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/CurrencyOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CurrencyOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -3304,7 +3469,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/DataSourceListOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DataSourceListOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -3509,7 +3679,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/DefineRecurringTransactionCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DefineRecurringTransactionCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -3567,7 +3742,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -3625,7 +3805,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -3688,7 +3873,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/EraseUserCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EraseUserCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -3769,7 +3959,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/FinancialAccountBalanceOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinancialAccountBalanceOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -3810,7 +4005,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinancialAccountLifecycleCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -3882,7 +4082,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/FinancialAccountOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FinancialAccountOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4008,7 +4213,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/GetTwoFactorStatusThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GetTwoFactorStatusThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4094,7 +4304,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/GoalCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GoalCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4155,7 +4370,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/GoalListOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GoalListOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4241,7 +4461,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/GoalOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GoalOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4370,7 +4595,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/GoalProgressDetailOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GoalProgressDetailOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4492,7 +4722,12 @@
             "type": "string"
           },
           "rateSource": {
-            "$ref": "#/components/schemas/ExchangeRateSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateSource"
+              }
+            ],
+            "nullable": true
           },
           "resourceType": {
             "$ref": "#/components/schemas/GoalResourceType"
@@ -4557,7 +4792,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/GoogleSignInThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GoogleSignInThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4592,7 +4832,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/GoogleSignOutThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GoogleSignOutThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4662,7 +4907,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/GrantProcessingConsentCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GrantProcessingConsentCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4706,7 +4956,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportExcelWorkbookCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4796,7 +5051,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ImportJobOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportJobOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -4916,7 +5176,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ImportPdfInvoiceCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -5198,7 +5463,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InstallmentPlanLifecycleCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -5299,7 +5569,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/InstallmentPlanOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InstallmentPlanOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -5340,7 +5615,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/InvestmentLifecycleCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentLifecycleCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -5453,7 +5733,12 @@
             "type": "string"
           },
           "rateSource": {
-            "$ref": "#/components/schemas/ExchangeRateSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateSource"
+              }
+            ],
+            "nullable": true
           },
           "unconvertedReason": {
             "nullable": true,
@@ -5470,7 +5755,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/InvestmentOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/InvestmentOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -5685,7 +5975,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ListSupportedCurrenciesQueryOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ListSupportedCurrenciesQueryOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -5793,7 +6088,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/LoginThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LoginThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -5860,7 +6160,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -5947,7 +6252,12 @@
             "type": "string"
           },
           "rateSource": {
-            "$ref": "#/components/schemas/ExchangeRateSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateSource"
+              }
+            ],
+            "nullable": true
           },
           "sourceCurrencyCode": {
             "nullable": true,
@@ -6006,7 +6316,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/NetPositionOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NetPositionOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -6152,7 +6467,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/PersonalDataExportQueryOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PersonalDataExportQueryOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -6196,7 +6516,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ProcessingConsentQueryOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProcessingConsentQueryOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -6330,7 +6655,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReassignCategoryTransactionsCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -6403,7 +6733,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ReauthenticateConnectionCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReauthenticateConnectionCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -6473,7 +6808,12 @@
             "type": "string"
           },
           "reconciliation": {
-            "$ref": "#/components/schemas/TransactionReconciliationOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionReconciliationOutput"
+              }
+            ],
+            "nullable": true
           },
           "updatedAt": {
             "format": "date-time",
@@ -6486,7 +6826,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ReconcileTransactionCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReconcileTransactionCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -6616,7 +6961,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RecordInstallmentPlanCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordInstallmentPlanCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -6753,7 +7103,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordInvestmentMovementCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -6860,7 +7215,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordInvestmentValuationCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -6946,7 +7306,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7164,7 +7529,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RecordTransactionCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordTransactionCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7298,7 +7668,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RecordTransferCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordTransferCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7365,7 +7740,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RecoverLocalAccountCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecoverLocalAccountCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7479,7 +7859,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RecurringTransactionLifecycleCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecurringTransactionLifecycleCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7595,7 +7980,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RecurringTransactionOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecurringTransactionOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7713,7 +8103,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7771,7 +8166,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7824,7 +8224,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RegisterThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegisterThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7932,7 +8337,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RequestDataExportCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RequestDataExportCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -7977,7 +8387,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8029,7 +8444,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RequestPersonalDataExportCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RequestPersonalDataExportCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8074,7 +8494,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8109,7 +8534,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ResendVerificationThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResendVerificationThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8158,7 +8588,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/ResetPasswordThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ResetPasswordThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8239,7 +8674,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RetrieveDataExportQueryOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetrieveDataExportQueryOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8316,7 +8756,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RetryImportJobCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RetryImportJobCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8382,7 +8827,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/RevokeConnectionCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RevokeConnectionCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8519,7 +8969,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettleCreditCardStatementCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8589,7 +9044,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/SynchronizeConnectionCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SynchronizeConnectionCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8649,7 +9109,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SynchronizeExchangeRatesCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8793,7 +9258,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TableReportOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TableReportOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -8859,7 +9329,12 @@
             "type": "string"
           },
           "rateSource": {
-            "$ref": "#/components/schemas/ExchangeRateSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateSource"
+              }
+            ],
+            "nullable": true
           },
           "sourceCurrencyCode": {
             "nullable": true,
@@ -8940,7 +9415,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TagCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TagCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -9001,7 +9481,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TagListOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TagListOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -9124,7 +9609,12 @@
             "type": "string"
           },
           "rateSource": {
-            "$ref": "#/components/schemas/ExchangeRateSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateSource"
+              }
+            ],
+            "nullable": true
           },
           "sourceAmount": {
             "format": "decimal",
@@ -9189,7 +9679,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TransactionAggregationOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionAggregationOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -9273,7 +9768,12 @@
             "type": "string"
           },
           "rateSource": {
-            "$ref": "#/components/schemas/ExchangeRateSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExchangeRateSource"
+              }
+            ],
+            "nullable": true
           },
           "unconvertedReason": {
             "nullable": true,
@@ -9337,7 +9837,12 @@
             "type": "integer"
           },
           "transaction": {
-            "$ref": "#/components/schemas/TransactionOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionOutput"
+              }
+            ],
+            "nullable": true
           },
           "transactions": {
             "items": {
@@ -9353,7 +9858,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TransactionDrillDownOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionDrillDownOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -9408,7 +9918,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TransactionLifecycleCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionLifecycleCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -9602,7 +10117,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TransactionOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -9701,7 +10221,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TransactionSearchOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionSearchOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -9769,7 +10294,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TransactionTagCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionTagCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -9869,7 +10399,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TransferLifecycleCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransferLifecycleCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -9998,7 +10533,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/TransferOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransferOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -10104,7 +10644,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/UpdateCategoryCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateCategoryCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -10223,7 +10768,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/UpdateCreditCardCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateCreditCardCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -10324,7 +10874,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/UpdateFinancialAccountCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateFinancialAccountCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -10448,7 +11003,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/UpdateInvestmentCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateInvestmentCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -10622,7 +11182,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/UpdateRecurringTransactionCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateRecurringTransactionCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -10840,7 +11405,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/UpdateTransactionCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateTransactionCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -10914,7 +11484,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/UserProfileOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserProfileOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -10963,7 +11538,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VerifyEmailThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -11029,7 +11609,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -11078,7 +11663,12 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/WithdrawProcessingConsentCommandOutput"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WithdrawProcessingConsentCommandOutput"
+              }
+            ],
+            "nullable": true
           },
           "errors": {
             "items": {
@@ -11241,10 +11831,11 @@
                 "$ref": "#/components/schemas/CreateFinancialAccountCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -11262,7 +11853,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -11384,7 +11975,8 @@
                 "$ref": "#/components/schemas/UpdateFinancialAccountCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -11782,7 +12374,8 @@
                 "$ref": "#/components/schemas/ResendTwoFactorChallengeCodeThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -11830,7 +12423,8 @@
                 "$ref": "#/components/schemas/ConfirmTwoFactorThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -11878,7 +12472,8 @@
                 "$ref": "#/components/schemas/DisableTwoFactorThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -11926,7 +12521,8 @@
                 "$ref": "#/components/schemas/EnableTwoFactorThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -11974,7 +12570,8 @@
                 "$ref": "#/components/schemas/RegenerateRecoveryCodesThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -12022,7 +12619,8 @@
                 "$ref": "#/components/schemas/VerifyTwoFactorThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -12070,7 +12668,8 @@
                 "$ref": "#/components/schemas/GoogleSignInThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -12147,7 +12746,8 @@
                 "$ref": "#/components/schemas/LoginThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -12195,7 +12795,8 @@
                 "$ref": "#/components/schemas/RequestPasswordRecoveryThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -12243,7 +12844,8 @@
                 "$ref": "#/components/schemas/ResetPasswordThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -12291,7 +12893,8 @@
                 "$ref": "#/components/schemas/RegisterThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "202": {
@@ -12468,7 +13071,8 @@
                 "$ref": "#/components/schemas/VerifyEmailThroughApiCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -12691,10 +13295,11 @@
                 "$ref": "#/components/schemas/CreateBudgetCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -12712,7 +13317,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -12834,7 +13439,8 @@
                 "$ref": "#/components/schemas/UpdateBudgetCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -12975,10 +13581,11 @@
                 "$ref": "#/components/schemas/CreateCategoryCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -12996,7 +13603,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -13126,7 +13733,8 @@
                 "$ref": "#/components/schemas/UpdateCategoryCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -13225,7 +13833,8 @@
                 "$ref": "#/components/schemas/ReassignCategoryTransactionsCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -13386,10 +13995,11 @@
                 "$ref": "#/components/schemas/CreateConnectionCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -13407,7 +14017,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -13485,7 +14095,8 @@
                 "$ref": "#/components/schemas/ReauthenticateConnectionCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -13584,10 +14195,11 @@
                 "$ref": "#/components/schemas/SynchronizeConnectionCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -13605,7 +14217,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Accepted"
           }
         },
         "tags": [
@@ -13687,7 +14299,8 @@
                 "$ref": "#/components/schemas/CreateCounterpartyCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -13709,6 +14322,26 @@
               }
             },
             "description": "OK"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounterpartyCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "Created"
           }
         },
         "tags": [
@@ -13784,7 +14417,8 @@
                 "$ref": "#/components/schemas/UpdateCounterpartyCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -13843,7 +14477,8 @@
                 "$ref": "#/components/schemas/MergeCounterpartiesCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -14018,10 +14653,11 @@
                 "$ref": "#/components/schemas/CreateCreditCardCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -14039,7 +14675,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -14153,7 +14789,8 @@
                 "$ref": "#/components/schemas/UpdateCreditCardCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -14471,7 +15108,8 @@
                 "$ref": "#/components/schemas/RecordManualExchangeRateCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -14493,6 +15131,26 @@
               }
             },
             "description": "OK"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordManualExchangeRateCommandOutputDataOutput"
+                }
+              }
+            },
+            "description": "Created"
           }
         },
         "tags": [
@@ -14519,7 +15177,8 @@
                 "$ref": "#/components/schemas/ConvertFigureQuery"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -14615,7 +15274,8 @@
                 "$ref": "#/components/schemas/RequestDataExportCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -14781,10 +15441,11 @@
                 "$ref": "#/components/schemas/CreateGoalCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -14802,7 +15463,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -14924,7 +15585,8 @@
                 "$ref": "#/components/schemas/UpdateGoalCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -15186,7 +15848,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -15204,7 +15866,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Accepted"
           }
         },
         "tags": [
@@ -15290,7 +15952,7 @@
           }
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -15308,7 +15970,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Accepted"
           }
         },
         "tags": [
@@ -15346,7 +16008,7 @@
           }
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -15364,7 +16026,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Accepted"
           }
         },
         "tags": [
@@ -15391,10 +16053,11 @@
                 "$ref": "#/components/schemas/RecordInstallmentPlanCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -15412,7 +16075,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -15674,10 +16337,11 @@
                 "$ref": "#/components/schemas/CreateInvestmentCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -15695,7 +16359,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -15824,7 +16488,8 @@
                 "$ref": "#/components/schemas/UpdateInvestmentCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -15923,7 +16588,8 @@
                 "$ref": "#/components/schemas/RecordInvestmentMovementCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -16114,7 +16780,8 @@
                 "$ref": "#/components/schemas/RecordInvestmentValuationCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -16162,10 +16829,11 @@
                 "$ref": "#/components/schemas/CreateLocalAccountCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -16183,7 +16851,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -16210,7 +16878,8 @@
                 "$ref": "#/components/schemas/AuthenticateLocalAccountCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -16287,7 +16956,8 @@
                 "$ref": "#/components/schemas/RecoverLocalAccountCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -16335,7 +17005,8 @@
                 "$ref": "#/components/schemas/RegenerateLocalAccountRecoveryCodesCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -16439,7 +17110,8 @@
                 "$ref": "#/components/schemas/GrantProcessingConsentCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -16595,7 +17267,8 @@
                 "$ref": "#/components/schemas/EraseUserCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -16854,10 +17527,11 @@
                 "$ref": "#/components/schemas/DefineRecurringTransactionCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -16875,7 +17549,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -16902,7 +17576,8 @@
                 "$ref": "#/components/schemas/MaterializeRecurringTransactionsCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -17037,7 +17712,8 @@
                 "$ref": "#/components/schemas/UpdateRecurringTransactionCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -17371,7 +18047,8 @@
                 "$ref": "#/components/schemas/QueryRecordsAsTableQuery"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -17510,7 +18187,8 @@
                 "$ref": "#/components/schemas/SettleCreditCardStatementCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -17613,10 +18291,11 @@
                 "$ref": "#/components/schemas/CreateTagCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -17634,7 +18313,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -17710,7 +18389,8 @@
                 "$ref": "#/components/schemas/UpdateTagCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -17934,10 +18614,11 @@
                 "$ref": "#/components/schemas/RecordTransactionCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -17955,7 +18636,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -18077,7 +18758,8 @@
                 "$ref": "#/components/schemas/UpdateTransactionCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -18201,7 +18883,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -18219,7 +18901,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -18297,7 +18979,8 @@
                 "$ref": "#/components/schemas/ReconcileTransactionCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -18481,10 +19164,11 @@
                 "$ref": "#/components/schemas/RecordTransferCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
@@ -18502,7 +19186,7 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "Created"
           }
         },
         "tags": [
@@ -18666,7 +19350,8 @@
                 "$ref": "#/components/schemas/EraseUserCommand"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {

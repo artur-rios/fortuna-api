@@ -125,6 +125,8 @@ public sealed class TransactionsController(
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<RecordTransactionCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<RecordTransactionCommandOutput?>>> Record(
         [FromBody] RecordTransactionCommand command)
     {
@@ -157,6 +159,8 @@ public sealed class TransactionsController(
     [Consumes("multipart/form-data")]
     [UploadLimit(UploadKind.Attachment)]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesResponseType(typeof(DataOutput<AttachDocumentCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<AttachDocumentCommandOutput?>>> AttachDocument(
         Guid id,
         [FromForm] AttachDocumentRequest request)

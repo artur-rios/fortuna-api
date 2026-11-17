@@ -55,6 +55,10 @@ public sealed class ExchangeRatesController : FortunaController
 
     [HttpPost]
     [InstallationAdministratorRequirement]
+    [ProducesResponseType(typeof(DataOutput<RecordManualExchangeRateCommandOutput?>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(DataOutput<RecordManualExchangeRateCommandOutput?>),
+        StatusCodes.Status201Created)]
     public async Task<ActionResult<DataOutput<RecordManualExchangeRateCommandOutput?>>> RecordManual(
         [FromBody] RecordManualExchangeRateCommand command)
     {
