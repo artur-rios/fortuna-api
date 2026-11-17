@@ -180,6 +180,8 @@ public sealed class AttachmentApiTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/pdf", response.Content.Headers.ContentType?.MediaType);
+        Assert.True(CommittedOpenApiDocument.DocumentsFile(
+            "GET /api/attachments/{id}", 200, response.Content.Headers.ContentType!.MediaType!));
         Assert.Equal("statement.pdf", response.Content.Headers.ContentDisposition?.FileNameStar);
         Assert.Equal(document, await response.Content.ReadAsByteArrayAsync());
     }
