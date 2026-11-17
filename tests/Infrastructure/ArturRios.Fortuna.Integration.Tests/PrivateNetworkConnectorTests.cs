@@ -34,14 +34,15 @@ public sealed class PrivateNetworkConnectorTests
     public async Task GivenPlainHttpToPublicAddress_WhenSending_ThenNoConnectionIsMade()
     {
         using var client = PlainHttpClient();
-        var stopwatch = Stopwatch.StartNew();
 
         var exception = await Assert.ThrowsAsync<HttpRequestException>(() =>
             client.GetAsync(new Uri("http://203.0.113.10/")));
-        stopwatch.Stop();
 
-        Assert.Contains("private address", exception.Message, StringComparison.Ordinal);
-        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(1), $"The refusal took {stopwatch.Elapsed}.");
+        // The connector refuses with RefusedMessage only when no address is private, before it dials
+        // anything; a dialed address that failed or timed out would surface a SocketException instead. So
+        // the refusal itself, not how long it took, shows no connection was attempted.
+        Assert.Contains(PrivateNetworkConnector.RefusedMessage, exception.Message, StringComparison.Ordinal);
+        Assert.False(exception.InnerException is SocketException, "A connection was attempted.");
     }
 
     [UnitFact]
