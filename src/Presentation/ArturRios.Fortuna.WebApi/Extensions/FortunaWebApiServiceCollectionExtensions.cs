@@ -85,6 +85,7 @@ public static class FortunaWebApiServiceCollectionExtensions
             document.SchemaFilter<EnumNamesSchemaFilter>();
             document.SchemaFilter<NullableReferenceSchemaFilter>();
             document.RequestBodyFilter<RequiredRequestBodyFilter>();
+            document.OperationFilter<FileResponseOperationFilter>();
             document.MapType<decimal>(() => new OpenApiSchema
             {
                 Type = JsonSchemaType.String,

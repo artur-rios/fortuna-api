@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.OpenApi;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
@@ -28,11 +29,17 @@ public sealed class ExportsController : FortunaController
             [DataExportMessages.Accepted] = StatusCodes.Status202Accepted
         });
 
+    // The media types DataExportRenderer writes, the workbook and the PDF first (ProducesFileAttribute).
+    private const string Excel = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    private const string Pdf = "application/pdf";
+    private const string Csv = "text/csv";
+
     protected override IReadOnlyDictionary<string, int> StatusMap => Statuses;
 
     [HttpPost]
     [RoleRequirement((int)HeimdallRoles.User)]
-    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesFile(StatusCodes.Status200OK, Excel, Pdf, Csv,
+        Description = "The export itself, when it is small enough to deliver at once; a larger one is queued (202).")]
     [ProducesResponseType(typeof(DataOutput<RequestDataExportCommandOutput?>),
         StatusCodes.Status202Accepted)]
     public async Task<IActionResult> RequestExport([FromBody] RequestDataExportCommand command)
@@ -56,9 +63,10 @@ public sealed class ExportsController : FortunaController
 
     [HttpGet("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
-    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(DataOutput<RetrieveDataExportQueryOutput?>),
         StatusCodes.Status200OK)]
+    [ProducesFile(StatusCodes.Status200OK, Excel, Pdf, Csv,
+        Description = "The export's record (JSON) while it is pending or failed; the file once it is completed.")]
     public async Task<IActionResult> Retrieve(Guid id)
     {
         var result = await Queries.ExecuteQueryAsync<

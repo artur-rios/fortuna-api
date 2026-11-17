@@ -4,6 +4,7 @@ using ArturRios.Fortuna.Domain.Security;
 using ArturRios.Fortuna.Query.Input;
 using ArturRios.Fortuna.Query.Output;
 using ArturRios.Fortuna.Shared.Messages;
+using ArturRios.Fortuna.WebApi.OpenApi;
 using ArturRios.Output;
 using ArturRios.Util.WebApi.Security.Attributes;
 using Microsoft.AspNetCore.Mvc;
@@ -28,6 +29,9 @@ public sealed class AttachmentsController : FortunaController
 
     [HttpGet("{id:guid}")]
     [RoleRequirement((int)HeimdallRoles.User)]
+    [ProducesFile(StatusCodes.Status200OK, "application/pdf", "image/jpeg", "image/png",
+        Description = "The attachment's bytes, as the content type it was uploaded with: one of " +
+                      "FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES, which are these three by default.")]
     public async Task<IActionResult> Download(Guid id)
     {
         var result = await Queries.ExecuteQueryAsync<
