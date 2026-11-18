@@ -22,4 +22,10 @@ public sealed class ProducesFileAttribute(int statusCode, params string[] conten
 
     /// <summary>The response's description, saying when the file is sent. The reason phrase when unset.</summary>
     public string? Description { get; set; }
+
+    /// <summary>
+    ///     Whether the file is sent with range processing (<c>File(..., enableRangeProcessing: true)</c>), so a
+    ///     request with a <c>Range</c> header can get <c>206</c> or <c>416</c> instead.
+    /// </summary>
+    public bool Ranges { get; set; }
 }
