@@ -42,13 +42,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The OpenAPI document lists, for each operation, only the error statuses its own handler can answer. Before, it
+  listed every status any map of the operation's controller held, the shared map's included. As a result, nearly
+  every operation listed `404`, `409` and `503`; `GET /api/tags`, for one, listed `503` for a storage failure it
+  cannot meet. Now `scripts/error_responses.py` reads from the source the messages each action, its handler, the
+  input's validator and the code they reach name, and keeps them in `OpenApi/handler-messages.json`. The document
+  looks those messages up in the status map the action really resolves with. A handler that relays a Heimdall
+  refusal keeps the relayed outcome's status (`409`, `429` with `Retry-After`). `400` stays on every operation.
+  Across the 145 operations:
+  - `503` is now listed by 40 operations (it was 144), `409` by 65 (143), `404` by 128 (143), `403` by 123 (144)
+    and `422` by 1 (15).
+  - Where only `[RoleRequirement]` still answers `403`, that response is documented as the `ProcessOutput` it
+    sends.
+  - A `401` or `500` that no handler answers lost the handler's body or media type.
+  - The pipeline's responses (binding, authentication, roles, `415`, `429`, `500`, ranges) are as before.
+  - Nothing changes on the wire, and the desktop native core is unchanged.
 - The OpenAPI document lists the error responses every operation can give, each with the body, media type and
   headers the API really sends. Before, it listed only the success statuses, apart from the detailed health check's
   `503` and a few on `POST /api/auth/register` and `/api/auth/verify-email`.
-  - **Handler refusals** are the controller's status maps: each operation lists every status of 400 or more its
-    controller's maps (and the shared map) hold, and `400` for a failure no map holds, with the action's own
-    envelope and a null `data`. The maps are per controller, so an operation can list a status only another action
-    of its controller answers.
+  - **Handler refusals** come from the status map the action resolves its handler's output with: each operation
+    lists the statuses its own handler's messages map to (see the next entry), and `400` for a failure no map
+    holds, with the action's own envelope and a null `data`.
   - **Model binding:** `400` with `DataOutput<object?>`, whose `errors` names the field, wherever a body, form or
     query value is bound. Also the upload limit's `400` on the upload routes.
   - **Authentication and roles:** `401` with no body on every operation. Off the `[AllowAnonymous]` routes it

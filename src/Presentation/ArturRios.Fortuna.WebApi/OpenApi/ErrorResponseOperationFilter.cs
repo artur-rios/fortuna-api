@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Reflection;
 using ArturRios.Fortuna.WebApi.Controllers;
 using ArturRios.Fortuna.WebApi.Filters;
 using ArturRios.Fortuna.WebApi.Security;
@@ -82,12 +81,12 @@ public enum ErrorSource
 ///         <c>[EnableRateLimiting]</c>; and the exception handler's 500 everywhere.
 ///     </para>
 ///     <para>
-///         The handler's statuses are its controller's status maps': every status of 400 or more that any map
-///         the controller declares holds (each is built over <see cref="FortunaStatusMap.Shared" />, which a
-///         controller without a map of its own uses), and 400, which <c>ToActionResult</c> answers for a
-///         failure no map holds, a validator's included. A controller's maps are shared by its actions, so an
-///         action is documented with every status its controller's maps can give: it over-approximates, on
-///         purpose. A status the document lists and an operation never answers costs a reader a line; one it
+///         The handler's statuses are <see cref="HandlerMessageCatalog" />'s: each message the action, its
+///         handlers and the code they reach name, looked up in the status map the action resolves with, and 400,
+///         which <c>ToActionResult</c> answers for a failure no map holds, a validator's included; plus the
+///         relayed outcomes' statuses where that code relays a Heimdall refusal. A message the code names is
+///         taken to be one it can fail with, so it over-approximates where a type serves several handlers, on
+///         purpose: a status the document lists and an operation never answers costs a reader a line; one it
 ///         answers and the document leaves out misleads a client.
 ///     </para>
 ///     <para>
@@ -134,7 +133,9 @@ public sealed class ErrorResponseOperationFilter : IOperationFilter
             return;
         }
 
-        var handler = HandlerStatuses(action.ControllerTypeInfo);
+        var handler = action.ControllerTypeInfo.IsSubclassOf(typeof(FortunaController))
+            ? HandlerMessageCatalog.Statuses(action.ControllerTypeInfo, action.MethodInfo.Name)
+            : (Statuses: new HashSet<int>(), RelaysRetryAfter: false);
         var sources = Sources(action, context, handler.Statuses);
         operation.Responses ??= new OpenApiResponses();
         var envelope = Envelope(context);
@@ -148,52 +149,6 @@ public sealed class ErrorResponseOperationFilter : IOperationFilter
                 context,
                 retryAfter: status == StatusCodes.Status429TooManyRequests && handler.RelaysRetryAfter);
         }
-    }
-
-    /// <summary>
-    ///     The error statuses the controller's handlers can answer, and whether it relays a refusal's
-    ///     <c>Retry-After</c>.
-    /// </summary>
-    /// <remarks>
-    ///     The maps are the controller's static <c>IReadOnlyDictionary&lt;TKey, int&gt;</c> fields. A map keyed
-    ///     by something other than a message is <c>AuthController</c>'s map of Heimdall's relayed outcomes,
-    ///     whose 429 carries Heimdall's <c>Retry-After</c> when Heimdall gave one.
-    /// </remarks>
-    private static (IReadOnlySet<int> Statuses, bool RelaysRetryAfter) HandlerStatuses(Type controller)
-    {
-        if (!controller.IsSubclassOf(typeof(FortunaController)))
-        {
-            return (new HashSet<int>(), false);
-        }
-
-        var statuses = new HashSet<int> { StatusCodes.Status400BadRequest };
-        var relaysRetryAfter = false;
-        var maps = controller
-            .GetFields(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
-            .Where(field => field.FieldType.IsGenericType &&
-                            field.FieldType.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>) &&
-                            field.FieldType.GetGenericArguments()[1] == typeof(int))
-            .ToArray();
-        foreach (var map in maps)
-        {
-            var values = ((System.Collections.IEnumerable)map.GetValue(null)!).Cast<object>()
-                .Select(entry => (int)entry.GetType().GetProperty("Value")!.GetValue(entry)!)
-                .Where(status => status >= StatusCodes.Status400BadRequest)
-                .ToArray();
-            statuses.UnionWith(values);
-            if (map.FieldType.GetGenericArguments()[0] != typeof(string) &&
-                values.Contains(StatusCodes.Status429TooManyRequests))
-            {
-                relaysRetryAfter = true;
-            }
-        }
-
-        if (!maps.Any(map => map.FieldType.GetGenericArguments()[0] == typeof(string)))
-        {
-            statuses.UnionWith(FortunaStatusMap.Shared.Values.Where(status => status >= 400));
-        }
-
-        return (statuses, relaysRetryAfter);
     }
 
     private static SortedDictionary<int, SortedSet<ErrorSource>> Sources(

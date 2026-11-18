@@ -1,0 +1,2940 @@
+{
+  "Accounts.Create": {
+    "handlers": [
+      "CreateFinancialAccountCommandHandler",
+      "CreateFinancialAccountCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FinancialAccountMessages.AccountTypeInvalid",
+      "FinancialAccountMessages.CreatedSuccessfully",
+      "FinancialAccountMessages.CurrencyInvalid",
+      "FinancialAccountMessages.CurrencyNotSupported",
+      "FinancialAccountMessages.CurrencyRequired",
+      "FinancialAccountMessages.DuplicateName",
+      "FinancialAccountMessages.InstitutionTooLong",
+      "FinancialAccountMessages.NameRequired",
+      "FinancialAccountMessages.NameTooLong",
+      "FinancialAccountMessages.OpeningBalancePrecisionInvalid",
+      "FinancialAccountMessages.ProfileNotFound",
+      "FinancialAccountMessages.UnknownCurrency"
+    ],
+    "relayed": false
+  },
+  "Accounts.Delete": {
+    "handlers": [
+      "DeleteFinancialAccountCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "FinancialAccountMessages.DeletedSuccessfully",
+      "FinancialAccountMessages.DuplicateName",
+      "FinancialAccountMessages.HardDeleteHasDependents",
+      "FinancialAccountMessages.HardDeleteHasLiveTransactions",
+      "FinancialAccountMessages.HardDeleteRequiresSoftDeletion",
+      "FinancialAccountMessages.NotFound",
+      "FinancialAccountMessages.ProfileNotFound",
+      "FinancialAccountMessages.RestoreRequiresSoftDeletion"
+    ],
+    "relayed": false
+  },
+  "Accounts.GetBalance": {
+    "handlers": [
+      "GetFinancialAccountBalanceQueryHandler",
+      "GetFinancialAccountBalanceQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FinancialAccountMessages.AsOfOutOfRange",
+      "FinancialAccountMessages.BalanceRetrievedSuccessfully",
+      "FinancialAccountMessages.NotFound",
+      "FinancialAccountMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "Accounts.GetById": {
+    "handlers": [
+      "GetFinancialAccountByIdQueryHandler",
+      "GetFinancialAccountByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FinancialAccountMessages.NotFound",
+      "FinancialAccountMessages.ProfileNotFound",
+      "FinancialAccountMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Accounts.HardDelete": {
+    "handlers": [
+      "HardDeleteFinancialAccountCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "FinancialAccountMessages.DuplicateName",
+      "FinancialAccountMessages.HardDeleteHasDependents",
+      "FinancialAccountMessages.HardDeleteHasLiveTransactions",
+      "FinancialAccountMessages.HardDeleteRequiresSoftDeletion",
+      "FinancialAccountMessages.HardDeletedSuccessfully",
+      "FinancialAccountMessages.NotFound",
+      "FinancialAccountMessages.ProfileNotFound",
+      "FinancialAccountMessages.RestoreRequiresSoftDeletion"
+    ],
+    "relayed": false
+  },
+  "Accounts.List": {
+    "handlers": [
+      "ListFinancialAccountsQueryHandler",
+      "ListFinancialAccountsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FinancialAccountMessages.AccountTypeInvalid",
+      "FinancialAccountMessages.CurrencyInvalid",
+      "FinancialAccountMessages.InstitutionTooLong",
+      "FinancialAccountMessages.InvalidPageNumber",
+      "FinancialAccountMessages.InvalidPageSize",
+      "FinancialAccountMessages.ListedSuccessfully",
+      "FinancialAccountMessages.NameTooLong",
+      "FinancialAccountMessages.ProfileNotFound",
+      "FinancialAccountMessages.SortByUnsupported"
+    ],
+    "relayed": false
+  },
+  "Accounts.Restore": {
+    "handlers": [
+      "RestoreFinancialAccountCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "FinancialAccountMessages.DuplicateName",
+      "FinancialAccountMessages.HardDeleteHasDependents",
+      "FinancialAccountMessages.HardDeleteHasLiveTransactions",
+      "FinancialAccountMessages.HardDeleteRequiresSoftDeletion",
+      "FinancialAccountMessages.NotFound",
+      "FinancialAccountMessages.ProfileNotFound",
+      "FinancialAccountMessages.RestoreRequiresSoftDeletion",
+      "FinancialAccountMessages.RestoredSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Accounts.Update": {
+    "handlers": [
+      "UpdateFinancialAccountCommandHandler",
+      "UpdateFinancialAccountCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FinancialAccountMessages.AccountTypeInvalid",
+      "FinancialAccountMessages.CurrencyImmutable",
+      "FinancialAccountMessages.DuplicateName",
+      "FinancialAccountMessages.InstitutionTooLong",
+      "FinancialAccountMessages.NameRequired",
+      "FinancialAccountMessages.NameTooLong",
+      "FinancialAccountMessages.NotFound",
+      "FinancialAccountMessages.OpeningBalanceImmutable",
+      "FinancialAccountMessages.OwnerImmutable",
+      "FinancialAccountMessages.ProfileNotFound",
+      "FinancialAccountMessages.UpdatedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Attachments.Delete": {
+    "handlers": [
+      "DeleteAttachmentCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.AttachmentNotFound",
+      "AttachmentMessages.DeletedSuccessfully",
+      "AttachmentMessages.HardDeleteRequiresSoftDeletion",
+      "AttachmentMessages.ProfileNotFound",
+      "AttachmentMessages.StorageUnavailable"
+    ],
+    "relayed": false
+  },
+  "Attachments.Download": {
+    "handlers": [
+      "DownloadAttachmentQueryHandler",
+      "DownloadAttachmentQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.AttachmentNotFound",
+      "AttachmentMessages.DownloadedSuccessfully",
+      "AttachmentMessages.ProfileNotFound",
+      "AttachmentMessages.StorageUnavailable",
+      "AttachmentMessages.StoredObjectNotFound"
+    ],
+    "relayed": false
+  },
+  "Attachments.HardDelete": {
+    "handlers": [
+      "HardDeleteAttachmentCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.AttachmentNotFound",
+      "AttachmentMessages.HardDeleteRequiresSoftDeletion",
+      "AttachmentMessages.HardDeletedSuccessfully",
+      "AttachmentMessages.ProfileNotFound",
+      "AttachmentMessages.StorageUnavailable"
+    ],
+    "relayed": false
+  },
+  "AuditEntries.List": {
+    "handlers": [
+      "ListAuditEntriesQueryHandler",
+      "ListAuditEntriesQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AuditEntryMessages.EntityTypeTooLong",
+      "AuditEntryMessages.InvalidPageNumber",
+      "AuditEntryMessages.InvalidPageSize",
+      "AuditEntryMessages.OperationTooLong",
+      "AuditEntryMessages.OutcomeInvalid",
+      "AuditEntryMessages.PeriodInvalid",
+      "AuditEntryMessages.ProfileNotFound",
+      "AuditEntryMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Auth.ConfirmTwoFactor": {
+    "handlers": [
+      "ConfirmTwoFactorThroughApiCommandHandler",
+      "ConfirmTwoFactorThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.ConfirmationCodeRequired",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts",
+      "HeimdallAuthMessages.TwoFactorEnabled",
+      "HeimdallAuthMessages.TwoFactorNotFound",
+      "HeimdallAuthMessages.TwoFactorRejected"
+    ],
+    "relayed": true
+  },
+  "Auth.DisableTwoFactor": {
+    "handlers": [
+      "DisableTwoFactorThroughApiCommandHandler",
+      "DisableTwoFactorThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.PasswordRequired",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts",
+      "HeimdallAuthMessages.TwoFactorDisabled",
+      "HeimdallAuthMessages.TwoFactorNotFound",
+      "HeimdallAuthMessages.TwoFactorRejected"
+    ],
+    "relayed": true
+  },
+  "Auth.EnableTwoFactor": {
+    "handlers": [
+      "EnableTwoFactorThroughApiCommandHandler",
+      "EnableTwoFactorThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.MethodInvalid",
+      "HeimdallAuthMessages.MethodsRequired",
+      "HeimdallAuthMessages.RequestRejected",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts",
+      "HeimdallAuthMessages.TwoFactorSetupStarted"
+    ],
+    "relayed": true
+  },
+  "Auth.GetTwoFactorStatus": {
+    "handlers": [
+      "GetTwoFactorStatusThroughApiCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.RequestRejected",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts",
+      "HeimdallAuthMessages.TwoFactorNotFound",
+      "HeimdallAuthMessages.TwoFactorStatusReturned"
+    ],
+    "relayed": true
+  },
+  "Auth.Google": {
+    "handlers": [
+      "GoogleSignInThroughApiCommandHandler",
+      "GoogleSignInThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.GoogleIdTokenRequired",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts"
+    ],
+    "relayed": true
+  },
+  "Auth.GoogleSignOut": {
+    "handlers": [
+      "GoogleSignOutThroughApiCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.SignedOutSuccessfully",
+      "HeimdallAuthMessages.TooManyAttempts"
+    ],
+    "relayed": true
+  },
+  "Auth.Login": {
+    "handlers": [
+      "LoginThroughApiCommandHandler",
+      "LoginThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.EmailInvalid",
+      "HeimdallAuthMessages.EmailRequired",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.PasswordRequired",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts"
+    ],
+    "relayed": true
+  },
+  "Auth.RegenerateRecoveryCodes": {
+    "handlers": [
+      "RegenerateRecoveryCodesThroughApiCommandHandler",
+      "RegenerateRecoveryCodesThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.RecoveryCodesRegenerated",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts",
+      "HeimdallAuthMessages.TwoFactorNotFound",
+      "HeimdallAuthMessages.TwoFactorRejected"
+    ],
+    "relayed": true
+  },
+  "Auth.Register": {
+    "handlers": [
+      "RegisterThroughApiCommandHandler",
+      "RegisterThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.EmailInvalid",
+      "HeimdallAuthMessages.EmailRequired",
+      "HeimdallAuthMessages.EmailTooLong",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.NameRequired",
+      "HeimdallAuthMessages.NameTooLong",
+      "HeimdallAuthMessages.PasswordRequired",
+      "HeimdallAuthMessages.PasswordTooShort",
+      "HeimdallAuthMessages.RegistrationRequested",
+      "HeimdallAuthMessages.RegistrationUnavailable",
+      "HeimdallAuthMessages.RequestRejected",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts"
+    ],
+    "relayed": true
+  },
+  "Auth.RequestPasswordRecovery": {
+    "handlers": [
+      "RequestPasswordRecoveryThroughApiCommandHandler",
+      "RequestPasswordRecoveryThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.EmailInvalid",
+      "HeimdallAuthMessages.EmailRequired",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.PasswordRecoveryRequested",
+      "HeimdallAuthMessages.RequestRejected",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts"
+    ],
+    "relayed": true
+  },
+  "Auth.ResendTwoFactorChallengeCode": {
+    "handlers": [
+      "ResendTwoFactorChallengeCodeThroughApiCommandHandler",
+      "ResendTwoFactorChallengeCodeThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.ChallengeCodeResent",
+      "HeimdallAuthMessages.ChallengeTokenRequired",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts"
+    ],
+    "relayed": true
+  },
+  "Auth.ResendVerification": {
+    "handlers": [
+      "ResendVerificationThroughApiCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.RequestRejected",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts",
+      "HeimdallAuthMessages.VerificationResent"
+    ],
+    "relayed": true
+  },
+  "Auth.ResetPassword": {
+    "handlers": [
+      "ResetPasswordThroughApiCommandHandler",
+      "ResetPasswordThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.NewPasswordRequired",
+      "HeimdallAuthMessages.PasswordReset",
+      "HeimdallAuthMessages.RequestRejected",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TokenRequired",
+      "HeimdallAuthMessages.TooManyAttempts"
+    ],
+    "relayed": true
+  },
+  "Auth.VerifyEmail": {
+    "handlers": [
+      "VerifyEmailThroughApiCommandHandler",
+      "VerifyEmailThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.ConfirmationPasswordIncorrect",
+      "HeimdallAuthMessages.ConfirmationPasswordRequired",
+      "HeimdallAuthMessages.EmailVerified",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.RequestRejected",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TokenRequired",
+      "HeimdallAuthMessages.TooManyAttempts"
+    ],
+    "relayed": true
+  },
+  "Auth.VerifyTwoFactor": {
+    "handlers": [
+      "VerifyTwoFactorThroughApiCommandHandler",
+      "VerifyTwoFactorThroughApiCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "HeimdallAuthMessages.AuthenticatedSuccessfully",
+      "HeimdallAuthMessages.AuthenticationRejected",
+      "HeimdallAuthMessages.ChallengeTokenRequired",
+      "HeimdallAuthMessages.FactorAmbiguous",
+      "HeimdallAuthMessages.FactorRequired",
+      "HeimdallAuthMessages.IdentityConflict",
+      "HeimdallAuthMessages.ServiceUnavailable",
+      "HeimdallAuthMessages.TooManyAttempts",
+      "HeimdallAuthMessages.TwoFactorRejected"
+    ],
+    "relayed": true
+  },
+  "Budgets.Create": {
+    "handlers": [
+      "CreateBudgetCommandHandler",
+      "CreateBudgetCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "BudgetMessages.AmountMustBePositive",
+      "BudgetMessages.AmountPrecisionInvalid",
+      "BudgetMessages.CategoriesRequired",
+      "BudgetMessages.CategoryIdInvalid",
+      "BudgetMessages.CategoryNotFound",
+      "BudgetMessages.CreatedSuccessfully",
+      "BudgetMessages.CurrencyInvalid",
+      "BudgetMessages.CurrencyNotSupported",
+      "BudgetMessages.CurrencyRequired",
+      "BudgetMessages.NotFound",
+      "BudgetMessages.PeriodStartRequired",
+      "BudgetMessages.PeriodTypeInvalid",
+      "BudgetMessages.ProfileNotFound",
+      "FigureConversionMessages.RateUnavailable"
+    ],
+    "relayed": false
+  },
+  "Budgets.Delete": {
+    "handlers": [
+      "DeleteBudgetCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "BudgetMessages.CategoryNotFound",
+      "BudgetMessages.CurrencyNotSupported",
+      "BudgetMessages.DeletedSuccessfully",
+      "BudgetMessages.NotFound",
+      "BudgetMessages.ProfileNotFound",
+      "FigureConversionMessages.RateUnavailable"
+    ],
+    "relayed": false
+  },
+  "Budgets.Get": {
+    "handlers": [
+      "GetBudgetByIdQueryHandler",
+      "GetBudgetByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "BudgetMessages.NotFound",
+      "BudgetMessages.ProfileNotFound",
+      "BudgetMessages.RetrievedSuccessfully",
+      "FigureConversionMessages.RateUnavailable"
+    ],
+    "relayed": false
+  },
+  "Budgets.GetConsumption": {
+    "handlers": [
+      "GetBudgetConsumptionQueryHandler",
+      "GetBudgetConsumptionQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "BudgetMessages.ConsumptionRetrievedSuccessfully",
+      "BudgetMessages.NotFound",
+      "BudgetMessages.PeriodPrecedesBudget",
+      "BudgetMessages.ProfileNotFound",
+      "FigureConversionMessages.PartiallyConverted",
+      "FigureConversionMessages.RateUnavailable"
+    ],
+    "relayed": false
+  },
+  "Budgets.List": {
+    "handlers": [
+      "ListBudgetsQueryHandler",
+      "ListBudgetsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "BudgetMessages.InvalidPageNumber",
+      "BudgetMessages.InvalidPageSize",
+      "BudgetMessages.ListedSuccessfully",
+      "BudgetMessages.ProfileNotFound",
+      "FigureConversionMessages.RateUnavailable"
+    ],
+    "relayed": false
+  },
+  "Budgets.Update": {
+    "handlers": [
+      "UpdateBudgetCommandHandler",
+      "UpdateBudgetCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "BudgetMessages.AmountMustBePositive",
+      "BudgetMessages.AmountPrecisionInvalid",
+      "BudgetMessages.CategoriesRequired",
+      "BudgetMessages.CategoryIdInvalid",
+      "BudgetMessages.CategoryNotFound",
+      "BudgetMessages.CurrencyInvalid",
+      "BudgetMessages.CurrencyNotSupported",
+      "BudgetMessages.CurrencyRequired",
+      "BudgetMessages.NotFound",
+      "BudgetMessages.PeriodStartRequired",
+      "BudgetMessages.PeriodTypeInvalid",
+      "BudgetMessages.ProfileNotFound",
+      "BudgetMessages.UpdatedSuccessfully",
+      "FigureConversionMessages.RateUnavailable"
+    ],
+    "relayed": false
+  },
+  "Categories.Create": {
+    "handlers": [
+      "CreateCategoryCommandHandler",
+      "CreateCategoryCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CategoryMessages.CreatedSuccessfully",
+      "CategoryMessages.CycleDetected",
+      "CategoryMessages.DuplicateSiblingName",
+      "CategoryMessages.NameRequired",
+      "CategoryMessages.NameTooLong",
+      "CategoryMessages.ParentIdInvalid",
+      "CategoryMessages.ParentNotFound",
+      "CategoryMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "Categories.Delete": {
+    "handlers": [
+      "DeleteCategoryCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "CategoryMessages.DeletedSuccessfully",
+      "CategoryMessages.DuplicateSiblingName",
+      "CategoryMessages.HardDeleteHasDependents",
+      "CategoryMessages.HardDeleteHasLiveTransactions",
+      "CategoryMessages.HardDeleteRequiresSoftDeletion",
+      "CategoryMessages.NotFound",
+      "CategoryMessages.ProfileNotFound",
+      "CategoryMessages.RestoreRequiresSoftDeletion"
+    ],
+    "relayed": false
+  },
+  "Categories.GetById": {
+    "handlers": [
+      "GetCategoryByIdQueryHandler",
+      "GetCategoryByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CategoryMessages.NotFound",
+      "CategoryMessages.ProfileNotFound",
+      "CategoryMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Categories.GetTree": {
+    "handlers": [
+      "GetCategoryTreeQueryHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CategoryMessages.DefaultSetAvailable",
+      "CategoryMessages.ProfileNotFound",
+      "CategoryMessages.TreeRetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Categories.HardDelete": {
+    "handlers": [
+      "HardDeleteCategoryCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "CategoryMessages.DuplicateSiblingName",
+      "CategoryMessages.HardDeleteHasDependents",
+      "CategoryMessages.HardDeleteHasLiveTransactions",
+      "CategoryMessages.HardDeleteRequiresSoftDeletion",
+      "CategoryMessages.HardDeletedSuccessfully",
+      "CategoryMessages.NotFound",
+      "CategoryMessages.ProfileNotFound",
+      "CategoryMessages.RestoreRequiresSoftDeletion"
+    ],
+    "relayed": false
+  },
+  "Categories.Reassign": {
+    "handlers": [
+      "ReassignCategoryTransactionsCommandHandler",
+      "ReassignCategoryTransactionsCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CategoryMessages.NotFound",
+      "CategoryMessages.ProfileNotFound",
+      "CategoryMessages.SourceAndTargetMustDiffer",
+      "CategoryMessages.TargetCategoryIdInvalid",
+      "CategoryMessages.TransactionsReassignedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Categories.Restore": {
+    "handlers": [
+      "RestoreCategoryCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "CategoryMessages.DuplicateSiblingName",
+      "CategoryMessages.HardDeleteHasDependents",
+      "CategoryMessages.HardDeleteHasLiveTransactions",
+      "CategoryMessages.HardDeleteRequiresSoftDeletion",
+      "CategoryMessages.NotFound",
+      "CategoryMessages.ProfileNotFound",
+      "CategoryMessages.RestoreRequiresSoftDeletion",
+      "CategoryMessages.RestoredSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Categories.Update": {
+    "handlers": [
+      "UpdateCategoryCommandHandler",
+      "UpdateCategoryCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CategoryMessages.CycleDetected",
+      "CategoryMessages.DuplicateSiblingName",
+      "CategoryMessages.NameRequired",
+      "CategoryMessages.NameTooLong",
+      "CategoryMessages.NotFound",
+      "CategoryMessages.ParentIdInvalid",
+      "CategoryMessages.ParentNotFound",
+      "CategoryMessages.ProfileNotFound",
+      "CategoryMessages.UpdatedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "ConnectionSynchronization.Synchronize": {
+    "handlers": [
+      "SynchronizeConnectionCommandHandler",
+      "SynchronizeConnectionCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.RequiresReauthentication",
+      "ConnectionMessages.Revoked",
+      "ConnectionMessages.SynchronizationStoppedByRevocation",
+      "PluggySynchronizationMessages.Accepted",
+      "PluggySynchronizationMessages.AccountNotMapped",
+      "PluggySynchronizationMessages.AlreadyRunning",
+      "PluggySynchronizationMessages.ConnectionInactive",
+      "PluggySynchronizationMessages.ConnectionNotFound",
+      "PluggySynchronizationMessages.PeriodInvalid",
+      "PluggySynchronizationMessages.ProfileNotFound",
+      "PluggySynchronizationMessages.TransactionInvalid"
+    ],
+    "relayed": false
+  },
+  "Connections.Create": {
+    "handlers": [
+      "CreateConnectionCommandHandler",
+      "CreateConnectionCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.BankCredentialRejected",
+      "ConnectionMessages.CreatedSuccessfully",
+      "ConnectionMessages.DataSourceInvalid",
+      "ConnectionMessages.DataSourceRequired",
+      "ConnectionMessages.Duplicate",
+      "ConnectionMessages.ExternalReferenceInvalid",
+      "ConnectionMessages.ExternalReferenceRequired",
+      "ConnectionMessages.InvalidReference",
+      "ConnectionMessages.ProfileNotFound",
+      "ConnectionMessages.SourceNotAvailable",
+      "ConnectionMessages.SourceUnavailable",
+      "ConnectionMessages.SynchronizationStoppedByRevocation",
+      "ProcessingConsentMessages.ExternalDataProcessingRequired"
+    ],
+    "relayed": false
+  },
+  "Connections.GetById": {
+    "handlers": [
+      "GetConnectionByIdQueryHandler",
+      "GetConnectionByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.NotFound",
+      "ConnectionMessages.ProfileNotFound",
+      "ConnectionMessages.RetrievedSuccessfully",
+      "ConnectionMessages.SynchronizationStoppedByRevocation"
+    ],
+    "relayed": false
+  },
+  "Connections.List": {
+    "handlers": [
+      "ListConnectionsQueryHandler",
+      "ListConnectionsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.DataSourceTypeInvalid",
+      "ConnectionMessages.InvalidPageNumber",
+      "ConnectionMessages.InvalidPageSize",
+      "ConnectionMessages.ListedSuccessfully",
+      "ConnectionMessages.ProfileNotFound",
+      "ConnectionMessages.SortByUnsupported",
+      "ConnectionMessages.StatusInvalid",
+      "ConnectionMessages.SynchronizationStoppedByRevocation"
+    ],
+    "relayed": false
+  },
+  "Connections.Reauthenticate": {
+    "handlers": [
+      "ReauthenticateConnectionCommandHandler",
+      "ReauthenticateConnectionCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.BankCredentialRejected",
+      "ConnectionMessages.DuplicateReference",
+      "ConnectionMessages.ExternalReferenceInvalid",
+      "ConnectionMessages.ExternalReferenceRequired",
+      "ConnectionMessages.InvalidReference",
+      "ConnectionMessages.NotFound",
+      "ConnectionMessages.ProfileNotFound",
+      "ConnectionMessages.ReauthenticatedSuccessfully",
+      "ConnectionMessages.ReauthenticationNotRequired",
+      "ConnectionMessages.Revoked",
+      "ConnectionMessages.SourceNotAvailable",
+      "ConnectionMessages.SourceUnavailable",
+      "ConnectionMessages.SynchronizationStoppedByRevocation"
+    ],
+    "relayed": false
+  },
+  "Connections.Revoke": {
+    "handlers": [
+      "RevokeConnectionCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.AlreadyRevoked",
+      "ConnectionMessages.NotFound",
+      "ConnectionMessages.ProfileNotFound",
+      "ConnectionMessages.RevokedSuccessfully",
+      "ConnectionMessages.SynchronizationStoppedByRevocation"
+    ],
+    "relayed": false
+  },
+  "Counterparties.Create": {
+    "handlers": [
+      "CreateCounterpartyCommandHandler",
+      "CreateCounterpartyCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CounterpartyMessages.CreatedSuccessfully",
+      "CounterpartyMessages.DuplicateName",
+      "CounterpartyMessages.NameRequired",
+      "CounterpartyMessages.NameTooLong",
+      "CounterpartyMessages.NotFound",
+      "CounterpartyMessages.ProfileNotFound",
+      "CounterpartyMessages.ReusedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Counterparties.Delete": {
+    "handlers": [
+      "DeleteCounterpartyCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CounterpartyMessages.DeletedSuccessfully",
+      "CounterpartyMessages.DuplicateName",
+      "CounterpartyMessages.NotFound",
+      "CounterpartyMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "Counterparties.List": {
+    "handlers": [
+      "ListCounterpartiesQueryHandler",
+      "ListCounterpartiesQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CounterpartyMessages.InvalidPageNumber",
+      "CounterpartyMessages.InvalidPageSize",
+      "CounterpartyMessages.ListedSuccessfully",
+      "CounterpartyMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "Counterparties.Merge": {
+    "handlers": [
+      "MergeCounterpartiesCommandHandler",
+      "MergeCounterpartiesCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CounterpartyMessages.MergedSuccessfully",
+      "CounterpartyMessages.NotFound",
+      "CounterpartyMessages.ProfileNotFound",
+      "CounterpartyMessages.SameCounterparty",
+      "CounterpartyMessages.TargetIdInvalid"
+    ],
+    "relayed": false
+  },
+  "Counterparties.SuggestCategory": {
+    "handlers": [
+      "SuggestCounterpartyCategoryQueryHandler",
+      "SuggestCounterpartyCategoryQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CounterpartyMessages.NoSuggestion",
+      "CounterpartyMessages.NotFound",
+      "CounterpartyMessages.ProfileNotFound",
+      "CounterpartyMessages.SuggestedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Counterparties.Update": {
+    "handlers": [
+      "UpdateCounterpartyCommandHandler",
+      "UpdateCounterpartyCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CounterpartyMessages.DuplicateName",
+      "CounterpartyMessages.NameRequired",
+      "CounterpartyMessages.NameTooLong",
+      "CounterpartyMessages.NotFound",
+      "CounterpartyMessages.ProfileNotFound",
+      "CounterpartyMessages.UpdatedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "CreditCards.Create": {
+    "handlers": [
+      "CreateCreditCardCommandHandler",
+      "CreateCreditCardCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CreditCardMessages.ClosingDayInvalid",
+      "CreditCardMessages.CreatedSuccessfully",
+      "CreditCardMessages.CreditLimitPositive",
+      "CreditCardMessages.CreditLimitPrecisionInvalid",
+      "CreditCardMessages.CurrencyInvalid",
+      "CreditCardMessages.CurrencyNotSupported",
+      "CreditCardMessages.CurrencyRequired",
+      "CreditCardMessages.DueDayInvalid",
+      "CreditCardMessages.DuplicateName",
+      "CreditCardMessages.IssuerRequired",
+      "CreditCardMessages.IssuerTooLong",
+      "CreditCardMessages.LastFourDigitsInvalid",
+      "CreditCardMessages.NameRequired",
+      "CreditCardMessages.NameTooLong",
+      "CreditCardMessages.ProfileNotFound",
+      "CreditCardMessages.UnknownCurrency"
+    ],
+    "relayed": false
+  },
+  "CreditCards.Delete": {
+    "handlers": [
+      "DeleteCreditCardCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "CreditCardMessages.DeletedSuccessfully",
+      "CreditCardMessages.DuplicateName",
+      "CreditCardMessages.HardDeleteHasDependents",
+      "CreditCardMessages.HardDeleteHasLiveTransactions",
+      "CreditCardMessages.HardDeleteRequiresSoftDeletion",
+      "CreditCardMessages.NotFound",
+      "CreditCardMessages.ProfileNotFound",
+      "CreditCardMessages.RestoreRequiresSoftDeletion"
+    ],
+    "relayed": false
+  },
+  "CreditCards.GetById": {
+    "handlers": [
+      "GetCreditCardByIdQueryHandler",
+      "GetCreditCardByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CreditCardMessages.NotFound",
+      "CreditCardMessages.ProfileNotFound",
+      "CreditCardMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "CreditCards.HardDelete": {
+    "handlers": [
+      "HardDeleteCreditCardCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "CreditCardMessages.DuplicateName",
+      "CreditCardMessages.HardDeleteHasDependents",
+      "CreditCardMessages.HardDeleteHasLiveTransactions",
+      "CreditCardMessages.HardDeleteRequiresSoftDeletion",
+      "CreditCardMessages.HardDeletedSuccessfully",
+      "CreditCardMessages.NotFound",
+      "CreditCardMessages.ProfileNotFound",
+      "CreditCardMessages.RestoreRequiresSoftDeletion"
+    ],
+    "relayed": false
+  },
+  "CreditCards.List": {
+    "handlers": [
+      "ListCreditCardsQueryHandler",
+      "ListCreditCardsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CreditCardMessages.CurrencyInvalid",
+      "CreditCardMessages.InvalidPageNumber",
+      "CreditCardMessages.InvalidPageSize",
+      "CreditCardMessages.IssuerTooLong",
+      "CreditCardMessages.ListedSuccessfully",
+      "CreditCardMessages.NameTooLong",
+      "CreditCardMessages.ProfileNotFound",
+      "CreditCardMessages.SortByUnsupported"
+    ],
+    "relayed": false
+  },
+  "CreditCards.ListStatements": {
+    "handlers": [
+      "ListCreditCardStatementsQueryHandler",
+      "ListCreditCardStatementsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CreditCardStatementMessages.CreditCardNotFound",
+      "CreditCardStatementMessages.InvalidPageNumber",
+      "CreditCardStatementMessages.InvalidPageSize",
+      "CreditCardStatementMessages.ListedSuccessfully",
+      "CreditCardStatementMessages.PeriodInvalid",
+      "CreditCardStatementMessages.ProfileNotFound",
+      "CreditCardStatementMessages.SortByUnsupported",
+      "CreditCardStatementMessages.StatusInvalid"
+    ],
+    "relayed": false
+  },
+  "CreditCards.Restore": {
+    "handlers": [
+      "RestoreCreditCardCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "CreditCardMessages.DuplicateName",
+      "CreditCardMessages.HardDeleteHasDependents",
+      "CreditCardMessages.HardDeleteHasLiveTransactions",
+      "CreditCardMessages.HardDeleteRequiresSoftDeletion",
+      "CreditCardMessages.NotFound",
+      "CreditCardMessages.ProfileNotFound",
+      "CreditCardMessages.RestoreRequiresSoftDeletion",
+      "CreditCardMessages.RestoredSuccessfully"
+    ],
+    "relayed": false
+  },
+  "CreditCards.Update": {
+    "handlers": [
+      "UpdateCreditCardCommandHandler",
+      "UpdateCreditCardCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CreditCardMessages.ClosingDayInvalid",
+      "CreditCardMessages.CreditLimitPositive",
+      "CreditCardMessages.CreditLimitPrecisionInvalid",
+      "CreditCardMessages.CurrencyImmutable",
+      "CreditCardMessages.DueDayInvalid",
+      "CreditCardMessages.DuplicateName",
+      "CreditCardMessages.IssuerRequired",
+      "CreditCardMessages.IssuerTooLong",
+      "CreditCardMessages.NameRequired",
+      "CreditCardMessages.NameTooLong",
+      "CreditCardMessages.NotFound",
+      "CreditCardMessages.ProfileNotFound",
+      "CreditCardMessages.UpdatedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Currencies.GetByCode": {
+    "handlers": [
+      "GetCurrencyByCodeQueryHandler",
+      "GetCurrencyByCodeQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CurrencyMessages.CurrencyNotFound",
+      "CurrencyMessages.CurrencyRetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Currencies.List": {
+    "handlers": [
+      "ListSupportedCurrenciesQueryHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CurrencyMessages.CurrenciesRetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "DataSources.List": {
+    "handlers": [
+      "ListDataSourcesQueryHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "DataSourceMessages.ConfigurationRequired",
+      "DataSourceMessages.ListedSuccessfully",
+      "DataSourceMessages.NetworkUnavailable"
+    ],
+    "relayed": false
+  },
+  "ExchangeRates.Convert": {
+    "handlers": [
+      "ConvertFigureQueryHandler",
+      "ConvertFigureQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.AmountCurrencyInvalid",
+      "FigureConversionMessages.AmountCurrencyRequired",
+      "FigureConversionMessages.AmountPrecisionInvalid",
+      "FigureConversionMessages.AmountRequired",
+      "FigureConversionMessages.AmountsRequired",
+      "FigureConversionMessages.ConvertedSuccessfully",
+      "FigureConversionMessages.CurrencyNotSupported",
+      "FigureConversionMessages.DisplayCurrencyInvalid",
+      "FigureConversionMessages.FigureDateRequired",
+      "FigureConversionMessages.PartiallyConverted",
+      "FigureConversionMessages.ProfileNotFound",
+      "FigureConversionMessages.RateUnavailable",
+      "FigureConversionMessages.TooManyAmounts",
+      "FigureConversionMessages.UnknownCurrency"
+    ],
+    "relayed": false
+  },
+  "ExchangeRates.RecordManual": {
+    "handlers": [
+      "RecordManualExchangeRateCommandHandler",
+      "RecordManualExchangeRateCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ManualExchangeRateMessages.AdministratorRequired",
+      "ManualExchangeRateMessages.BaseCurrencyInvalid",
+      "ManualExchangeRateMessages.BaseCurrencyRequired",
+      "ManualExchangeRateMessages.CurrenciesMustDiffer",
+      "ManualExchangeRateMessages.CurrencyNotSupported",
+      "ManualExchangeRateMessages.QuoteCurrencyInvalid",
+      "ManualExchangeRateMessages.QuoteCurrencyRequired",
+      "ManualExchangeRateMessages.RateDateRequired",
+      "ManualExchangeRateMessages.RateMustBePositive",
+      "ManualExchangeRateMessages.RatePrecisionInvalid",
+      "ManualExchangeRateMessages.RecordedSuccessfully",
+      "ManualExchangeRateMessages.ReplacedSuccessfully",
+      "ManualExchangeRateMessages.UnknownCurrency"
+    ],
+    "relayed": false
+  },
+  "ExchangeRates.Synchronize": {
+    "handlers": [
+      "SynchronizeExchangeRatesCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ExchangeRateSyncMessages.Accepted",
+      "ExchangeRateSyncMessages.AdministratorRequired",
+      "ExchangeRateSyncMessages.AlreadyQueued",
+      "ExchangeRateSyncMessages.SourceNotConfigured"
+    ],
+    "relayed": false
+  },
+  "Exports.RequestExport": {
+    "handlers": [
+      "RequestDataExportCommandHandler",
+      "RequestDataExportCommandValidator"
+    ],
+    "maps": [
+      "RequestStatuses"
+    ],
+    "messages": [
+      "DataExportMessages.Accepted",
+      "DataExportMessages.CreatedSuccessfully",
+      "DataExportMessages.FormatUnsupported",
+      "DataExportMessages.LocaleInvalid",
+      "DataExportMessages.ProfileNotFound",
+      "DataExportMessages.RequestInvalid",
+      "TableReportMessages.ColumnsMustBeUnique",
+      "TableReportMessages.ColumnsRequired",
+      "TableReportMessages.DisplayCurrencyInvalid",
+      "TableReportMessages.DisplayCurrencyUnsupported",
+      "TableReportMessages.FilterFieldRequired",
+      "TableReportMessages.FilterOperatorRequired",
+      "TableReportMessages.FilterValueRequired",
+      "TableReportMessages.InvalidFilterValue",
+      "TableReportMessages.RecordSetRequired",
+      "TableReportMessages.SortFieldRequired",
+      "TableReportMessages.UnknownColumn",
+      "TableReportMessages.UnknownFilterField",
+      "TableReportMessages.UnknownFilterOperator",
+      "TableReportMessages.UnknownRecordSet",
+      "TableReportMessages.UnknownSortField"
+    ],
+    "relayed": false
+  },
+  "Exports.Retrieve": {
+    "handlers": [
+      "GetDataExportQueryHandler",
+      "GetDataExportQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "DataExportMessages.Expired",
+      "DataExportMessages.FileNotFound",
+      "DataExportMessages.GenerationFailed",
+      "DataExportMessages.NotFound",
+      "DataExportMessages.ProfileNotFound",
+      "DataExportMessages.RequestInvalid",
+      "DataExportMessages.RetrievedSuccessfully",
+      "DataExportMessages.StorageUnavailable"
+    ],
+    "relayed": false
+  },
+  "Goals.Create": {
+    "handlers": [
+      "CreateGoalCommandHandler",
+      "CreateGoalCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "GoalMessages.CreatedSuccessfully",
+      "GoalMessages.CurrencyNotSupported",
+      "GoalMessages.NotFound",
+      "GoalMessages.ProfileNotFound",
+      "GoalMessages.ResourceDeleted",
+      "GoalMessages.ResourceNotFound",
+      "GoalMessages.TargetDateMustBeFuture"
+    ],
+    "relayed": false
+  },
+  "Goals.Delete": {
+    "handlers": [
+      "DeleteGoalCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "GoalMessages.CurrencyNotSupported",
+      "GoalMessages.DeletedSuccessfully",
+      "GoalMessages.NotFound",
+      "GoalMessages.ProfileNotFound",
+      "GoalMessages.ResourceDeleted",
+      "GoalMessages.ResourceNotFound",
+      "GoalMessages.TargetDateMustBeFuture"
+    ],
+    "relayed": false
+  },
+  "Goals.Get": {
+    "handlers": [
+      "GetGoalByIdQueryHandler",
+      "GetGoalByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "GoalMessages.NotFound",
+      "GoalMessages.ProfileNotFound",
+      "GoalMessages.ResourceDeleted",
+      "GoalMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Goals.GetProgress": {
+    "handlers": [
+      "GetGoalProgressQueryHandler",
+      "GetGoalProgressQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.PartiallyConverted",
+      "FigureConversionMessages.RateUnavailable",
+      "GoalMessages.NotFound",
+      "GoalMessages.ProfileNotFound",
+      "GoalMessages.ProgressRetrievedSuccessfully",
+      "GoalMessages.ResourceDeleted"
+    ],
+    "relayed": false
+  },
+  "Goals.List": {
+    "handlers": [
+      "ListGoalsQueryHandler",
+      "ListGoalsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "GoalMessages.InvalidPageNumber",
+      "GoalMessages.InvalidPageSize",
+      "GoalMessages.ListedSuccessfully",
+      "GoalMessages.ProfileNotFound",
+      "GoalMessages.ResourceDeleted"
+    ],
+    "relayed": false
+  },
+  "Goals.Update": {
+    "handlers": [
+      "UpdateGoalCommandHandler",
+      "UpdateGoalCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "GoalMessages.CurrencyNotSupported",
+      "GoalMessages.NotFound",
+      "GoalMessages.ProfileNotFound",
+      "GoalMessages.ResourceDeleted",
+      "GoalMessages.ResourceNotFound",
+      "GoalMessages.TargetDateMustBeFuture",
+      "GoalMessages.UpdatedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "ImportJobs.GetById": {
+    "handlers": [
+      "GetImportJobByIdQueryHandler",
+      "GetImportJobByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ImportJobMessages.NotFound",
+      "ImportJobMessages.ProfileNotFound",
+      "ImportJobMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "ImportJobs.List": {
+    "handlers": [
+      "ListImportJobsQueryHandler",
+      "ListImportJobsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ImportJobMessages.InvalidPageNumber",
+      "ImportJobMessages.InvalidPageSize",
+      "ImportJobMessages.ListedSuccessfully",
+      "ImportJobMessages.ProfileNotFound",
+      "ImportJobMessages.SortByUnsupported",
+      "ImportJobMessages.SourceTypeInvalid",
+      "ImportJobMessages.StatusInvalid"
+    ],
+    "relayed": false
+  },
+  "ImportJobs.Records": {
+    "handlers": [
+      "ListImportedRecordsQueryHandler",
+      "ListImportedRecordsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ImportJobMessages.InvalidPageNumber",
+      "ImportJobMessages.InvalidPageSize",
+      "ImportJobMessages.NotFound",
+      "ImportJobMessages.ProfileNotFound",
+      "ImportJobMessages.RecordsListedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "ImportJobs.Retry": {
+    "handlers": [
+      "RetryImportJobCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.RequiresReauthentication",
+      "ConnectionMessages.Revoked",
+      "ImportJobMessages.NotFound",
+      "ImportJobMessages.ProfileNotFound",
+      "ImportJobMessages.RetryAccepted",
+      "ImportJobMessages.RetryRequiresFailedJob",
+      "ImportJobMessages.SourceFileNotRetained",
+      "PluggySynchronizationMessages.AlreadyRunning"
+    ],
+    "relayed": false
+  },
+  "Imports.Excel": {
+    "handlers": [
+      "ImportExcelWorkbookCommandHandler",
+      "ImportExcelWorkbookCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ExcelImportMessages.Accepted",
+      "ExcelImportMessages.AmountColumnRequired",
+      "ExcelImportMessages.ColumnNotFound",
+      "ExcelImportMessages.ColumnsMustBeDistinct",
+      "ExcelImportMessages.DateColumnRequired",
+      "ExcelImportMessages.DirectionColumnRequired",
+      "ExcelImportMessages.FileNameTooLong",
+      "ExcelImportMessages.FileRequired",
+      "ExcelImportMessages.FileTooLarge",
+      "ExcelImportMessages.ProfileNotFound",
+      "ExcelImportMessages.RowAmountInvalid",
+      "ExcelImportMessages.RowCategoryTooLong",
+      "ExcelImportMessages.RowDateInvalid",
+      "ExcelImportMessages.RowDirectionInvalid",
+      "ExcelImportMessages.TargetDeleted",
+      "ExcelImportMessages.TargetIdRequired",
+      "ExcelImportMessages.TargetNotFound",
+      "ExcelImportMessages.TargetTypeInvalid",
+      "ExcelImportMessages.WorkbookInvalid"
+    ],
+    "relayed": false
+  },
+  "Imports.Pdf": {
+    "handlers": [
+      "ImportPdfInvoiceCommandHandler",
+      "ImportPdfInvoiceCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "PdfInvoiceImportMessages.Accepted",
+      "PdfInvoiceImportMessages.BillingCycleInvalid",
+      "PdfInvoiceImportMessages.CreditCardDeleted",
+      "PdfInvoiceImportMessages.CreditCardIdRequired",
+      "PdfInvoiceImportMessages.CreditCardNotFound",
+      "PdfInvoiceImportMessages.CurrencyUnsupported",
+      "PdfInvoiceImportMessages.FileInvalid",
+      "PdfInvoiceImportMessages.FileNameTooLong",
+      "PdfInvoiceImportMessages.FileRequired",
+      "PdfInvoiceImportMessages.FileTooLarge",
+      "PdfInvoiceImportMessages.LineAmountZero",
+      "PdfInvoiceImportMessages.PaymentsNegative",
+      "PdfInvoiceImportMessages.ProfileNotFound",
+      "PdfInvoiceImportMessages.StatementSettled",
+      "PdfInvoiceImportMessages.SummaryDoesNotReconcile"
+    ],
+    "relayed": false
+  },
+  "InstallmentPlans.Delete": {
+    "handlers": [
+      "DeleteInstallmentPlanCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "InstallmentPlanMessages.DeletedSuccessfully",
+      "InstallmentPlanMessages.NotFound",
+      "InstallmentPlanMessages.ProfileNotFound",
+      "InstallmentPlanMessages.RestoreRequiresSoftDeletion",
+      "InstallmentPlanMessages.SettledStatementFrozen"
+    ],
+    "relayed": false
+  },
+  "InstallmentPlans.GetById": {
+    "handlers": [
+      "GetInstallmentPlanByIdQueryHandler",
+      "GetInstallmentPlanByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "InstallmentPlanMessages.IdRequired",
+      "InstallmentPlanMessages.NotFound",
+      "InstallmentPlanMessages.ProfileNotFound",
+      "InstallmentPlanMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "InstallmentPlans.Record": {
+    "handlers": [
+      "RecordInstallmentPlanCommandHandler",
+      "RecordInstallmentPlanCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "InstallmentPlanMessages.AmountTooSmall",
+      "InstallmentPlanMessages.CategoryIdRequired",
+      "InstallmentPlanMessages.CategoryNotFound",
+      "InstallmentPlanMessages.CounterpartyTooLong",
+      "InstallmentPlanMessages.CreditCardIdRequired",
+      "InstallmentPlanMessages.CreditCardNotFound",
+      "InstallmentPlanMessages.CurrencyCodeInvalid",
+      "InstallmentPlanMessages.CurrencyNotSupported",
+      "InstallmentPlanMessages.ExchangeRateUnavailable",
+      "InstallmentPlanMessages.InstallmentCountMinimum",
+      "InstallmentPlanMessages.OwnerImmutable",
+      "InstallmentPlanMessages.ProfileNotFound",
+      "InstallmentPlanMessages.PurchasedOnRequired",
+      "InstallmentPlanMessages.PurchasedOnTooFarInFuture",
+      "InstallmentPlanMessages.RecordedSuccessfully",
+      "InstallmentPlanMessages.TotalAmountPositive",
+      "InstallmentPlanMessages.TotalAmountPrecisionInvalid"
+    ],
+    "relayed": false
+  },
+  "InstallmentPlans.Restore": {
+    "handlers": [
+      "RestoreInstallmentPlanCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "InstallmentPlanMessages.NotFound",
+      "InstallmentPlanMessages.ProfileNotFound",
+      "InstallmentPlanMessages.RestoreRequiresSoftDeletion",
+      "InstallmentPlanMessages.RestoredSuccessfully",
+      "InstallmentPlanMessages.SettledStatementFrozen"
+    ],
+    "relayed": false
+  },
+  "Investments.Create": {
+    "handlers": [
+      "CreateInvestmentCommandHandler",
+      "CreateInvestmentCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "InvestmentMessages.CreatedSuccessfully",
+      "InvestmentMessages.CurrencyInvalid",
+      "InvestmentMessages.CurrencyNotSupported",
+      "InvestmentMessages.CurrencyRequired",
+      "InvestmentMessages.DuplicateInstrument",
+      "InvestmentMessages.InstitutionTooLong",
+      "InvestmentMessages.InstrumentRequired",
+      "InvestmentMessages.InstrumentTooLong",
+      "InvestmentMessages.InvestmentTypeInvalid",
+      "InvestmentMessages.ProfileNotFound",
+      "InvestmentMessages.UnknownCurrency"
+    ],
+    "relayed": false
+  },
+  "Investments.Delete": {
+    "handlers": [
+      "DeleteInvestmentCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "InvestmentMessages.DeletedSuccessfully",
+      "InvestmentMessages.DuplicateInstrument",
+      "InvestmentMessages.HardDeleteHasDependents",
+      "InvestmentMessages.HardDeleteHasLiveGoal",
+      "InvestmentMessages.HardDeleteRequiresSoftDeletion",
+      "InvestmentMessages.NotFound",
+      "InvestmentMessages.ProfileNotFound",
+      "InvestmentMessages.ReferencingGoal",
+      "InvestmentMessages.RestoreRequiresSoftDeletion"
+    ],
+    "relayed": false
+  },
+  "Investments.GetById": {
+    "handlers": [
+      "GetInvestmentByIdQueryHandler",
+      "GetInvestmentByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "InvestmentMessages.CurrencyNotSupported",
+      "InvestmentMessages.DisplayCurrencyInvalid",
+      "InvestmentMessages.InvestmentIdRequired",
+      "InvestmentMessages.NotFound",
+      "InvestmentMessages.ProfileNotFound",
+      "InvestmentMessages.RetrievedSuccessfully",
+      "InvestmentMessages.UnknownCurrency"
+    ],
+    "relayed": false
+  },
+  "Investments.HardDelete": {
+    "handlers": [
+      "HardDeleteInvestmentCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "InvestmentMessages.DuplicateInstrument",
+      "InvestmentMessages.HardDeleteHasDependents",
+      "InvestmentMessages.HardDeleteHasLiveGoal",
+      "InvestmentMessages.HardDeleteRequiresSoftDeletion",
+      "InvestmentMessages.HardDeletedSuccessfully",
+      "InvestmentMessages.NotFound",
+      "InvestmentMessages.ProfileNotFound",
+      "InvestmentMessages.ReferencingGoal",
+      "InvestmentMessages.RestoreRequiresSoftDeletion"
+    ],
+    "relayed": false
+  },
+  "Investments.List": {
+    "handlers": [
+      "ListInvestmentsQueryHandler",
+      "ListInvestmentsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "InvestmentMessages.CurrencyInvalid",
+      "InvestmentMessages.CurrencyNotSupported",
+      "InvestmentMessages.DisplayCurrencyInvalid",
+      "InvestmentMessages.InstitutionTooLong",
+      "InvestmentMessages.InstrumentTooLong",
+      "InvestmentMessages.InvalidPageNumber",
+      "InvestmentMessages.InvalidPageSize",
+      "InvestmentMessages.InvestmentTypeInvalid",
+      "InvestmentMessages.ListedSuccessfully",
+      "InvestmentMessages.ProfileNotFound",
+      "InvestmentMessages.SortByUnsupported",
+      "InvestmentMessages.UnknownCurrency"
+    ],
+    "relayed": false
+  },
+  "Investments.ListValuations": {
+    "handlers": [
+      "ListInvestmentValuationsQueryHandler",
+      "ListInvestmentValuationsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "InvestmentMessages.InvalidPageNumber",
+      "InvestmentMessages.InvalidPageSize",
+      "InvestmentMessages.InvestmentIdRequired",
+      "InvestmentMessages.NotFound",
+      "InvestmentMessages.ProfileNotFound",
+      "InvestmentMessages.ValuationHistoryRetrievedSuccessfully",
+      "InvestmentMessages.ValuationPeriodInvalid",
+      "InvestmentMessages.ValuationSortByUnsupported"
+    ],
+    "relayed": false
+  },
+  "Investments.RecordMovement": {
+    "handlers": [
+      "RecordInvestmentMovementCommandHandler",
+      "RecordInvestmentMovementCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "InvestmentMessages.ConvertedAmountTooSmall",
+      "InvestmentMessages.ExchangeRateUnavailable",
+      "InvestmentMessages.FinancialAccountIdInvalid",
+      "InvestmentMessages.FinancialAccountNotFound",
+      "InvestmentMessages.FundingRequiresContribution",
+      "InvestmentMessages.InvestmentIdRequired",
+      "InvestmentMessages.MovementAmountPositive",
+      "InvestmentMessages.MovementAmountPrecisionInvalid",
+      "InvestmentMessages.MovementRecordedSuccessfully",
+      "InvestmentMessages.MovementTypeInvalid",
+      "InvestmentMessages.NotFound",
+      "InvestmentMessages.OccurredOnRequired",
+      "InvestmentMessages.OccurredOnTooFarInFuture",
+      "InvestmentMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "Investments.RecordValuation": {
+    "handlers": [
+      "RecordInvestmentValuationCommandHandler",
+      "RecordInvestmentValuationCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "InvestmentMessages.InvestmentIdRequired",
+      "InvestmentMessages.NotFound",
+      "InvestmentMessages.ProfileNotFound",
+      "InvestmentMessages.ValuationRecordedSuccessfully",
+      "InvestmentMessages.ValuationReplacedSuccessfully",
+      "InvestmentMessages.ValuationValuePrecisionInvalid",
+      "InvestmentMessages.ValuedOnFuture",
+      "InvestmentMessages.ValuedOnRequired"
+    ],
+    "relayed": false
+  },
+  "Investments.Restore": {
+    "handlers": [
+      "RestoreInvestmentCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "InvestmentMessages.DuplicateInstrument",
+      "InvestmentMessages.HardDeleteHasDependents",
+      "InvestmentMessages.HardDeleteHasLiveGoal",
+      "InvestmentMessages.HardDeleteRequiresSoftDeletion",
+      "InvestmentMessages.NotFound",
+      "InvestmentMessages.ProfileNotFound",
+      "InvestmentMessages.ReferencingGoal",
+      "InvestmentMessages.RestoreRequiresSoftDeletion",
+      "InvestmentMessages.RestoredSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Investments.Update": {
+    "handlers": [
+      "UpdateInvestmentCommandHandler",
+      "UpdateInvestmentCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "InvestmentMessages.CurrencyImmutable",
+      "InvestmentMessages.DuplicateInstrument",
+      "InvestmentMessages.InstitutionTooLong",
+      "InvestmentMessages.InstrumentRequired",
+      "InvestmentMessages.InstrumentTooLong",
+      "InvestmentMessages.InvestmentTypeInvalid",
+      "InvestmentMessages.NotFound",
+      "InvestmentMessages.ProfileNotFound",
+      "InvestmentMessages.UpdatedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "LocalAccounts.Authenticate": {
+    "handlers": [
+      "AuthenticateLocalAccountCommandHandler",
+      "AuthenticateLocalAccountCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConfigurationMessages.AbsoluteUri",
+      "ConfigurationMessages.AddressesInvalid",
+      "ConfigurationMessages.Boolean",
+      "ConfigurationMessages.CallerKeyCharacters",
+      "ConfigurationMessages.ConsentVersionTooLong",
+      "ConfigurationMessages.CronInvalid",
+      "ConfigurationMessages.CurrencyCode",
+      "ConfigurationMessages.CurrencyCodes",
+      "ConfigurationMessages.DatabaseTypeUnsupported",
+      "ConfigurationMessages.HeimdallBaseUri",
+      "ConfigurationMessages.HeimdallBaseUriUserInfo",
+      "ConfigurationMessages.MetricsPortCollides",
+      "ConfigurationMessages.MustDiffer",
+      "ConfigurationMessages.NetworksInvalid",
+      "ConfigurationMessages.NonEmptyGuid",
+      "ConfigurationMessages.NonNegativeDecimal",
+      "ConfigurationMessages.NonNegativeInteger",
+      "ConfigurationMessages.Port",
+      "ConfigurationMessages.PositiveInteger",
+      "ConfigurationMessages.PositiveNumber",
+      "ConfigurationMessages.RatesCurrenciesTooFew",
+      "ConfigurationMessages.Required",
+      "ConfigurationMessages.SecretTooShort",
+      "ConfigurationMessages.SecretTooShortCharacters",
+      "ConfigurationMessages.SpecificLocale",
+      "ConfigurationMessages.StorageProviderUnsupported",
+      "ConfigurationMessages.UploadContentTypesInvalid",
+      "LocalAccountMessages.Disabled",
+      "LocalAuthenticationMessages.AuthenticatedSuccessfully",
+      "LocalAuthenticationMessages.InvalidCredentials",
+      "LocalAuthenticationMessages.NameRequired",
+      "LocalAuthenticationMessages.NameTooLong",
+      "LocalAuthenticationMessages.SecretRequired",
+      "LocalAuthenticationMessages.SecretTooLong"
+    ],
+    "relayed": false
+  },
+  "LocalAccounts.Create": {
+    "handlers": [
+      "CreateLocalAccountCommandHandler",
+      "CreateLocalAccountCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "LocalAccountMessages.AlreadyExists",
+      "LocalAccountMessages.CreatedSuccessfully",
+      "LocalAccountMessages.CredentialStoreUnavailable",
+      "LocalAccountMessages.Disabled",
+      "LocalAccountMessages.NameRequired",
+      "LocalAccountMessages.NameTooLong",
+      "LocalAccountMessages.RecoveryWarning",
+      "LocalAccountMessages.SecretRequired",
+      "LocalAccountMessages.SecretTooLong",
+      "LocalAccountMessages.SecretTooShort",
+      "LocalAccountMessages.StorageModeInvalid"
+    ],
+    "relayed": false
+  },
+  "LocalAccounts.PasswordReset": {
+    "handlers": [],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "LocalAccountMessages.Disabled",
+      "LocalAuthenticationMessages.PasswordResetUnavailable"
+    ],
+    "relayed": false
+  },
+  "LocalAccounts.Recover": {
+    "handlers": [
+      "RecoverLocalAccountCommandHandler",
+      "RecoverLocalAccountCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConfigurationMessages.AbsoluteUri",
+      "ConfigurationMessages.AddressesInvalid",
+      "ConfigurationMessages.Boolean",
+      "ConfigurationMessages.CallerKeyCharacters",
+      "ConfigurationMessages.ConsentVersionTooLong",
+      "ConfigurationMessages.CronInvalid",
+      "ConfigurationMessages.CurrencyCode",
+      "ConfigurationMessages.CurrencyCodes",
+      "ConfigurationMessages.DatabaseTypeUnsupported",
+      "ConfigurationMessages.HeimdallBaseUri",
+      "ConfigurationMessages.HeimdallBaseUriUserInfo",
+      "ConfigurationMessages.MetricsPortCollides",
+      "ConfigurationMessages.MustDiffer",
+      "ConfigurationMessages.NetworksInvalid",
+      "ConfigurationMessages.NonEmptyGuid",
+      "ConfigurationMessages.NonNegativeDecimal",
+      "ConfigurationMessages.NonNegativeInteger",
+      "ConfigurationMessages.Port",
+      "ConfigurationMessages.PositiveInteger",
+      "ConfigurationMessages.PositiveNumber",
+      "ConfigurationMessages.RatesCurrenciesTooFew",
+      "ConfigurationMessages.Required",
+      "ConfigurationMessages.SecretTooShort",
+      "ConfigurationMessages.SecretTooShortCharacters",
+      "ConfigurationMessages.SpecificLocale",
+      "ConfigurationMessages.StorageProviderUnsupported",
+      "ConfigurationMessages.UploadContentTypesInvalid",
+      "LocalAccountMessages.Disabled",
+      "LocalAccountRecoveryMessages.InvalidRecoveryCode",
+      "LocalAccountRecoveryMessages.NameRequired",
+      "LocalAccountRecoveryMessages.NameTooLong",
+      "LocalAccountRecoveryMessages.NewSecretRequired",
+      "LocalAccountRecoveryMessages.NewSecretTooLong",
+      "LocalAccountRecoveryMessages.NewSecretTooShort",
+      "LocalAccountRecoveryMessages.RecoveredSuccessfully",
+      "LocalAccountRecoveryMessages.RecoveryCodeFormatInvalid",
+      "LocalAccountRecoveryMessages.RecoveryCodeRequired",
+      "LocalAccountRecoveryMessages.RecoveryCodesExhausted"
+    ],
+    "relayed": false
+  },
+  "LocalAccounts.Regenerate": {
+    "handlers": [
+      "RegenerateLocalAccountRecoveryCodesCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "LocalAccountMessages.Disabled",
+      "LocalAccountMessages.RecoveryWarning",
+      "LocalRecoveryCodeRegenerationMessages.InvalidSecret",
+      "LocalRecoveryCodeRegenerationMessages.LocalAccountOnly",
+      "LocalRecoveryCodeRegenerationMessages.RegeneratedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Me.Erase": {
+    "handlers": [
+      "EraseUserCommandHandler",
+      "EraseUserCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "UserErasureMessages.ConfirmationInvalid",
+      "UserErasureMessages.ErasedSuccessfully",
+      "UserErasureMessages.UserNotFound"
+    ],
+    "relayed": false
+  },
+  "Me.Get": {
+    "handlers": [
+      "GetMyProfileQueryHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "UserProfileMessages.ProfileNotFound",
+      "UserProfileMessages.ProfileRetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Me.GetConsents": {
+    "handlers": [
+      "GetMyProcessingConsentsQueryHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.SynchronizationStoppedByRevocation",
+      "ProcessingConsentMessages.ProfileNotFound",
+      "ProcessingConsentMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Me.GetDataExport": {
+    "handlers": [
+      "GetPersonalDataExportQueryHandler",
+      "GetPersonalDataExportQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "DataExportMessages.RequestInvalid",
+      "PersonalDataExportMessages.Expired",
+      "PersonalDataExportMessages.FileNotFound",
+      "PersonalDataExportMessages.GenerationFailed",
+      "PersonalDataExportMessages.NotFound",
+      "PersonalDataExportMessages.ProfileNotFound",
+      "PersonalDataExportMessages.RetrievedSuccessfully",
+      "PersonalDataExportMessages.StorageUnavailable"
+    ],
+    "relayed": false
+  },
+  "Me.GrantConsent": {
+    "handlers": [
+      "GrantProcessingConsentCommandHandler",
+      "GrantProcessingConsentCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.SynchronizationStoppedByRevocation",
+      "ProcessingConsentMessages.GrantedSuccessfully",
+      "ProcessingConsentMessages.ProfileNotFound",
+      "ProcessingConsentMessages.UnknownPurpose",
+      "ProcessingConsentMessages.VersionNotCurrent",
+      "ProcessingConsentMessages.VersionRequired"
+    ],
+    "relayed": false
+  },
+  "Me.RequestDataExport": {
+    "handlers": [
+      "RequestPersonalDataExportCommandHandler"
+    ],
+    "maps": [
+      "DataExportRequestStatuses"
+    ],
+    "messages": [
+      "DataExportMessages.RequestInvalid",
+      "PersonalDataExportMessages.Accepted",
+      "PersonalDataExportMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "Me.WithdrawConsent": {
+    "handlers": [
+      "WithdrawProcessingConsentCommandHandler",
+      "WithdrawProcessingConsentCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "ConnectionMessages.SynchronizationStoppedByRevocation",
+      "ProcessingConsentMessages.NotFound",
+      "ProcessingConsentMessages.ProfileNotFound",
+      "ProcessingConsentMessages.UnknownPurpose",
+      "ProcessingConsentMessages.WithdrawnSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Projections.CashFlow": {
+    "handlers": [
+      "ProjectCashFlowQueryHandler",
+      "ProjectCashFlowQueryValidator"
+    ],
+    "maps": [
+      "CashFlowStatuses"
+    ],
+    "messages": [
+      "CashFlowProjectionMessages.DisplayCurrencyInvalid",
+      "CashFlowProjectionMessages.DisplayCurrencyUnsupported",
+      "CashFlowProjectionMessages.HorizonMaximum",
+      "CashFlowProjectionMessages.HorizonRequired",
+      "CashFlowProjectionMessages.InsufficientHistory",
+      "CashFlowProjectionMessages.NoProjectionInputs",
+      "CashFlowProjectionMessages.PartiallyConverted",
+      "CashFlowProjectionMessages.PeriodicityInvalid",
+      "CashFlowProjectionMessages.ProfileNotFound",
+      "CashFlowProjectionMessages.RetrievedSuccessfully",
+      "FigureConversionMessages.RateUnavailable"
+    ],
+    "relayed": false
+  },
+  "Projections.Commitments": {
+    "handlers": [
+      "ListCommittedObligationsQueryHandler",
+      "ListCommittedObligationsQueryValidator"
+    ],
+    "maps": [
+      "CommitmentStatuses"
+    ],
+    "messages": [
+      "CommittedObligationMessages.DisplayCurrencyInvalid",
+      "CommittedObligationMessages.DisplayCurrencyUnsupported",
+      "CommittedObligationMessages.HorizonMaximum",
+      "CommittedObligationMessages.HorizonRequired",
+      "CommittedObligationMessages.PartiallyConverted",
+      "CommittedObligationMessages.ProfileNotFound",
+      "CommittedObligationMessages.RetrievedSuccessfully",
+      "FigureConversionMessages.RateUnavailable"
+    ],
+    "relayed": false
+  },
+  "RecurringTransactions.Define": {
+    "handlers": [
+      "DefineRecurringTransactionCommandHandler",
+      "DefineRecurringTransactionCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "RecurringTransactionMessages.AmountPositive",
+      "RecurringTransactionMessages.AmountPrecisionInvalid",
+      "RecurringTransactionMessages.CategoryIdRequired",
+      "RecurringTransactionMessages.CategoryNotFound",
+      "RecurringTransactionMessages.CounterpartyTooLong",
+      "RecurringTransactionMessages.CreditCardNotFound",
+      "RecurringTransactionMessages.DateRangeInvalid",
+      "RecurringTransactionMessages.DescriptionTooLong",
+      "RecurringTransactionMessages.DirectionInvalid",
+      "RecurringTransactionMessages.ExactlyOneTargetRequired",
+      "RecurringTransactionMessages.FinancialAccountNotFound",
+      "RecurringTransactionMessages.FrequencyInvalid",
+      "RecurringTransactionMessages.OccurrenceFailed",
+      "RecurringTransactionMessages.OwnerImmutable",
+      "RecurringTransactionMessages.ProfileNotFound",
+      "RecurringTransactionMessages.RecordedSuccessfully",
+      "RecurringTransactionMessages.StartsOnRequired"
+    ],
+    "relayed": false
+  },
+  "RecurringTransactions.Delete": {
+    "handlers": [
+      "DeleteRecurringTransactionCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "RecurringTransactionMessages.DeletedSuccessfully",
+      "RecurringTransactionMessages.NotFound",
+      "RecurringTransactionMessages.OccurrenceFailed",
+      "RecurringTransactionMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "RecurringTransactions.GetById": {
+    "handlers": [
+      "GetRecurringTransactionByIdQueryHandler",
+      "GetRecurringTransactionByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "RecurringTransactionMessages.IdRequired",
+      "RecurringTransactionMessages.NotFound",
+      "RecurringTransactionMessages.OccurrenceFailed",
+      "RecurringTransactionMessages.ProfileNotFound",
+      "RecurringTransactionMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "RecurringTransactions.List": {
+    "handlers": [
+      "ListRecurringTransactionsQueryHandler",
+      "ListRecurringTransactionsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "RecurringTransactionMessages.InvalidPageNumber",
+      "RecurringTransactionMessages.InvalidPageSize",
+      "RecurringTransactionMessages.ListedSuccessfully",
+      "RecurringTransactionMessages.OccurrenceFailed",
+      "RecurringTransactionMessages.ProfileNotFound",
+      "RecurringTransactionMessages.SortByUnsupported"
+    ],
+    "relayed": false
+  },
+  "RecurringTransactions.Materialize": {
+    "handlers": [
+      "MaterializeRecurringTransactionsCommandHandler",
+      "MaterializeRecurringTransactionsCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "RecurringTransactionMessages.MaterializedSuccessfully",
+      "RecurringTransactionMessages.OccurrenceFailed",
+      "RecurringTransactionMessages.OwnerImmutable",
+      "RecurringTransactionMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "RecurringTransactions.Update": {
+    "handlers": [
+      "UpdateRecurringTransactionCommandHandler",
+      "UpdateRecurringTransactionCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "RecurringTransactionMessages.AmountPositive",
+      "RecurringTransactionMessages.AmountPrecisionInvalid",
+      "RecurringTransactionMessages.CategoryIdRequired",
+      "RecurringTransactionMessages.CategoryNotFound",
+      "RecurringTransactionMessages.CounterpartyTooLong",
+      "RecurringTransactionMessages.CreditCardNotFound",
+      "RecurringTransactionMessages.DateRangeInvalid",
+      "RecurringTransactionMessages.DescriptionTooLong",
+      "RecurringTransactionMessages.DirectionInvalid",
+      "RecurringTransactionMessages.ExactlyOneTargetRequired",
+      "RecurringTransactionMessages.FinancialAccountNotFound",
+      "RecurringTransactionMessages.FrequencyInvalid",
+      "RecurringTransactionMessages.IdRequired",
+      "RecurringTransactionMessages.NotFound",
+      "RecurringTransactionMessages.OccurrenceFailed",
+      "RecurringTransactionMessages.OwnerImmutable",
+      "RecurringTransactionMessages.ProfileNotFound",
+      "RecurringTransactionMessages.StartsOnRequired",
+      "RecurringTransactionMessages.UpdatedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Reports.Aggregate": {
+    "handlers": [
+      "AggregateTransactionsQueryHandler",
+      "AggregateTransactionsQueryValidator"
+    ],
+    "maps": [
+      "AggregationStatuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "TransactionAggregationMessages.AmountPrecisionInvalid",
+      "TransactionAggregationMessages.AmountRangeInvalid",
+      "TransactionAggregationMessages.CategoryIdInvalid",
+      "TransactionAggregationMessages.CounterpartyIdInvalid",
+      "TransactionAggregationMessages.CreditCardIdInvalid",
+      "TransactionAggregationMessages.DateRangeInvalid",
+      "TransactionAggregationMessages.DimensionRequired",
+      "TransactionAggregationMessages.DirectionInvalid",
+      "TransactionAggregationMessages.DisplayCurrencyInvalid",
+      "TransactionAggregationMessages.DisplayCurrencyUnsupported",
+      "TransactionAggregationMessages.FinancialAccountIdInvalid",
+      "TransactionAggregationMessages.FromRequired",
+      "TransactionAggregationMessages.GranularityRequired",
+      "TransactionAggregationMessages.MaximumAmountInvalid",
+      "TransactionAggregationMessages.MaximumSpanExceeded",
+      "TransactionAggregationMessages.MinimumAmountInvalid",
+      "TransactionAggregationMessages.ProfileNotFound",
+      "TransactionAggregationMessages.RetrievedSuccessfully",
+      "TransactionAggregationMessages.TagIdInvalid",
+      "TransactionAggregationMessages.TextTooLong",
+      "TransactionAggregationMessages.ToRequired",
+      "TransactionAggregationMessages.UnknownCurrency",
+      "TransactionAggregationMessages.UnknownDimension",
+      "TransactionAggregationMessages.UnknownGranularity"
+    ],
+    "relayed": false
+  },
+  "Reports.DrillDown": {
+    "handlers": [
+      "DrillIntoAggregationQueryHandler",
+      "DrillIntoAggregationQueryValidator"
+    ],
+    "maps": [
+      "DrillDownStatuses"
+    ],
+    "messages": [
+      "TransactionDrillDownMessages.AggregationRetrieved",
+      "TransactionDrillDownMessages.BucketNotFound",
+      "TransactionDrillDownMessages.DimensionAlreadyUsed",
+      "TransactionDrillDownMessages.InvalidPageNumber",
+      "TransactionDrillDownMessages.InvalidPageSize",
+      "TransactionDrillDownMessages.KeyInvalidOrExpired",
+      "TransactionDrillDownMessages.KeyRequired",
+      "TransactionDrillDownMessages.KeyTooLong",
+      "TransactionDrillDownMessages.ProfileNotFound",
+      "TransactionDrillDownMessages.RecordsChanged",
+      "TransactionDrillDownMessages.TransactionRetrieved",
+      "TransactionDrillDownMessages.TransactionsRetrieved",
+      "TransactionDrillDownMessages.UnknownDimension"
+    ],
+    "relayed": false
+  },
+  "Reports.NetPosition": {
+    "handlers": [
+      "GetNetPositionQueryHandler",
+      "GetNetPositionQueryValidator"
+    ],
+    "maps": [
+      "NetPositionStatuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "NetPositionMessages.AsOfOutOfRange",
+      "NetPositionMessages.DisplayCurrencyInvalid",
+      "NetPositionMessages.DisplayCurrencyUnsupported",
+      "NetPositionMessages.PartiallyConverted",
+      "NetPositionMessages.ProfileNotFound",
+      "NetPositionMessages.RetrievedSuccessfully",
+      "NetPositionMessages.UnknownCurrency"
+    ],
+    "relayed": false
+  },
+  "Reports.QueryTable": {
+    "handlers": [
+      "QueryRecordsAsTableQueryHandler",
+      "QueryRecordsAsTableQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.RateUnavailable",
+      "TableReportMessages.ColumnsMustBeUnique",
+      "TableReportMessages.ColumnsRequired",
+      "TableReportMessages.DisplayCurrencyInvalid",
+      "TableReportMessages.DisplayCurrencyUnsupported",
+      "TableReportMessages.FilterFieldRequired",
+      "TableReportMessages.FilterOperatorRequired",
+      "TableReportMessages.FilterRequired",
+      "TableReportMessages.FilterValueRequired",
+      "TableReportMessages.FiltersRequired",
+      "TableReportMessages.InvalidFilterValue",
+      "TableReportMessages.InvalidPageNumber",
+      "TableReportMessages.InvalidPageSize",
+      "TableReportMessages.ProfileNotFound",
+      "TableReportMessages.ReadFailed",
+      "TableReportMessages.RecordSetRequired",
+      "TableReportMessages.RetrievedSuccessfully",
+      "TableReportMessages.SortFieldRequired",
+      "TableReportMessages.SortRequired",
+      "TableReportMessages.SortsRequired",
+      "TableReportMessages.UnknownColumn",
+      "TableReportMessages.UnknownCurrency",
+      "TableReportMessages.UnknownFilterField",
+      "TableReportMessages.UnknownFilterOperator",
+      "TableReportMessages.UnknownRecordSet",
+      "TableReportMessages.UnknownSortField"
+    ],
+    "relayed": false
+  },
+  "Statements.Close": {
+    "handlers": [
+      "CloseCreditCardStatementCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CreditCardStatementMessages.ClosedSuccessfully",
+      "CreditCardStatementMessages.NotDue",
+      "CreditCardStatementMessages.NotFound",
+      "CreditCardStatementMessages.ProfileNotFound",
+      "CreditCardStatementMessages.SettledStatementFrozen"
+    ],
+    "relayed": false
+  },
+  "Statements.GetById": {
+    "handlers": [
+      "GetCreditCardStatementByIdQueryHandler",
+      "GetCreditCardStatementByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CreditCardStatementMessages.NotFound",
+      "CreditCardStatementMessages.ProfileNotFound",
+      "CreditCardStatementMessages.RetrievedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Statements.Settle": {
+    "handlers": [
+      "SettleCreditCardStatementCommandHandler",
+      "SettleCreditCardStatementCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CreditCardStatementMessages.ConvertedAmountTooSmall",
+      "CreditCardStatementMessages.ExchangeRateUnavailable",
+      "CreditCardStatementMessages.FinancialAccountIdRequired",
+      "CreditCardStatementMessages.FinancialAccountNotFound",
+      "CreditCardStatementMessages.NotFound",
+      "CreditCardStatementMessages.PaymentAmountPositive",
+      "CreditCardStatementMessages.PaymentAmountPrecisionInvalid",
+      "CreditCardStatementMessages.PaymentDateRequired",
+      "CreditCardStatementMessages.PaymentDateTooFarInFuture",
+      "CreditCardStatementMessages.ProfileNotFound",
+      "CreditCardStatementMessages.SettledSuccessfully",
+      "CreditCardStatementMessages.StatementAlreadySettled",
+      "CreditCardStatementMessages.StatementIdRequired",
+      "CreditCardStatementMessages.StatementOpen"
+    ],
+    "relayed": false
+  },
+  "Tags.Create": {
+    "handlers": [
+      "CreateTagCommandHandler",
+      "CreateTagCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TagMessages.CreatedSuccessfully",
+      "TagMessages.DuplicateName",
+      "TagMessages.NameRequired",
+      "TagMessages.NameTooLong",
+      "TagMessages.NotFound",
+      "TagMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "Tags.Delete": {
+    "handlers": [
+      "DeleteTagCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TagMessages.DeletedSuccessfully",
+      "TagMessages.DuplicateName",
+      "TagMessages.NotFound",
+      "TagMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "Tags.List": {
+    "handlers": [
+      "ListTagsQueryHandler",
+      "ListTagsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TagMessages.InvalidPageNumber",
+      "TagMessages.InvalidPageSize",
+      "TagMessages.ListedSuccessfully",
+      "TagMessages.ProfileNotFound"
+    ],
+    "relayed": false
+  },
+  "Tags.Update": {
+    "handlers": [
+      "UpdateTagCommandHandler",
+      "UpdateTagCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TagMessages.DuplicateName",
+      "TagMessages.NameRequired",
+      "TagMessages.NameTooLong",
+      "TagMessages.NotFound",
+      "TagMessages.ProfileNotFound",
+      "TagMessages.UpdatedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Transactions.AttachDocument": {
+    "handlers": [
+      "AttachDocumentCommandHandler",
+      "AttachDocumentCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.AttachedSuccessfully",
+      "AttachmentMessages.ContentDoesNotMatchType",
+      "AttachmentMessages.ContentTypeNotAllowed",
+      "AttachmentMessages.FileNameRequired",
+      "AttachmentMessages.FileNameTooLong",
+      "AttachmentMessages.FileRequired",
+      "AttachmentMessages.FileTooLarge",
+      "AttachmentMessages.PersistenceFailed",
+      "AttachmentMessages.ProfileNotFound",
+      "AttachmentMessages.StorageUnavailable",
+      "AttachmentMessages.TransactionNotFound"
+    ],
+    "relayed": false
+  },
+  "Transactions.AttachTag": {
+    "handlers": [
+      "AttachTransactionTagCommandHandler",
+      "AttachTransactionTagCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TagMessages.AlreadyAttached",
+      "TagMessages.AlreadyDetached",
+      "TagMessages.AssignmentNotFound",
+      "TagMessages.AttachedSuccessfully",
+      "TagMessages.DetachedSuccessfully",
+      "TagMessages.MaximumAllowed",
+      "TagMessages.MaximumExceeded",
+      "TagMessages.ProfileNotFound",
+      "TagMessages.TagIdInvalid",
+      "TagMessages.TransactionIdInvalid"
+    ],
+    "relayed": false
+  },
+  "Transactions.Delete": {
+    "handlers": [
+      "DeleteTransactionCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "TransactionMessages.DeletedSuccessfully",
+      "TransactionMessages.HardDeleteRequiresSoftDeletion",
+      "TransactionMessages.NotFound",
+      "TransactionMessages.ProfileNotFound",
+      "TransactionMessages.RestoreRequiresSoftDeletion",
+      "TransactionMessages.SettledStatementFrozen"
+    ],
+    "relayed": false
+  },
+  "Transactions.DetachTag": {
+    "handlers": [
+      "DetachTransactionTagCommandHandler",
+      "DetachTransactionTagCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TagMessages.AlreadyAttached",
+      "TagMessages.AlreadyDetached",
+      "TagMessages.AssignmentNotFound",
+      "TagMessages.AttachedSuccessfully",
+      "TagMessages.DetachedSuccessfully",
+      "TagMessages.MaximumAllowed",
+      "TagMessages.MaximumExceeded",
+      "TagMessages.ProfileNotFound",
+      "TagMessages.TagIdInvalid",
+      "TagMessages.TransactionIdInvalid"
+    ],
+    "relayed": false
+  },
+  "Transactions.GetById": {
+    "handlers": [
+      "GetTransactionByIdQueryHandler",
+      "GetTransactionByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TransactionMessages.NotFound",
+      "TransactionMessages.ProfileNotFound",
+      "TransactionMessages.RetrievedSuccessfully",
+      "TransactionMessages.TransactionIdRequired"
+    ],
+    "relayed": false
+  },
+  "Transactions.HardDelete": {
+    "handlers": [
+      "HardDeleteTransactionCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "TransactionMessages.HardDeleteRequiresSoftDeletion",
+      "TransactionMessages.HardDeletedSuccessfully",
+      "TransactionMessages.NotFound",
+      "TransactionMessages.ProfileNotFound",
+      "TransactionMessages.RestoreRequiresSoftDeletion",
+      "TransactionMessages.SettledStatementFrozen"
+    ],
+    "relayed": false
+  },
+  "Transactions.ListAttachments": {
+    "handlers": [
+      "ListTransactionAttachmentsQueryHandler",
+      "ListTransactionAttachmentsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.InvalidPageNumber",
+      "AttachmentMessages.InvalidPageSize",
+      "AttachmentMessages.ListedSuccessfully",
+      "AttachmentMessages.ProfileNotFound",
+      "AttachmentMessages.TransactionNotFound"
+    ],
+    "relayed": false
+  },
+  "Transactions.Reconcile": {
+    "handlers": [
+      "ReconcileTransactionCommandHandler",
+      "ReconcileTransactionCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TransactionMessages.AlreadyReconciled",
+      "TransactionMessages.ConflictingTransaction",
+      "TransactionMessages.ImportJobIdRequired",
+      "TransactionMessages.ImportedRecordAlreadyMatched",
+      "TransactionMessages.ImportedRecordIdRequired",
+      "TransactionMessages.ImportedRecordNotFound",
+      "TransactionMessages.NotFound",
+      "TransactionMessages.NotReconciled",
+      "TransactionMessages.ProfileNotFound",
+      "TransactionMessages.ReconciledSuccessfully",
+      "TransactionMessages.SettledStatementFrozen",
+      "TransactionMessages.TransactionIdRequired",
+      "TransactionMessages.UnreconcileReferencesForbidden",
+      "TransactionMessages.UnreconciledSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Transactions.Record": {
+    "handlers": [
+      "RecordTransactionCommandHandler",
+      "RecordTransactionCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TransactionMessages.AmountPositive",
+      "TransactionMessages.AmountPrecisionInvalid",
+      "TransactionMessages.CategoryIdRequired",
+      "TransactionMessages.CategoryNotFound",
+      "TransactionMessages.ConvertedAmountTooSmall",
+      "TransactionMessages.CounterpartyTooLong",
+      "TransactionMessages.CreditCardNotFound",
+      "TransactionMessages.CurrencyInvalid",
+      "TransactionMessages.CurrencyNotSupported",
+      "TransactionMessages.DescriptionTooLong",
+      "TransactionMessages.DirectionInvalid",
+      "TransactionMessages.ExactlyOneTargetRequired",
+      "TransactionMessages.ExchangeRateUnavailable",
+      "TransactionMessages.FinancialAccountNotFound",
+      "TransactionMessages.MaximumTagsAllowed",
+      "TransactionMessages.OccurredOnRequired",
+      "TransactionMessages.OccurredOnTooFarInFuture",
+      "TransactionMessages.OwnerImmutable",
+      "TransactionMessages.ProfileNotFound",
+      "TransactionMessages.RecordedSuccessfully",
+      "TransactionMessages.TagRequired",
+      "TransactionMessages.TagTooLong",
+      "TransactionMessages.TooManyTags"
+    ],
+    "relayed": false
+  },
+  "Transactions.Restore": {
+    "handlers": [
+      "RestoreTransactionCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "AttachmentMessages.StorageUnavailable",
+      "TransactionMessages.HardDeleteRequiresSoftDeletion",
+      "TransactionMessages.NotFound",
+      "TransactionMessages.ProfileNotFound",
+      "TransactionMessages.RestoreRequiresSoftDeletion",
+      "TransactionMessages.RestoredSuccessfully",
+      "TransactionMessages.SettledStatementFrozen"
+    ],
+    "relayed": false
+  },
+  "Transactions.Search": {
+    "handlers": [
+      "SearchTransactionsQueryHandler",
+      "SearchTransactionsQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "FigureConversionMessages.PartiallyConverted",
+      "FigureConversionMessages.RateUnavailable",
+      "TransactionMessages.AmountPrecisionInvalid",
+      "TransactionMessages.AmountRangeInvalid",
+      "TransactionMessages.CategoryFilterIdInvalid",
+      "TransactionMessages.CounterpartyIdInvalid",
+      "TransactionMessages.CreditCardIdInvalid",
+      "TransactionMessages.CurrencyNotSupported",
+      "TransactionMessages.DateRangeInvalid",
+      "TransactionMessages.DirectionInvalid",
+      "TransactionMessages.DisplayCurrencyInvalid",
+      "TransactionMessages.FinancialAccountIdInvalid",
+      "TransactionMessages.InvalidPageNumber",
+      "TransactionMessages.InvalidPageSize",
+      "TransactionMessages.ListedSuccessfully",
+      "TransactionMessages.MaximumAmountInvalid",
+      "TransactionMessages.MinimumAmountInvalid",
+      "TransactionMessages.ProfileNotFound",
+      "TransactionMessages.SearchTextTooLong",
+      "TransactionMessages.SortByUnsupported",
+      "TransactionMessages.TagIdInvalid",
+      "TransactionMessages.UnknownCurrency"
+    ],
+    "relayed": false
+  },
+  "Transactions.Update": {
+    "handlers": [
+      "UpdateTransactionCommandHandler",
+      "UpdateTransactionCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TransactionMessages.AmountPositive",
+      "TransactionMessages.AmountPrecisionInvalid",
+      "TransactionMessages.CategoryIdRequired",
+      "TransactionMessages.CategoryNotFound",
+      "TransactionMessages.CounterpartyTooLong",
+      "TransactionMessages.DescriptionTooLong",
+      "TransactionMessages.DirectionInvalid",
+      "TransactionMessages.InstallmentFieldsRestricted",
+      "TransactionMessages.MaximumTagsAllowed",
+      "TransactionMessages.NotFound",
+      "TransactionMessages.OccurredOnRequired",
+      "TransactionMessages.OccurredOnTooFarInFuture",
+      "TransactionMessages.OwnerImmutable",
+      "TransactionMessages.ProfileNotFound",
+      "TransactionMessages.SettledStatementFrozen",
+      "TransactionMessages.TagRequired",
+      "TransactionMessages.TagTooLong",
+      "TransactionMessages.TooManyTags",
+      "TransactionMessages.TransactionCurrencyImmutable",
+      "TransactionMessages.TransactionIdRequired",
+      "TransactionMessages.TransactionTargetImmutable",
+      "TransactionMessages.TransferFieldsRestricted",
+      "TransactionMessages.UpdatedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Transfers.Delete": {
+    "handlers": [
+      "DeleteTransferCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TransferMessages.DeletedSuccessfully",
+      "TransferMessages.NotFound",
+      "TransferMessages.ProfileNotFound",
+      "TransferMessages.RestoreRequiresSoftDeletion",
+      "TransferMessages.SettledStatementFrozen"
+    ],
+    "relayed": false
+  },
+  "Transfers.GetById": {
+    "handlers": [
+      "GetTransferByIdQueryHandler",
+      "GetTransferByIdQueryValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TransferMessages.NotFound",
+      "TransferMessages.ProfileNotFound",
+      "TransferMessages.RetrievedSuccessfully",
+      "TransferMessages.TransferIdRequired"
+    ],
+    "relayed": false
+  },
+  "Transfers.Record": {
+    "handlers": [
+      "RecordTransferCommandHandler",
+      "RecordTransferCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "CreditCardStatementMessages.ConvertedAmountTooSmall",
+      "CreditCardStatementMessages.ExchangeRateUnavailable",
+      "CreditCardStatementMessages.FinancialAccountNotFound",
+      "CreditCardStatementMessages.NotFound",
+      "CreditCardStatementMessages.StatementAlreadySettled",
+      "CreditCardStatementMessages.StatementOpen",
+      "TransferMessages.AccountsMustDiffer",
+      "TransferMessages.AmountPositive",
+      "TransferMessages.AmountPrecisionInvalid",
+      "TransferMessages.ConvertedAmountTooSmall",
+      "TransferMessages.DestinationFinancialAccountNotFound",
+      "TransferMessages.ExactlyOneDestinationRequired",
+      "TransferMessages.ExchangeRateUnavailable",
+      "TransferMessages.OccurredOnRequired",
+      "TransferMessages.OccurredOnTooFarInFuture",
+      "TransferMessages.OriginFinancialAccountIdRequired",
+      "TransferMessages.OriginFinancialAccountNotFound",
+      "TransferMessages.OwnerImmutable",
+      "TransferMessages.ProfileNotFound",
+      "TransferMessages.RecordedSuccessfully"
+    ],
+    "relayed": false
+  },
+  "Transfers.Restore": {
+    "handlers": [
+      "RestoreTransferCommandHandler"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "TransferMessages.NotFound",
+      "TransferMessages.ProfileNotFound",
+      "TransferMessages.RestoreRequiresSoftDeletion",
+      "TransferMessages.RestoredSuccessfully",
+      "TransferMessages.SettledStatementFrozen"
+    ],
+    "relayed": false
+  },
+  "Users.Erase": {
+    "handlers": [
+      "EraseUserCommandHandler",
+      "EraseUserCommandValidator"
+    ],
+    "maps": [
+      "Statuses"
+    ],
+    "messages": [
+      "UserErasureMessages.ConfirmationInvalid",
+      "UserErasureMessages.ErasedSuccessfully",
+      "UserErasureMessages.UserNotFound"
+    ],
+    "relayed": false
+  }
+}

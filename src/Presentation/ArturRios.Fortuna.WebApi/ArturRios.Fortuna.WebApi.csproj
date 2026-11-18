@@ -37,4 +37,10 @@
     <Content Include="Environments\.env*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The messages each action's handler can fail with, which scripts/error_responses.py derives from the
+         source; ErrorResponseOperationFilter documents the statuses they map to. -->
+    <EmbeddedResource Include="OpenApi\handler-messages.json" LogicalName="ArturRios.Fortuna.WebApi.OpenApi.handler-messages.json" />
+  </ItemGroup>
+
 </Project>
