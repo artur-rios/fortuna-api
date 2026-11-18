@@ -9,6 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import error_responses
+
 ROOT = Path(__file__).resolve().parent.parent
 PROJECT = ROOT / "src/Presentation/ArturRios.Fortuna.WebApi/ArturRios.Fortuna.WebApi.csproj"
 ASSEMBLY = PROJECT.parent / "bin/Release/net10.0/ArturRios.Fortuna.WebApi.dll"
@@ -99,6 +101,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
+
+    # The handler messages the build embeds come first: the document is generated from them.
+    if arguments.check:
+        if error_responses.check():
+            return 1
+    else:
+        error_responses.write()
 
     with tempfile.TemporaryDirectory(prefix="fortuna-openapi-") as directory:
         generated = Path(directory) / "fortuna.json"
