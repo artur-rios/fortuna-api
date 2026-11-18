@@ -42,6 +42,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- A JSON request body that the server refuses as it reads it is now answered as the client's mistake, with
+  Kestrel's own status, instead of `500`. This changes the wire on every operation that takes a JSON body. The
+  answer is the usual `DataOutput` envelope, as `application/json`, with a message that says what was wrong:
+  - `413` for a body over the size limit ("The request body is larger than the server accepts.");
+  - `408` for a body that arrived too slowly ("The request body arrived too slowly.");
+  - `400` for a malformed or badly chunked body ("The request could not be read: it is malformed or
+    incomplete.").
+
+  The server logs these as warnings without a stack trace, no longer as unhandled exceptions. Every other
+  unexpected failure is still the generic `500`.
+
+  The three upload routes are unchanged: a form the server cannot read is still a `400` from model binding,
+  naming the cause. The OpenAPI document lists `413`, `408` and `400` with the envelope on the JSON-body
+  operations, and their `500` no longer mentions body refusals. A generated client is unchanged.
 - The OpenAPI document leaves no status a client can receive unstated. Nothing changes on the wire, and the
   desktop native core and a generated client are unchanged.
   - **Kestrel's own refusals.** Every operation lists `408`, `414`, `431` and `505`, and its `400` says it can come

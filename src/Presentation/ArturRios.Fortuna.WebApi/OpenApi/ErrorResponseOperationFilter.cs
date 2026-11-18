@@ -70,16 +70,16 @@ public enum ErrorSource
     RateLimit,
 
     /// <summary>
-    ///     The exception handler outside Development (<c>ApiErrorResponses.WriteUnexpectedErrorAsync</c>):
+    ///     The exception handler outside Development (<c>ApiErrorResponses.WriteErrorAsync</c>):
     ///     <c>DataOutput&lt;object?&gt;</c>, written as <c>application/json</c> whatever the request accepts.
     /// </summary>
     Exception,
 
     /// <summary>
-    ///     Kestrel refusing a <c>[FromBody]</c> body while the JSON input formatter reads it (over
-    ///     <c>MaxRequestBodySize</c>, below <c>MinRequestBodyDataRate</c>, badly chunked): a
-    ///     <c>BadHttpRequestException</c> that the body binder passes on, so the exception handler answers it with
-    ///     its 500, never Kestrel's own 413, 408 or 400.
+    ///     Kestrel refusing a <c>[FromBody]</c> body while the JSON input formatter reads it: a
+    ///     <c>BadHttpRequestException</c> that the body binder passes on and the exception handler answers with
+    ///     Kestrel's status (413 over <c>MaxRequestBodySize</c>, 408 below <c>MinRequestBodyDataRate</c>, 400
+    ///     malformed) and <c>DataOutput&lt;object?&gt;</c>, as <c>application/json</c> only.
     /// </summary>
     RequestBody,
 
@@ -110,8 +110,8 @@ public enum ErrorSource
 ///         refusal <c>[ApiController]</c> does not map); the rate limiter's 429 under
 ///         <c>[EnableRateLimiting]</c>; and the exception handler's 500 everywhere. Below the API: Kestrel's
 ///         refusals of the request line and headers (400, 408, 414, 431, 505, no body) everywhere, its refusals of
-///         a <c>[FromBody]</c> body (which reach the exception handler's 500) and of a form (which reach model
-///         binding's 400); and Traefik's 502 and 504 everywhere, as <c>text/plain</c>.
+///         a <c>[FromBody]</c> body (which the exception handler answers with Kestrel's 400, 408 or 413) and of a
+///         form (which reach model binding's 400); and Traefik's 502 and 504 everywhere, as <c>text/plain</c>.
 ///     </para>
 ///     <para>
 ///         The handler's statuses are <see cref="HandlerMessageCatalog" />'s: each message the action, its
@@ -156,6 +156,14 @@ public sealed class ErrorResponseOperationFilter : IOperationFilter
         StatusCodes.Status431RequestHeaderFieldsTooLarge, StatusCodes.Status505HttpVersionNotsupported
     ];
 
+    // Kestrel's refusals of a [FromBody] body, which the exception handler answers with their own status: a body
+    // malformed or badly chunked (400), sent slower than MinRequestBodyDataRate (408), over MaxRequestBodySize
+    // (413).
+    private static readonly int[] RequestBodyStatuses =
+    [
+        StatusCodes.Status400BadRequest, StatusCodes.Status408RequestTimeout, StatusCodes.Status413PayloadTooLarge
+    ];
+
     // Traefik's own answers for any route it forwards (yggdrasil's stacks/fortuna-api.proxy.yml): the API is
     // unreachable, or the connection was refused or reset (502), or it could not connect in time (504).
     private static readonly int[] ProxyStatuses =
@@ -171,6 +179,7 @@ public sealed class ErrorResponseOperationFilter : IOperationFilter
         [StatusCodes.Status404NotFound] = "Not Found",
         [StatusCodes.Status408RequestTimeout] = "Request Timeout",
         [StatusCodes.Status409Conflict] = "Conflict",
+        [StatusCodes.Status413PayloadTooLarge] = "Payload Too Large",
         [StatusCodes.Status414UriTooLong] = "URI Too Long",
         [StatusCodes.Status415UnsupportedMediaType] = "Unsupported Media Type",
         [StatusCodes.Status422UnprocessableEntity] = "Unprocessable Entity",
@@ -286,7 +295,10 @@ public sealed class ErrorResponseOperationFilter : IOperationFilter
 
         if (parameters.Any(parameter => parameter.Source == BindingSource.Body))
         {
-            Add(StatusCodes.Status500InternalServerError, ErrorSource.RequestBody);
+            foreach (var status in RequestBodyStatuses)
+            {
+                Add(status, ErrorSource.RequestBody);
+            }
         }
 
         foreach (var status in ServerStatuses)
@@ -427,10 +439,18 @@ public sealed class ErrorResponseOperationFilter : IOperationFilter
             "An unexpected failure: `errors` holds a generic message and nothing of the exception. As " +
             "`application/json` only. A failure that escapes the exception handler itself (in the code that runs " +
             "ahead of it, or while it writes) is answered by Kestrel with this status and no body.",
-        ErrorSource.RequestBody =>
-            "Kestrel refused the request body as the action read it: it is over the maximum request body size " +
-            "(30,000,000 bytes by default), arrived slower than the minimum data rate, or was badly chunked. The " +
-            "exception handler answers that with this 500, not with Kestrel's own 413, 408 or 400.",
+        ErrorSource.RequestBody => status switch
+        {
+            StatusCodes.Status413PayloadTooLarge =>
+                "Kestrel refused the request body as the action read it: it is over the maximum request body " +
+                "size (30,000,000 bytes by default). As `application/json` only.",
+            StatusCodes.Status408RequestTimeout =>
+                "Kestrel refused the request body as the action read it: it arrived slower than the minimum data " +
+                "rate (240 bytes a second after a 5-second grace period, by default). As `application/json` only.",
+            _ =>
+                "Kestrel refused the request body as the action read it: it is malformed or badly chunked. As " +
+                "`application/json` only."
+        },
         ErrorSource.Server => status switch
         {
             StatusCodes.Status408RequestTimeout =>

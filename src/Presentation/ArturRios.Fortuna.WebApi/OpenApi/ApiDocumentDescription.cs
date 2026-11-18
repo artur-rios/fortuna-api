@@ -19,7 +19,9 @@ public static class ApiDocumentDescription
         can list a status its handler never meets. It never leaves one out.
 
         **No response at all.** Some failures end the connection without a status:
-        - a request body sent slower than Kestrel's minimum data rate, or cut short of its `Content-Length`;
+        - a request body cut short of its `Content-Length`;
+        - a request body sent too slowly, when the client is still sending as Kestrel closes the connection
+          after its 408;
         - a client that disconnects;
         - a failure after the response has started, which aborts it;
         - a keep-alive connection closed when idle (Kestrel after 130 s, Traefik after 180 s);
