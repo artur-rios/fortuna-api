@@ -42,6 +42,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The OpenAPI document lists the error responses every operation can give, each with the body, media type and
+  headers the API really sends. Before, it listed only the success statuses, apart from the detailed health check's
+  `503` and a few on `POST /api/auth/register` and `/api/auth/verify-email`.
+  - **Handler refusals** are the controller's status maps: each operation lists every status of 400 or more its
+    controller's maps (and the shared map) hold, and `400` for a failure no map holds, with the action's own
+    envelope and a null `data`. The maps are per controller, so an operation can list a status only another action
+    of its controller answers.
+  - **Model binding:** `400` with `DataOutput<object?>`, whose `errors` names the field, wherever a body, form or
+    query value is bound. Also the upload limit's `400` on the upload routes.
+  - **Authentication and roles:** `401` with no body on every operation. Off the `[AllowAnonymous]` routes it
+    carries `WWW-Authenticate: Bearer`. `403` with a `ProcessOutput` under `[RoleRequirement]`, and a `403` as
+    problem details (`application/problem+json`) on the installation-administrator routes
+    (`POST /api/exchange-rates`, `/api/exchange-rates/sync`).
+  - **Unsupported bodies:** `415` as problem details on every `[FromBody]` route. On the three
+    `multipart/form-data` upload routes it has no body.
+  - **Rate limiting:** `429` with no body and no `Retry-After` on the rate-limited authentication routes. Where
+    `AuthController` relays Heimdall's refusal, its `429` has the envelope and Heimdall's `Retry-After`.
+  - **Unexpected failures:** `500`, as `application/json` only, on every operation.
+  - **Schemas:** each error schema accepts every body that is really written under it. A `ProcessOutput`, or an
+    envelope with `"data": null`, validates against the action's envelope despite `additionalProperties: false`.
+    `ProcessOutput` and `ProblemDetails` are new schemas.
+  - **Ranges:** the three file routes that serve ranges (`GET /api/attachments/{id}`, `/api/exports/{id}`,
+    `/api/me/data-export/{jobId}`) list `206 Partial Content`, with the file's media types and `Content-Range`. They
+    also list `416 Range Not Satisfiable` with no body and `Content-Range: bytes */<length>`. Each file response
+    lists `Content-Disposition`, and the ranged ones list `Accept-Ranges`.
+  - **`text/plain`:** it is no longer listed beside every JSON response. The API never sends it: an envelope asked
+    for as `text/plain` comes back as `application/json`.
+  - **No change outside the document:** nothing changes on the wire. The desktop native core's operation table is
+    unchanged byte for byte, and so are its C header and its responses. A generated client's methods do not change.
 - The OpenAPI document describes the routes that answer a file as files: each lists, on its `200`, the media types
   the file is really sent as, each `type: string, format: binary`. `POST /api/exports` sent a small export straight
   away but documented it as a binary string under `application/json`, `text/json` and `text/plain`; it now lists

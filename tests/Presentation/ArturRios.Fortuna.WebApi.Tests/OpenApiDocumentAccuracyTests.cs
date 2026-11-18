@@ -25,9 +25,13 @@ public sealed partial class OpenApiDocumentAccuracyTests
 
     // What the handlers answer on success, as the HTTP tests assert it: every operation not listed
     // answers 200 only. Two codes mean the outcome decides (a reused counterparty or a replaced
-    // rate is 200, a new one 201; an export small enough to stream is the file itself, 200).
+    // rate is 200, a new one 201; an export small enough to stream is the file itself, 200). A file
+    // sent with range processing is 206 for a Range request.
     private static readonly Dictionary<string, int[]> NonDefaultSuccessStatuses = new()
     {
+        ["GET /api/attachments/{id}"] = [200, 206],
+        ["GET /api/exports/{id}"] = [200, 206],
+        ["GET /api/me/data-export/{jobId}"] = [200, 206],
         ["POST /api/accounts"] = [201],
         ["POST /api/auth/register"] = [202],
         ["POST /api/budgets"] = [201],
@@ -94,8 +98,9 @@ public sealed partial class OpenApiDocumentAccuracyTests
                 .Where(status => status is > 200 and < 300)
                 .ToHashSet();
             var tag = controller.Name[..^"Controller".Length];
+            // 206 comes from File(...)'s range processing, not from a map.
             var declared = documentedByTag.GetValueOrDefault(tag, [])
-                .Where(status => status != 200)
+                .Where(status => status is not (200 or 206))
                 .ToHashSet();
 
             Assert.True(mapped.SetEquals(declared),
@@ -341,7 +346,7 @@ public sealed partial class OpenApiDocumentAccuracyTests
             .Where(type => type is { IsAbstract: false, IsClass: true } && type.IsSubclassOf(typeof(ControllerBase)));
 
     /// <summary>Each controller action, keyed like <see cref="Operations" />.</summary>
-    private static IEnumerable<KeyValuePair<string, MethodInfo>> Actions() =>
+    internal static IEnumerable<KeyValuePair<string, MethodInfo>> Actions() =>
         Controllers().SelectMany(controller =>
         {
             var prefix = controller.GetCustomAttribute<RouteAttribute>()?.Template ?? string.Empty;

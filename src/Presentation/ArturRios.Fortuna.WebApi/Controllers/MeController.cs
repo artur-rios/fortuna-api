@@ -78,7 +78,8 @@ public sealed class MeController : FortunaController
     [ProducesResponseType(typeof(DataOutput<PersonalDataExportQueryOutput?>),
         StatusCodes.Status200OK)]
     [ProducesFile(StatusCodes.Status200OK, "application/zip",
-        Description = "The job's report (JSON) until the archive is ready; the ZIP archive once it is.")]
+        Description = "The job's report (JSON) until the archive is ready; the ZIP archive once it is.",
+        Ranges = true)]
     public async Task<IActionResult> GetDataExport(Guid jobId)
     {
         var result = await Queries.ExecuteQueryAsync<

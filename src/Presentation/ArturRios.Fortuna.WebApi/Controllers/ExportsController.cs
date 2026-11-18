@@ -66,7 +66,8 @@ public sealed class ExportsController : FortunaController
     [ProducesResponseType(typeof(DataOutput<RetrieveDataExportQueryOutput?>),
         StatusCodes.Status200OK)]
     [ProducesFile(StatusCodes.Status200OK, Excel, Pdf, Csv,
-        Description = "The export's record (JSON) while it is pending or failed; the file once it is completed.")]
+        Description = "The export's record (JSON) while it is pending or failed; the file once it is completed.",
+        Ranges = true)]
     public async Task<IActionResult> Retrieve(Guid id)
     {
         var result = await Queries.ExecuteQueryAsync<

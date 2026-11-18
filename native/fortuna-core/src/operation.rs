@@ -1990,4 +1990,37 @@ mod tests {
         );
         assert_eq!(Some(""), schema("GET", "/api/attachments/{id}"));
     }
+
+    #[test]
+    fn given_error_responses_when_generated_then_every_projection_is_a_success_schema() {
+        // The document lists each operation's error responses (ProcessOutput, ProblemDetails, the
+        // envelope with a null data) beside its success. build.rs reads only the success statuses, so
+        // no operation may be projected through a schema only an error response uses.
+        let operations = NATIVE_OPERATIONS.iter().chain(
+            NOT_IMPLEMENTED_OPERATIONS
+                .iter()
+                .map(|entry| &entry.operation),
+        );
+        let schemas = &openapi_document()["components"]["schemas"];
+
+        for operation in operations {
+            assert!(
+                !matches!(
+                    operation.response_schema,
+                    "ProcessOutput" | "ProblemDetails" | "ObjectDataOutput"
+                ),
+                "{} {} projects {}",
+                operation.method,
+                operation.path,
+                operation.response_schema
+            );
+            assert!(
+                operation.response_schema.is_empty()
+                    || schemas.get(operation.response_schema).is_some(),
+                "{} {} projects a missing schema",
+                operation.method,
+                operation.path
+            );
+        }
+    }
 }

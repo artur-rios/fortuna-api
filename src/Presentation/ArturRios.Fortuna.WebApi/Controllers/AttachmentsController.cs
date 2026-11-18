@@ -31,7 +31,8 @@ public sealed class AttachmentsController : FortunaController
     [RoleRequirement((int)HeimdallRoles.User)]
     [ProducesFile(StatusCodes.Status200OK, "application/pdf", "image/jpeg", "image/png",
         Description = "The attachment's bytes, as the content type it was uploaded with: one of " +
-                      "FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES, which are these three by default.")]
+                      "FORTUNA_UPLOAD_ALLOWED_CONTENT_TYPES, which are these three by default.",
+        Ranges = true)]
     public async Task<IActionResult> Download(Guid id)
     {
         var result = await Queries.ExecuteQueryAsync<
