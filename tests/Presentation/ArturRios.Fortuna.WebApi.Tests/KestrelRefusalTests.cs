@@ -10,6 +10,7 @@ using ArturRios.Jwt;
 using ArturRios.Util.Test.Attributes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +49,7 @@ public sealed class KestrelRefusalTests
             factory.UseKestrel(options =>
             {
                 options.Limits.MaxRequestBodySize = 1024;
+                options.Limits.MinRequestBodyDataRate = new MinDataRate(100, TimeSpan.FromSeconds(2));
                 options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(2);
             });
             using var client = factory.CreateClient();
@@ -66,8 +68,8 @@ public sealed class KestrelRefusalTests
             await AssertRawAsync(port, Currencies, 408, "GET /api/currencies HTTP/1.1\r\nHost: localhost\r\n",
                 wait: TimeSpan.FromSeconds(4));
 
-            // A JSON body Kestrel refuses as it is read: the exception handler's 500.
-            await AssertRawAsync(port, Accounts, 500,
+            // A JSON body Kestrel refuses as it is read: the exception handler answers with Kestrel's status.
+            await AssertRawAsync(port, Accounts, 400,
                 "POST /api/accounts HTTP/1.1\r\nHost: localhost\r\n" + authorization +
                 "Content-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n{}\r\n0\r\n\r\n");
             using var oversized = new HttpRequestMessage(HttpMethod.Post, "/api/accounts")
@@ -76,7 +78,11 @@ public sealed class KestrelRefusalTests
                     "application/json")
             };
             oversized.Headers.ExpectContinue = true;
-            await AssertHttpAsync(client, Accounts, 500, oversized);
+            await AssertHttpAsync(client, Accounts, 413, oversized);
+            await AssertRawAsync(port, Accounts, 408,
+                "POST /api/accounts HTTP/1.1\r\nHost: localhost\r\n" + authorization +
+                "Content-Type: application/json\r\nContent-Length: 900\r\n\r\n{",
+                trickle: true);
 
             // A form over the limit, sent without a length: model binding's 400.
             using var form = new MultipartFormDataContent();
@@ -113,13 +119,31 @@ public sealed class KestrelRefusalTests
         string operation,
         int status,
         string request,
-        TimeSpan? wait = null)
+        TimeSpan? wait = null,
+        bool trickle = false)
     {
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         await socket.ConnectAsync(IPAddress.Loopback, port);
         await using var stream = new NetworkStream(socket);
         var reading = ReadAllAsync(stream);
         await stream.WriteAsync(Encoding.ASCII.GetBytes(request));
+        if (trickle)
+        {
+            // A byte a second, under the minimum data rate, until Kestrel gives up on the body.
+            try
+            {
+                for (var second = 0; second < 8 && !reading.IsCompleted; second++)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+                    await stream.WriteAsync(" "u8.ToArray());
+                }
+            }
+            catch (IOException)
+            {
+                // Kestrel closed the connection after answering.
+            }
+        }
+
         if (wait is { } delay)
         {
             await Task.Delay(delay);

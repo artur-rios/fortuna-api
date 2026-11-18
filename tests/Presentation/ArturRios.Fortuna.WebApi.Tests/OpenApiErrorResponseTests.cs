@@ -199,13 +199,25 @@ public sealed class OpenApiErrorResponseTests
     public void GivenEveryOperation_WhenDocumented_ThenKestrelsRequestRefusalsAreListedWithoutABody()
     {
         const string Kestrel = "Kestrel refused the request before the API saw it";
-        foreach (var (key, _) in OpenApiDocumentAccuracyTests.Actions())
+        foreach (var (key, action) in OpenApiDocumentAccuracyTests.Actions())
         {
             foreach (var status in new[] { 408, 414, 431, 505 })
             {
-                Assert.Empty(CommittedOpenApiDocument.Content(key, status));
                 Assert.Contains(Kestrel, Description(key, status), StringComparison.Ordinal);
             }
+
+            foreach (var status in new[] { 414, 431, 505 })
+            {
+                Assert.Empty(CommittedOpenApiDocument.Content(key, status));
+            }
+
+            // A 408 has a body only where a JSON body read too slowly is answered with the envelope; Kestrel's own
+            // has none, and its description says so.
+            var body = action.GetParameters()
+                .Any(parameter => parameter.GetCustomAttribute<FromBodyAttribute>() is not null);
+            string[] mediaTypes = body ? ["application/json"] : [];
+            Assert.Equal(mediaTypes, CommittedOpenApiDocument.Content(key, 408).Select(media => media.Key));
+            Assert.Contains("No body", Description(key, 408), StringComparison.Ordinal);
 
             // Its 400 has no body either: the description says so beside any source that writes one.
             Assert.Contains(Kestrel + ": a malformed request line or header", Description(key, 400),
@@ -237,10 +249,22 @@ public sealed class OpenApiErrorResponseTests
                 .Any(parameter => parameter.GetCustomAttribute<FromBodyAttribute>() is not null);
             var form = Attributes(action).OfType<ConsumesAttribute>().Any();
 
-            // A JSON body's refusal is a BadHttpRequestException that reaches the exception handler; a form's
-            // fails the form value provider, which model binding answers.
-            Assert.Equal(body, Description(key, 500).Contains("Kestrel refused the request body",
-                StringComparison.Ordinal));
+            // A JSON body's refusal is a BadHttpRequestException that the exception handler answers with
+            // Kestrel's own status; a form's fails the form value provider, which model binding answers. Neither is
+            // a 500.
+            foreach (var status in new[] { 400, 408, 413 })
+            {
+                Assert.Equal(body, body && Description(key, status).Contains("Kestrel refused the request body",
+                    StringComparison.Ordinal));
+            }
+
+            if (body)
+            {
+                Assert.Contains("application/json",
+                    CommittedOpenApiDocument.Content(key, 413).Select(media => media.Key));
+            }
+
+            Assert.DoesNotContain("Kestrel refused the request body", Description(key, 500), StringComparison.Ordinal);
             Assert.Equal(form, Description(key, 400).Contains("The form could not be read",
                 StringComparison.Ordinal));
         }
@@ -320,6 +344,12 @@ public sealed class OpenApiErrorResponseTests
             attributes.OfType<ConsumesAttribute>().Any())
         {
             expected.Add(415);
+        }
+
+        // A JSON body Kestrel refuses for its size (408 and 400 are everywhere already).
+        if (action.GetParameters().Any(parameter => parameter.GetCustomAttribute<FromBodyAttribute>() is not null))
+        {
+            expected.Add(413);
         }
 
         if (attributes.OfType<EnableRateLimitingAttribute>().Any())

@@ -12,7 +12,8 @@ public static class FortunaPipelineExtensions
 {
     /// <summary>
     ///     Builds the request pipeline. Development keeps the developer exception page; elsewhere an
-    ///     unhandled exception becomes a generic DataOutput 500 without internals. Forwarded headers
+    ///     unhandled exception becomes a generic DataOutput 500 without internals, and a request body Kestrel
+    ///     refused a DataOutput with Kestrel's status (413, 408, 400). Forwarded headers
     ///     are applied before anything that reads the client address (the trace middleware's
     ///     per-request log entry, request logging, the per-client rate limiter).
     /// </summary>
@@ -20,7 +21,13 @@ public static class FortunaPipelineExtensions
     {
         if (!app.Environment.IsDevelopment())
         {
-            app.UseExceptionHandler(handler => handler.Run(ApiErrorResponses.WriteUnexpectedErrorAsync));
+            app.UseExceptionHandler(new ExceptionHandlerOptions
+            {
+                ExceptionHandler = ApiErrorResponses.WriteErrorAsync,
+                // A request Kestrel refused is the client's mistake: answered with its own status and logged as a
+                // warning by the handler, not reported as an unhandled exception with its stack trace.
+                SuppressDiagnosticsCallback = context => ApiErrorResponses.IsClientFault(context.Exception)
+            });
         }
 
         app.UseForwardedHeaders();
