@@ -67,7 +67,9 @@ public sealed class CreateWidgetCommandHandler(IWidgetStore store)
     {
         var text = "WidgetMessages.InString";
 
-        return await store.CreateAsync(command) ? Ok() : DataOutput<WidgetOutput?>.New.WithError(WidgetMessages.Taken);
+        return await store.CreateAsync(command)
+            ? Ok()
+            : LegacyWidgetCommandHandler.Refuse(WidgetMessages.Taken);
     }
 }
 
@@ -75,6 +77,24 @@ public sealed class RenameWidgetCommandHandler : ICommandHandlerAsync<RenameWidg
 {
     public Task<DataOutput<WidgetOutput?>> HandleAsync(RenameWidgetCommand command, CancellationToken token) =>
         new HeimdallRelayedRefusal<WidgetOutput?>().WithError(WidgetMessages.RenameRefused);
+}
+"""
+
+LEGACY = """\
+namespace Sample.Command.Handlers;
+
+public sealed class LegacyWidgetCommandHandler : ICommandHandlerAsync<LegacyWidgetCommand, WidgetOutput>
+{
+    public Task<DataOutput<WidgetOutput?>> HandleAsync(LegacyWidgetCommand command, CancellationToken token) =>
+        Task.FromResult(Refuse(WidgetMessages.LegacyOnly));
+
+    internal static DataOutput<WidgetOutput?> Refuse(string message) =>
+        message == WidgetMessages.Taken ? Wrap(message) : Wrap(WidgetMessages.LegacyShared);
+
+    private static DataOutput<WidgetOutput?> Wrap(string message)
+    {
+        return DataOutput<WidgetOutput?>.New.WithError(message ?? WidgetMessages.LegacyWrapped);
+    }
 }
 """
 
@@ -128,6 +148,7 @@ FILES = {
     "src/Presentation/ArturRios.Fortuna.WebApi/Controllers/WidgetsController.cs": CONTROLLER,
     "src/Presentation/ArturRios.Fortuna.WebApi/Controllers/HealthCheckController.cs": HEALTH,
     "src/Application/Sample.Command/Handlers/WidgetCommandHandlers.cs": HANDLERS,
+    "src/Application/Sample.Command/Handlers/LegacyWidgetCommandHandler.cs": LEGACY,
     "src/Application/Sample.Command/Input/Validation/CreateWidgetCommandValidator.cs": VALIDATOR,
     "src/Application/Sample.Shared/IWidgetStore.cs": STORE_INTERFACE,
     "src/Infrastructure/Sample.Data/EfWidgetStore.cs": STORE,
@@ -152,7 +173,13 @@ class DeriveTests(unittest.TestCase):
 
         self.assertEqual(["CreateWidgetCommandHandler", "CreateWidgetCommandValidator"], entry["handlers"])
         self.assertEqual(
-            ["WidgetMessages.NameRequired", "WidgetMessages.StoreFailed", "WidgetMessages.Taken"],
+            [
+                "WidgetMessages.LegacyShared",
+                "WidgetMessages.LegacyWrapped",
+                "WidgetMessages.NameRequired",
+                "WidgetMessages.StoreFailed",
+                "WidgetMessages.Taken",
+            ],
             entry["messages"],
         )
 
@@ -161,6 +188,14 @@ class DeriveTests(unittest.TestCase):
 
         self.assertNotIn("WidgetMessages.RenameRefused", catalog["Widgets.Create"]["messages"])
         self.assertEqual(["WidgetMessages.RenameRefused"], catalog["Widgets.Rename"]["messages"])
+
+    def test_given_another_handlers_helper_when_derived_then_only_the_members_called_are_followed(self):
+        messages = derive()["Widgets.Create"]["messages"]
+
+        # Refuse, and Wrap which it calls, are followed; the other handler's HandleAsync is not.
+        self.assertIn("WidgetMessages.LegacyShared", messages)
+        self.assertIn("WidgetMessages.LegacyWrapped", messages)
+        self.assertNotIn("WidgetMessages.LegacyOnly", messages)
 
     def test_given_comments_strings_and_domain_types_when_derived_then_they_name_no_message(self):
         messages = derive()["Widgets.Create"]["messages"]

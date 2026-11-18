@@ -97,7 +97,8 @@ public static class FortunaWebApiServiceCollectionExtensions
             document.SwaggerDoc("v1", new()
             {
                 Title = ApiContractMetadata.Service,
-                Version = ApiContractMetadata.Version
+                Version = ApiContractMetadata.Version,
+                Description = ApiDocumentDescription.Text
             });
             var jwtSecurityScheme = new OpenApiSecurityScheme
             {

@@ -129,26 +129,9 @@ public sealed class OpenApiErrorBodyTests
     private static async Task AssertDocumented(string operation, int status, HttpResponseMessage response)
     {
         Assert.Equal(status, (int)response.StatusCode);
-        var documented = CommittedOpenApiDocument.Response(operation, status);
-        var content = CommittedOpenApiDocument.Content(operation, status);
+        AssertDocumented(operation, status, response.Content.Headers.ContentType?.MediaType,
+            await response.Content.ReadAsStringAsync());
         var headers = CommittedOpenApiDocument.Headers(operation, status);
-        var body = await response.Content.ReadAsStringAsync();
-        if (body.Length == 0)
-        {
-            // No body: the document lists no content, or says which source sends none.
-            var description = documented.GetProperty("description").GetString()!;
-            Assert.True(content.Count == 0 || description.Contains("No body", StringComparison.Ordinal),
-                $"{operation} {status} came with no body, which the document does not allow for.");
-        }
-        else
-        {
-            var mediaType = response.Content.Headers.ContentType!.MediaType!;
-            var schema = Assert.Single(content, media => media.Key == mediaType).Value;
-            using var parsed = JsonDocument.Parse(body);
-
-            Assert.True(CommittedOpenApiDocument.Accepts(schema, parsed.RootElement, out var failure),
-                $"{operation} {status} {mediaType}: the document's schema rejects {body}: {failure}.");
-        }
 
         if (response.Headers.WwwAuthenticate.Count > 0)
         {
@@ -158,6 +141,32 @@ public sealed class OpenApiErrorBodyTests
         if (response.Headers.RetryAfter is not null)
         {
             Assert.Contains("Retry-After", headers);
+        }
+    }
+
+    /// <summary>
+    ///     Asserts that the document lists <paramref name="status" /> for the operation, and allows for a body of
+    ///     <paramref name="mediaType" /> (none when <paramref name="body" /> is empty) that its schema accepts.
+    /// </summary>
+    internal static void AssertDocumented(string operation, int status, string? mediaType, string body)
+    {
+        var documented = CommittedOpenApiDocument.Response(operation, status);
+        var content = CommittedOpenApiDocument.Content(operation, status);
+        if (body.Length == 0)
+        {
+            // No body: the document lists no content, or says which source sends none.
+            var description = documented.GetProperty("description").GetString()!;
+            Assert.True(content.Count == 0 || description.Contains("No body", StringComparison.Ordinal) ||
+                        description.Contains("and no body", StringComparison.Ordinal),
+                $"{operation} {status} came with no body, which the document does not allow for.");
+        }
+        else
+        {
+            var schema = Assert.Single(content, media => media.Key == mediaType).Value;
+            using var parsed = JsonDocument.Parse(body);
+
+            Assert.True(CommittedOpenApiDocument.Accepts(schema, parsed.RootElement, out var failure),
+                $"{operation} {status} {mediaType}: the document's schema rejects {body}: {failure}.");
         }
     }
 

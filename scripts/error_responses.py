@@ -19,8 +19,10 @@ For each controller action:
 - what it can fail with is every message constant (`<X>Messages.<Name>`) in the action, its handlers and the code
   they reach: the types it names, the types implementing the interfaces among them and the validator of the input
   (registered in front of the handler), transitively. Types are followed one by one, not file by file, since a
-  file can hold several handlers. Messages, inputs, outputs, domain types, controllers, registrations and
-  migrations hold no code that fails a request and are not followed;
+  file can hold several handlers; of another action's handler, only the members the code calls are followed
+  (`LoginThroughApiCommandHandler.Failure`, and what it calls), not its own `HandleAsync`. Messages, inputs,
+  outputs, domain types, controllers, registrations and migrations hold no code that fails a request and are not
+  followed;
 - the maps are the controller's status maps the action names (`RequestStatuses`), or the one its `StatusMap`
   returns, or the shared map;
 - a handler whose code builds a `HeimdallRelayedRefusal` answers with the status of the outcome it relays.
@@ -75,6 +77,10 @@ DISPATCH = re.compile(
 MAP_FIELD = re.compile(r"IReadOnlyDictionary\s*<\s*string\s*,\s*int\s*>\s+(\w+)\s*=")
 STATUS_MAP_PROPERTY = re.compile(r"override\s+IReadOnlyDictionary\s*<\s*string\s*,\s*int\s*>\s+StatusMap\s*=>\s*(\w+)")
 ACTION_NAME = re.compile(r"(\w+)\s*\(")
+# A method's declaration: its modifiers, return type and name, up to the parenthesis of its parameters.
+MEMBER_DECLARATION = re.compile(
+    r"^[ \t]*(?:(?:public|private|internal|protected|static|async|override|virtual|sealed|new)\s+)+"
+    r"[\w<>\[\]?,. ]+?\b(\w+)\s*(?:<[^<>()]*>)?\s*\(", re.M)
 FORTUNA_CONTROLLER = re.compile(r"\bclass\s+\w+Controller\b[^{]*:\s*FortunaController\b")
 
 
@@ -193,6 +199,7 @@ class Source:
             for base, arguments in zip(unit.bases, unit.base_arguments):
                 if HANDLER_INTERFACE.match(base) and arguments:
                     self.handlers.setdefault(arguments[0], []).append(unit)
+        self.handler_units = {id(unit) for units in self.handlers.values() for unit in units}
 
     @staticmethod
     def _declarations(path, code):
@@ -218,21 +225,60 @@ class Source:
             yield Unit(name, kind, code[match.start():end], path, bases, arguments)
 
     def reached(self, start):
-        """The types the code in `start` reaches, `start` included."""
+        """The code `start` reaches, `start` included: whole types, except another action's handler, of which
+        only the members this code calls (`LoginThroughApiCommandHandler.Failure`) are followed. A handler's own
+        messages are what it fails with; a helper it lends another handler fails with its own only."""
         seen = {}
         pending = list(start)
+        starts = {id(unit) for unit in start}
         while pending:
             unit = pending.pop()
-            if id(unit) in seen:
+            key = (unit.path, unit.name) if unit.kind == "member" else id(unit)
+            if key in seen:
                 continue
-            seen[id(unit)] = unit
+            seen[key] = unit
             for name in set(IDENTIFIER.findall(unit.code)):
                 for declared in self.declared.get(name, ()):
+                    if id(declared) in self.handler_units and id(declared) not in starts:
+                        pending.extend(self.members(declared, unit.code))
+                        continue
                     pending.append(declared)
                     if declared.kind == "interface":
                         pending.extend(self.implementers.get(name, ()))
 
         return list(seen.values())
+
+    @staticmethod
+    def members(owner, caller):
+        """The members of `owner` that `caller` names as `Owner.Member`, each as a unit of its own code, and the
+        members of `owner` those call in turn."""
+        bodies = {}
+        for declaration in MEMBER_DECLARATION.finditer(owner.code):
+            index = matching(owner.code, declaration.end() - 1, "(", ")")
+            while index < len(owner.code) and owner.code[index] != "{" and owner.code[index:index + 2] != "=>":
+                index += 1
+            if owner.code[index:index + 1] == "{":
+                end = matching(owner.code, index, "{", "}")
+            else:
+                end, depth = index, 0
+                while end < len(owner.code) and not (owner.code[end] == ";" and depth == 0):
+                    depth += 1 if owner.code[end] in "({[" else -1 if owner.code[end] in ")}]" else 0
+                    end += 1
+            bodies.setdefault(declaration.group(1), []).append(owner.code[declaration.start():end])
+
+        wanted = sorted(set(re.findall(rf"\b{owner.name}\s*\.\s*(\w+)", caller)) & set(bodies))
+        found = set()
+        while wanted:
+            member = wanted.pop()
+            if member in found:
+                continue
+            found.add(member)
+            for body in bodies[member]:
+                wanted.extend(name for name in re.findall(r"\b(\w+)\s*(?:<[^<>()]*>)?\s*\(", body)
+                              if name in bodies and name not in found)
+
+        for member in sorted(found):
+            yield Unit(f"{owner.name}.{member}", "member", "\n".join(bodies[member]), owner.path, [], [])
 
 
 def actions(root):
@@ -288,7 +334,8 @@ def derive(root=REPO_ROOT):
         # The action's own code too: it can fail with a message of its own (LocalAccounts.PasswordReset).
         action = Unit(operation, "action", member, root / CONTROLLERS, [], [])
         reached = source.reached(handlers + [action])
-        messages = sorted({f"{owner}.{name}" for unit in reached for owner, name in MESSAGE_REFERENCE.findall(unit.code)})
+        messages = sorted({f"{owner}.{name}" for unit in reached
+                           for owner, name in MESSAGE_REFERENCE.findall(unit.code)})
         catalog[operation] = {
             "handlers": sorted({unit.name for unit in handlers}),
             "maps": maps,
