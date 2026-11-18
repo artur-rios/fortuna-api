@@ -20,7 +20,7 @@ public sealed partial class OpenApiLayerAuditTests
     // UseFortunaPipeline, in order, with what each layer answers and where the document lists it.
     private static readonly string[] Pipeline =
     [
-        "UseExceptionHandler", // 500, DataOutput (ErrorSource.Exception, RequestBody)
+        "UseExceptionHandler", // 500 (ErrorSource.Exception); 400, 408, 413 for a refused body (RequestBody)
         "UseForwardedHeaders", // nothing
         "UsePrometheusMetrics", // nothing on the API's port: /metrics is on its own port
         "UseMiddleware<TraceActivityMiddleware>", // nothing
