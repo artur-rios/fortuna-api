@@ -69,6 +69,14 @@ public sealed class OpenApiErrorResponseTests
                 continue; // the action's own OperationalHealthOutput, which API Explorer documents
             }
 
+            if (mediaType == "text/plain")
+            {
+                // Traefik's reason phrase.
+                Assert.Equal("string", schema.GetProperty("type").GetString());
+
+                continue;
+            }
+
             JsonElement[] bodies = mediaType == "application/problem+json" ? [problem]
                 : schema.GetProperty("$ref").GetString()!.EndsWith("/ProcessOutput", StringComparison.Ordinal)
                     ? [process]
@@ -169,28 +177,125 @@ public sealed class OpenApiErrorResponseTests
     }
 
     [UnitFact]
-    public void GivenEveryResponse_WhenDocumented_ThenNoneListsTextPlain()
+    public void GivenEveryResponse_WhenDocumented_ThenOnlyTraefiksListTextPlain()
     {
         using var contract = CommittedOpenApiDocument.Load();
 
         // StringOutputFormatter writes only strings, and no action answers one: an envelope asked for as
-        // text/plain is written as application/json.
+        // text/plain is written as application/json. Traefik's 502 and 504 are its reason phrase, as text/plain.
         var listed = contract.RootElement.GetProperty("paths").EnumerateObject()
             .SelectMany(path => path.Value.EnumerateObject()
                 .SelectMany(operation => operation.Value.GetProperty("responses").EnumerateObject()
                     .Where(response => response.Value.TryGetProperty("content", out var content) &&
                                        content.TryGetProperty("text/plain", out _))
-                    .Select(response => $"{operation.Name} {path.Name} {response.Name}")))
+                    .Select(response => response.Name)))
             .ToArray();
 
-        Assert.Empty(listed);
+        Assert.NotEmpty(listed);
+        Assert.All(listed, status => Assert.Contains(status, new[] { "502", "504" }));
     }
+
+    [UnitFact]
+    public void GivenEveryOperation_WhenDocumented_ThenKestrelsRequestRefusalsAreListedWithoutABody()
+    {
+        const string Kestrel = "Kestrel refused the request before the API saw it";
+        foreach (var (key, _) in OpenApiDocumentAccuracyTests.Actions())
+        {
+            foreach (var status in new[] { 408, 414, 431, 505 })
+            {
+                Assert.Empty(CommittedOpenApiDocument.Content(key, status));
+                Assert.Contains(Kestrel, Description(key, status), StringComparison.Ordinal);
+            }
+
+            // Its 400 has no body either: the description says so beside any source that writes one.
+            Assert.Contains(Kestrel + ": a malformed request line or header", Description(key, 400),
+                StringComparison.Ordinal);
+        }
+    }
+
+    [UnitFact]
+    public void GivenEveryOperation_WhenDocumented_ThenTraefiksBadGatewayAndGatewayTimeoutAreTextPlain()
+    {
+        foreach (var (key, _) in OpenApiDocumentAccuracyTests.Actions())
+        {
+            foreach (var status in new[] { 502, 504 })
+            {
+                var content = CommittedOpenApiDocument.Content(key, status);
+
+                Assert.Equal(["text/plain"], content.Select(media => media.Key));
+                Assert.Contains("Traefik", Description(key, status), StringComparison.Ordinal);
+            }
+        }
+    }
+
+    [UnitFact]
+    public void GivenBodiesKestrelCanRefuse_WhenDocumented_ThenEachNamesTheStatusTheRefusalReallyGets()
+    {
+        foreach (var (key, action) in OpenApiDocumentAccuracyTests.Actions())
+        {
+            var body = action.GetParameters()
+                .Any(parameter => parameter.GetCustomAttribute<FromBodyAttribute>() is not null);
+            var form = Attributes(action).OfType<ConsumesAttribute>().Any();
+
+            // A JSON body's refusal is a BadHttpRequestException that reaches the exception handler; a form's
+            // fails the form value provider, which model binding answers.
+            Assert.Equal(body, Description(key, 500).Contains("Kestrel refused the request body",
+                StringComparison.Ordinal));
+            Assert.Equal(form, Description(key, 400).Contains("The form could not be read",
+                StringComparison.Ordinal));
+        }
+    }
+
+    [UnitFact]
+    public void GivenEveryOperation_WhenDocumented_ThenAFailureEscapingTheExceptionHandlerIsStatedOnIts500()
+    {
+        foreach (var (key, _) in OpenApiDocumentAccuracyTests.Actions())
+        {
+            Assert.Contains("answered by Kestrel with this status and no body", Description(key, 500),
+                StringComparison.Ordinal);
+        }
+    }
+
+    [UnitFact]
+    public void GivenTheDocument_WhenRead_ThenItsDescriptionStatesWhatNoResponseCanSay()
+    {
+        using var contract = CommittedOpenApiDocument.Load();
+        var description = contract.RootElement.GetProperty("info").GetProperty("description").GetString()!;
+
+        Assert.Contains("Handler statuses are an upper bound", description, StringComparison.Ordinal);
+        Assert.Contains("No response at all", description, StringComparison.Ordinal);
+        Assert.Contains("stream reset", description, StringComparison.Ordinal);
+        Assert.Contains("Cloudflare", description, StringComparison.Ordinal);
+        Assert.Contains("developer exception page", description, StringComparison.Ordinal);
+        Assert.Contains("405", description, StringComparison.Ordinal);
+    }
+
+    [UnitFact]
+    public void GivenAllowedQueryActions_WhenDocumented_ThenTheir400NamesTheUnknownQueryParameter()
+    {
+        var checkedActions = 0;
+        foreach (var (key, action) in OpenApiDocumentAccuracyTests.Actions())
+        {
+            var allowed = action.GetCustomAttribute<AllowedQueryAttribute>() is not null;
+
+            Assert.Equal(allowed, Description(key, 400).Contains("A query parameter the operation does not read",
+                StringComparison.Ordinal));
+            checkedActions += allowed ? 1 : 0;
+        }
+
+        Assert.True(checkedActions > 5, $"Only {checkedActions} actions carry [AllowedQuery].");
+    }
+
+    private static string Description(string operation, int status) =>
+        CommittedOpenApiDocument.Response(operation, status).GetProperty("description").GetString()!;
 
     /// <summary>What answers an error on the action, read from the code; mirrors no part of the filter.</summary>
     private static HashSet<int> ExpectedErrorStatuses(string key, MethodInfo action)
     {
         var attributes = Attributes(action).ToArray();
-        var expected = new HashSet<int> { 401, 500 };
+        // 401 from the identity middlewares, 500 from the exception handler, Kestrel's request refusals and
+        // Traefik's answers: on every operation.
+        var expected = new HashSet<int> { 400, 401, 408, 414, 431, 500, 502, 504, 505 };
         var handler = HandlerStatuses(action);
         expected.UnionWith(handler.Statuses);
 
