@@ -97,7 +97,7 @@ public sealed class OpenApiErrorResponseTests
             // JWT authentication challenges with WWW-Authenticate and no body; the identity middlewares refuse
             // with no body either, so a 401 has a body only where the handler answers one.
             Assert.Equal(!anonymous, headers.Contains("WWW-Authenticate"));
-            Assert.Equal(HandlerStatuses(action.DeclaringType!).Statuses.Contains(401), content.Count > 0);
+            Assert.Equal(HandlerStatuses(action).Statuses.Contains(401), content.Count > 0);
         }
     }
 
@@ -127,7 +127,7 @@ public sealed class OpenApiErrorResponseTests
         var limited = 0;
         foreach (var (key, action) in OpenApiDocumentAccuracyTests.Actions())
         {
-            var handler = HandlerStatuses(action.DeclaringType!);
+            var handler = HandlerStatuses(action);
             if (!Attributes(action).OfType<EnableRateLimitingAttribute>().Any() && !handler.Statuses.Contains(429))
             {
                 continue;
@@ -150,7 +150,7 @@ public sealed class OpenApiErrorResponseTests
         {
             // WriteAsJsonAsync, whatever the request accepts; a handler's 500 (TransactionsController maps a
             // failed attachment write to it) is negotiated like any envelope.
-            string[] expected = HandlerStatuses(action.DeclaringType!).Statuses.Contains(500)
+            string[] expected = HandlerStatuses(action).Statuses.Contains(500)
                 ? ["application/json", "text/json"]
                 : ["application/json"];
 
@@ -191,7 +191,7 @@ public sealed class OpenApiErrorResponseTests
     {
         var attributes = Attributes(action).ToArray();
         var expected = new HashSet<int> { 401, 500 };
-        var handler = HandlerStatuses(action.DeclaringType!);
+        var handler = HandlerStatuses(action);
         expected.UnionWith(handler.Statuses);
 
         // Whatever MVC binds beyond the route: a body, a form or a query value.
@@ -230,43 +230,19 @@ public sealed class OpenApiErrorResponseTests
     }
 
     /// <summary>
-    ///     The statuses of 400 or more in the controller's static status maps (the shared map when it declares
-    ///     none keyed by message), and 400 for a failure no map holds; and whether a map keyed by something
-    ///     else (Heimdall's relayed outcomes) answers 429.
+    ///     What the action's handlers can answer, as <see cref="OpenApiHandlerStatusTests.Expected" /> works it out
+    ///     from the handler-message catalog: the statuses, and whether a relayed refusal answers 429.
     /// </summary>
-    private static (HashSet<int> Statuses, bool Relays) HandlerStatuses(Type controller)
+    private static (HashSet<int> Statuses, bool Relays) HandlerStatuses(MethodInfo action)
     {
-        if (!controller.IsSubclassOf(typeof(FortunaController)))
+        if (!action.DeclaringType!.IsSubclassOf(typeof(FortunaController)))
         {
             return (new HashSet<int>(), false);
         }
 
-        var statuses = new HashSet<int> { 400 };
-        var relays = false;
-        var messageMaps = 0;
-        foreach (var field in controller.GetFields(
-                     BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public))
-        {
-            if (field.GetValue(null) is IReadOnlyDictionary<string, int> messages)
-            {
-                statuses.UnionWith(messages.Values.Where(status => status >= 400));
-                messageMaps++;
-            }
-            else if (field.GetValue(null) is System.Collections.IDictionary outcomes &&
-                     field.FieldType.GetGenericArguments() is [_, var value] && value == typeof(int))
-            {
-                var values = outcomes.Values.Cast<int>().Where(status => status >= 400).ToArray();
-                statuses.UnionWith(values);
-                relays |= values.Contains(429);
-            }
-        }
+        var expected = OpenApiHandlerStatusTests.Expected(action);
 
-        if (messageMaps == 0)
-        {
-            statuses.UnionWith(FortunaStatusMap.Shared.Values.Where(status => status >= 400));
-        }
-
-        return (statuses, relays);
+        return (expected.Statuses.Keys.ToHashSet(), expected.RelaysRetryAfter);
     }
 
     private static IEnumerable<object> Attributes(MethodInfo action) =>
