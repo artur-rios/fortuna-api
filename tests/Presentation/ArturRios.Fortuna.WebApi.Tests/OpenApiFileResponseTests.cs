@@ -20,7 +20,7 @@ public sealed class OpenApiFileResponseTests
     private const string Excel = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     // What the JSON output formatters write, in the order the document lists them. Never raw bytes.
-    private static readonly string[] JsonMediaTypes = ["text/plain", "application/json", "text/json"];
+    private static readonly string[] JsonMediaTypes = ["application/json", "text/json"];
 
     [UnitTheory]
     [InlineData("POST /api/exports", new[] { Excel, "application/pdf", "text/csv" })]
@@ -37,6 +37,44 @@ public sealed class OpenApiFileResponseTests
 
         // In this order: a generator that reads the first media type decodes text/csv as a string.
         Assert.Equal(mediaTypes, files);
+    }
+
+    [UnitTheory]
+    [InlineData("GET /api/exports/{id}")]
+    [InlineData("GET /api/me/data-export/{jobId}")]
+    [InlineData("GET /api/attachments/{id}")]
+    public void GivenRangedFileRoute_WhenDocumented_ThenItListsThePartialAndUnsatisfiableAnswersToARange(
+        string operation)
+    {
+        var files = CommittedOpenApiDocument.Content(operation, 200)
+            .Where(media => CommittedOpenApiDocument.IsBinary(media.Value))
+            .Select(media => media.Key)
+            .ToArray();
+        var partial = CommittedOpenApiDocument.Content(operation, 206);
+
+        // File(..., enableRangeProcessing: true): Accept-Ranges on the file, the requested bytes with a
+        // Content-Range, and 416 with no body and `bytes */length` when no range fits.
+        Assert.Equal(files, partial.Select(media => media.Key));
+        Assert.All(partial, media => Assert.True(CommittedOpenApiDocument.IsBinary(media.Value)));
+        Assert.Equal(["Accept-Ranges", "Content-Disposition"],
+            CommittedOpenApiDocument.Headers(operation, 200).Order(StringComparer.Ordinal));
+        Assert.Equal(["Accept-Ranges", "Content-Disposition", "Content-Range"],
+            CommittedOpenApiDocument.Headers(operation, 206).Order(StringComparer.Ordinal));
+        Assert.Empty(CommittedOpenApiDocument.Content(operation, 416));
+        Assert.Equal(["Content-Range"], CommittedOpenApiDocument.Headers(operation, 416));
+    }
+
+    [UnitFact]
+    public void GivenTheDirectExport_WhenDocumented_ThenItsFileCarriesItsNameAndNoRangeAnswers()
+    {
+        using var contract = CommittedOpenApiDocument.Load();
+        var responses = contract.RootElement.GetProperty("paths").GetProperty("/api/exports")
+            .GetProperty("post").GetProperty("responses");
+
+        // File(content, type, name) without range processing: Content-Disposition, nothing about ranges.
+        Assert.Equal(["Content-Disposition"], CommittedOpenApiDocument.Headers("POST /api/exports", 200));
+        Assert.False(responses.TryGetProperty("206", out _));
+        Assert.False(responses.TryGetProperty("416", out _));
     }
 
     [UnitTheory]
@@ -65,8 +103,9 @@ public sealed class OpenApiFileResponseTests
     {
         var content = CommittedOpenApiDocument.Content(operation, 200);
 
-        // Listed first, as before the file was documented: swagger_parser picks application/json wherever it
-        // is, and the native core shapes the response by the alphabetically first media type's schema.
+        // Listed first, as before the file was documented (text/plain, never sent, is gone): swagger_parser
+        // picks application/json wherever it is, and the native core shapes the response by the
+        // alphabetically first media type's schema.
         Assert.Equal(JsonMediaTypes, content.Take(JsonMediaTypes.Length).Select(media => media.Key));
         Assert.All(content.Take(JsonMediaTypes.Length), media =>
             Assert.Equal($"#/components/schemas/{envelope}", media.Value.GetProperty("$ref").GetString()));

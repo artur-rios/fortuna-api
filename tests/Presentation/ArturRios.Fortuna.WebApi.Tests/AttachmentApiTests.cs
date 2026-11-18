@@ -187,6 +187,43 @@ public sealed class AttachmentApiTests : IAsyncLifetime
     }
 
     [FunctionalFact]
+    public async Task GivenRangeRequests_WhenAttachmentDownloaded_ThenPartialAndUnsatisfiableAnswersAreDocumented()
+    {
+        var subject = Guid.NewGuid();
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        Authorize(client, subject, HeimdallRoles.User);
+        (await client.GetAsync("/api/me")).EnsureSuccessStatusCode();
+        var transactionId = await SeedTransactionAsync(subject);
+        byte[] document = [37, 80, 68, 70, 45, 49, 46, 55];
+        var attached = await AttachAsync(
+            client, transactionId, document, "statement.pdf", "application/pdf");
+        var attachmentId = (await attached.Content.ReadFromJsonAsync<AttachmentEnvelope>())!.Data!.Id;
+        const string operation = "GET /api/attachments/{id}";
+
+        using var partialRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/attachments/{attachmentId}");
+        partialRequest.Headers.Range = new RangeHeaderValue(0, 3);
+        var partial = await client.SendAsync(partialRequest);
+        using var outsideRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/attachments/{attachmentId}");
+        outsideRequest.Headers.Range = new RangeHeaderValue(100, 200);
+        var outside = await client.SendAsync(outsideRequest);
+
+        Assert.Equal(HttpStatusCode.PartialContent, partial.StatusCode);
+        Assert.Equal("bytes 0-3/8", partial.Content.Headers.ContentRange!.ToString());
+        Assert.Equal(document[..4], await partial.Content.ReadAsByteArrayAsync());
+        Assert.True(CommittedOpenApiDocument.DocumentsFile(
+            operation, 206, partial.Content.Headers.ContentType!.MediaType!));
+        Assert.Contains("Content-Range", CommittedOpenApiDocument.Headers(operation, 206));
+        Assert.Contains("Content-Disposition", CommittedOpenApiDocument.Headers(operation, 206));
+        Assert.NotNull(partial.Content.Headers.ContentDisposition);
+        Assert.Equal(HttpStatusCode.RequestedRangeNotSatisfiable, outside.StatusCode);
+        Assert.Equal("bytes */8", outside.Content.Headers.ContentRange!.ToString());
+        Assert.Empty(await outside.Content.ReadAsByteArrayAsync());
+        Assert.Empty(CommittedOpenApiDocument.Content(operation, 416));
+        Assert.Equal(["Content-Range"], CommittedOpenApiDocument.Headers(operation, 416));
+    }
+
+    [FunctionalFact]
     public async Task GivenForeignDeletedOrMissingAttachment_WhenDownloaded_ThenNotFoundIsReturned()
     {
         var ownerSubject = Guid.NewGuid();
