@@ -42,6 +42,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The OpenAPI document leaves no status a client can receive unstated. Nothing changes on the wire, and the
+  desktop native core and a generated client are unchanged.
+  - **Kestrel's own refusals.** Every operation lists `408`, `414`, `431` and `505`, and its `400` says it can come
+    from Kestrel too. Kestrel answers a malformed or slow request line or header, one over its limits, or an HTTP
+    version it does not speak itself, with no body, before the API sees the request.
+  - **Request bodies.** A `[FromBody]` body Kestrel refuses as it is read (over 30,000,000 bytes, too slow, badly
+    chunked) reaches the exception handler, so its `500` says so; Kestrel's own `413`, `408` and `400` never
+    arrive. On the three upload routes, a form Kestrel refuses fails model binding with a `400` that names the
+    cause. A body cut short ends the connection with no answer.
+  - **The `500`.** It says that a failure escaping the exception handler itself is Kestrel's `500` with no body.
+  - **Traefik.** Every operation lists Traefik's `502` (the API is unreachable, or the connection was refused or
+    reset) and `504` (no connection in time), as the `text/plain` reason phrase Traefik sends.
+  - **Unknown query parameters.** The `400` of the 11 operations under `[AllowedQuery]` names that refusal too.
+  - **Shared helpers.** A handler's statuses no longer include those of another handler it borrows a helper from,
+    only the helper's: `401` is no longer a handler answer on seven `/api/auth/*` routes.
+  - **`info.description`** states what no response can say:
+    - handler statuses are an upper bound;
+    - the failures that end the connection with no answer;
+    - Cloudflare's own pages in environments behind it;
+    - the Development exception page;
+    - the 404 and 405 outside the operations.
 - The OpenAPI document lists, for each operation, only the error statuses its own handler can answer. Before, it
   listed every status any map of the operation's controller held, the shared map's included. As a result, nearly
   every operation listed `404`, `409` and `503`; `GET /api/tags`, for one, listed `503` for a storage failure it

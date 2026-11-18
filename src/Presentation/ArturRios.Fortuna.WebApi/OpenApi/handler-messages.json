@@ -236,8 +236,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.ConfirmationCodeRequired",
       "HeimdallAuthMessages.IdentityConflict",
       "HeimdallAuthMessages.ServiceUnavailable",
@@ -257,8 +255,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.IdentityConflict",
       "HeimdallAuthMessages.PasswordRequired",
       "HeimdallAuthMessages.ServiceUnavailable",
@@ -278,8 +274,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.IdentityConflict",
       "HeimdallAuthMessages.MethodInvalid",
       "HeimdallAuthMessages.MethodsRequired",
@@ -298,8 +292,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.IdentityConflict",
       "HeimdallAuthMessages.RequestRejected",
       "HeimdallAuthMessages.ServiceUnavailable",
@@ -335,7 +327,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
       "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.IdentityConflict",
       "HeimdallAuthMessages.ServiceUnavailable",
@@ -373,8 +364,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.IdentityConflict",
       "HeimdallAuthMessages.RecoveryCodesRegenerated",
       "HeimdallAuthMessages.ServiceUnavailable",
@@ -393,8 +382,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.EmailInvalid",
       "HeimdallAuthMessages.EmailRequired",
       "HeimdallAuthMessages.EmailTooLong",
@@ -420,8 +407,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.EmailInvalid",
       "HeimdallAuthMessages.EmailRequired",
       "HeimdallAuthMessages.IdentityConflict",
@@ -441,8 +426,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.ChallengeCodeResent",
       "HeimdallAuthMessages.ChallengeTokenRequired",
       "HeimdallAuthMessages.IdentityConflict",
@@ -459,8 +442,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.IdentityConflict",
       "HeimdallAuthMessages.RequestRejected",
       "HeimdallAuthMessages.ServiceUnavailable",
@@ -478,8 +459,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.IdentityConflict",
       "HeimdallAuthMessages.NewPasswordRequired",
       "HeimdallAuthMessages.PasswordReset",
@@ -499,8 +478,6 @@
       "Statuses"
     ],
     "messages": [
-      "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.ConfirmationPasswordIncorrect",
       "HeimdallAuthMessages.ConfirmationPasswordRequired",
       "HeimdallAuthMessages.EmailVerified",
@@ -522,7 +499,6 @@
     ],
     "messages": [
       "HeimdallAuthMessages.AuthenticatedSuccessfully",
-      "HeimdallAuthMessages.AuthenticationRejected",
       "HeimdallAuthMessages.ChallengeTokenRequired",
       "HeimdallAuthMessages.FactorAmbiguous",
       "HeimdallAuthMessages.FactorRequired",
